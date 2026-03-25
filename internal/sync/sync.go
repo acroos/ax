@@ -6,8 +6,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/austinroos/ax/internal/correlator"
 	"github.com/austinroos/ax/internal/db"
 	"github.com/austinroos/ax/internal/metrics"
 	"github.com/austinroos/ax/internal/parsers"
@@ -22,16 +25,17 @@ type Options struct {
 
 // Result contains a summary of what was synced.
 type Result struct {
-	RepoPath   string
-	Owner      string
-	Repo       string
-	PRsSynced  int
-	PRsFailed  int
-	NewPRs     int
+	RepoPath          string
+	Owner             string
+	Repo              string
+	PRsSynced         int
+	PRsFailed         int
+	SessionsParsed    int
+	SessionsCorrelated int
 }
 
 // Run performs a full sync for a repository: fetches git + GitHub data,
-// computes Phase 1 metrics, and stores everything in the database.
+// parses Claude Code sessions, correlates sessions to PRs, and computes all metrics.
 func Run(database *sqlx.DB, opts Options) (*Result, error) {
 	result := &Result{RepoPath: opts.RepoPath}
 
@@ -76,14 +80,76 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		defaultBranch = "main"
 	}
 
-	// 4. Process each PR
-	// Collect file lists per PR for line revisit calculation
+	// 4. Parse Claude Code sessions for this project
+	claudeDir := defaultClaudeDir()
+	var sessionsByID map[string]*parsers.ParsedSession
+	var prCommits map[int][]parsers.GHCommit // needed for correlator
+
+	sessionFiles, _ := parsers.FindSessionFiles(claudeDir, repoRoot)
+	if len(sessionFiles) > 0 {
+		log.Printf("Parsing %d Claude Code session(s)...", len(sessionFiles))
+		sessionsByID = make(map[string]*parsers.ParsedSession)
+		for _, f := range sessionFiles {
+			session, err := parsers.ParseSession(f)
+			if err != nil {
+				log.Printf("  Warning: failed to parse session %s: %v", filepath.Base(f), err)
+				continue
+			}
+			session.Project = repoRoot
+			sessionsByID[session.ID] = session
+			result.SessionsParsed++
+
+			// Store session in database
+			dbSession := &db.Session{
+				ID:                       session.ID,
+				RepoID:                   sql.NullInt64{Int64: repoID, Valid: true},
+				Branch:                   sql.NullString{String: session.Branch, Valid: session.Branch != ""},
+				StartedAt:                sql.NullInt64{Int64: session.StartedAt, Valid: session.StartedAt > 0},
+				EndedAt:                  sql.NullInt64{Int64: session.EndedAt, Valid: session.EndedAt > 0},
+				MessageCount:             session.HumanMessages,
+				TurnCount:                session.TurnCount,
+				InputTokens:              session.InputTokens,
+				OutputTokens:             session.OutputTokens,
+				CacheCreationInputTokens: session.CacheCreationInputTokens,
+				CacheReadInputTokens:     session.CacheReadInputTokens,
+				TotalCostUSD:             sql.NullFloat64{Float64: session.TotalCostUSD, Valid: true},
+				PrimaryModel:             sql.NullString{String: session.PrimaryModel, Valid: session.PrimaryModel != ""},
+			}
+			database.Exec(`
+				INSERT INTO sessions (id, repo_id, branch, started_at, ended_at, message_count, turn_count,
+					input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens,
+					total_cost_usd, primary_model)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+					repo_id = excluded.repo_id,
+					branch = excluded.branch,
+					message_count = excluded.message_count,
+					turn_count = excluded.turn_count,
+					input_tokens = excluded.input_tokens,
+					output_tokens = excluded.output_tokens,
+					cache_creation_input_tokens = excluded.cache_creation_input_tokens,
+					cache_read_input_tokens = excluded.cache_read_input_tokens,
+					total_cost_usd = excluded.total_cost_usd,
+					primary_model = excluded.primary_model
+			`, dbSession.ID, dbSession.RepoID, dbSession.Branch,
+				dbSession.StartedAt, dbSession.EndedAt,
+				dbSession.MessageCount, dbSession.TurnCount,
+				dbSession.InputTokens, dbSession.OutputTokens,
+				dbSession.CacheCreationInputTokens, dbSession.CacheReadInputTokens,
+				dbSession.TotalCostUSD, dbSession.PrimaryModel)
+		}
+	}
+
+	// 5. Process each PR
 	prFiles := make(map[int][]string)
+	prCommits = make(map[int][]parsers.GHCommit)
+
+	// Build PR number → ID mapping for correlator
+	prNumberToID := make(map[int]int64)
 
 	for _, ghPR := range prs {
 		log.Printf("Processing PR #%d: %s", ghPR.Number, ghPR.Title)
 
-		// Map state from gh CLI format
 		state := strings.ToLower(ghPR.State)
 
 		pr := &db.PR{
@@ -107,8 +173,9 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 			result.PRsFailed++
 			continue
 		}
+		prNumberToID[ghPR.Number] = prID
 
-		// Compute metrics for this PR
+		// Compute Phase 1 metrics
 		prMetrics := &db.PRMetrics{PRID: prID}
 
 		// -- Post-open commits --
@@ -116,10 +183,10 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		if err != nil {
 			log.Printf("  Warning: failed to get commits for PR #%d: %v", ghPR.Number, err)
 		} else {
+			prCommits[ghPR.Number] = commits
 			postOpen := metrics.PostOpenCommits(commits, ghPR.CreatedAt)
 			prMetrics.PostOpenCommits = sql.NullInt64{Int64: int64(postOpen), Valid: true}
 
-			// Collect files for line revisit
 			for _, c := range commits {
 				files, err := gitParser.FilesChangedInCommit(c.SHA)
 				if err == nil {
@@ -170,7 +237,6 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 				for _, c := range branchCommits {
 					totalAdded += c.Additions
 				}
-
 				netStats, err := gitParser.DiffStatBetween(defaultBranch, ghPR.HeadRefName)
 				if err == nil {
 					netAdded := 0
@@ -183,7 +249,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 			}
 		}
 
-		// Store commits in database
+		// Store commits
 		if commits != nil {
 			for _, c := range commits {
 				authorName := ""
@@ -204,26 +270,83 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 					IsClaudeAuthored: boolToInt(isClaude),
 					IsPostOpen:       boolToInt(isPostOpen),
 				}
-				if err := db.UpsertCommit(database, commit); err != nil {
-					log.Printf("  Warning: failed to store commit %s: %v", c.SHA[:8], err)
-				}
+				db.UpsertCommit(database, commit)
 			}
 		}
 
-		// Store metrics
-		if err := db.UpsertPRMetrics(database, prMetrics); err != nil {
-			log.Printf("  Warning: failed to store metrics for PR #%d: %v", ghPR.Number, err)
-		}
+		// Store metrics (Phase 1 fields set so far)
+		db.UpsertPRMetrics(database, prMetrics)
 
 		result.PRsSynced++
 	}
 
-	// 5. Calculate line revisit rates across all PRs
+	// 6. Correlate sessions to PRs and compute session-dependent metrics
+	if len(sessionsByID) > 0 {
+		log.Printf("Correlating %d sessions to %d PRs...", len(sessionsByID), len(prs))
+
+		// Build correlation map: PR number → []*ParsedSession
+		prSessions := make(map[int][]*parsers.ParsedSession)
+
+		for _, session := range sessionsByID {
+			correlations := correlator.CorrelateSession(session, prs, prCommits)
+			for _, c := range correlations {
+				prID, ok := prNumberToID[c.PRNumber]
+				if !ok {
+					continue
+				}
+
+				// Store correlation
+				_, err := database.Exec(`
+					INSERT INTO session_prs (session_id, pr_id, confidence)
+					VALUES (?, ?, ?)
+					ON CONFLICT(session_id, pr_id) DO UPDATE SET confidence = excluded.confidence
+				`, c.SessionID, prID, c.Confidence)
+				if err != nil {
+					log.Printf("  Warning: failed to store correlation %s→PR#%d: %v", c.SessionID[:8], c.PRNumber, err)
+				}
+
+				prSessions[c.PRNumber] = append(prSessions[c.PRNumber], session)
+				result.SessionsCorrelated++
+			}
+		}
+
+		// Compute session-dependent metrics per PR
+		for prNum, sessions := range prSessions {
+			prID, ok := prNumberToID[prNum]
+			if !ok {
+				continue
+			}
+
+			msgCount := metrics.MessagesPerPR(sessions)
+			iterDepth := metrics.IterationDepth(sessions)
+			selfCorrection := metrics.SelfCorrectionRate(sessions)
+			ctxEfficiency := metrics.ContextEfficiency(sessions)
+			errorRecovery := metrics.ErrorRecoveryEfficiency(sessions)
+			tokenCost := metrics.TokenCostForSessions(sessions)
+
+			// Update PR metrics with session-dependent values
+			database.Exec(`
+				UPDATE pr_metrics SET
+					messages_per_pr = ?,
+					iteration_depth = ?,
+					self_correction_rate = CASE WHEN ? >= 0 THEN ? ELSE NULL END,
+					context_efficiency = CASE WHEN ? >= 0 THEN ? ELSE NULL END,
+					error_recovery_attempts = ?,
+					token_cost_usd = ?
+				WHERE pr_id = ?
+			`, msgCount, iterDepth,
+				selfCorrection, selfCorrection,
+				ctxEfficiency, ctxEfficiency,
+				errorRecovery,
+				tokenCost,
+				prID)
+		}
+	}
+
+	// 7. Line revisit rates
 	revisits := metrics.CalculateLineRevisits(prFiles)
 	if len(revisits) > 0 {
 		log.Printf("Found %d files modified across multiple PRs", len(revisits))
-		// Store revisit data as a metric on each PR that has revisited files
-		// For now, we calculate an average revisit rate per PR
 		for prNum, files := range prFiles {
 			revisitCount := 0
 			for _, f := range files {
@@ -236,25 +359,22 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 			}
 			if revisitCount > 0 && len(files) > 0 {
 				rate := float64(revisitCount) / float64(len(files))
-				// Update the PR metrics with the revisit rate
-				var prID int64
-				err := database.Get(&prID, "SELECT id FROM prs WHERE repo_id = ? AND number = ?", repoID, prNum)
-				if err == nil {
-					database.Exec(
-						"UPDATE pr_metrics SET line_revisit_rate = ? WHERE pr_id = ?",
-						rate, prID,
-					)
+				if prID, ok := prNumberToID[prNum]; ok {
+					database.Exec("UPDATE pr_metrics SET line_revisit_rate = ? WHERE pr_id = ?", rate, prID)
 				}
 			}
 		}
 	}
 
-	// 6. Update sync timestamp
-	if err := db.UpdateRepoSyncTime(database, repoID); err != nil {
-		log.Printf("Warning: failed to update sync time: %v", err)
-	}
+	// 8. Update sync timestamp
+	db.UpdateRepoSyncTime(database, repoID)
 
 	return result, nil
+}
+
+func defaultClaudeDir() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".claude")
 }
 
 func boolToInt(b bool) int {

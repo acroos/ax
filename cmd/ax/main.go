@@ -87,6 +87,10 @@ func newSyncCmd() *cobra.Command {
 			if result.PRsFailed > 0 {
 				fmt.Printf("  PRs failed: %d\n", result.PRsFailed)
 			}
+			if result.SessionsParsed > 0 {
+				fmt.Printf("  Sessions parsed: %d\n", result.SessionsParsed)
+				fmt.Printf("  Sessions correlated: %d\n", result.SessionsCorrelated)
+			}
 			return nil
 		},
 	}
@@ -160,6 +164,12 @@ func printRepoReport(database *sqlx.DB, repo *db.Repo) error {
 	var totalPostOpen, prCount, acceptedCount, withTests, withoutTests int
 	var totalCI float64
 	var ciCount int
+	var totalMessages, totalIterations, msgCount, iterCount int
+	var totalCost float64
+	var costCount int
+	var totalSelfCorrection, totalCtxEfficiency float64
+	var scCount, ceCount int
+	var totalErrors, errorCount int
 
 	for _, pr := range prs {
 		m, err := db.GetPRMetrics(database, pr.ID)
@@ -185,6 +195,30 @@ func printRepoReport(database *sqlx.DB, repo *db.Repo) error {
 				withoutTests++
 			}
 		}
+		if m.MessagesPerPR.Valid {
+			totalMessages += int(m.MessagesPerPR.Int64)
+			msgCount++
+		}
+		if m.IterationDepth.Valid {
+			totalIterations += int(m.IterationDepth.Int64)
+			iterCount++
+		}
+		if m.TokenCostUSD.Valid {
+			totalCost += m.TokenCostUSD.Float64
+			costCount++
+		}
+		if m.SelfCorrectionRate.Valid {
+			totalSelfCorrection += m.SelfCorrectionRate.Float64
+			scCount++
+		}
+		if m.ContextEfficiency.Valid {
+			totalCtxEfficiency += m.ContextEfficiency.Float64
+			ceCount++
+		}
+		if m.ErrorRecoveryAttempts.Valid {
+			totalErrors += int(m.ErrorRecoveryAttempts.Int64)
+			errorCount++
+		}
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -208,6 +242,29 @@ func printRepoReport(database *sqlx.DB, repo *db.Repo) error {
 	if testTotal > 0 {
 		testRate := float64(withTests) / float64(testTotal) * 100
 		fmt.Fprintf(w, "  PRs with tests\t%.0f%%\tPRs that include test file changes\n", testRate)
+	}
+
+	// Session-dependent metrics
+	if msgCount > 0 {
+		avgMsg := float64(totalMessages) / float64(msgCount)
+		fmt.Fprintf(w, "  Avg messages/PR\t%.1f\tHuman messages per PR\n", avgMsg)
+	}
+	if iterCount > 0 {
+		avgIter := float64(totalIterations) / float64(iterCount)
+		fmt.Fprintf(w, "  Avg iteration depth\t%.1f\tHuman→agent turn pairs per PR\n", avgIter)
+	}
+	if costCount > 0 {
+		avgCost := totalCost / float64(costCount)
+		fmt.Fprintf(w, "  Avg token cost/PR\t$%.2f\tDollar cost per PR\n", avgCost)
+		fmt.Fprintf(w, "  Total token cost\t$%.2f\tAcross %d PRs\n", totalCost, costCount)
+	}
+	if scCount > 0 {
+		avgSC := totalSelfCorrection / float64(scCount) * 100
+		fmt.Fprintf(w, "  Self-correction rate\t%.0f%%\tAgent error recovery without human help\n", avgSC)
+	}
+	if ceCount > 0 {
+		avgCE := totalCtxEfficiency / float64(ceCount)
+		fmt.Fprintf(w, "  Context efficiency\t%.2f\tFiles modified / files read\n", avgCE)
 	}
 
 	fmt.Fprintf(w, "  Total PRs\t%d\t\n", len(prs))
@@ -271,6 +328,24 @@ func printPRReport(database *sqlx.DB, repo *db.Repo, prNumber int) error {
 	}
 	if m.LineRevisitRate.Valid {
 		fmt.Fprintf(w, "  Line revisit rate\t%.2f\n", m.LineRevisitRate.Float64)
+	}
+	if m.MessagesPerPR.Valid {
+		fmt.Fprintf(w, "  Messages\t%d\n", m.MessagesPerPR.Int64)
+	}
+	if m.IterationDepth.Valid {
+		fmt.Fprintf(w, "  Iteration depth\t%d\n", m.IterationDepth.Int64)
+	}
+	if m.TokenCostUSD.Valid {
+		fmt.Fprintf(w, "  Token cost\t$%.2f\n", m.TokenCostUSD.Float64)
+	}
+	if m.SelfCorrectionRate.Valid {
+		fmt.Fprintf(w, "  Self-correction rate\t%.0f%%\n", m.SelfCorrectionRate.Float64*100)
+	}
+	if m.ContextEfficiency.Valid {
+		fmt.Fprintf(w, "  Context efficiency\t%.2f\n", m.ContextEfficiency.Float64)
+	}
+	if m.ErrorRecoveryAttempts.Valid {
+		fmt.Fprintf(w, "  Error recovery attempts\t%d\n", m.ErrorRecoveryAttempts.Int64)
 	}
 
 	w.Flush()
