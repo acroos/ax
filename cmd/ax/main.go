@@ -16,6 +16,7 @@ import (
 
 	"github.com/austinroos/ax/internal/db"
 	"github.com/austinroos/ax/internal/hooks"
+	"github.com/austinroos/ax/internal/server"
 	axsync "github.com/austinroos/ax/internal/sync"
 	"github.com/austinroos/ax/internal/watch"
 	"github.com/jmoiron/sqlx"
@@ -39,6 +40,7 @@ func main() {
 	root.AddCommand(newDashboardCmd())
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newWatchCmd())
+	root.AddCommand(newServerCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -819,6 +821,196 @@ func newWatchStatusCmd() *cobra.Command {
 			w.Flush()
 			fmt.Println()
 
+			return nil
+		},
+	}
+}
+
+func newServerCmd() *cobra.Command {
+	var port int
+	var postgresConn string
+
+	cmd := &cobra.Command{
+		Use:   "server",
+		Short: "Start the AX team server",
+		Long: `Start the AX team server that accepts pushed data from developers
+and serves metrics to the dashboard.
+
+Requires a PostgreSQL database. Pass the connection string via
+--postgres or the AX_POSTGRES environment variable.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if postgresConn == "" {
+				postgresConn = os.Getenv("AX_POSTGRES")
+			}
+			if postgresConn == "" {
+				return fmt.Errorf("PostgreSQL connection required: use --postgres or set AX_POSTGRES")
+			}
+
+			store, err := db.OpenPostgres(postgresConn)
+			if err != nil {
+				return fmt.Errorf("failed to connect to PostgreSQL: %w", err)
+			}
+			defer store.Close()
+
+			addr := fmt.Sprintf(":%d", port)
+			srv := server.New(store, addr)
+			return srv.ListenAndServe()
+		},
+	}
+
+	cmd.Flags().IntVar(&port, "port", 8080, "Port to listen on")
+	cmd.Flags().StringVar(&postgresConn, "postgres", "", "PostgreSQL connection string")
+
+	cmd.AddCommand(newServerInitCmd())
+	cmd.AddCommand(newServerCreateKeyCmd())
+	cmd.AddCommand(newServerListKeysCmd())
+	cmd.AddCommand(newServerRevokeKeyCmd())
+
+	return cmd
+}
+
+func newServerInitCmd() *cobra.Command {
+	var postgresConn string
+
+	return &cobra.Command{
+		Use:   "init",
+		Short: "Initialize the database and generate the first API key",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if postgresConn == "" {
+				postgresConn = os.Getenv("AX_POSTGRES")
+			}
+			if postgresConn == "" {
+				return fmt.Errorf("PostgreSQL connection required: use --postgres or set AX_POSTGRES")
+			}
+
+			store, err := db.OpenPostgres(postgresConn)
+			if err != nil {
+				return fmt.Errorf("failed to connect to PostgreSQL: %w", err)
+			}
+			defer store.Close()
+
+			key, err := db.GenerateAPIKey(store.DB, "default")
+			if err != nil {
+				return fmt.Errorf("failed to generate API key: %w", err)
+			}
+
+			fmt.Println("AX server initialized.")
+			fmt.Printf("Your API key: %s\n\n", key)
+			fmt.Println("Share this key securely with your team.")
+			fmt.Println("Each developer will need it for 'ax init --team'.")
+			return nil
+		},
+	}
+}
+
+func newServerCreateKeyCmd() *cobra.Command {
+	var postgresConn string
+
+	return &cobra.Command{
+		Use:   "create-key [name]",
+		Short: "Generate a new API key",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if postgresConn == "" {
+				postgresConn = os.Getenv("AX_POSTGRES")
+			}
+			if postgresConn == "" {
+				return fmt.Errorf("PostgreSQL connection required")
+			}
+
+			store, err := db.OpenPostgres(postgresConn)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			key, err := db.GenerateAPIKey(store.DB, args[0])
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("API key for %q: %s\n", args[0], key)
+			return nil
+		},
+	}
+}
+
+func newServerListKeysCmd() *cobra.Command {
+	var postgresConn string
+
+	return &cobra.Command{
+		Use:   "list-keys",
+		Short: "List all API keys",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if postgresConn == "" {
+				postgresConn = os.Getenv("AX_POSTGRES")
+			}
+			if postgresConn == "" {
+				return fmt.Errorf("PostgreSQL connection required")
+			}
+
+			store, err := db.OpenPostgres(postgresConn)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			keys, err := db.ListAPIKeys(store.DB)
+			if err != nil {
+				return err
+			}
+
+			if len(keys) == 0 {
+				fmt.Println("No API keys. Run 'ax server init' to create one.")
+				return nil
+			}
+
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fmt.Fprintln(w, "NAME\tCREATED\tLAST USED\tREVOKED")
+			fmt.Fprintln(w, "----\t-------\t---------\t-------")
+			for _, k := range keys {
+				lastUsed := "never"
+				if k.LastUsedAt.Valid {
+					lastUsed = k.LastUsedAt.String
+				}
+				revoked := "no"
+				if k.Revoked == 1 {
+					revoked = "yes"
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", k.Name, k.CreatedAt, lastUsed, revoked)
+			}
+			w.Flush()
+			return nil
+		},
+	}
+}
+
+func newServerRevokeKeyCmd() *cobra.Command {
+	var postgresConn string
+
+	return &cobra.Command{
+		Use:   "revoke-key [name]",
+		Short: "Revoke an API key",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if postgresConn == "" {
+				postgresConn = os.Getenv("AX_POSTGRES")
+			}
+			if postgresConn == "" {
+				return fmt.Errorf("PostgreSQL connection required")
+			}
+
+			store, err := db.OpenPostgres(postgresConn)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			if err := db.RevokeAPIKey(store.DB, args[0]); err != nil {
+				return err
+			}
+
+			fmt.Printf("Revoked API key %q.\n", args[0])
 			return nil
 		},
 	}

@@ -6,12 +6,20 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
 )
 
+// DBTX is an interface satisfied by both *sqlx.DB and *sqlx.Tx,
+// allowing query functions to work in both transactional and non-transactional contexts.
+type DBTX interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+	Get(dest interface{}, query string, args ...interface{}) error
+	Select(dest interface{}, query string, args ...interface{}) error
+	Rebind(query string) string
+}
+
 // UpsertRepo inserts or updates a repo, returning its ID.
-func UpsertRepo(db *sqlx.DB, path, remoteURL, owner, repo string) (int64, error) {
+func UpsertRepo(db DBTX, path, remoteURL, owner, repo string) (int64, error) {
 	result, err := db.Exec(`
 		INSERT INTO repos (path, remote_url, github_owner, github_repo)
 		VALUES (?, ?, ?, ?)
@@ -38,7 +46,7 @@ func UpsertRepo(db *sqlx.DB, path, remoteURL, owner, repo string) (int64, error)
 }
 
 // GetRepoByPath returns a repo by its filesystem path.
-func GetRepoByPath(db *sqlx.DB, path string) (*Repo, error) {
+func GetRepoByPath(db DBTX, path string) (*Repo, error) {
 	var repo Repo
 	err := db.Get(&repo, "SELECT * FROM repos WHERE path = ?", path)
 	if err == sql.ErrNoRows {
@@ -51,7 +59,7 @@ func GetRepoByPath(db *sqlx.DB, path string) (*Repo, error) {
 }
 
 // ListRepos returns all tracked repositories.
-func ListRepos(db *sqlx.DB) ([]Repo, error) {
+func ListRepos(db DBTX) ([]Repo, error) {
 	var repos []Repo
 	err := db.Select(&repos, "SELECT * FROM repos ORDER BY path")
 	if err != nil {
@@ -61,7 +69,7 @@ func ListRepos(db *sqlx.DB) ([]Repo, error) {
 }
 
 // UpsertPR inserts or updates a pull request, tracking state transitions.
-func UpsertPR(db *sqlx.DB, pr *PR) (int64, error) {
+func UpsertPR(db DBTX, pr *PR) (int64, error) {
 	result, err := db.Exec(`
 		INSERT INTO prs (repo_id, number, title, branch, state, created_at, merged_at, closed_at, url, additions, deletions, changed_files)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -97,7 +105,7 @@ func UpsertPR(db *sqlx.DB, pr *PR) (int64, error) {
 }
 
 // UpsertCommit inserts or updates a commit.
-func UpsertCommit(db *sqlx.DB, c *Commit) error {
+func UpsertCommit(db DBTX, c *Commit) error {
 	_, err := db.Exec(`
 		INSERT INTO commits (sha, repo_id, pr_id, session_id, message, author, committed_at, is_claude_authored, is_post_open, additions, deletions, files_changed)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -117,7 +125,7 @@ func UpsertCommit(db *sqlx.DB, c *Commit) error {
 
 // UpsertPRMetrics inserts or replaces metrics for a PR.
 // If the PR's metrics are already finalized, this is a no-op.
-func UpsertPRMetrics(db *sqlx.DB, m *PRMetrics) error {
+func UpsertPRMetrics(db DBTX, m *PRMetrics) error {
 	_, err := db.Exec(`
 		INSERT INTO pr_metrics (pr_id, messages_per_pr, iteration_depth, post_open_commits, first_pass_accepted,
 			ci_success_rate, diff_churn_lines, has_tests, line_revisit_rate, plan_coverage_score,
@@ -155,7 +163,7 @@ func UpsertPRMetrics(db *sqlx.DB, m *PRMetrics) error {
 }
 
 // IsPRFinalized returns true if a PR's metrics have been finalized.
-func IsPRFinalized(db *sqlx.DB, prID int64) (bool, error) {
+func IsPRFinalized(db DBTX, prID int64) (bool, error) {
 	var finalized int
 	err := db.Get(&finalized, "SELECT COALESCE(metrics_finalized, 0) FROM pr_metrics WHERE pr_id = ?", prID)
 	if err == sql.ErrNoRows {
@@ -168,7 +176,7 @@ func IsPRFinalized(db *sqlx.DB, prID int64) (bool, error) {
 }
 
 // GetFinalizedPRsForRepo returns only PRs with finalized metrics for a repo.
-func GetFinalizedPRsForRepo(db *sqlx.DB, repoID int64) ([]PR, error) {
+func GetFinalizedPRsForRepo(db DBTX, repoID int64) ([]PR, error) {
 	var prs []PR
 	err := db.Select(&prs, `
 		SELECT p.* FROM prs p
@@ -183,7 +191,7 @@ func GetFinalizedPRsForRepo(db *sqlx.DB, repoID int64) ([]PR, error) {
 }
 
 // UpsertWatchedRepo adds or updates a watched repo configuration.
-func UpsertWatchedRepo(db *sqlx.DB, w *WatchedRepo) error {
+func UpsertWatchedRepo(db DBTX, w *WatchedRepo) error {
 	_, err := db.Exec(`
 		INSERT INTO watched_repos (repo_id, poll_interval_seconds, enabled)
 		VALUES (?, ?, ?)
@@ -198,7 +206,7 @@ func UpsertWatchedRepo(db *sqlx.DB, w *WatchedRepo) error {
 }
 
 // GetEnabledWatchedRepos returns all enabled watched repos with their repo details.
-func GetEnabledWatchedRepos(db *sqlx.DB) ([]WatchedRepo, error) {
+func GetEnabledWatchedRepos(db DBTX) ([]WatchedRepo, error) {
 	var repos []WatchedRepo
 	err := db.Select(&repos, "SELECT * FROM watched_repos WHERE enabled = 1")
 	if err != nil {
@@ -208,7 +216,7 @@ func GetEnabledWatchedRepos(db *sqlx.DB) ([]WatchedRepo, error) {
 }
 
 // UpdateWatchedRepoPolledAt updates the last_polled_at timestamp.
-func UpdateWatchedRepoPolledAt(db *sqlx.DB, repoID int64) error {
+func UpdateWatchedRepoPolledAt(db DBTX, repoID int64) error {
 	_, err := db.Exec("UPDATE watched_repos SET last_polled_at = datetime('now') WHERE repo_id = ?", repoID)
 	if err != nil {
 		return fmt.Errorf("failed to update polled time: %w", err)
@@ -217,7 +225,7 @@ func UpdateWatchedRepoPolledAt(db *sqlx.DB, repoID int64) error {
 }
 
 // GetAllWatchedRepos returns all watched repos (for status display).
-func GetAllWatchedRepos(db *sqlx.DB) ([]WatchedRepo, error) {
+func GetAllWatchedRepos(db DBTX) ([]WatchedRepo, error) {
 	var repos []WatchedRepo
 	err := db.Select(&repos, "SELECT * FROM watched_repos")
 	if err != nil {
@@ -227,7 +235,7 @@ func GetAllWatchedRepos(db *sqlx.DB) ([]WatchedRepo, error) {
 }
 
 // DeleteWatchedRepo removes a repo from the watch list.
-func DeleteWatchedRepo(db *sqlx.DB, repoID int64) error {
+func DeleteWatchedRepo(db DBTX, repoID int64) error {
 	_, err := db.Exec("DELETE FROM watched_repos WHERE repo_id = ?", repoID)
 	if err != nil {
 		return fmt.Errorf("failed to delete watched repo: %w", err)
@@ -239,7 +247,7 @@ func DeleteWatchedRepo(db *sqlx.DB, repoID int64) error {
 
 // GenerateAPIKey creates a new API key, stores its bcrypt hash, and returns the raw key.
 // The raw key is only available at creation time.
-func GenerateAPIKey(db *sqlx.DB, name string) (string, error) {
+func GenerateAPIKey(db DBTX, name string) (string, error) {
 	// Generate random key: ax_k1_ + 32 hex chars
 	raw := make([]byte, 16)
 	if _, err := rand.Read(raw); err != nil {
@@ -263,7 +271,7 @@ func GenerateAPIKey(db *sqlx.DB, name string) (string, error) {
 }
 
 // ValidateAPIKey checks if a raw API key is valid (not revoked) and returns the key name.
-func ValidateAPIKey(db *sqlx.DB, rawKey string) (string, error) {
+func ValidateAPIKey(db DBTX, rawKey string) (string, error) {
 	var keys []APIKey
 	err := db.Select(&keys, "SELECT * FROM api_keys WHERE revoked = 0")
 	if err != nil {
@@ -282,7 +290,7 @@ func ValidateAPIKey(db *sqlx.DB, rawKey string) (string, error) {
 }
 
 // ListAPIKeys returns all API keys (without hashes).
-func ListAPIKeys(db *sqlx.DB) ([]APIKey, error) {
+func ListAPIKeys(db DBTX) ([]APIKey, error) {
 	var keys []APIKey
 	err := db.Select(&keys, "SELECT id, '' as key_hash, name, created_at, last_used_at, revoked FROM api_keys ORDER BY created_at DESC")
 	if err != nil {
@@ -292,7 +300,7 @@ func ListAPIKeys(db *sqlx.DB) ([]APIKey, error) {
 }
 
 // RevokeAPIKey revokes an API key by name.
-func RevokeAPIKey(db *sqlx.DB, name string) error {
+func RevokeAPIKey(db DBTX, name string) error {
 	result, err := db.Exec("UPDATE api_keys SET revoked = 1 WHERE name = ? AND revoked = 0", name)
 	if err != nil {
 		return fmt.Errorf("failed to revoke API key: %w", err)
@@ -305,7 +313,7 @@ func RevokeAPIKey(db *sqlx.DB, name string) error {
 }
 
 // GetPRsForRepo returns all PRs for a given repo.
-func GetPRsForRepo(db *sqlx.DB, repoID int64) ([]PR, error) {
+func GetPRsForRepo(db DBTX, repoID int64) ([]PR, error) {
 	var prs []PR
 	err := db.Select(&prs, "SELECT * FROM prs WHERE repo_id = ? ORDER BY number DESC", repoID)
 	if err != nil {
@@ -315,7 +323,7 @@ func GetPRsForRepo(db *sqlx.DB, repoID int64) ([]PR, error) {
 }
 
 // GetPRMetrics returns computed metrics for a PR.
-func GetPRMetrics(db *sqlx.DB, prID int64) (*PRMetrics, error) {
+func GetPRMetrics(db DBTX, prID int64) (*PRMetrics, error) {
 	var m PRMetrics
 	err := db.Get(&m, "SELECT * FROM pr_metrics WHERE pr_id = ?", prID)
 	if err == sql.ErrNoRows {
@@ -328,7 +336,7 @@ func GetPRMetrics(db *sqlx.DB, prID int64) (*PRMetrics, error) {
 }
 
 // UpdateRepoSyncTime updates the last_synced_at timestamp for a repo.
-func UpdateRepoSyncTime(db *sqlx.DB, repoID int64) error {
+func UpdateRepoSyncTime(db DBTX, repoID int64) error {
 	_, err := db.Exec("UPDATE repos SET last_synced_at = datetime('now') WHERE id = ?", repoID)
 	if err != nil {
 		return fmt.Errorf("failed to update sync time: %w", err)
@@ -338,7 +346,7 @@ func UpdateRepoSyncTime(db *sqlx.DB, repoID int64) error {
 
 // ComputeTokenCostForPR sums total_cost_usd from all sessions correlated to a PR.
 // Returns 0 if no sessions are correlated or none have cost data.
-func ComputeTokenCostForPR(db *sqlx.DB, prID int64) (float64, error) {
+func ComputeTokenCostForPR(db DBTX, prID int64) (float64, error) {
 	var cost sql.NullFloat64
 	err := db.Get(&cost, `
 		SELECT SUM(s.total_cost_usd)
@@ -356,7 +364,7 @@ func ComputeTokenCostForPR(db *sqlx.DB, prID int64) (float64, error) {
 }
 
 // UpsertRepoMetrics inserts or replaces repo-level metrics for a time period.
-func UpsertRepoMetrics(db *sqlx.DB, m *RepoMetrics) error {
+func UpsertRepoMetrics(db DBTX, m *RepoMetrics) error {
 	_, err := db.Exec(`
 		INSERT INTO repo_metrics (repo_id, period_start, period_end, period_type,
 			total_sessions, total_tokens, total_cost_usd,
@@ -381,7 +389,7 @@ func UpsertRepoMetrics(db *sqlx.DB, m *RepoMetrics) error {
 }
 
 // GetRepoMetrics returns repo-level metrics for a given period type.
-func GetRepoMetrics(db *sqlx.DB, repoID int64, periodType string) ([]RepoMetrics, error) {
+func GetRepoMetrics(db DBTX, repoID int64, periodType string) ([]RepoMetrics, error) {
 	var metrics []RepoMetrics
 	err := db.Select(&metrics,
 		"SELECT * FROM repo_metrics WHERE repo_id = ? AND period_type = ? ORDER BY period_start DESC",
