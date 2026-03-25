@@ -173,27 +173,8 @@ func (g *GitHubParser) GetPRCommits(number int) ([]GHCommit, error) {
 }
 
 // GetPRChecks returns CI check results for a pull request.
+// Uses statusCheckRollup from the PR view API for reliable cross-version support.
 func (g *GitHubParser) GetPRChecks(number int) ([]GHCheckRun, error) {
-	out, err := g.gh("pr", "checks",
-		"-R", g.repoFlag(),
-		fmt.Sprintf("%d", number),
-		"--json", "name,state,conclusion",
-	)
-	if err != nil {
-		// gh pr checks might not support --json on older versions
-		// Fall back to the API
-		return g.getPRChecksViaAPI(number)
-	}
-
-	var checks []GHCheckRun
-	if err := json.Unmarshal([]byte(out), &checks); err != nil {
-		return nil, fmt.Errorf("failed to parse checks: %w", err)
-	}
-	return checks, nil
-}
-
-// getPRChecksViaAPI fetches check runs via the GitHub API as a fallback.
-func (g *GitHubParser) getPRChecksViaAPI(number int) ([]GHCheckRun, error) {
 	out, err := g.gh("pr", "view",
 		"-R", g.repoFlag(),
 		fmt.Sprintf("%d", number),
@@ -237,12 +218,15 @@ func HasChangesRequested(reviews []GHReview) bool {
 
 // CIPassRate calculates the percentage of checks that passed.
 // Returns -1 if there are no completed checks.
+// Handles both uppercase (GitHub API) and lowercase values.
 func CIPassRate(checks []GHCheckRun) float64 {
 	var completed, passed int
 	for _, c := range checks {
-		if c.Status == "completed" || c.Conclusion != "" {
+		status := strings.ToUpper(c.Status)
+		conclusion := strings.ToUpper(c.Conclusion)
+		if status == "COMPLETED" || conclusion != "" {
 			completed++
-			if c.Conclusion == "success" || c.Conclusion == "skipped" || c.Conclusion == "neutral" {
+			if conclusion == "SUCCESS" || conclusion == "SKIPPED" || conclusion == "NEUTRAL" {
 				passed++
 			}
 		}
