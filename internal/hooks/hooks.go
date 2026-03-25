@@ -35,6 +35,14 @@ func hookCommand(axBinary string) string {
 	)
 }
 
+// sessionsSyncCommand returns a lightweight command for mid-session syncing.
+func sessionsSyncCommand(axBinary string) string {
+	return fmt.Sprintf(
+		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\":\"[^\"]*\"" | cut -d\" -f4); if [ -n "$CWD" ] && [ -d "$CWD/.git" ]; then %s sync --sessions-only --repo "$CWD" > /dev/null 2>&1; fi'`,
+		axBinary,
+	)
+}
+
 // Install adds an ax SessionEnd hook to the Claude Code settings file.
 // If a hook already exists, it is updated. Other settings are preserved.
 func Install(settingsPath, axBinary string) error {
@@ -106,6 +114,108 @@ func Install(settingsPath, axBinary string) error {
 	}
 
 	return nil
+}
+
+// InstallStopHook adds a Stop hook that runs a lightweight sessions-only sync
+// after each Claude response. This keeps metrics updated mid-session.
+func InstallStopHook(settingsPath, axBinary string) error {
+	settings := make(Settings)
+	if data, err := os.ReadFile(settingsPath); err == nil {
+		if err := json.Unmarshal(data, &settings); err != nil {
+			return fmt.Errorf("failed to parse %s: %w", settingsPath, err)
+		}
+	}
+
+	hook := HookConfig{
+		Matcher: "",
+		Hooks: []HookSpec{
+			{
+				Type:          "command",
+				Command:       sessionsSyncCommand(axBinary),
+				Timeout:       30,
+				StatusMessage: "Updating AX session metrics",
+			},
+		},
+	}
+
+	hooks, ok := settings["hooks"].(map[string]interface{})
+	if !ok {
+		hooks = make(map[string]interface{})
+	}
+
+	existingHooks, ok := hooks["Stop"].([]interface{})
+	if ok {
+		var filtered []interface{}
+		for _, h := range existingHooks {
+			hMap, ok := h.(map[string]interface{})
+			if !ok || !isAXHook(hMap) {
+				filtered = append(filtered, h)
+			}
+		}
+		existingHooks = filtered
+	} else {
+		existingHooks = nil
+	}
+
+	existingHooks = append(existingHooks, hook)
+	hooks["Stop"] = existingHooks
+	settings["hooks"] = hooks
+
+	dir := filepath.Dir(settingsPath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(settingsPath, append(data, '\n'), 0o644)
+}
+
+// UninstallStopHook removes the ax Stop hook.
+func UninstallStopHook(settingsPath string) error {
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return nil
+	}
+
+	settings := make(Settings)
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return err
+	}
+
+	hooks, ok := settings["hooks"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	existingHooks, ok := hooks["Stop"].([]interface{})
+	if !ok {
+		return nil
+	}
+
+	var filtered []interface{}
+	for _, h := range existingHooks {
+		hMap, ok := h.(map[string]interface{})
+		if !ok || !isAXHook(hMap) {
+			filtered = append(filtered, h)
+		}
+	}
+
+	if len(filtered) == 0 {
+		delete(hooks, "Stop")
+	} else {
+		hooks["Stop"] = filtered
+	}
+
+	if len(hooks) == 0 {
+		delete(settings, "hooks")
+	}
+
+	out, _ := json.MarshalIndent(settings, "", "  ")
+	return os.WriteFile(settingsPath, append(out, '\n'), 0o644)
 }
 
 // Uninstall removes the ax SessionEnd hook from the Claude Code settings file.

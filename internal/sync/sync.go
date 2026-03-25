@@ -19,8 +19,9 @@ import (
 
 // Options controls what gets synced.
 type Options struct {
-	RepoPath string
-	Since    string // YYYY-MM-DD filter
+	RepoPath     string
+	Since        string // YYYY-MM-DD filter
+	SessionsOnly bool   // skip GitHub API calls, only re-parse sessions
 }
 
 // Result contains a summary of what was synced.
@@ -463,6 +464,155 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 func defaultClaudeDir() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".claude")
+}
+
+// RunSessionsOnly performs a lightweight sync that only re-parses Claude Code
+// sessions and updates session-dependent metrics for existing PRs.
+// It skips all GitHub API calls, making it fast enough to run mid-session.
+func RunSessionsOnly(database *sqlx.DB, opts Options) (*Result, error) {
+	result := &Result{RepoPath: opts.RepoPath}
+
+	gitParser := parsers.NewGitParser(opts.RepoPath)
+	repoRoot, err := gitParser.RepoRoot()
+	if err != nil {
+		return nil, fmt.Errorf("not a git repository: %w", err)
+	}
+	result.RepoPath = repoRoot
+
+	// Look up existing repo in database
+	repo, err := db.GetRepoByPath(database, repoRoot)
+	if err != nil || repo == nil {
+		// Repo not synced yet — need a full sync first
+		return nil, fmt.Errorf("repo not yet synced — run 'ax sync --repo %s' first", repoRoot)
+	}
+	result.Owner = repo.GithubOwner.String
+	result.Repo = repo.GithubRepo.String
+
+	// Parse sessions
+	claudeDir := defaultClaudeDir()
+	sessionFiles, _ := parsers.FindSessionFiles(claudeDir, repoRoot)
+	if len(sessionFiles) == 0 {
+		return result, nil
+	}
+
+	log.Printf("Parsing %d session(s) for %s/%s...", len(sessionFiles), result.Owner, result.Repo)
+
+	sessionsByID := make(map[string]*parsers.ParsedSession)
+	for _, f := range sessionFiles {
+		session, err := parsers.ParseSession(f)
+		if err != nil {
+			continue
+		}
+		session.Project = repoRoot
+		sessionsByID[session.ID] = session
+		result.SessionsParsed++
+
+		// Store session in database
+		database.Exec(`
+			INSERT INTO sessions (id, repo_id, branch, started_at, ended_at, message_count, turn_count,
+				input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens,
+				total_cost_usd, primary_model)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET
+				message_count = excluded.message_count,
+				turn_count = excluded.turn_count,
+				input_tokens = excluded.input_tokens,
+				output_tokens = excluded.output_tokens,
+				cache_creation_input_tokens = excluded.cache_creation_input_tokens,
+				cache_read_input_tokens = excluded.cache_read_input_tokens,
+				total_cost_usd = excluded.total_cost_usd,
+				primary_model = excluded.primary_model
+		`, session.ID, repo.ID, session.Branch,
+			session.StartedAt, session.EndedAt,
+			session.HumanMessages, session.TurnCount,
+			session.InputTokens, session.OutputTokens,
+			session.CacheCreationInputTokens, session.CacheReadInputTokens,
+			session.TotalCostUSD, session.PrimaryModel)
+	}
+
+	// Load existing PRs from database for correlation
+	existingPRs, err := db.GetPRsForRepo(database, repo.ID)
+	if err != nil || len(existingPRs) == 0 {
+		return result, nil
+	}
+
+	// Convert to GHPullRequest format for the correlator
+	var ghPRs []parsers.GHPullRequest
+	prNumberToID := make(map[int]int64)
+	for _, pr := range existingPRs {
+		ghPRs = append(ghPRs, parsers.GHPullRequest{
+			Number:      pr.Number,
+			HeadRefName: pr.Branch.String,
+			URL:         pr.URL.String,
+			CreatedAt:   pr.CreatedAt.String,
+		})
+		prNumberToID[pr.Number] = pr.ID
+	}
+
+	// Correlate and compute session metrics (same logic as full sync)
+	sessionCorrelations := make(map[string][]correlator.Correlation)
+	for _, session := range sessionsByID {
+		correlations := correlator.CorrelateSession(session, ghPRs, nil)
+		if len(correlations) > 0 {
+			sessionCorrelations[session.ID] = correlations
+		}
+	}
+
+	sessionPRCount := make(map[string]int)
+	for sessionID, correlations := range sessionCorrelations {
+		sessionPRCount[sessionID] = len(correlations)
+	}
+
+	prSessions := make(map[int][]*parsers.ParsedSession)
+	for sessionID, correlations := range sessionCorrelations {
+		for _, c := range correlations {
+			prID, ok := prNumberToID[c.PRNumber]
+			if !ok {
+				continue
+			}
+			database.Exec(`
+				INSERT INTO session_prs (session_id, pr_id, confidence)
+				VALUES (?, ?, ?)
+				ON CONFLICT(session_id, pr_id) DO UPDATE SET confidence = excluded.confidence
+			`, c.SessionID, prID, c.Confidence)
+			prSessions[c.PRNumber] = append(prSessions[c.PRNumber], sessionsByID[sessionID])
+			result.SessionsCorrelated++
+		}
+	}
+
+	for prNum, sessions := range prSessions {
+		prID, ok := prNumberToID[prNum]
+		if !ok {
+			continue
+		}
+
+		var weightedMessages, weightedIterations, weightedCost, weightedErrors float64
+		for _, s := range sessions {
+			weight := 1.0 / float64(sessionPRCount[s.ID])
+			weightedMessages += float64(s.HumanMessages) * weight
+			weightedIterations += float64(s.TurnCount) * weight
+			weightedCost += s.TotalCostUSD * weight
+			weightedErrors += float64(s.BashErrors) * weight
+		}
+
+		database.Exec(`
+			UPDATE pr_metrics SET
+				messages_per_pr = ?,
+				iteration_depth = ?,
+				self_correction_rate = CASE WHEN ? >= 0 THEN ? ELSE NULL END,
+				context_efficiency = CASE WHEN ? >= 0 THEN ? ELSE NULL END,
+				error_recovery_attempts = ?,
+				token_cost_usd = ?
+			WHERE pr_id = ?
+		`, int(weightedMessages+0.5), int(weightedIterations+0.5),
+			metrics.SelfCorrectionRate(sessions), metrics.SelfCorrectionRate(sessions),
+			metrics.ContextEfficiency(sessions), metrics.ContextEfficiency(sessions),
+			int(weightedErrors+0.5),
+			weightedCost,
+			prID)
+	}
+
+	return result, nil
 }
 
 func boolToInt(b bool) int {

@@ -61,11 +61,16 @@ func resolveRepoPath(flagValue string) (string, error) {
 func newSyncCmd() *cobra.Command {
 	var repoPath string
 	var since string
+	var sessionsOnly bool
 
 	cmd := &cobra.Command{
 		Use:   "sync",
 		Short: "Ingest data from git, GitHub, and Claude Code sessions",
-		Long:  "Sync analyzes a repository's git history, fetches PR data from GitHub,\nand optionally parses Claude Code session data to compute metrics.",
+		Long: `Sync analyzes a repository's git history, fetches PR data from GitHub,
+and optionally parses Claude Code session data to compute metrics.
+
+Use --sessions-only for a fast sync that only re-parses Claude Code sessions
+without making GitHub API calls. Useful for mid-session updates.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path, err := resolveRepoPath(repoPath)
 			if err != nil {
@@ -78,10 +83,17 @@ func newSyncCmd() *cobra.Command {
 			}
 			defer database.Close()
 
-			result, err := axsync.Run(database, axsync.Options{
-				RepoPath: path,
-				Since:    since,
-			})
+			var result *axsync.Result
+			if sessionsOnly {
+				result, err = axsync.RunSessionsOnly(database, axsync.Options{
+					RepoPath: path,
+				})
+			} else {
+				result, err = axsync.Run(database, axsync.Options{
+					RepoPath: path,
+					Since:    since,
+				})
+			}
 			if err != nil {
 				return err
 			}
@@ -101,6 +113,7 @@ func newSyncCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&repoPath, "repo", "", "Path to the git repository (defaults to current directory)")
 	cmd.Flags().StringVar(&since, "since", "", "Only sync data after this date (YYYY-MM-DD)")
+	cmd.Flags().BoolVar(&sessionsOnly, "sessions-only", false, "Fast sync: only re-parse Claude Code sessions (no GitHub API calls)")
 
 	return cmd
 }
@@ -485,59 +498,62 @@ func findDashboardDir() string {
 
 func newInitCmd() *cobra.Command {
 	var uninstall bool
+	var liveSync bool
 
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Install Claude Code hooks for automatic session capture",
-		Long: `Install a Claude Code hook that automatically runs ax sync after each
-session ends. This means your metrics stay up to date without manual syncing.
+		Long: `Install Claude Code hooks that automatically sync metrics.
 
-The hook is added to ~/.claude/settings.json and fires on SessionEnd.
-It only syncs if the session was in a git repository.
+By default, installs a SessionEnd hook that runs a full sync when each
+session ends.
 
-Use --uninstall to remove the hook.`,
+With --live, also installs a Stop hook that runs a lightweight
+sessions-only sync after each Claude response. This keeps your
+dashboard updated in real-time during long sessions.
+
+Use --uninstall to remove all AX hooks.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settingsPath := hooks.DefaultSettingsPath()
 
 			if uninstall {
-				if !hooks.IsInstalled(settingsPath) {
-					fmt.Println("No AX hook found. Nothing to uninstall.")
-					return nil
-				}
-				if err := hooks.Uninstall(settingsPath); err != nil {
-					return fmt.Errorf("failed to uninstall hook: %w", err)
-				}
-				fmt.Println("AX hook removed from Claude Code settings.")
+				hooks.Uninstall(settingsPath)
+				hooks.UninstallStopHook(settingsPath)
+				fmt.Println("All AX hooks removed from Claude Code settings.")
 				return nil
 			}
 
-			// Find ax binary path
 			axBinary, err := os.Executable()
 			if err != nil {
-				axBinary = "ax" // fallback to PATH
+				axBinary = "ax"
 			}
 
 			if hooks.IsInstalled(settingsPath) {
-				fmt.Println("AX hook is already installed. Updating...")
+				fmt.Println("Updating AX hooks...")
 			}
 
 			if err := hooks.Install(settingsPath, axBinary); err != nil {
-				return fmt.Errorf("failed to install hook: %w", err)
+				return fmt.Errorf("failed to install SessionEnd hook: %w", err)
+			}
+			fmt.Println("SessionEnd hook installed — full sync after each session.")
+
+			if liveSync {
+				if err := hooks.InstallStopHook(settingsPath, axBinary); err != nil {
+					return fmt.Errorf("failed to install Stop hook: %w", err)
+				}
+				fmt.Println("Stop hook installed — lightweight sync after each response.")
 			}
 
-			fmt.Println("AX hook installed successfully.")
 			fmt.Println()
-			fmt.Println("  What happens now:")
-			fmt.Println("  After each Claude Code session ends, ax will automatically")
-			fmt.Printf("  sync the repo's metrics to ~/.ax/ax.db\n")
-			fmt.Println()
-			fmt.Println("  To verify: check ~/.claude/settings.json for the SessionEnd hook.")
+			fmt.Println("  Your metrics will now update automatically.")
+			fmt.Println("  To verify: check ~/.claude/settings.json")
 			fmt.Println("  To remove: run ax init --uninstall")
 			return nil
 		},
 	}
 
-	cmd.Flags().BoolVar(&uninstall, "uninstall", false, "Remove the AX hook from Claude Code")
+	cmd.Flags().BoolVar(&uninstall, "uninstall", false, "Remove all AX hooks from Claude Code")
+	cmd.Flags().BoolVar(&liveSync, "live", false, "Also install a Stop hook for mid-session metric updates")
 
 	return cmd
 }
