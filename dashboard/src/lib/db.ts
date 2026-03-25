@@ -226,6 +226,28 @@ export function getAggregateMetrics(repoId?: number): AggregateMetrics {
   };
 }
 
+export type PRSize = "XS" | "S" | "M" | "L" | "XL";
+
+// Categorize PRs by total lines changed (additions + deletions).
+export function getPRSize(additions: number, deletions: number): PRSize {
+  const total = additions + deletions;
+  if (total <= 10) return "XS";
+  if (total <= 100) return "S";
+  if (total <= 500) return "M";
+  if (total <= 1000) return "L";
+  return "XL";
+}
+
+export function getPRSizeColor(size: PRSize): string {
+  switch (size) {
+    case "XS": return "text-green bg-green-muted";
+    case "S": return "text-green bg-green-muted";
+    case "M": return "text-amber bg-amber-muted";
+    case "L": return "text-red bg-red-muted";
+    case "XL": return "text-red bg-red-muted";
+  }
+}
+
 export interface TimelinePoint {
   prNumber: number;
   title: string;

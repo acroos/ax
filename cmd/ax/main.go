@@ -287,6 +287,18 @@ func printRepoReport(database *sqlx.DB, repo *db.Repo) error {
 	fmt.Fprintf(w, "  Total PRs\t%d\t\n", len(prs))
 
 	w.Flush()
+
+	// Show unmerged token spend if available
+	repoMetrics, _ := db.GetRepoMetrics(database, repo.ID, "all")
+	if len(repoMetrics) > 0 {
+		rm := repoMetrics[0]
+		if rm.UnmergedCostUSD > 0 {
+			fmt.Println()
+			fmt.Printf("  Unmerged spend: $%.2f / $%.2f (%.0f%% waste rate)\n",
+				rm.UnmergedCostUSD, rm.TotalCostUSD, rm.UnmergedRate.Float64*100)
+		}
+	}
+
 	fmt.Println()
 
 	return nil

@@ -91,6 +91,33 @@ function Sidebar() {
         >
           Pull Requests
         </NavLink>
+        <NavLink
+          href="/docs"
+          icon={
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="opacity-60">
+              <path
+                d="M3 2.5H9.5L12 5V12C12 12.28 11.78 12.5 11.5 12.5H3C2.72 12.5 2.5 12.28 2.5 12V3C2.5 2.72 2.72 2.5 3 2.5Z"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M9.5 2.5V5H12"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M5 8H10M5 10H8.5"
+                stroke="currentColor"
+                strokeWidth="1"
+                strokeLinecap="round"
+              />
+            </svg>
+          }
+        >
+          Docs
+        </NavLink>
       </nav>
 
       {filteredRepos.length > 0 && (

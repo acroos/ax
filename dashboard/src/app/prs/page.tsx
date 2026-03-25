@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listPRsWithMetrics } from "@/lib/db";
+import { listPRsWithMetrics, getPRSize, getPRSizeColor } from "@/lib/db";
 
 function StateBadge({ state }: { state: string | null }) {
   const s = state?.toLowerCase() ?? "unknown";
@@ -73,6 +73,9 @@ export default async function PRsPage({
                 Title
               </th>
               <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
+                Size
+              </th>
+              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
                 State
               </th>
               <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
@@ -128,6 +131,17 @@ export default async function PRsPage({
                   >
                     {pr.title ?? "Untitled"}
                   </Link>
+                </td>
+                <td className="px-3 py-3 text-center">
+                  {(() => {
+                    const size = getPRSize(pr.additions, pr.deletions);
+                    const color = getPRSizeColor(size);
+                    return (
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-medium ${color}`}>
+                        {size}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-3 py-3 text-center">
                   <StateBadge state={pr.state} />

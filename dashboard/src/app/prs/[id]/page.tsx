@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listPRsWithMetrics } from "@/lib/db";
+import { listPRsWithMetrics, getPRSize, getPRSizeColor } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
 
 function StateBadge({ state }: { state: string | null }) {
@@ -247,6 +247,15 @@ export default async function PRDetailPage({
             {pr.title}
           </h1>
           <StateBadge state={pr.state} />
+          {(() => {
+            const size = getPRSize(pr.additions, pr.deletions);
+            const color = getPRSizeColor(size);
+            return (
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium ${color}`}>
+                {size}
+              </span>
+            );
+          })()}
         </div>
 
         <div className="flex items-center gap-4 text-[13px] text-text-secondary">

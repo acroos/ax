@@ -455,10 +455,100 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		}
 	}
 
-	// 9. Update sync timestamp
+	// 9. Compute unmerged token spend (repo-level metric)
+	if len(sessionsByID) > 0 {
+		computeUnmergedTokenSpend(database, repoID, sessionsByID)
+	}
+
+	// 10. Update sync timestamp
 	db.UpdateRepoSyncTime(database, repoID)
 
 	return result, nil
+}
+
+// computeUnmergedTokenSpend calculates how much token cost went to work
+// that never shipped: sessions correlated to closed-not-merged PRs or
+// sessions not correlated to any PR at all.
+func computeUnmergedTokenSpend(database *sqlx.DB, repoID int64, sessionsByID map[string]*parsers.ParsedSession) {
+	// Get all session IDs that are correlated to merged PRs
+	var mergedSessionIDs []string
+	database.Select(&mergedSessionIDs, `
+		SELECT DISTINCT sp.session_id
+		FROM session_prs sp
+		JOIN prs p ON sp.pr_id = p.id
+		WHERE p.repo_id = ? AND LOWER(p.state) = 'merged'
+	`, repoID)
+	mergedSet := make(map[string]bool)
+	for _, id := range mergedSessionIDs {
+		mergedSet[id] = true
+	}
+
+	// Get session IDs correlated to open PRs (exclude from waste calc)
+	var openSessionIDs []string
+	database.Select(&openSessionIDs, `
+		SELECT DISTINCT sp.session_id
+		FROM session_prs sp
+		JOIN prs p ON sp.pr_id = p.id
+		WHERE p.repo_id = ? AND LOWER(p.state) = 'open'
+	`, repoID)
+	openSet := make(map[string]bool)
+	for _, id := range openSessionIDs {
+		openSet[id] = true
+	}
+
+	var totalCost, unmergedCost float64
+	var totalTokens, unmergedTokens int
+	var totalSessions int
+
+	for _, session := range sessionsByID {
+		if session.TotalCostUSD == 0 {
+			continue
+		}
+		totalSessions++
+		totalCost += session.TotalCostUSD
+		sessionTokens := session.InputTokens + session.OutputTokens +
+			session.CacheCreationInputTokens + session.CacheReadInputTokens
+		totalTokens += sessionTokens
+
+		// Skip sessions tied to open PRs (in-progress, not waste)
+		if openSet[session.ID] {
+			continue
+		}
+
+		// If not correlated to any merged PR, it's unmerged spend
+		if !mergedSet[session.ID] {
+			unmergedCost += session.TotalCostUSD
+			unmergedTokens += sessionTokens
+		}
+	}
+
+	if totalSessions == 0 {
+		return
+	}
+
+	var unmergedRate float64
+	if totalCost > 0 {
+		unmergedRate = unmergedCost / totalCost
+	}
+
+	rm := &db.RepoMetrics{
+		RepoID:         repoID,
+		PeriodStart:    "all",
+		PeriodEnd:      "all",
+		PeriodType:     "all",
+		TotalSessions:  totalSessions,
+		TotalTokens:    totalTokens,
+		TotalCostUSD:   totalCost,
+		UnmergedTokens: unmergedTokens,
+		UnmergedCostUSD: unmergedCost,
+		UnmergedRate:   sql.NullFloat64{Float64: unmergedRate, Valid: true},
+	}
+	db.UpsertRepoMetrics(database, rm)
+
+	if unmergedCost > 0 {
+		log.Printf("Unmerged token spend: $%.2f / $%.2f (%.0f%% waste rate)",
+			unmergedCost, totalCost, unmergedRate*100)
+	}
 }
 
 func defaultClaudeDir() string {
