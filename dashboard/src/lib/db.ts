@@ -225,3 +225,31 @@ export function getAggregateMetrics(repoId?: number): AggregateMetrics {
     avgSelfCorrectionRate, avgContextEfficiency,
   };
 }
+
+export interface TimelinePoint {
+  prNumber: number;
+  title: string;
+  createdAt: string;
+  postOpenCommits: number | null;
+  ciSuccessRate: number | null;
+  messagesPerPR: number | null;
+  tokenCostUSD: number | null;
+  selfCorrectionRate: number | null;
+}
+
+export function getTimeline(repoId?: number): TimelinePoint[] {
+  const prs = listPRsWithMetrics(repoId);
+  return prs
+    .filter((p) => p.created_at && p.metrics)
+    .map((p) => ({
+      prNumber: p.number,
+      title: p.title ?? `PR #${p.number}`,
+      createdAt: p.created_at!,
+      postOpenCommits: p.metrics!.post_open_commits,
+      ciSuccessRate: p.metrics!.ci_success_rate !== null ? Math.round(p.metrics!.ci_success_rate * 100) : null,
+      messagesPerPR: p.metrics!.messages_per_pr,
+      tokenCostUSD: p.metrics!.token_cost_usd !== null ? Math.round(p.metrics!.token_cost_usd * 100) / 100 : null,
+      selfCorrectionRate: p.metrics!.self_correction_rate !== null ? Math.round(p.metrics!.self_correction_rate * 100) : null,
+    }))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}

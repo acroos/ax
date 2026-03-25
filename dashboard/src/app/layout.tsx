@@ -49,6 +49,8 @@ function Sidebar() {
     // DB might not exist yet
   }
 
+  const filteredRepos = repos.filter((r) => r.github_owner && r.github_repo);
+
   return (
     <aside className="w-[220px] h-screen flex flex-col border-r border-border-subtle bg-surface-0 flex-shrink-0">
       <div className="px-4 pt-5 pb-4">
@@ -91,25 +93,31 @@ function Sidebar() {
         </NavLink>
       </nav>
 
-      {repos.length > 0 && (
+      {filteredRepos.length > 0 && (
         <div className="px-3 pb-4 pt-2 border-t border-border-subtle">
           <div className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-2 px-1">
-            Repos
+            Filter by Repo
           </div>
-          <div className="space-y-0.5 max-h-[180px] overflow-y-auto">
-            {repos
-              .filter((r) => r.github_owner && r.github_repo)
-              .map((r) => (
-                <div
-                  key={r.id}
-                  className="flex items-center gap-2 px-2 py-1 rounded text-[12px] text-text-tertiary"
-                >
-                  <div className="w-1.5 h-1.5 rounded-full bg-green/60 flex-shrink-0" />
-                  <span className="truncate">
-                    {r.github_owner}/{r.github_repo}
-                  </span>
-                </div>
-              ))}
+          <div className="space-y-0.5 max-h-[200px] overflow-y-auto">
+            <Link
+              href="/"
+              className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-colors"
+            >
+              <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+              All repositories
+            </Link>
+            {filteredRepos.map((r) => (
+              <Link
+                key={r.id}
+                href={`/?repo=${r.id}`}
+                className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] text-text-tertiary hover:text-text-primary hover:bg-surface-2 transition-colors"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-green/60 flex-shrink-0" />
+                <span className="truncate">
+                  {r.github_owner}/{r.github_repo}
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       )}

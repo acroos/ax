@@ -27,11 +27,17 @@ function CheckMark({ value }: { value: boolean }) {
   );
 }
 
-export default function PRsPage() {
+export default async function PRsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ repo?: string }>;
+}) {
+  const params = await searchParams;
+  const repoId = params.repo ? parseInt(params.repo, 10) : undefined;
   let prs: ReturnType<typeof listPRsWithMetrics>;
 
   try {
-    prs = listPRsWithMetrics();
+    prs = listPRsWithMetrics(repoId);
   } catch {
     return (
       <div className="flex items-center justify-center h-[60vh]">
