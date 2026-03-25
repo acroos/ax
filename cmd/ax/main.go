@@ -3,9 +3,16 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
+	"text/tabwriter"
 
+	"github.com/austinroos/ax/internal/db"
+	axsync "github.com/austinroos/ax/internal/sync"
+	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 )
 
@@ -30,6 +37,23 @@ func main() {
 	}
 }
 
+// openDB opens the ax database, creating it if needed.
+func openDB() (*sqlx.DB, error) {
+	dbPath, err := db.DefaultDBPath()
+	if err != nil {
+		return nil, err
+	}
+	return db.Open(dbPath)
+}
+
+// resolveRepoPath returns the repo path, defaulting to cwd.
+func resolveRepoPath(flagValue string) (string, error) {
+	if flagValue != "" {
+		return filepath.Abs(flagValue)
+	}
+	return os.Getwd()
+}
+
 func newSyncCmd() *cobra.Command {
 	var repoPath string
 	var since string
@@ -39,19 +63,30 @@ func newSyncCmd() *cobra.Command {
 		Short: "Ingest data from git, GitHub, and Claude Code sessions",
 		Long:  "Sync analyzes a repository's git history, fetches PR data from GitHub,\nand optionally parses Claude Code session data to compute metrics.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if repoPath == "" {
-				cwd, err := os.Getwd()
-				if err != nil {
-					return fmt.Errorf("failed to get working directory: %w", err)
-				}
-				repoPath = cwd
+			path, err := resolveRepoPath(repoPath)
+			if err != nil {
+				return err
 			}
-			fmt.Printf("Syncing repo: %s\n", repoPath)
-			if since != "" {
-				fmt.Printf("Since: %s\n", since)
+
+			database, err := openDB()
+			if err != nil {
+				return err
 			}
-			// TODO: implement sync orchestration
-			fmt.Println("Sync not yet implemented.")
+			defer database.Close()
+
+			result, err := axsync.Run(database, axsync.Options{
+				RepoPath: path,
+				Since:    since,
+			})
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("\nSync complete for %s/%s\n", result.Owner, result.Repo)
+			fmt.Printf("  PRs synced: %d\n", result.PRsSynced)
+			if result.PRsFailed > 0 {
+				fmt.Printf("  PRs failed: %d\n", result.PRsFailed)
+			}
 			return nil
 		},
 	}
@@ -71,20 +106,29 @@ func newReportCmd() *cobra.Command {
 		Short: "Print metrics summary",
 		Long:  "Report displays computed metrics for a repository or a specific pull request.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if repoPath == "" {
-				cwd, err := os.Getwd()
-				if err != nil {
-					return fmt.Errorf("failed to get working directory: %w", err)
-				}
-				repoPath = cwd
+			path, err := resolveRepoPath(repoPath)
+			if err != nil {
+				return err
 			}
-			fmt.Printf("Report for: %s\n", repoPath)
+
+			database, err := openDB()
+			if err != nil {
+				return err
+			}
+			defer database.Close()
+
+			repo, err := db.GetRepoByPath(database, path)
+			if err != nil {
+				return err
+			}
+			if repo == nil {
+				return fmt.Errorf("repo not found — run 'ax sync --repo %s' first", path)
+			}
+
 			if prNumber > 0 {
-				fmt.Printf("PR: #%d\n", prNumber)
+				return printPRReport(database, repo, prNumber)
 			}
-			// TODO: implement report
-			fmt.Println("Report not yet implemented.")
-			return nil
+			return printRepoReport(database, repo)
 		},
 	}
 
@@ -94,14 +138,191 @@ func newReportCmd() *cobra.Command {
 	return cmd
 }
 
+func printRepoReport(database *sqlx.DB, repo *db.Repo) error {
+	owner := repo.GithubOwner.String
+	repoName := repo.GithubRepo.String
+	fmt.Printf("\n  %s/%s\n", owner, repoName)
+	if repo.LastSyncedAt.Valid {
+		fmt.Printf("  Last synced: %s\n\n", repo.LastSyncedAt.String)
+	}
+
+	prs, err := db.GetPRsForRepo(database, repo.ID)
+	if err != nil {
+		return err
+	}
+
+	if len(prs) == 0 {
+		fmt.Println("  No PRs found.")
+		return nil
+	}
+
+	// Aggregate metrics
+	var totalPostOpen, prCount, acceptedCount, withTests, withoutTests int
+	var totalCI float64
+	var ciCount int
+
+	for _, pr := range prs {
+		m, err := db.GetPRMetrics(database, pr.ID)
+		if err != nil || m == nil {
+			continue
+		}
+		prCount++
+
+		if m.PostOpenCommits.Valid {
+			totalPostOpen += int(m.PostOpenCommits.Int64)
+		}
+		if m.FirstPassAccepted.Valid && m.FirstPassAccepted.Int64 == 1 {
+			acceptedCount++
+		}
+		if m.CISuccessRate.Valid {
+			totalCI += m.CISuccessRate.Float64
+			ciCount++
+		}
+		if m.HasTests.Valid {
+			if m.HasTests.Int64 == 1 {
+				withTests++
+			} else {
+				withoutTests++
+			}
+		}
+	}
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "  METRIC\tVALUE\tDESCRIPTION")
+	fmt.Fprintln(w, "  ------\t-----\t-----------")
+
+	if prCount > 0 {
+		avgPostOpen := float64(totalPostOpen) / float64(prCount)
+		fmt.Fprintf(w, "  Avg post-open commits\t%.1f\tCommits after PR opened\n", avgPostOpen)
+
+		acceptRate := float64(acceptedCount) / float64(prCount) * 100
+		fmt.Fprintf(w, "  First-pass acceptance\t%.0f%%\tPRs merged without changes requested\n", acceptRate)
+	}
+
+	if ciCount > 0 {
+		avgCI := totalCI / float64(ciCount) * 100
+		fmt.Fprintf(w, "  CI success rate\t%.0f%%\tChecks passing on first push\n", avgCI)
+	}
+
+	testTotal := withTests + withoutTests
+	if testTotal > 0 {
+		testRate := float64(withTests) / float64(testTotal) * 100
+		fmt.Fprintf(w, "  PRs with tests\t%.0f%%\tPRs that include test file changes\n", testRate)
+	}
+
+	fmt.Fprintf(w, "  Total PRs\t%d\t\n", len(prs))
+
+	w.Flush()
+	fmt.Println()
+
+	return nil
+}
+
+func printPRReport(database *sqlx.DB, repo *db.Repo, prNumber int) error {
+	var pr db.PR
+	err := database.Get(&pr, "SELECT * FROM prs WHERE repo_id = ? AND number = ?", repo.ID, prNumber)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("PR #%d not found — run 'ax sync' first", prNumber)
+	}
+	if err != nil {
+		return err
+	}
+
+	m, err := db.GetPRMetrics(database, pr.ID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\n  PR #%d: %s\n", pr.Number, pr.Title.String)
+	fmt.Printf("  State: %s  |  Branch: %s\n", pr.State.String, pr.Branch.String)
+	fmt.Printf("  +%d -%d across %d files\n\n", pr.Additions, pr.Deletions, pr.ChangedFiles)
+
+	if m == nil {
+		fmt.Println("  No metrics computed yet.")
+		return nil
+	}
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "  METRIC\tVALUE")
+	fmt.Fprintln(w, "  ------\t-----")
+
+	if m.PostOpenCommits.Valid {
+		fmt.Fprintf(w, "  Post-open commits\t%d\n", m.PostOpenCommits.Int64)
+	}
+	if m.FirstPassAccepted.Valid {
+		if m.FirstPassAccepted.Int64 == 1 {
+			fmt.Fprintf(w, "  First-pass accepted\tYes\n")
+		} else {
+			fmt.Fprintf(w, "  First-pass accepted\tNo\n")
+		}
+	}
+	if m.CISuccessRate.Valid {
+		fmt.Fprintf(w, "  CI success rate\t%.0f%%\n", m.CISuccessRate.Float64*100)
+	}
+	if m.HasTests.Valid {
+		if m.HasTests.Int64 == 1 {
+			fmt.Fprintf(w, "  Includes tests\tYes\n")
+		} else {
+			fmt.Fprintf(w, "  Includes tests\tNo\n")
+		}
+	}
+	if m.DiffChurnLines.Valid {
+		fmt.Fprintf(w, "  Diff churn (lines)\t%d\n", m.DiffChurnLines.Int64)
+	}
+	if m.LineRevisitRate.Valid {
+		fmt.Fprintf(w, "  Line revisit rate\t%.2f\n", m.LineRevisitRate.Float64)
+	}
+
+	w.Flush()
+	fmt.Println()
+
+	return nil
+}
+
 func newStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Show tracked repos and last sync time",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: implement status
-			fmt.Println("Status not yet implemented.")
+			database, err := openDB()
+			if err != nil {
+				return err
+			}
+			defer database.Close()
+
+			repos, err := db.ListRepos(database)
+			if err != nil {
+				return err
+			}
+
+			if len(repos) == 0 {
+				fmt.Println("No tracked repos. Run 'ax sync --repo <path>' to start.")
+				return nil
+			}
+
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fmt.Fprintln(w, "\n  REPO\tLAST SYNCED")
+			fmt.Fprintln(w, "  ----\t-----------")
+			for _, r := range repos {
+				name := r.Path
+				if r.GithubOwner.Valid && r.GithubRepo.Valid {
+					name = r.GithubOwner.String + "/" + r.GithubRepo.String
+				}
+				synced := "never"
+				if r.LastSyncedAt.Valid {
+					synced = r.LastSyncedAt.String
+				}
+				fmt.Fprintf(w, "  %s\t%s\n", name, synced)
+			}
+			w.Flush()
+			fmt.Println()
+
 			return nil
 		},
 	}
+}
+
+func init() {
+	log.SetFlags(0)
+	log.SetPrefix("ax: ")
 }
