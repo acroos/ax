@@ -200,4 +200,38 @@ var migrations = []migration{
 			CREATE INDEX idx_sessions_repo ON sessions(repo_id);
 		`,
 	},
+	{
+		version: 2,
+		sql: `
+			-- Add token tracking to sessions
+			ALTER TABLE sessions ADD COLUMN input_tokens INTEGER DEFAULT 0;
+			ALTER TABLE sessions ADD COLUMN output_tokens INTEGER DEFAULT 0;
+			ALTER TABLE sessions ADD COLUMN cache_creation_input_tokens INTEGER DEFAULT 0;
+			ALTER TABLE sessions ADD COLUMN cache_read_input_tokens INTEGER DEFAULT 0;
+			ALTER TABLE sessions ADD COLUMN total_cost_usd REAL;
+			ALTER TABLE sessions ADD COLUMN primary_model TEXT;
+
+			-- Add token cost to pr_metrics
+			ALTER TABLE pr_metrics ADD COLUMN token_cost_usd REAL;
+
+			-- New repo-level metrics table for aggregate metrics like unmerged token spend
+			CREATE TABLE repo_metrics (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				repo_id INTEGER NOT NULL REFERENCES repos(id),
+				period_start TEXT NOT NULL,
+				period_end TEXT NOT NULL,
+				period_type TEXT NOT NULL,
+				total_sessions INTEGER DEFAULT 0,
+				total_tokens INTEGER DEFAULT 0,
+				total_cost_usd REAL DEFAULT 0,
+				unmerged_tokens INTEGER DEFAULT 0,
+				unmerged_cost_usd REAL DEFAULT 0,
+				unmerged_rate REAL,
+				computed_at TEXT NOT NULL DEFAULT (datetime('now')),
+				UNIQUE(repo_id, period_start, period_type)
+			);
+
+			CREATE INDEX idx_repo_metrics_repo ON repo_metrics(repo_id);
+		`,
+	},
 }

@@ -117,8 +117,8 @@ func UpsertPRMetrics(db *sqlx.DB, m *PRMetrics) error {
 		INSERT INTO pr_metrics (pr_id, messages_per_pr, iteration_depth, post_open_commits, first_pass_accepted,
 			ci_success_rate, diff_churn_lines, has_tests, line_revisit_rate, plan_coverage_score,
 			plan_deviation_score, scope_creep_detected, self_correction_rate, context_efficiency,
-			error_recovery_attempts, computed_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+			error_recovery_attempts, token_cost_usd, computed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 		ON CONFLICT(pr_id) DO UPDATE SET
 			messages_per_pr = excluded.messages_per_pr,
 			iteration_depth = excluded.iteration_depth,
@@ -134,11 +134,12 @@ func UpsertPRMetrics(db *sqlx.DB, m *PRMetrics) error {
 			self_correction_rate = excluded.self_correction_rate,
 			context_efficiency = excluded.context_efficiency,
 			error_recovery_attempts = excluded.error_recovery_attempts,
+			token_cost_usd = excluded.token_cost_usd,
 			computed_at = datetime('now')
 	`, m.PRID, m.MessagesPerPR, m.IterationDepth, m.PostOpenCommits, m.FirstPassAccepted,
 		m.CISuccessRate, m.DiffChurnLines, m.HasTests, m.LineRevisitRate,
 		m.PlanCoverageScore, m.PlanDeviationScore, m.ScopeCreepDetected,
-		m.SelfCorrectionRate, m.ContextEfficiency, m.ErrorRecoveryAttempts)
+		m.SelfCorrectionRate, m.ContextEfficiency, m.ErrorRecoveryAttempts, m.TokenCostUSD)
 	if err != nil {
 		return fmt.Errorf("failed to upsert PR metrics: %w", err)
 	}
@@ -175,4 +176,60 @@ func UpdateRepoSyncTime(db *sqlx.DB, repoID int64) error {
 		return fmt.Errorf("failed to update sync time: %w", err)
 	}
 	return nil
+}
+
+// ComputeTokenCostForPR sums total_cost_usd from all sessions correlated to a PR.
+// Returns 0 if no sessions are correlated or none have cost data.
+func ComputeTokenCostForPR(db *sqlx.DB, prID int64) (float64, error) {
+	var cost sql.NullFloat64
+	err := db.Get(&cost, `
+		SELECT SUM(s.total_cost_usd)
+		FROM sessions s
+		JOIN session_prs sp ON s.id = sp.session_id
+		WHERE sp.pr_id = ?
+	`, prID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to compute token cost for PR: %w", err)
+	}
+	if !cost.Valid {
+		return 0, nil
+	}
+	return cost.Float64, nil
+}
+
+// UpsertRepoMetrics inserts or replaces repo-level metrics for a time period.
+func UpsertRepoMetrics(db *sqlx.DB, m *RepoMetrics) error {
+	_, err := db.Exec(`
+		INSERT INTO repo_metrics (repo_id, period_start, period_end, period_type,
+			total_sessions, total_tokens, total_cost_usd,
+			unmerged_tokens, unmerged_cost_usd, unmerged_rate)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(repo_id, period_start, period_type) DO UPDATE SET
+			period_end = excluded.period_end,
+			total_sessions = excluded.total_sessions,
+			total_tokens = excluded.total_tokens,
+			total_cost_usd = excluded.total_cost_usd,
+			unmerged_tokens = excluded.unmerged_tokens,
+			unmerged_cost_usd = excluded.unmerged_cost_usd,
+			unmerged_rate = excluded.unmerged_rate,
+			computed_at = datetime('now')
+	`, m.RepoID, m.PeriodStart, m.PeriodEnd, m.PeriodType,
+		m.TotalSessions, m.TotalTokens, m.TotalCostUSD,
+		m.UnmergedTokens, m.UnmergedCostUSD, m.UnmergedRate)
+	if err != nil {
+		return fmt.Errorf("failed to upsert repo metrics: %w", err)
+	}
+	return nil
+}
+
+// GetRepoMetrics returns repo-level metrics for a given period type.
+func GetRepoMetrics(db *sqlx.DB, repoID int64, periodType string) ([]RepoMetrics, error) {
+	var metrics []RepoMetrics
+	err := db.Select(&metrics,
+		"SELECT * FROM repo_metrics WHERE repo_id = ? AND period_type = ? ORDER BY period_start DESC",
+		repoID, periodType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo metrics: %w", err)
+	}
+	return metrics, nil
 }

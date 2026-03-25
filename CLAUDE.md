@@ -25,7 +25,7 @@ internal/
 dashboard/           Next.js web dashboard (Phase 2)
 docs/
   decisions/         Architecture Decision Records (ADRs)
-  metrics/           Per-metric documentation (14 files)
+  metrics/           Per-metric documentation (16 files)
 plans/               Project planning artifacts
 ```
 
@@ -51,14 +51,14 @@ ax status            # Show tracked repos and last sync time
 ## Build Phases
 
 - **Phase 1** (current): Git/GitHub-only metrics + CLI — post-open commits, first-pass acceptance rate, CI success rate, test coverage, diff churn, line revisit rate
-- **Phase 2**: Claude Code session metrics + dashboard — messages per PR, iteration depth, self-correction rate, context efficiency, error recovery efficiency
+- **Phase 2**: Claude Code session metrics + dashboard — messages per PR, iteration depth, self-correction rate, context efficiency, error recovery efficiency, token cost per PR, unmerged token spend
 - **Phase 3**: Plan analysis + hooks — plan-to-implementation coverage, plan deviation score, scope creep detection
 
 ## Decisions
 
 All architectural decisions are documented in `docs/decisions/`. Reference these when working in the related area:
 
-- [001 — Metrics Selection](docs/decisions/001-metrics-selection.md): 14 metrics across 4 categories. Check this before adding or changing metrics.
+- [001 — Metrics Selection](docs/decisions/001-metrics-selection.md): 16 metrics across 4 categories. Check this before adding or changing metrics.
 - [002 — Form Factor](docs/decisions/002-form-factor.md): CLI + web dashboard. Don't build a plugin-only solution.
 - [003 — Target Scope](docs/decisions/003-target-scope.md): Open source with a local → team → managed service path.
 - [004 — CLI Language](docs/decisions/004-cli-language.md): Go for CLI, TypeScript for dashboard only.
@@ -66,6 +66,7 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [006 — UX Philosophy](docs/decisions/006-ux-philosophy.md): Linear-inspired, dark mode first, inline metric context. **Read this before any dashboard work.**
 - [007 — Dashboard Packaging](docs/decisions/007-dashboard-packaging.md): Embedded static build via `go:embed` for users, `npm run dev` for contributors.
 - [008 — Distribution](docs/decisions/008-distribution-strategy.md): Homebrew tap + GoReleaser. Relevant when setting up releases.
+- [009 — Token Cost Metrics](docs/decisions/009-token-cost-metrics.md): Token Cost per PR and Unmerged Token Spend. Dollar-cost metrics with model-specific pricing. Relevant when building session cost computation or repo-level metrics.
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.
 

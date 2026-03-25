@@ -10,7 +10,7 @@ Accepted
 We need to define what to measure for agentic coding developer experience. The metrics must be actionable, measurable, and cover four dimensions: prompt efficiency, output quality, planning effectiveness, and agent behavior.
 
 ## Decision
-14 metrics approved across 4 categories:
+16 metrics approved across 4 categories:
 
 **Prompt Efficiency**
 1. **Prompt-to-commit ratio** — number of prompts needed per meaningful commit
@@ -34,9 +34,14 @@ We need to define what to measure for agentic coding developer experience. The m
 13. **Context window utilization** — how much of the available context window is used
 14. **Error recovery rate** — how often the agent self-corrects after a failed action
 
+**Prompt Efficiency (added via [ADR-009](./009-token-cost-metrics.md))**
+15. **Token Cost per PR** — dollar cost of tokens consumed across sessions correlated to a PR, using model-specific pricing
+16. **Unmerged Token Spend** — repo-level aggregate of dollar cost on unmerged or uncorrelated work
+
 **Deferred metrics:**
 - **Time-to-PR** — context switching muddies wall-clock measurement, making it unreliable
 - **Review feedback density** — low density might indicate rubber-stamping rather than quality
+- **~~Token Usage per PR~~** — originally deferred; evolved into Token Cost per PR (Metric #15) via [ADR-009](./009-token-cost-metrics.md)
 
 **Note:** PR size distribution is treated as a dimension (grouping/filtering axis), not a standalone metric.
 
@@ -47,5 +52,5 @@ We need to define what to measure for agentic coding developer experience. The m
 
 ## Consequences
 - We have a comprehensive measurement framework covering the full agentic coding loop
-- 14 metrics is a significant implementation surface; prioritization of which to build first will be needed
+- 16 metrics is a significant implementation surface; prioritization of which to build first will be needed
 - Deferred metrics can be revisited once we have better data collection infrastructure

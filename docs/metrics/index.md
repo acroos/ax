@@ -40,6 +40,8 @@ Metrics that measure how efficiently the agent operates — how it reads, writes
 | 12 | [Self-Correction Rate](./self-correction-rate.md) | Agent Behavior | Agent-initiated fixes vs human-requested changes | Session data | 2 |
 | 13 | [Context Efficiency](./context-efficiency.md) | Agent Behavior | Ratio of files read vs files modified | Session data | 2 |
 | 14 | [Error Recovery Efficiency](./error-recovery-efficiency.md) | Agent Behavior | Attempts needed to resolve build/test/lint failures | Session data | 2 |
+| 15 | [Token Cost per PR](./token-cost-per-pr.md) | Prompt Efficiency | Dollar cost of tokens consumed across sessions correlated to a PR | Session data, Pricing module | 2 |
+| 16 | [Unmerged Token Spend](./unmerged-token-spend.md) | Prompt Efficiency | Total dollar cost of tokens on unmerged or uncorrelated work (repo-level) | Session data, PR merge status | 2 |
 
 ---
 
@@ -55,7 +57,7 @@ Metrics that can be calculated from git history and the GitHub API alone. These 
 
 Metrics that require access to Claude Code session logs (message transcripts, tool call records). These depend on a session data ingestion pipeline.
 
-**Metrics:** Messages per PR, Iteration Depth, Self-Correction Rate, Context Efficiency, Error Recovery Efficiency
+**Metrics:** Messages per PR, Iteration Depth, Self-Correction Rate, Context Efficiency, Error Recovery Efficiency, Token Cost per PR, Unmerged Token Spend
 
 ### Phase 3 — Plan Files
 
@@ -70,6 +72,6 @@ Metrics that compare plan documents against actual implementation. These require
 The following metrics were considered but deferred from the initial metric set. They may be revisited in future iterations:
 
 - **Time-to-Merge** — Wall-clock time from PR open to merge. Deferred because it conflates human review latency with agent quality, making it unreliable as an agent effectiveness signal without normalization.
-- **Token Usage per PR** — Total tokens consumed across session(s) for a PR. Deferred because raw token counts are noisy without context about task complexity; may be revisited once a task-complexity baseline exists.
+- **~~Token Usage per PR~~** — Originally deferred because raw token counts are noisy without context about task complexity. Evolved into [Token Cost per PR](./token-cost-per-pr.md) (Metric #15), which uses dollar cost with model-specific pricing as a more actionable unit.
 - **Human Edit Rate** — Percentage of agent-generated lines that humans subsequently modify. Deferred due to difficulty distinguishing style preference edits from correctness fixes without manual classification.
 - **PR Size Distribution** — Lines of code changed per PR. Useful as a normalizing dimension but not independently actionable as a quality signal. May be added as a supporting dimension rather than a standalone metric.

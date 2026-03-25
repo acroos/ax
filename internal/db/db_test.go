@@ -22,7 +22,7 @@ func TestOpenAndMigrate(t *testing.T) {
 	}
 
 	// Verify tables exist
-	tables := []string{"repos", "sessions", "prs", "commits", "session_prs", "pr_metrics", "plan_analyses", "schema_migrations"}
+	tables := []string{"repos", "sessions", "prs", "commits", "session_prs", "pr_metrics", "plan_analyses", "repo_metrics", "schema_migrations"}
 	for _, table := range tables {
 		var name string
 		err := db.Get(&name, "SELECT name FROM sqlite_master WHERE type='table' AND name=?", table)
@@ -122,5 +122,61 @@ func TestUpsertPRAndMetrics(t *testing.T) {
 	}
 	if got.PRID != prID {
 		t.Errorf("expected PR ID %d, got %d", prID, got.PRID)
+	}
+}
+
+func TestMigrationV2_TokenColumns(t *testing.T) {
+	dir := t.TempDir()
+	db, err := Open(filepath.Join(dir, "test.db"))
+	if err != nil {
+		t.Fatalf("failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	// Verify v2 migration applied — sessions should have token columns
+	_, err = db.Exec(`INSERT INTO sessions (id, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, total_cost_usd, primary_model)
+		VALUES ('test-session', 1000, 500, 200, 300, 0.05, 'claude-sonnet-4-6')`)
+	if err != nil {
+		t.Fatalf("failed to insert session with token columns: %v", err)
+	}
+
+	var session Session
+	err = db.Get(&session, "SELECT * FROM sessions WHERE id = 'test-session'")
+	if err != nil {
+		t.Fatalf("failed to get session: %v", err)
+	}
+	if session.InputTokens != 1000 {
+		t.Errorf("expected input_tokens 1000, got %d", session.InputTokens)
+	}
+	if !session.TotalCostUSD.Valid || session.TotalCostUSD.Float64 != 0.05 {
+		t.Errorf("expected total_cost_usd 0.05, got %v", session.TotalCostUSD)
+	}
+
+	// Verify repo_metrics table works
+	repoID, _ := UpsertRepo(db, "/tmp/test", "", "", "")
+	rm := &RepoMetrics{
+		RepoID:         repoID,
+		PeriodStart:    "2026-03-01",
+		PeriodEnd:      "2026-03-31",
+		PeriodType:     "month",
+		TotalSessions:  10,
+		TotalTokens:    500000,
+		TotalCostUSD:   25.50,
+		UnmergedTokens: 50000,
+		UnmergedCostUSD: 2.55,
+	}
+	if err := UpsertRepoMetrics(db, rm); err != nil {
+		t.Fatalf("failed to upsert repo metrics: %v", err)
+	}
+
+	got, err := GetRepoMetrics(db, repoID, "month")
+	if err != nil {
+		t.Fatalf("failed to get repo metrics: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected 1 repo metric, got %d", len(got))
+	}
+	if got[0].TotalCostUSD != 25.50 {
+		t.Errorf("expected total_cost_usd 25.50, got %.2f", got[0].TotalCostUSD)
 	}
 }

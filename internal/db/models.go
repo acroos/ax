@@ -48,14 +48,20 @@ type Commit struct {
 
 // Session represents a Claude Code session.
 type Session struct {
-	ID           string        `db:"id"`
-	RepoID       sql.NullInt64 `db:"repo_id"`
-	Branch       sql.NullString `db:"branch"`
-	StartedAt    sql.NullInt64 `db:"started_at"`
-	EndedAt      sql.NullInt64 `db:"ended_at"`
-	MessageCount int           `db:"message_count"`
-	TurnCount    int           `db:"turn_count"`
-	CWD          sql.NullString `db:"cwd"`
+	ID                       string          `db:"id"`
+	RepoID                   sql.NullInt64   `db:"repo_id"`
+	Branch                   sql.NullString  `db:"branch"`
+	StartedAt                sql.NullInt64   `db:"started_at"`
+	EndedAt                  sql.NullInt64   `db:"ended_at"`
+	MessageCount             int             `db:"message_count"`
+	TurnCount                int             `db:"turn_count"`
+	CWD                      sql.NullString  `db:"cwd"`
+	InputTokens              int             `db:"input_tokens"`
+	OutputTokens             int             `db:"output_tokens"`
+	CacheCreationInputTokens int             `db:"cache_creation_input_tokens"`
+	CacheReadInputTokens     int             `db:"cache_read_input_tokens"`
+	TotalCostUSD             sql.NullFloat64 `db:"total_cost_usd"`
+	PrimaryModel             sql.NullString  `db:"primary_model"`
 }
 
 // SessionPR represents the correlation between a session and a PR.
@@ -82,5 +88,22 @@ type PRMetrics struct {
 	SelfCorrectionRate    sql.NullFloat64 `db:"self_correction_rate"`
 	ContextEfficiency     sql.NullFloat64 `db:"context_efficiency"`
 	ErrorRecoveryAttempts sql.NullInt64   `db:"error_recovery_attempts"`
+	TokenCostUSD          sql.NullFloat64 `db:"token_cost_usd"`
 	ComputedAt            string          `db:"computed_at"`
+}
+
+// RepoMetrics stores aggregate metrics for a repository over a time period.
+type RepoMetrics struct {
+	ID              int64           `db:"id"`
+	RepoID          int64           `db:"repo_id"`
+	PeriodStart     string          `db:"period_start"`
+	PeriodEnd       string          `db:"period_end"`
+	PeriodType      string          `db:"period_type"`
+	TotalSessions   int             `db:"total_sessions"`
+	TotalTokens     int             `db:"total_tokens"`
+	TotalCostUSD    float64         `db:"total_cost_usd"`
+	UnmergedTokens  int             `db:"unmerged_tokens"`
+	UnmergedCostUSD float64         `db:"unmerged_cost_usd"`
+	UnmergedRate    sql.NullFloat64 `db:"unmerged_rate"`
+	ComputedAt      string          `db:"computed_at"`
 }
