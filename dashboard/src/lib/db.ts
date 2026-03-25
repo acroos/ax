@@ -65,6 +65,7 @@ export interface PR {
   additions: number;
   deletions: number;
   changed_files: number;
+  author: string | null;
 }
 
 export interface PRMetrics {
@@ -162,7 +163,7 @@ export async function getRepoAsync(id: number): Promise<Repo | undefined> {
 
 // listPRsWithMetrics returns finalized PRs with their computed metrics.
 export function listPRsWithMetrics(repoId?: number): PRWithMetrics[] {
-  const baseQuery = `SELECT p.*, pm.messages_per_pr, pm.iteration_depth, pm.post_open_commits,
+  const baseQuery = `SELECT p.*, p.author, pm.messages_per_pr, pm.iteration_depth, pm.post_open_commits,
          pm.first_pass_accepted, pm.ci_success_rate, pm.diff_churn_lines,
          pm.has_tests, pm.line_revisit_rate, pm.self_correction_rate,
          pm.context_efficiency, pm.error_recovery_attempts, pm.token_cost_usd,
@@ -208,6 +209,7 @@ function mapPRRows(rows: (PR & PRMetrics & { github_owner: string; github_repo: 
     additions: row.additions,
     deletions: row.deletions,
     changed_files: row.changed_files,
+    author: (row as unknown as Record<string, unknown>).author as string | null ?? null,
     github_owner: row.github_owner,
     github_repo: row.github_repo,
     metrics: {
@@ -383,4 +385,94 @@ function buildTimeline(prs: PRWithMetrics[]): TimelinePoint[] {
       selfCorrectionRate: p.metrics!.self_correction_rate !== null ? Math.round(p.metrics!.self_correction_rate * 100) : null,
     }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+// --- Comparison and filtering functions ---
+
+export interface FilterOpts {
+  repoId?: number;
+  author?: string;
+  since?: string;
+  until?: string;
+}
+
+export interface DeveloperMetrics {
+  author: string;
+  prCount: number;
+  metrics: AggregateMetrics;
+}
+
+function filterPRs(prs: PRWithMetrics[], opts: FilterOpts): PRWithMetrics[] {
+  return prs.filter((p) => {
+    if (opts.author && p.author !== opts.author) return false;
+    if (opts.since && p.created_at && p.created_at < opts.since) return false;
+    if (opts.until && p.created_at && p.created_at > opts.until) return false;
+    return true;
+  });
+}
+
+// listDevelopers returns unique PR author logins for a repo.
+export function listDevelopers(repoId?: number): string[] {
+  const prs = listPRsWithMetrics(repoId);
+  const authors = new Set<string>();
+  for (const pr of prs) {
+    if (pr.author) authors.add(pr.author);
+  }
+  return Array.from(authors).sort();
+}
+
+export async function listDevelopersAsync(repoId?: number): Promise<string[]> {
+  const prs = await listPRsWithMetricsAsync(repoId);
+  const authors = new Set<string>();
+  for (const pr of prs) {
+    if (pr.author) authors.add(pr.author);
+  }
+  return Array.from(authors).sort();
+}
+
+// getFilteredMetrics returns aggregate metrics with filtering.
+export async function getFilteredMetricsAsync(opts: FilterOpts): Promise<AggregateMetrics> {
+  const allPRs = await listPRsWithMetricsAsync(opts.repoId);
+  const filtered = filterPRs(allPRs, opts);
+  return computeAggregates(filtered);
+}
+
+// getDeveloperComparison returns per-developer aggregate metrics.
+export async function getDeveloperComparisonAsync(opts: FilterOpts): Promise<DeveloperMetrics[]> {
+  const allPRs = await listPRsWithMetricsAsync(opts.repoId);
+  const filtered = filterPRs(allPRs, { since: opts.since, until: opts.until });
+
+  // Group by author
+  const byAuthor = new Map<string, PRWithMetrics[]>();
+  for (const pr of filtered) {
+    const author = pr.author || "unknown";
+    if (!byAuthor.has(author)) byAuthor.set(author, []);
+    byAuthor.get(author)!.push(pr);
+  }
+
+  const result: DeveloperMetrics[] = [];
+  for (const [author, prs] of byAuthor) {
+    result.push({
+      author,
+      prCount: prs.length,
+      metrics: computeAggregates(prs),
+    });
+  }
+
+  return result.sort((a, b) => b.prCount - a.prCount);
+}
+
+// getPercentile computes where a value falls relative to all values.
+export function getPercentile(value: number, allValues: number[]): number {
+  if (allValues.length === 0) return 50;
+  const sorted = [...allValues].sort((a, b) => a - b);
+  const rank = sorted.filter((v) => v < value).length;
+  return Math.round((rank / sorted.length) * 100);
+}
+
+// getFilteredTimeline returns timeline data with filtering.
+export async function getFilteredTimelineAsync(opts: FilterOpts): Promise<TimelinePoint[]> {
+  const allPRs = await listPRsWithMetricsAsync(opts.repoId);
+  const filtered = filterPRs(allPRs, opts);
+  return buildTimeline(filtered);
 }
