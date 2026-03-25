@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/austinroos/ax/internal/db"
+	"github.com/austinroos/ax/internal/hooks"
 	axsync "github.com/austinroos/ax/internal/sync"
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
@@ -32,6 +33,7 @@ func main() {
 	root.AddCommand(newReportCmd())
 	root.AddCommand(newStatusCmd())
 	root.AddCommand(newDashboardCmd())
+	root.AddCommand(newInitCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -479,6 +481,65 @@ func findDashboardDir() string {
 	}
 
 	return ""
+}
+
+func newInitCmd() *cobra.Command {
+	var uninstall bool
+
+	cmd := &cobra.Command{
+		Use:   "init",
+		Short: "Install Claude Code hooks for automatic session capture",
+		Long: `Install a Claude Code hook that automatically runs ax sync after each
+session ends. This means your metrics stay up to date without manual syncing.
+
+The hook is added to ~/.claude/settings.json and fires on SessionEnd.
+It only syncs if the session was in a git repository.
+
+Use --uninstall to remove the hook.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			settingsPath := hooks.DefaultSettingsPath()
+
+			if uninstall {
+				if !hooks.IsInstalled(settingsPath) {
+					fmt.Println("No AX hook found. Nothing to uninstall.")
+					return nil
+				}
+				if err := hooks.Uninstall(settingsPath); err != nil {
+					return fmt.Errorf("failed to uninstall hook: %w", err)
+				}
+				fmt.Println("AX hook removed from Claude Code settings.")
+				return nil
+			}
+
+			// Find ax binary path
+			axBinary, err := os.Executable()
+			if err != nil {
+				axBinary = "ax" // fallback to PATH
+			}
+
+			if hooks.IsInstalled(settingsPath) {
+				fmt.Println("AX hook is already installed. Updating...")
+			}
+
+			if err := hooks.Install(settingsPath, axBinary); err != nil {
+				return fmt.Errorf("failed to install hook: %w", err)
+			}
+
+			fmt.Println("AX hook installed successfully.")
+			fmt.Println()
+			fmt.Println("  What happens now:")
+			fmt.Println("  After each Claude Code session ends, ax will automatically")
+			fmt.Printf("  sync the repo's metrics to ~/.ax/ax.db\n")
+			fmt.Println()
+			fmt.Println("  To verify: check ~/.claude/settings.json for the SessionEnd hook.")
+			fmt.Println("  To remove: run ax init --uninstall")
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolVar(&uninstall, "uninstall", false, "Remove the AX hook from Claude Code")
+
+	return cmd
 }
 
 func init() {
