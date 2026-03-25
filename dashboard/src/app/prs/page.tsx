@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listPRsWithMetrics, getPRSize, getPRSizeColor } from "@/lib/db";
+import { listPRsWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
 
 function StateBadge({ state }: { state: string | null }) {
   const s = state?.toLowerCase() ?? "unknown";
@@ -34,10 +34,10 @@ export default async function PRsPage({
 }) {
   const params = await searchParams;
   const repoId = params.repo ? parseInt(params.repo, 10) : undefined;
-  let prs: ReturnType<typeof listPRsWithMetrics>;
+  let prs: Awaited<ReturnType<typeof listPRsWithMetricsAsync>>;
 
   try {
-    prs = listPRsWithMetrics(repoId);
+    prs = await listPRsWithMetricsAsync(repoId);
   } catch {
     return (
       <div className="flex items-center justify-center h-[60vh]">

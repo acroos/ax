@@ -1,4 +1,5 @@
-import { getAggregateMetrics, getTimeline, listRepos, getRepo, listWatchStatuses } from "@/lib/db";
+import { getAggregateMetricsAsync, getTimelineAsync, listReposAsync, getRepoAsync, listWatchStatusesAsync } from "@/lib/db";
+import type { AggregateMetrics, TimelinePoint, Repo, WatchStatus } from "@/lib/db";
 import { TrendChart, Sparkline } from "@/components/trend-chart";
 
 interface MetricDef {
@@ -24,8 +25,8 @@ function formatCost(n: number): string {
 }
 
 function buildMetrics(
-  m: ReturnType<typeof getAggregateMetrics>,
-  timeline: ReturnType<typeof getTimeline>
+  m: AggregateMetrics,
+  timeline: TimelinePoint[]
 ): MetricDef[] {
   const postOpenSpark = timeline.filter((t) => t.postOpenCommits !== null).map((t) => t.postOpenCommits!);
   const msgSpark = timeline.filter((t) => t.messagesPerPR !== null).map((t) => t.messagesPerPR!);
@@ -182,18 +183,18 @@ export default async function OverviewPage({
   const params = await searchParams;
   const repoId = params.repo ? parseInt(params.repo, 10) : undefined;
 
-  let metrics: ReturnType<typeof getAggregateMetrics>;
-  let repos: ReturnType<typeof listRepos>;
-  let timeline: ReturnType<typeof getTimeline>;
-  let selectedRepo: ReturnType<typeof getRepo> | undefined;
-  let watchStatuses: ReturnType<typeof listWatchStatuses>;
+  let metrics: AggregateMetrics;
+  let repos: Repo[];
+  let timeline: TimelinePoint[];
+  let selectedRepo: Repo | undefined;
+  let watchStatuses: WatchStatus[];
 
   try {
-    metrics = getAggregateMetrics(repoId);
-    repos = listRepos();
-    timeline = getTimeline(repoId);
-    watchStatuses = listWatchStatuses();
-    if (repoId) selectedRepo = getRepo(repoId);
+    metrics = await getAggregateMetricsAsync(repoId);
+    repos = await listReposAsync();
+    timeline = await getTimelineAsync(repoId);
+    watchStatuses = await listWatchStatusesAsync();
+    if (repoId) selectedRepo = await getRepoAsync(repoId);
   } catch {
     return (
       <div className="flex items-center justify-center h-[60vh]">

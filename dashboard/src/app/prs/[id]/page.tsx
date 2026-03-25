@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listPRsWithMetrics, getPRSize, getPRSizeColor } from "@/lib/db";
+import { listPRsWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
 
 function StateBadge({ state }: { state: string | null }) {
@@ -194,7 +194,7 @@ export default async function PRDetailPage({
 
   let pr: PRWithMetrics | undefined;
   try {
-    const allPRs = listPRsWithMetrics();
+    const allPRs = await listPRsWithMetricsAsync();
     pr = allPRs.find((p) => p.id === prId);
   } catch {
     // DB error

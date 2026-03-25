@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
-import { listRepos, listWatchStatuses } from "@/lib/db";
+import { listReposAsync, listWatchStatusesAsync } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "AX — Agentic Coding Metrics",
@@ -41,15 +41,15 @@ function NavLink({
   );
 }
 
-function Sidebar() {
+async function Sidebar() {
   let repos: { id: number; github_owner: string | null; github_repo: string | null }[] = [];
   let watchedRepoIds = new Set<number>();
   try {
-    repos = listRepos();
-    const watchStatuses = listWatchStatuses();
+    repos = await listReposAsync();
+    const watchStatuses = await listWatchStatusesAsync();
     watchedRepoIds = new Set(watchStatuses.map((w) => w.repo_id));
   } catch {
-    // DB might not exist yet
+    // DB might not exist yet, or API not reachable
   }
 
   const filteredRepos = repos.filter((r) => r.github_owner && r.github_repo);
