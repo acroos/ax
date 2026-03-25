@@ -6,26 +6,36 @@ AX is a CLI + web dashboard that measures developer experience for agentic codin
 
 ## Architecture
 
-- **Go** — CLI binary and core engine (`cmd/ax/`, `internal/`)
-- **TypeScript/Next.js** — Dashboard (`dashboard/`, not yet built)
+- **Go** — CLI binary, core engine, and team server (`cmd/ax/`, `internal/`)
+- **TypeScript/Next.js** — Dashboard (`dashboard/`)
 - **SQLite** — Local data storage at `~/.ax/ax.db`
+- **PostgreSQL** — Team server data storage (when deployed via Docker Compose or Helm)
 
 ```
 cmd/ax/              CLI entry point (cobra)
 internal/
-  db/                SQLite schema, migrations, queries, models
+  api/               Push payload types + conversion functions
+  config/            Team mode configuration (~/.ax/config.json)
+  db/                Schema, migrations (SQLite + Postgres), queries, models
   parsers/
     git.go           Git log/diff/blame parser via os/exec
     github.go        GitHub PR/review/CI parser via gh CLI
   metrics/
     output_quality.go  Phase 1 metric calculators
-  correlator/        Session-to-PR correlation (Phase 2)
+  correlator/        Session-to-PR correlation
   sync/
     sync.go          Orchestrates data ingestion + metric computation
-dashboard/           Next.js web dashboard (Phase 2)
+    finalize.go      Metric finalization for terminal PRs
+    watch.go         GitHub polling (RunGitHubOnly)
+  server/            HTTP server for team mode (push API + read endpoints)
+  push/              Push client + data extraction for team mode
+  watch/             System-level scheduling (launchd/cron)
+dashboard/           Next.js web dashboard
+deploy/helm/ax/      Helm chart for Kubernetes deployment
 docs/
   decisions/         Architecture Decision Records (ADRs)
   metrics/           Per-metric documentation (16 files)
+  team-setup.md      Team deployment guide
 plans/               Project planning artifacts
 ```
 
@@ -42,10 +52,19 @@ make lint            # Lint (requires golangci-lint)
 ## Key Commands
 
 ```bash
+# Local usage
 ax sync --repo .     # Ingest git + GitHub data for current repo
 ax report            # Print aggregate metrics
 ax report --pr 42    # Print metrics for a specific PR
 ax status            # Show tracked repos and last sync time
+ax init              # Install Claude Code hooks + background polling
+ax watch             # Poll GitHub for PR state changes
+
+# Team mode
+ax init --team <url> --api-key <key> --user "Name"  # Connect to team server
+ax push --repo .     # Manually push data to team server
+ax server            # Start the team HTTP server (requires Postgres)
+ax server init       # Create DB schema + first API key
 ```
 
 ## Build Phases
@@ -68,6 +87,7 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [008 — Distribution](docs/decisions/008-distribution-strategy.md): Homebrew tap + GoReleaser. Relevant when setting up releases.
 - [009 — Token Cost Metrics](docs/decisions/009-token-cost-metrics.md): Token Cost per PR and Unmerged Token Spend. Dollar-cost metrics with model-specific pricing. Relevant when building session cost computation or repo-level metrics.
 - [010 — GitHub Event Ingestion](docs/decisions/010-github-event-ingestion.md): `ax watch` poller + metric finalization lifecycle. Metrics only computed for terminal (merged/closed) PRs. Relevant when modifying sync paths or metric computation timing.
+- [011 — Team Server](docs/decisions/011-team-server.md): Push-based team data collection with Postgres, API key auth, Docker Compose + Helm deployment. Relevant when working on server, push, or deployment code.
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.
 
