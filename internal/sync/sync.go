@@ -284,18 +284,30 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 	if len(sessionsByID) > 0 {
 		log.Printf("Correlating %d sessions to %d PRs...", len(sessionsByID), len(prs))
 
-		// Build correlation map: PR number → []*ParsedSession
-		prSessions := make(map[int][]*parsers.ParsedSession)
-
+		// First pass: correlate all sessions and count how many PRs each session maps to
+		sessionCorrelations := make(map[string][]correlator.Correlation) // session ID → correlations
 		for _, session := range sessionsByID {
 			correlations := correlator.CorrelateSession(session, prs, prCommits)
+			if len(correlations) > 0 {
+				sessionCorrelations[session.ID] = correlations
+			}
+		}
+
+		// Count PRs per session (for dividing metrics evenly)
+		sessionPRCount := make(map[string]int)
+		for sessionID, correlations := range sessionCorrelations {
+			sessionPRCount[sessionID] = len(correlations)
+		}
+
+		// Second pass: store correlations and build PR → sessions map
+		prSessions := make(map[int][]*parsers.ParsedSession)
+		for sessionID, correlations := range sessionCorrelations {
 			for _, c := range correlations {
 				prID, ok := prNumberToID[c.PRNumber]
 				if !ok {
 					continue
 				}
 
-				// Store correlation
 				_, err := database.Exec(`
 					INSERT INTO session_prs (session_id, pr_id, confidence)
 					VALUES (?, ?, ?)
@@ -305,24 +317,36 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 					log.Printf("  Warning: failed to store correlation %s→PR#%d: %v", c.SessionID[:8], c.PRNumber, err)
 				}
 
-				prSessions[c.PRNumber] = append(prSessions[c.PRNumber], session)
+				prSessions[c.PRNumber] = append(prSessions[c.PRNumber], sessionsByID[sessionID])
 				result.SessionsCorrelated++
 			}
 		}
 
 		// Compute session-dependent metrics per PR
+		// When a session correlates to N PRs, its metrics are divided by N
 		for prNum, sessions := range prSessions {
 			prID, ok := prNumberToID[prNum]
 			if !ok {
 				continue
 			}
 
-			msgCount := metrics.MessagesPerPR(sessions)
-			iterDepth := metrics.IterationDepth(sessions)
+			// Build weights: each session's contribution is 1/N where N = PRs it correlates to
+			var weightedMessages, weightedIterations, weightedCost float64
+			var weightedErrors float64
+			for _, s := range sessions {
+				weight := 1.0 / float64(sessionPRCount[s.ID])
+				weightedMessages += float64(s.HumanMessages) * weight
+				weightedIterations += float64(s.TurnCount) * weight
+				weightedCost += s.TotalCostUSD * weight
+				weightedErrors += float64(s.BashErrors) * weight
+			}
+
+			msgCount := int(weightedMessages + 0.5) // round
+			iterDepth := int(weightedIterations + 0.5)
 			selfCorrection := metrics.SelfCorrectionRate(sessions)
 			ctxEfficiency := metrics.ContextEfficiency(sessions)
-			errorRecovery := metrics.ErrorRecoveryEfficiency(sessions)
-			tokenCost := metrics.TokenCostForSessions(sessions)
+			errorRecovery := int(weightedErrors + 0.5)
+			tokenCost := weightedCost
 
 			// Update PR metrics with session-dependent values
 			database.Exec(`
