@@ -53,6 +53,9 @@ export interface PRMetrics {
   context_efficiency: number | null;
   error_recovery_attempts: number | null;
   token_cost_usd: number | null;
+  plan_coverage_score: number | null;
+  plan_deviation_score: number | null;
+  scope_creep_detected: number | null;
 }
 
 export interface PRWithMetrics extends PR {
@@ -77,6 +80,7 @@ export function listPRsWithMetrics(repoId?: number): PRWithMetrics[] {
          pm.first_pass_accepted, pm.ci_success_rate, pm.diff_churn_lines,
          pm.has_tests, pm.line_revisit_rate, pm.self_correction_rate,
          pm.context_efficiency, pm.error_recovery_attempts, pm.token_cost_usd,
+         pm.plan_coverage_score, pm.plan_deviation_score, pm.scope_creep_detected,
          r.github_owner, r.github_repo
        FROM prs p
        LEFT JOIN pr_metrics pm ON p.id = pm.pr_id
@@ -87,6 +91,7 @@ export function listPRsWithMetrics(repoId?: number): PRWithMetrics[] {
          pm.first_pass_accepted, pm.ci_success_rate, pm.diff_churn_lines,
          pm.has_tests, pm.line_revisit_rate, pm.self_correction_rate,
          pm.context_efficiency, pm.error_recovery_attempts, pm.token_cost_usd,
+         pm.plan_coverage_score, pm.plan_deviation_score, pm.scope_creep_detected,
          r.github_owner, r.github_repo
        FROM prs p
        LEFT JOIN pr_metrics pm ON p.id = pm.pr_id
@@ -128,6 +133,9 @@ export function listPRsWithMetrics(repoId?: number): PRWithMetrics[] {
             context_efficiency: row.context_efficiency,
             error_recovery_attempts: row.error_recovery_attempts,
             token_cost_usd: row.token_cost_usd,
+            plan_coverage_score: row.plan_coverage_score,
+            plan_deviation_score: row.plan_deviation_score,
+            scope_creep_detected: row.scope_creep_detected,
           }
         : null,
     })

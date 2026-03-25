@@ -349,6 +349,19 @@ func printPRReport(database *sqlx.DB, repo *db.Repo, prNumber int) error {
 	if m.ErrorRecoveryAttempts.Valid {
 		fmt.Fprintf(w, "  Error recovery attempts\t%d\n", m.ErrorRecoveryAttempts.Int64)
 	}
+	if m.PlanCoverageScore.Valid {
+		fmt.Fprintf(w, "  Plan coverage\t%.0f%%\n", m.PlanCoverageScore.Float64*100)
+	}
+	if m.PlanDeviationScore.Valid {
+		fmt.Fprintf(w, "  Plan deviation\t%.0f%%\n", m.PlanDeviationScore.Float64*100)
+	}
+	if m.ScopeCreepDetected.Valid {
+		if m.ScopeCreepDetected.Int64 == 1 {
+			fmt.Fprintf(w, "  Scope creep\tYes\n")
+		} else {
+			fmt.Fprintf(w, "  Scope creep\tNo\n")
+		}
+	}
 
 	w.Flush()
 	fmt.Println()

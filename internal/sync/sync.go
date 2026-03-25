@@ -281,6 +281,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 	}
 
 	// 6. Correlate sessions to PRs and compute session-dependent metrics
+	var prSessions map[int][]*parsers.ParsedSession
 	if len(sessionsByID) > 0 {
 		log.Printf("Correlating %d sessions to %d PRs...", len(sessionsByID), len(prs))
 
@@ -300,7 +301,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		}
 
 		// Second pass: store correlations and build PR → sessions map
-		prSessions := make(map[int][]*parsers.ParsedSession)
+		prSessions = make(map[int][]*parsers.ParsedSession)
 		for sessionID, correlations := range sessionCorrelations {
 			for _, c := range correlations {
 				prID, ok := prNumberToID[c.PRNumber]
@@ -390,7 +391,70 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		}
 	}
 
-	// 8. Update sync timestamp
+	// 8. Plan analysis — compare plan files to actual PR diffs
+	// Also check for plan files in the repo's plans/ directory
+	planFiles, _ := parsers.FindPlanFiles(repoRoot)
+	if len(planFiles) > 0 {
+		log.Printf("Found %d plan file(s) in %s/plans/", len(planFiles), repoRoot)
+	}
+
+	if len(sessionsByID) > 0 && prSessions != nil {
+		for prNum, sessions := range prSessions {
+			prID, ok := prNumberToID[prNum]
+			if !ok {
+				continue
+			}
+
+			// Find plan files from correlated sessions
+			for _, session := range sessions {
+				planPaths := parsers.FindPlanFilesForSession(session, repoRoot)
+				for _, planPath := range planPaths {
+					plan, err := parsers.ParsePlanFile(planPath)
+					if err != nil || len(plan.PlannedFiles) == 0 {
+						continue
+					}
+
+					// Get actual files changed in this PR
+					actualFiles := prFiles[prNum]
+					if len(actualFiles) == 0 {
+						continue
+					}
+
+					// Compare plan to implementation
+					comparison := metrics.ComparePlanToImplementation(plan.PlannedFiles, actualFiles)
+
+					log.Printf("  Plan analysis for PR #%d (%s): coverage=%.0f%% deviation=%.0f%% scope_creep=%v",
+						prNum, filepath.Base(planPath),
+						comparison.CoverageScore*100, comparison.DeviationScore*100, comparison.ScopeCreep)
+
+					// Store plan analysis
+					scopeCreep := 0
+					if comparison.ScopeCreep {
+						scopeCreep = 1
+					}
+					database.Exec(`
+						INSERT INTO plan_analyses (pr_id, plan_file, coverage_score, deviation_score, scope_creep_detected,
+							planned_files, actual_files)
+						VALUES (?, ?, ?, ?, ?, ?, ?)
+					`, prID, planPath, comparison.CoverageScore, comparison.DeviationScore, scopeCreep,
+						strings.Join(comparison.PlannedFiles, "\n"), strings.Join(comparison.ActualFiles, "\n"))
+
+					// Update pr_metrics with plan scores
+					database.Exec(`
+						UPDATE pr_metrics SET
+							plan_coverage_score = ?,
+							plan_deviation_score = ?,
+							scope_creep_detected = ?
+						WHERE pr_id = ?
+					`, comparison.CoverageScore, comparison.DeviationScore, scopeCreep, prID)
+
+					break // Use the first plan file found per session
+				}
+			}
+		}
+	}
+
+	// 9. Update sync timestamp
 	db.UpdateRepoSyncTime(database, repoID)
 
 	return result, nil

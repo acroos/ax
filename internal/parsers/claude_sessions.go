@@ -49,6 +49,7 @@ type ParsedSession struct {
 	// Extracted signals
 	PRURLs       []string // PR URLs found in gh pr create output
 	CommitSHAs   []string // commit SHAs from git commit output
+	PlanFiles    []string // plan files written/edited during session
 	BashErrors   int      // Bash commands that failed (non-zero exit)
 	BashSuccesses int     // Bash commands that succeeded
 }
@@ -180,6 +181,7 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 	seenMessageIDs := make(map[string]bool) // deduplicate by message ID
 	filesReadSet := make(map[string]bool)
 	filesModifiedSet := make(map[string]bool)
+	planFilesSet := make(map[string]bool)
 	seenPRURLs := make(map[string]bool)
 	seenCommitSHAs := make(map[string]bool)
 
@@ -274,7 +276,7 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 			}
 
 			// Parse tool_use blocks from content
-			parseToolUseBlocks(mc.Content, session, bashToolIDs, filesReadSet, filesModifiedSet)
+			parseToolUseBlocks(mc.Content, session, bashToolIDs, filesReadSet, filesModifiedSet, planFilesSet)
 		}
 	}
 
@@ -293,6 +295,9 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 	}
 	for f := range filesModifiedSet {
 		session.FilesModified = append(session.FilesModified, f)
+	}
+	for f := range planFilesSet {
+		session.PlanFiles = append(session.PlanFiles, f)
 	}
 	for url := range seenPRURLs {
 		session.PRURLs = append(session.PRURLs, url)
@@ -325,7 +330,7 @@ func isHumanMessage(content string) bool {
 
 // parseToolUseBlocks extracts tool usage data from assistant message content.
 func parseToolUseBlocks(content json.RawMessage, session *ParsedSession,
-	bashToolIDs map[string]string, filesReadSet, filesModifiedSet map[string]bool) {
+	bashToolIDs map[string]string, filesReadSet, filesModifiedSet, planFilesSet map[string]bool) {
 
 	var blocks []toolUseBlock
 	if err := json.Unmarshal(content, &blocks); err != nil {
@@ -357,11 +362,17 @@ func parseToolUseBlocks(content json.RawMessage, session *ParsedSession,
 			var inp editInput
 			if json.Unmarshal(block.Input, &inp) == nil && inp.FilePath != "" {
 				filesModifiedSet[inp.FilePath] = true
+				if isPlanFile(inp.FilePath) {
+					planFilesSet[inp.FilePath] = true
+				}
 			}
 		case "Write":
 			var inp writeInput
 			if json.Unmarshal(block.Input, &inp) == nil && inp.FilePath != "" {
 				filesModifiedSet[inp.FilePath] = true
+				if isPlanFile(inp.FilePath) {
+					planFilesSet[inp.FilePath] = true
+				}
 			}
 		}
 	}
@@ -471,6 +482,13 @@ func parseTimestamp(ts string) int64 {
 
 	// Rough calculation - doesn't need to be exact
 	return int64(((((year-1970)*365+month*30+day)*24+hour)*60+min)*60+sec)*1000 + int64(ms)
+}
+
+// isPlanFile returns true if a file path looks like a plan file.
+// Plans are typically in plans/ directories or .claude/plans/.
+func isPlanFile(path string) bool {
+	lower := strings.ToLower(path)
+	return strings.Contains(lower, "/plans/") || strings.Contains(lower, "/.claude/plans/")
 }
 
 func atoi(s string) int {

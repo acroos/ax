@@ -151,6 +151,36 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
+  if (m.plan_coverage_score !== null) {
+    metrics.push({
+      label: "Plan Coverage",
+      value: `${Math.round(m.plan_coverage_score * 100)}%`,
+      description:
+        "What fraction of the actual changes were anticipated in the plan. Higher means the plan predicted the work well.",
+      category: "Planning Effectiveness",
+    });
+  }
+
+  if (m.plan_deviation_score !== null) {
+    metrics.push({
+      label: "Plan Deviation",
+      value: `${Math.round(m.plan_deviation_score * 100)}%`,
+      description:
+        "What fraction of planned files were actually changed. Lower means planned work was skipped or deferred.",
+      category: "Planning Effectiveness",
+    });
+  }
+
+  if (m.scope_creep_detected !== null) {
+    metrics.push({
+      label: "Scope Creep",
+      value: m.scope_creep_detected === 1 ? "Yes" : "No",
+      description:
+        "Whether more than half the changes came from outside the plan. Scope creep isn't always bad — it can mean the agent was thorough.",
+      category: "Planning Effectiveness",
+    });
+  }
+
   return metrics;
 }
 
@@ -188,7 +218,7 @@ export default async function PRDetailPage({
   const metricDisplays = getMetricDisplays(pr);
 
   // Group by category
-  const categories = ["Output Quality", "Prompt Efficiency", "Agent Behavior"];
+  const categories = ["Output Quality", "Prompt Efficiency", "Agent Behavior", "Planning Effectiveness"];
   const grouped = categories
     .map((cat) => ({
       name: cat,
