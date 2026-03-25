@@ -350,3 +350,78 @@ Or update their config:
 ```bash
 # Edit ~/.ax/config.json and change the api_key value
 ```
+
+---
+
+## GitHub Webhooks (Optional, Recommended)
+
+By default, AX detects PR merges via polling every 5 minutes. For real-time finalization, configure GitHub webhooks to push events directly to the server.
+
+### Setup
+
+1. In your GitHub repo (or org settings), go to **Settings → Webhooks → Add webhook**
+
+2. Configure:
+   - **Payload URL:** `https://your-server:8080/webhooks/github`
+   - **Content type:** `application/json`
+   - **Secret:** A strong random string (you'll add this to `.env`)
+   - **Events:** Select "Pull requests", "Pull request reviews", and "Check suites"
+
+3. Add the secret to your server environment:
+   ```bash
+   # Add to .env
+   AX_WEBHOOK_GITHUB_SECRET=your-webhook-secret-here
+
+   # Restart the server
+   docker compose restart server
+   ```
+
+4. Verify by merging a PR — metrics should finalize within seconds.
+
+Polling continues to run as a fallback even with webhooks configured.
+
+---
+
+## Exporting Data
+
+Use `ax export` to extract metrics for BI tools, spreadsheets, or custom integrations:
+
+```bash
+# JSON (default)
+ax export --repo .
+
+# CSV for spreadsheets
+ax export --format csv --all-repos --output metrics.csv
+
+# JSONL for streaming/piping
+ax export --format jsonl --since 2026-01-01 | jq '.metrics.token_cost_usd'
+
+# Repo-level aggregates
+ax export --aggregate --all-repos --format csv
+```
+
+Available formats: `json`, `jsonl`, `csv`. Data defaults to finalized PRs only.
+
+---
+
+## Dashboard Features
+
+The team dashboard includes:
+
+| Page | URL | What it shows |
+|------|-----|---------------|
+| **Overview** | `/` | Aggregate metric cards with sparklines and trend charts |
+| **Pull Requests** | `/prs` | Table of all finalized PRs with inline metrics |
+| **PR Detail** | `/prs/[id]` | 15 metrics grouped by category for a single PR |
+| **Compare** | `/compare` | Developer leaderboard, individual vs team comparison, time window filtering |
+| **Docs** | `/docs` | In-dashboard metric documentation |
+
+### Compare Page
+
+The `/compare` page helps teams understand individual and team-wide patterns:
+
+- **Developer leaderboard** — All developers ranked by PR count, with metrics columns
+- **Individual vs team** — Select a developer to see their metrics side-by-side with team averages
+- **Time filtering** — 7d, 30d, 90d, or all-time windows
+
+Developer data requires PRs to have author information, which is populated automatically when `ax sync` runs.

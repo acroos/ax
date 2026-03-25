@@ -57,21 +57,22 @@ Drill into any PR for the full picture:
 
 ## Install
 
-### From source (Homebrew coming soon)
+### Homebrew
+
+```bash
+brew install acroos/tap/ax
+```
+
+### From source
 
 ```bash
 git clone https://github.com/acroos/ax.git
 cd ax
 make build
+# Binary at ./bin/ax
 ```
 
-Optionally add it to your PATH:
-
-```bash
-cp ./bin/ax /usr/local/bin/ax
-```
-
-**Prerequisites:** Go 1.21+, git, and the [GitHub CLI](https://cli.github.com/) (`gh`) authenticated. AX shells out to `git` and `gh` directly — no API keys, no SDK config.
+**Prerequisites:** git and the [GitHub CLI](https://cli.github.com/) (`gh`) authenticated. AX shells out to `git` and `gh` directly — no API keys, no SDK config.
 
 ---
 
@@ -105,16 +106,68 @@ Every metric has a dedicated doc explaining what it measures, why it matters, an
 
 ---
 
-## Dashboard
+## Automatic Sync
 
-AX includes a web dashboard for when you'd rather look at charts than terminal tables.
+Set up once, never think about it again:
+
+```bash
+ax init   # Installs Claude Code hooks + background GitHub polling
+```
+
+After this, metrics update automatically when Claude Code sessions end and when PRs are merged or closed.
+
+---
+
+## Dashboard
 
 ```bash
 ax dashboard
 # Open http://localhost:3333
 ```
 
-Dark-mode, Linear-inspired design. Built with Next.js, embedded into the Go binary via `go:embed`. The dashboard is still in active development.
+Dark-mode, Linear-inspired. Overview with aggregate metrics and sparklines, PR table with inline metrics, per-PR detail with all 15 metrics, and a compare page for team-wide developer leaderboards.
+
+---
+
+## Export
+
+Machine-readable output for BI tools, spreadsheets, or custom integrations:
+
+```bash
+ax export --format csv --repo . --output metrics.csv
+ax export --format jsonl --all-repos | jq '.metrics.token_cost_usd'
+ax export --aggregate --format json
+```
+
+Formats: `json` (default), `jsonl` (streaming), `csv` (flat).
+
+---
+
+## Team Mode
+
+Deploy a shared server so your whole team's metrics flow into one dashboard:
+
+```bash
+# Server admin
+docker compose up -d
+docker compose exec server ax server init  # generates API key
+
+# Each developer
+ax init --team https://your-server:8080 --api-key ax_k1_... --user "Name"
+ax sync --repo .  # syncs locally + pushes to team server
+```
+
+Also supports Kubernetes via Helm chart. See the full [Team Setup Guide](docs/team-setup.md).
+
+---
+
+## GitHub Webhooks
+
+For real-time metric finalization (instead of 5-minute polling):
+
+1. Add a webhook to your GitHub repo pointing to `https://your-server:8080/webhooks/github`
+2. Set `AX_WEBHOOK_GITHUB_SECRET` in your server environment
+3. Select "Pull requests", "Pull request reviews", and "Check suites" events
 
 ---
 
@@ -127,6 +180,7 @@ AX is purpose-built for [Claude Code](https://docs.anthropic.com/en/docs/agents-
 ## Docs
 
 - [Setup Guide](docs/setup-guide.md) — Full walkthrough from install to first report
+- [Team Setup Guide](docs/team-setup.md) — Deploy for your team (Docker Compose + Helm)
 - [Architecture](docs/architecture.md) — How the pieces fit together
 - [Metric Reference](docs/metrics/index.md) — All 16 metrics, explained
 - [Architecture Decision Records](docs/decisions/) — Why things are the way they are
