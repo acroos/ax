@@ -56,6 +56,8 @@ export interface PRMetrics {
   plan_coverage_score: number | null;
   plan_deviation_score: number | null;
   scope_creep_detected: number | null;
+  metrics_finalized: number;
+  finalized_at: string | null;
 }
 
 export interface PRWithMetrics extends PR {
@@ -75,28 +77,21 @@ export function getRepo(id: number): Repo | undefined {
 }
 
 export function listPRsWithMetrics(repoId?: number): PRWithMetrics[] {
+  const baseQuery = `SELECT p.*, pm.messages_per_pr, pm.iteration_depth, pm.post_open_commits,
+         pm.first_pass_accepted, pm.ci_success_rate, pm.diff_churn_lines,
+         pm.has_tests, pm.line_revisit_rate, pm.self_correction_rate,
+         pm.context_efficiency, pm.error_recovery_attempts, pm.token_cost_usd,
+         pm.plan_coverage_score, pm.plan_deviation_score, pm.scope_creep_detected,
+         pm.metrics_finalized, pm.finalized_at,
+         r.github_owner, r.github_repo
+       FROM prs p
+       INNER JOIN pr_metrics pm ON p.id = pm.pr_id
+       JOIN repos r ON p.repo_id = r.id
+       WHERE pm.metrics_finalized = 1`;
+
   const query = repoId
-    ? `SELECT p.*, pm.messages_per_pr, pm.iteration_depth, pm.post_open_commits,
-         pm.first_pass_accepted, pm.ci_success_rate, pm.diff_churn_lines,
-         pm.has_tests, pm.line_revisit_rate, pm.self_correction_rate,
-         pm.context_efficiency, pm.error_recovery_attempts, pm.token_cost_usd,
-         pm.plan_coverage_score, pm.plan_deviation_score, pm.scope_creep_detected,
-         r.github_owner, r.github_repo
-       FROM prs p
-       LEFT JOIN pr_metrics pm ON p.id = pm.pr_id
-       JOIN repos r ON p.repo_id = r.id
-       WHERE p.repo_id = ?
-       ORDER BY p.number DESC`
-    : `SELECT p.*, pm.messages_per_pr, pm.iteration_depth, pm.post_open_commits,
-         pm.first_pass_accepted, pm.ci_success_rate, pm.diff_churn_lines,
-         pm.has_tests, pm.line_revisit_rate, pm.self_correction_rate,
-         pm.context_efficiency, pm.error_recovery_attempts, pm.token_cost_usd,
-         pm.plan_coverage_score, pm.plan_deviation_score, pm.scope_creep_detected,
-         r.github_owner, r.github_repo
-       FROM prs p
-       LEFT JOIN pr_metrics pm ON p.id = pm.pr_id
-       JOIN repos r ON p.repo_id = r.id
-       ORDER BY p.created_at DESC`;
+    ? `${baseQuery} AND p.repo_id = ? ORDER BY p.number DESC`
+    : `${baseQuery} ORDER BY p.created_at DESC`;
 
   const rows = repoId
     ? getDb().prepare(query).all(repoId)
@@ -118,28 +113,49 @@ export function listPRsWithMetrics(repoId?: number): PRWithMetrics[] {
       changed_files: row.changed_files,
       github_owner: row.github_owner,
       github_repo: row.github_repo,
-      metrics: row.post_open_commits !== null
-        ? {
-            pr_id: row.id,
-            messages_per_pr: row.messages_per_pr,
-            iteration_depth: row.iteration_depth,
-            post_open_commits: row.post_open_commits,
-            first_pass_accepted: row.first_pass_accepted,
-            ci_success_rate: row.ci_success_rate,
-            diff_churn_lines: row.diff_churn_lines,
-            has_tests: row.has_tests,
-            line_revisit_rate: row.line_revisit_rate,
-            self_correction_rate: row.self_correction_rate,
-            context_efficiency: row.context_efficiency,
-            error_recovery_attempts: row.error_recovery_attempts,
-            token_cost_usd: row.token_cost_usd,
-            plan_coverage_score: row.plan_coverage_score,
-            plan_deviation_score: row.plan_deviation_score,
-            scope_creep_detected: row.scope_creep_detected,
-          }
-        : null,
+      metrics: {
+        pr_id: row.id,
+        messages_per_pr: row.messages_per_pr,
+        iteration_depth: row.iteration_depth,
+        post_open_commits: row.post_open_commits,
+        first_pass_accepted: row.first_pass_accepted,
+        ci_success_rate: row.ci_success_rate,
+        diff_churn_lines: row.diff_churn_lines,
+        has_tests: row.has_tests,
+        line_revisit_rate: row.line_revisit_rate,
+        self_correction_rate: row.self_correction_rate,
+        context_efficiency: row.context_efficiency,
+        error_recovery_attempts: row.error_recovery_attempts,
+        token_cost_usd: row.token_cost_usd,
+        plan_coverage_score: row.plan_coverage_score,
+        plan_deviation_score: row.plan_deviation_score,
+        scope_creep_detected: row.scope_creep_detected,
+        metrics_finalized: row.metrics_finalized,
+        finalized_at: row.finalized_at,
+      },
     })
   );
+}
+
+export interface WatchStatus {
+  repo_id: number;
+  poll_interval_seconds: number;
+  last_polled_at: string | null;
+  enabled: number;
+}
+
+export function getWatchStatus(repoId: number): WatchStatus | null {
+  return (
+    (getDb()
+      .prepare("SELECT * FROM watched_repos WHERE repo_id = ? AND enabled = 1")
+      .get(repoId) as WatchStatus | undefined) ?? null
+  );
+}
+
+export function listWatchStatuses(): WatchStatus[] {
+  return getDb()
+    .prepare("SELECT * FROM watched_repos WHERE enabled = 1")
+    .all() as WatchStatus[];
 }
 
 export interface AggregateMetrics {

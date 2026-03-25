@@ -277,6 +277,11 @@ export default async function PRDetailPage({
               {pr.changed_files !== 1 && "s"}
             </span>
           </span>
+          {pr.metrics?.finalized_at && (
+            <span className="text-text-tertiary">
+              Finalized {pr.metrics.finalized_at}
+            </span>
+          )}
         </div>
       </div>
 

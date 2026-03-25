@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
-import { listRepos } from "@/lib/db";
+import { listRepos, listWatchStatuses } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "AX — Agentic Coding Metrics",
@@ -43,8 +43,11 @@ function NavLink({
 
 function Sidebar() {
   let repos: { id: number; github_owner: string | null; github_repo: string | null }[] = [];
+  let watchedRepoIds = new Set<number>();
   try {
     repos = listRepos();
+    const watchStatuses = listWatchStatuses();
+    watchedRepoIds = new Set(watchStatuses.map((w) => w.repo_id));
   } catch {
     // DB might not exist yet
   }
@@ -139,10 +142,15 @@ function Sidebar() {
                 href={`/?repo=${r.id}`}
                 className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] text-text-tertiary hover:text-text-primary hover:bg-surface-2 transition-colors"
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-green/60 flex-shrink-0" />
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${watchedRepoIds.has(r.id) ? "bg-green/60" : "bg-text-tertiary/30"}`} />
                 <span className="truncate">
                   {r.github_owner}/{r.github_repo}
                 </span>
+                {watchedRepoIds.has(r.id) && (
+                  <span className="text-[10px] text-text-tertiary ml-auto flex-shrink-0" title="Auto-polling enabled">
+                    watching
+                  </span>
+                )}
               </Link>
             ))}
           </div>

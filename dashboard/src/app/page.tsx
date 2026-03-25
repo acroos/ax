@@ -1,4 +1,4 @@
-import { getAggregateMetrics, getTimeline, listRepos, getRepo } from "@/lib/db";
+import { getAggregateMetrics, getTimeline, listRepos, getRepo, listWatchStatuses } from "@/lib/db";
 import { TrendChart, Sparkline } from "@/components/trend-chart";
 
 interface MetricDef {
@@ -186,11 +186,13 @@ export default async function OverviewPage({
   let repos: ReturnType<typeof listRepos>;
   let timeline: ReturnType<typeof getTimeline>;
   let selectedRepo: ReturnType<typeof getRepo> | undefined;
+  let watchStatuses: ReturnType<typeof listWatchStatuses>;
 
   try {
     metrics = getAggregateMetrics(repoId);
     repos = listRepos();
     timeline = getTimeline(repoId);
+    watchStatuses = listWatchStatuses();
     if (repoId) selectedRepo = getRepo(repoId);
   } catch {
     return (
@@ -213,6 +215,12 @@ export default async function OverviewPage({
   const metricDefs = buildMetrics(metrics, timeline);
   const reposWithPRs = repos.filter((r) => r.github_owner && r.github_repo);
   const lastSync = reposWithPRs.map((r) => r.last_synced_at).filter(Boolean).sort().pop();
+  const watchedCount = watchStatuses.length;
+  const lastPolled = watchStatuses
+    .map((w) => w.last_polled_at)
+    .filter(Boolean)
+    .sort()
+    .pop();
 
   const repoLabel = selectedRepo
     ? `${selectedRepo.github_owner}/${selectedRepo.github_repo}`
@@ -240,10 +248,16 @@ export default async function OverviewPage({
               <span className="text-text-primary font-medium">{repoLabel}</span>
             </>
           ) : (
-            <>Agentic coding metrics across {repoLabel}</>
+            <>Finalized metrics across {repoLabel}</>
           )}
           {lastSync && (
             <span className="text-text-tertiary"> · Last synced {lastSync}</span>
+          )}
+          {watchedCount > 0 && (
+            <span className="text-text-tertiary">
+              {" "}· Watching {watchedCount} repo{watchedCount !== 1 && "s"}
+              {lastPolled && <> · Last polled {lastPolled}</>}
+            </span>
           )}
         </p>
       </div>

@@ -58,7 +58,7 @@ export default async function PRsPage({
           Pull Requests
         </h1>
         <p className="text-[13px] text-text-secondary mt-1">
-          {prs.length} pull request{prs.length !== 1 && "s"} tracked
+          {prs.length} finalized pull request{prs.length !== 1 && "s"}
         </p>
       </div>
 

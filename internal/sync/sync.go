@@ -484,7 +484,14 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		computeUnmergedTokenSpend(database, repoID, sessionsByID)
 	}
 
-	// 10. Update sync timestamp
+	// 10. Auto-register repo as watched (if not already)
+	db.UpsertWatchedRepo(database, &db.WatchedRepo{
+		RepoID:              repoID,
+		PollIntervalSeconds: 300,
+		Enabled:             1,
+	})
+
+	// 11. Update sync timestamp
 	db.UpdateRepoSyncTime(database, repoID)
 
 	return result, nil
