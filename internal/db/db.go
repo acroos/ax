@@ -27,12 +27,10 @@ type Store struct {
 	Dialect Dialect
 }
 
-// Now returns the SQL expression for the current timestamp in the active dialect.
+// Now returns the SQL expression for the current timestamp.
+// CURRENT_TIMESTAMP is standard SQL and works in both SQLite and PostgreSQL.
 func (s *Store) Now() string {
-	if s.Dialect == DialectPostgres {
-		return "NOW()"
-	}
-	return "datetime('now')"
+	return "CURRENT_TIMESTAMP"
 }
 
 // Close closes the underlying database connection.

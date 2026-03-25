@@ -24,13 +24,13 @@ func FinalizePR(database *sqlx.DB, prID int64, m *db.PRMetrics) error {
 	m.MetricsFinalized = 1
 	m.FinalizedAt = sql.NullString{String: "now", Valid: true}
 
-	// Use a direct SQL update to set finalized_at = datetime('now')
+	// Use a direct SQL update to set finalized_at = CURRENT_TIMESTAMP
 	_, err := database.Exec(`
 		INSERT INTO pr_metrics (pr_id, messages_per_pr, iteration_depth, post_open_commits, first_pass_accepted,
 			ci_success_rate, diff_churn_lines, has_tests, line_revisit_rate, plan_coverage_score,
 			plan_deviation_score, scope_creep_detected, self_correction_rate, context_efficiency,
 			error_recovery_attempts, token_cost_usd, metrics_finalized, finalized_at, computed_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		ON CONFLICT(pr_id) DO UPDATE SET
 			messages_per_pr = excluded.messages_per_pr,
 			iteration_depth = excluded.iteration_depth,
@@ -48,8 +48,8 @@ func FinalizePR(database *sqlx.DB, prID int64, m *db.PRMetrics) error {
 			error_recovery_attempts = excluded.error_recovery_attempts,
 			token_cost_usd = excluded.token_cost_usd,
 			metrics_finalized = 1,
-			finalized_at = datetime('now'),
-			computed_at = datetime('now')
+			finalized_at = CURRENT_TIMESTAMP,
+			computed_at = CURRENT_TIMESTAMP
 	`, prID, m.MessagesPerPR, m.IterationDepth, m.PostOpenCommits, m.FirstPassAccepted,
 		m.CISuccessRate, m.DiffChurnLines, m.HasTests, m.LineRevisitRate,
 		m.PlanCoverageScore, m.PlanDeviationScore, m.ScopeCreepDetected,

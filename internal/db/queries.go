@@ -131,7 +131,7 @@ func UpsertPRMetrics(db DBTX, m *PRMetrics) error {
 			ci_success_rate, diff_churn_lines, has_tests, line_revisit_rate, plan_coverage_score,
 			plan_deviation_score, scope_creep_detected, self_correction_rate, context_efficiency,
 			error_recovery_attempts, token_cost_usd, metrics_finalized, finalized_at, computed_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(pr_id) DO UPDATE SET
 			messages_per_pr = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.messages_per_pr ELSE excluded.messages_per_pr END,
 			iteration_depth = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.iteration_depth ELSE excluded.iteration_depth END,
@@ -150,7 +150,7 @@ func UpsertPRMetrics(db DBTX, m *PRMetrics) error {
 			token_cost_usd = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.token_cost_usd ELSE excluded.token_cost_usd END,
 			metrics_finalized = CASE WHEN pr_metrics.metrics_finalized = 1 THEN 1 ELSE excluded.metrics_finalized END,
 			finalized_at = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.finalized_at ELSE excluded.finalized_at END,
-			computed_at = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.computed_at ELSE datetime('now') END
+			computed_at = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.computed_at ELSE CURRENT_TIMESTAMP END
 	`, m.PRID, m.MessagesPerPR, m.IterationDepth, m.PostOpenCommits, m.FirstPassAccepted,
 		m.CISuccessRate, m.DiffChurnLines, m.HasTests, m.LineRevisitRate,
 		m.PlanCoverageScore, m.PlanDeviationScore, m.ScopeCreepDetected,
@@ -217,7 +217,7 @@ func GetEnabledWatchedRepos(db DBTX) ([]WatchedRepo, error) {
 
 // UpdateWatchedRepoPolledAt updates the last_polled_at timestamp.
 func UpdateWatchedRepoPolledAt(db DBTX, repoID int64) error {
-	_, err := db.Exec("UPDATE watched_repos SET last_polled_at = datetime('now') WHERE repo_id = ?", repoID)
+	_, err := db.Exec("UPDATE watched_repos SET last_polled_at = CURRENT_TIMESTAMP WHERE repo_id = ?", repoID)
 	if err != nil {
 		return fmt.Errorf("failed to update polled time: %w", err)
 	}
@@ -281,7 +281,7 @@ func ValidateAPIKey(db DBTX, rawKey string) (string, error) {
 	for _, k := range keys {
 		if err := bcrypt.CompareHashAndPassword([]byte(k.KeyHash), []byte(rawKey)); err == nil {
 			// Update last_used_at
-			db.Exec("UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?", k.ID)
+			db.Exec("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?", k.ID)
 			return k.Name, nil
 		}
 	}
@@ -337,7 +337,7 @@ func GetPRMetrics(db DBTX, prID int64) (*PRMetrics, error) {
 
 // UpdateRepoSyncTime updates the last_synced_at timestamp for a repo.
 func UpdateRepoSyncTime(db DBTX, repoID int64) error {
-	_, err := db.Exec("UPDATE repos SET last_synced_at = datetime('now') WHERE id = ?", repoID)
+	_, err := db.Exec("UPDATE repos SET last_synced_at = CURRENT_TIMESTAMP WHERE id = ?", repoID)
 	if err != nil {
 		return fmt.Errorf("failed to update sync time: %w", err)
 	}
@@ -378,7 +378,7 @@ func UpsertRepoMetrics(db DBTX, m *RepoMetrics) error {
 			unmerged_tokens = excluded.unmerged_tokens,
 			unmerged_cost_usd = excluded.unmerged_cost_usd,
 			unmerged_rate = excluded.unmerged_rate,
-			computed_at = datetime('now')
+			computed_at = CURRENT_TIMESTAMP
 	`, m.RepoID, m.PeriodStart, m.PeriodEnd, m.PeriodType,
 		m.TotalSessions, m.TotalTokens, m.TotalCostUSD,
 		m.UnmergedTokens, m.UnmergedCostUSD, m.UnmergedRate)
