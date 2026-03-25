@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ax.fullname" . }}-watcher
+  labels:
+    {{- include "ax.labels" . | nindent 4 }}
+    app.kubernetes.io/component: watcher
+spec:
+  replicas: {{ .Values.watcher.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "ax.name" . }}
+      app.kubernetes.io/component: watcher
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "ax.name" . }}
+        app.kubernetes.io/component: watcher
+    spec:
+      containers:
+        - name: watcher
+          image: "{{ .Values.watcher.image.repository }}:{{ .Values.watcher.image.tag }}"
+          imagePullPolicy: {{ .Values.watcher.image.pullPolicy }}
+          args: ["watch"]
+          env:
+            - name: AX_POSTGRES
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ax.fullname" . }}
+                  key: postgres-conn
+            {{- if .Values.github.token }}
+            - name: GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ax.fullname" . }}
+                  key: gh-token
+            {{- end }}
+          resources:
+            {{- toYaml .Values.watcher.resources | nindent 12 }}

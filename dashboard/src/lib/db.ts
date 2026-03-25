@@ -2,6 +2,32 @@ import Database from "better-sqlite3";
 import path from "path";
 import os from "os";
 
+// --- Mode detection ---
+// When AX_API_URL is set, the dashboard fetches from the Go server API.
+// Otherwise, it reads from the local SQLite database directly.
+const API_URL = process.env.AX_API_URL;
+const API_KEY = process.env.AX_API_KEY || "";
+
+function isAPIMode(): boolean {
+  return !!API_URL;
+}
+
+async function fetchAPI<T>(urlPath: string): Promise<T> {
+  const url = `${API_URL}${urlPath}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (API_KEY) {
+    headers["Authorization"] = `Bearer ${API_KEY}`;
+  }
+  const res = await fetch(url, { headers, cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// --- SQLite (local mode) ---
 const DB_PATH =
   process.env.AX_DB_PATH || path.join(os.homedir(), ".ax", "ax.db");
 
@@ -14,6 +40,8 @@ function getDb(): Database.Database {
   }
   return db;
 }
+
+// --- Interfaces ---
 
 export interface Repo {
   id: number;
@@ -66,7 +94,55 @@ export interface PRWithMetrics extends PR {
   github_repo: string | null;
 }
 
+export interface WatchStatus {
+  repo_id: number;
+  poll_interval_seconds: number;
+  last_polled_at: string | null;
+  enabled: number;
+}
+
+export interface AggregateMetrics {
+  totalPRs: number;
+  avgPostOpenCommits: number;
+  firstPassAcceptanceRate: number;
+  ciSuccessRate: number | null;
+  testCoverageRate: number;
+  avgMessagesPerPR: number | null;
+  avgIterationDepth: number | null;
+  avgTokenCost: number | null;
+  totalTokenCost: number | null;
+  avgSelfCorrectionRate: number | null;
+  avgContextEfficiency: number | null;
+}
+
+export interface TimelinePoint {
+  prNumber: number;
+  title: string;
+  createdAt: string;
+  postOpenCommits: number | null;
+  ciSuccessRate: number | null;
+  messagesPerPR: number | null;
+  tokenCostUSD: number | null;
+  selfCorrectionRate: number | null;
+}
+
+// --- Data functions (sync for local, async for API) ---
+
+// listRepos returns all tracked repositories.
+// Sync version for local mode (used by Sidebar which is a sync server component).
 export function listRepos(): Repo[] {
+  if (isAPIMode()) {
+    // Sidebar needs sync access — return empty in API mode
+    // and use listReposAsync() in async contexts
+    return [];
+  }
+  return getDb().prepare("SELECT * FROM repos ORDER BY path").all() as Repo[];
+}
+
+export async function listReposAsync(): Promise<Repo[]> {
+  if (isAPIMode()) {
+    return fetchAPI<Repo[]>("/api/v1/repos");
+  }
   return getDb().prepare("SELECT * FROM repos ORDER BY path").all() as Repo[];
 }
 
@@ -76,6 +152,15 @@ export function getRepo(id: number): Repo | undefined {
     | undefined;
 }
 
+export async function getRepoAsync(id: number): Promise<Repo | undefined> {
+  if (isAPIMode()) {
+    const repos = await fetchAPI<Repo[]>("/api/v1/repos");
+    return repos.find((r) => r.id === id);
+  }
+  return getRepo(id);
+}
+
+// listPRsWithMetrics returns finalized PRs with their computed metrics.
 export function listPRsWithMetrics(repoId?: number): PRWithMetrics[] {
   const baseQuery = `SELECT p.*, pm.messages_per_pr, pm.iteration_depth, pm.post_open_commits,
          pm.first_pass_accepted, pm.ci_success_rate, pm.diff_churn_lines,
@@ -97,86 +182,91 @@ export function listPRsWithMetrics(repoId?: number): PRWithMetrics[] {
     ? getDb().prepare(query).all(repoId)
     : getDb().prepare(query).all();
 
-  return (rows as (PR & PRMetrics & { github_owner: string; github_repo: string })[]).map(
-    (row) => ({
-      id: row.id,
-      repo_id: row.repo_id,
-      number: row.number,
-      title: row.title,
-      branch: row.branch,
-      state: row.state,
-      created_at: row.created_at,
-      merged_at: row.merged_at,
-      url: row.url,
-      additions: row.additions,
-      deletions: row.deletions,
-      changed_files: row.changed_files,
-      github_owner: row.github_owner,
-      github_repo: row.github_repo,
-      metrics: {
-        pr_id: row.id,
-        messages_per_pr: row.messages_per_pr,
-        iteration_depth: row.iteration_depth,
-        post_open_commits: row.post_open_commits,
-        first_pass_accepted: row.first_pass_accepted,
-        ci_success_rate: row.ci_success_rate,
-        diff_churn_lines: row.diff_churn_lines,
-        has_tests: row.has_tests,
-        line_revisit_rate: row.line_revisit_rate,
-        self_correction_rate: row.self_correction_rate,
-        context_efficiency: row.context_efficiency,
-        error_recovery_attempts: row.error_recovery_attempts,
-        token_cost_usd: row.token_cost_usd,
-        plan_coverage_score: row.plan_coverage_score,
-        plan_deviation_score: row.plan_deviation_score,
-        scope_creep_detected: row.scope_creep_detected,
-        metrics_finalized: row.metrics_finalized,
-        finalized_at: row.finalized_at,
-      },
-    })
-  );
+  return mapPRRows(rows as (PR & PRMetrics & { github_owner: string; github_repo: string })[]);
 }
 
-export interface WatchStatus {
-  repo_id: number;
-  poll_interval_seconds: number;
-  last_polled_at: string | null;
-  enabled: number;
+export async function listPRsWithMetricsAsync(repoId?: number): Promise<PRWithMetrics[]> {
+  if (isAPIMode()) {
+    const path = repoId ? `/api/v1/repos/${repoId}/prs` : `/api/v1/repos/0/prs`;
+    const data = await fetchAPI<PRWithMetrics[]>(path);
+    return data;
+  }
+  return listPRsWithMetrics(repoId);
 }
 
-export function getWatchStatus(repoId: number): WatchStatus | null {
-  return (
-    (getDb()
-      .prepare("SELECT * FROM watched_repos WHERE repo_id = ? AND enabled = 1")
-      .get(repoId) as WatchStatus | undefined) ?? null
-  );
+function mapPRRows(rows: (PR & PRMetrics & { github_owner: string; github_repo: string })[]): PRWithMetrics[] {
+  return rows.map((row) => ({
+    id: row.id,
+    repo_id: row.repo_id,
+    number: row.number,
+    title: row.title,
+    branch: row.branch,
+    state: row.state,
+    created_at: row.created_at,
+    merged_at: row.merged_at,
+    url: row.url,
+    additions: row.additions,
+    deletions: row.deletions,
+    changed_files: row.changed_files,
+    github_owner: row.github_owner,
+    github_repo: row.github_repo,
+    metrics: {
+      pr_id: row.id,
+      messages_per_pr: row.messages_per_pr,
+      iteration_depth: row.iteration_depth,
+      post_open_commits: row.post_open_commits,
+      first_pass_accepted: row.first_pass_accepted,
+      ci_success_rate: row.ci_success_rate,
+      diff_churn_lines: row.diff_churn_lines,
+      has_tests: row.has_tests,
+      line_revisit_rate: row.line_revisit_rate,
+      self_correction_rate: row.self_correction_rate,
+      context_efficiency: row.context_efficiency,
+      error_recovery_attempts: row.error_recovery_attempts,
+      token_cost_usd: row.token_cost_usd,
+      plan_coverage_score: row.plan_coverage_score,
+      plan_deviation_score: row.plan_deviation_score,
+      scope_creep_detected: row.scope_creep_detected,
+      metrics_finalized: row.metrics_finalized,
+      finalized_at: row.finalized_at,
+    },
+  }));
 }
 
 export function listWatchStatuses(): WatchStatus[] {
+  if (isAPIMode()) {
+    return [];
+  }
   return getDb()
     .prepare("SELECT * FROM watched_repos WHERE enabled = 1")
     .all() as WatchStatus[];
 }
 
-export interface AggregateMetrics {
-  totalPRs: number;
-  avgPostOpenCommits: number;
-  firstPassAcceptanceRate: number;
-  ciSuccessRate: number | null;
-  testCoverageRate: number;
-  avgMessagesPerPR: number | null;
-  avgIterationDepth: number | null;
-  avgTokenCost: number | null;
-  totalTokenCost: number | null;
-  avgSelfCorrectionRate: number | null;
-  avgContextEfficiency: number | null;
+export async function listWatchStatusesAsync(): Promise<WatchStatus[]> {
+  if (isAPIMode()) {
+    return fetchAPI<WatchStatus[]>("/api/v1/watch-status");
+  }
+  return listWatchStatuses();
 }
 
+// getAggregateMetrics computes aggregate metrics across finalized PRs.
 export function getAggregateMetrics(repoId?: number): AggregateMetrics {
   const prs = listPRsWithMetrics(repoId);
-  const withMetrics = prs.filter((p) => p.metrics);
+  return computeAggregates(prs);
+}
 
+export async function getAggregateMetricsAsync(repoId?: number): Promise<AggregateMetrics> {
+  if (isAPIMode() && repoId) {
+    return fetchAPI<AggregateMetrics>(`/api/v1/repos/${repoId}/metrics`);
+  }
+  const prs = await listPRsWithMetricsAsync(repoId);
+  return computeAggregates(prs);
+}
+
+function computeAggregates(prs: PRWithMetrics[]): AggregateMetrics {
+  const withMetrics = prs.filter((p) => p.metrics);
   const totalPRs = prs.length;
+
   if (totalPRs === 0) {
     return {
       totalPRs: 0, avgPostOpenCommits: 0, firstPassAcceptanceRate: 0,
@@ -242,9 +332,10 @@ export function getAggregateMetrics(repoId?: number): AggregateMetrics {
   };
 }
 
+// --- Utility functions (no DB/API needed) ---
+
 export type PRSize = "XS" | "S" | "M" | "L" | "XL";
 
-// Categorize PRs by total lines changed (additions + deletions).
 export function getPRSize(additions: number, deletions: number): PRSize {
   const total = additions + deletions;
   if (total <= 10) return "XS";
@@ -264,19 +355,21 @@ export function getPRSizeColor(size: PRSize): string {
   }
 }
 
-export interface TimelinePoint {
-  prNumber: number;
-  title: string;
-  createdAt: string;
-  postOpenCommits: number | null;
-  ciSuccessRate: number | null;
-  messagesPerPR: number | null;
-  tokenCostUSD: number | null;
-  selfCorrectionRate: number | null;
-}
-
+// getTimeline returns time-series data for trend charts.
 export function getTimeline(repoId?: number): TimelinePoint[] {
   const prs = listPRsWithMetrics(repoId);
+  return buildTimeline(prs);
+}
+
+export async function getTimelineAsync(repoId?: number): Promise<TimelinePoint[]> {
+  if (isAPIMode() && repoId) {
+    return fetchAPI<TimelinePoint[]>(`/api/v1/repos/${repoId}/timeline`);
+  }
+  const prs = await listPRsWithMetricsAsync(repoId);
+  return buildTimeline(prs);
+}
+
+function buildTimeline(prs: PRWithMetrics[]): TimelinePoint[] {
   return prs
     .filter((p) => p.created_at && p.metrics)
     .map((p) => ({

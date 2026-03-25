@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ax
+      POSTGRES_USER: ax
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-axdevpass}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ax"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  server:
+    build: .
+    ports:
+      - "${AX_PORT:-8080}:8080"
+    environment:
+      - AX_POSTGRES=postgres://ax:${POSTGRES_PASSWORD:-axdevpass}@postgres:5432/ax?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "${AX_DASHBOARD_PORT:-3333}:3333"
+    environment:
+      - AX_API_URL=http://server:8080
+      - AX_API_KEY=${AX_API_KEY:-}
+      - PORT=3333
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  watcher:
+    build:
+      context: .
+      dockerfile: Dockerfile.watcher
+    environment:
+      - AX_POSTGRES=postgres://ax:${POSTGRES_PASSWORD:-axdevpass}@postgres:5432/ax?sslmode=disable
+      - GH_TOKEN=${GH_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pg-data:

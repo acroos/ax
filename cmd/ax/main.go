@@ -865,7 +865,15 @@ to watch a specific repo.
 Use 'ax watch install' to set up automatic background polling via
 launchd (macOS) or cron (Linux).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := openDB()
+			var store *db.Store
+			var err error
+
+			// Use Postgres if AX_POSTGRES is set (for Docker/K8s deployments)
+			if pgConn := os.Getenv("AX_POSTGRES"); pgConn != "" {
+				store, err = db.OpenPostgres(pgConn)
+			} else {
+				store, err = openDB()
+			}
 			if err != nil {
 				return err
 			}
