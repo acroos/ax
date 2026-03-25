@@ -16,6 +16,7 @@ import (
 
 	"github.com/austinroos/ax/internal/config"
 	"github.com/austinroos/ax/internal/db"
+	axexport "github.com/austinroos/ax/internal/export"
 	"github.com/austinroos/ax/internal/hooks"
 	"github.com/austinroos/ax/internal/push"
 	"github.com/austinroos/ax/internal/server"
@@ -43,6 +44,7 @@ func main() {
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newWatchCmd())
 	root.AddCommand(newPushCmd())
+	root.AddCommand(newExportCmd())
 	root.AddCommand(newServerCmd())
 
 	if err := root.Execute(); err != nil {
@@ -1047,6 +1049,117 @@ func newWatchStatusCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newExportCmd() *cobra.Command {
+	var repoPath string
+	var allRepos bool
+	var prNumber int
+	var format string
+	var since string
+	var until string
+	var aggregate bool
+	var output string
+	var finalizedOnly bool
+
+	cmd := &cobra.Command{
+		Use:   "export",
+		Short: "Export metrics as JSON, JSONL, or CSV",
+		Long: `Export metrics in machine-readable formats for integration with
+external tools, spreadsheets, or BI dashboards.
+
+Output goes to stdout by default (pipe to jq, csvtool, etc.).
+Use --output to write to a file.
+
+By default, only finalized (merged/closed) PRs are exported.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, err := openDB()
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			// Resolve repo ID
+			var repoID int64
+			if !allRepos {
+				path, pathErr := resolveRepoPath(repoPath)
+				if pathErr != nil {
+					return pathErr
+				}
+				repo, repoErr := db.GetRepoByPath(store.DB, path)
+				if repoErr != nil || repo == nil {
+					return fmt.Errorf("repo not found — run 'ax sync --repo %s' first", path)
+				}
+				repoID = repo.ID
+			}
+
+			opts := axexport.Options{
+				RepoID:        repoID,
+				AllRepos:      allRepos,
+				PRNumber:      prNumber,
+				Since:         since,
+				Until:         until,
+				FinalizedOnly: finalizedOnly,
+				Aggregate:     aggregate,
+				Format:        format,
+				Output:        output,
+			}
+
+			// Determine output writer
+			var w *os.File
+			if output != "" {
+				f, err := os.Create(output)
+				if err != nil {
+					return fmt.Errorf("failed to create output file: %w", err)
+				}
+				defer f.Close()
+				w = f
+			} else {
+				w = os.Stdout
+			}
+
+			if aggregate {
+				rows, err := axexport.ExtractAggregates(store.DB, opts)
+				if err != nil {
+					return err
+				}
+				switch format {
+				case "csv":
+					return axexport.WriteCSVAggregates(w, rows)
+				case "jsonl":
+					return axexport.WriteJSONLAggregates(w, rows)
+				default:
+					return axexport.WriteJSON(w, rows)
+				}
+			}
+
+			rows, err := axexport.ExtractRows(store.DB, opts)
+			if err != nil {
+				return err
+			}
+
+			switch format {
+			case "csv":
+				return axexport.WriteCSV(w, rows)
+			case "jsonl":
+				return axexport.WriteJSONL(w, rows)
+			default:
+				return axexport.WriteJSON(w, rows)
+			}
+		},
+	}
+
+	cmd.Flags().StringVar(&repoPath, "repo", "", "Path to the git repository (defaults to current directory)")
+	cmd.Flags().BoolVar(&allRepos, "all-repos", false, "Export data from all tracked repos")
+	cmd.Flags().IntVar(&prNumber, "pr", 0, "Export metrics for a single PR number")
+	cmd.Flags().StringVar(&format, "format", "json", "Output format: json, jsonl, csv")
+	cmd.Flags().StringVar(&since, "since", "", "Only include PRs created after this date (YYYY-MM-DD)")
+	cmd.Flags().StringVar(&until, "until", "", "Only include PRs created before this date (YYYY-MM-DD)")
+	cmd.Flags().BoolVar(&aggregate, "aggregate", false, "Export repo-level aggregate metrics")
+	cmd.Flags().StringVar(&output, "output", "", "Write to file instead of stdout")
+	cmd.Flags().BoolVar(&finalizedOnly, "finalized-only", true, "Only export PRs with finalized metrics")
+
+	return cmd
 }
 
 func newServerCmd() *cobra.Command {
