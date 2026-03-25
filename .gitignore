@@ -1,5 +1,5 @@
 # Binaries
-ax
+/bin/
 *.exe
 *.exe~
 *.dll
