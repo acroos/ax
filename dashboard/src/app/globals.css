@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Geist";
+  src: url("https://cdn.jsdelivr.net/npm/geist@1.4.1/dist/fonts/geist-sans/Geist-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist";
+  src: url("https://cdn.jsdelivr.net/npm/geist@1.4.1/dist/fonts/geist-sans/Geist-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist";
+  src: url("https://cdn.jsdelivr.net/npm/geist@1.4.1/dist/fonts/geist-sans/Geist-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("https://cdn.jsdelivr.net/npm/geist@1.4.1/dist/fonts/geist-mono/GeistMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("https://cdn.jsdelivr.net/npm/geist@1.4.1/dist/fonts/geist-mono/GeistMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+
+  --color-void: #08080D;
+  --color-surface-0: #0C0C14;
+  --color-surface-1: #111119;
+  --color-surface-2: #181823;
+  --color-surface-3: #1F1F2E;
+  --color-border: #252536;
+  --color-border-subtle: #1A1A2A;
+
+  --color-text-primary: #E8E8ED;
+  --color-text-secondary: #8B8B9E;
+  --color-text-tertiary: #56566A;
+
+  --color-accent: #6366F1;
+  --color-accent-hover: #818CF8;
+  --color-accent-muted: #6366F120;
+
+  --color-green: #34D399;
+  --color-green-muted: #34D39920;
+  --color-red: #F87171;
+  --color-red-muted: #F8717120;
+  --color-purple: #A78BFA;
+  --color-purple-muted: #A78BFA20;
+  --color-amber: #FBBF24;
+  --color-amber-muted: #FBBF2420;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* Metric card shimmer on hover */
+@keyframes metric-glow {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.metric-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    transparent 0%,
+    var(--color-accent-muted) 50%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.metric-card:hover::before {
+  opacity: 1;
+}
+
+/* Tooltip */
+.tooltip-trigger {
+  position: relative;
+}
+
+.tooltip-content {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-surface-3);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  width: 260px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.tooltip-trigger:hover .tooltip-content {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Staggered entrance */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fade-up 0.4s ease both;
+}

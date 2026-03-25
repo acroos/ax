@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"text/tabwriter"
 
@@ -30,6 +31,7 @@ func main() {
 	root.AddCommand(newSyncCmd())
 	root.AddCommand(newReportCmd())
 	root.AddCommand(newStatusCmd())
+	root.AddCommand(newDashboardCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -395,6 +397,75 @@ func newStatusCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newDashboardCmd() *cobra.Command {
+	var port int
+
+	cmd := &cobra.Command{
+		Use:   "dashboard",
+		Short: "Start the web dashboard",
+		Long:  "Starts the AX web dashboard on a local port.\nThe dashboard reads from the same database as the CLI.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Find the dashboard directory relative to the ax binary
+			dashboardDir := findDashboardDir()
+			if dashboardDir == "" {
+				return fmt.Errorf("dashboard not found — expected at <ax-repo>/dashboard/\nRun from the ax source directory or set AX_DASHBOARD_DIR")
+			}
+
+			fmt.Printf("Starting AX dashboard at http://localhost:%d\n", port)
+			fmt.Println("Press Ctrl+C to stop.")
+
+			// Check if node_modules exists
+			if _, err := os.Stat(filepath.Join(dashboardDir, "node_modules")); os.IsNotExist(err) {
+				fmt.Println("Installing dashboard dependencies...")
+				install := exec.Command("npm", "install")
+				install.Dir = dashboardDir
+				install.Stdout = os.Stdout
+				install.Stderr = os.Stderr
+				if err := install.Run(); err != nil {
+					return fmt.Errorf("failed to install dependencies: %w", err)
+				}
+			}
+
+			dev := exec.Command("npx", "next", "dev", "--port", fmt.Sprintf("%d", port))
+			dev.Dir = dashboardDir
+			dev.Stdout = os.Stdout
+			dev.Stderr = os.Stderr
+			return dev.Run()
+		},
+	}
+
+	cmd.Flags().IntVar(&port, "port", 3333, "Port to run the dashboard on")
+
+	return cmd
+}
+
+func findDashboardDir() string {
+	// Check env var first
+	if dir := os.Getenv("AX_DASHBOARD_DIR"); dir != "" {
+		return dir
+	}
+
+	// Try relative to the binary
+	exe, err := os.Executable()
+	if err == nil {
+		dir := filepath.Join(filepath.Dir(exe), "..", "dashboard")
+		if _, err := os.Stat(filepath.Join(dir, "package.json")); err == nil {
+			return dir
+		}
+	}
+
+	// Try relative to cwd
+	cwd, err := os.Getwd()
+	if err == nil {
+		dir := filepath.Join(cwd, "dashboard")
+		if _, err := os.Stat(filepath.Join(dir, "package.json")); err == nil {
+			return dir
+		}
+	}
+
+	return ""
 }
 
 func init() {
