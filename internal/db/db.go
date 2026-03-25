@@ -1,6 +1,5 @@
-// Package db manages the SQLite database for ax.
-// It handles connection setup, schema migrations, and provides
-// the database handle used by all other packages.
+// Package db manages the database for ax.
+// It supports both SQLite (local CLI) and PostgreSQL (team server).
 package db
 
 import (
@@ -9,9 +8,37 @@ import (
 	"os"
 	"path/filepath"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 )
+
+// Dialect identifies the database backend in use.
+type Dialect string
+
+const (
+	DialectSQLite   Dialect = "sqlite"
+	DialectPostgres Dialect = "postgres"
+)
+
+// Store wraps a database connection with dialect awareness.
+type Store struct {
+	DB      *sqlx.DB
+	Dialect Dialect
+}
+
+// Now returns the SQL expression for the current timestamp in the active dialect.
+func (s *Store) Now() string {
+	if s.Dialect == DialectPostgres {
+		return "NOW()"
+	}
+	return "datetime('now')"
+}
+
+// Close closes the underlying database connection.
+func (s *Store) Close() error {
+	return s.DB.Close()
+}
 
 // DefaultDBPath returns the default database path (~/.ax/ax.db).
 func DefaultDBPath() (string, error) {
@@ -23,29 +50,50 @@ func DefaultDBPath() (string, error) {
 }
 
 // Open opens (or creates) the SQLite database at the given path,
-// runs migrations, and returns a ready-to-use database handle.
-func Open(dbPath string) (*sqlx.DB, error) {
+// runs migrations, and returns a ready-to-use Store.
+func Open(dbPath string) (*Store, error) {
 	dir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
 
-	db, err := sqlx.Open("sqlite", dbPath+"?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=on")
+	database, err := sqlx.Open("sqlite", dbPath+"?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=on")
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	if err := db.Ping(); err != nil {
-		db.Close()
+	if err := database.Ping(); err != nil {
+		database.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	if err := migrate(db.DB); err != nil {
-		db.Close()
+	if err := migrate(database.DB); err != nil {
+		database.Close()
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	return db, nil
+	return &Store{DB: database, Dialect: DialectSQLite}, nil
+}
+
+// OpenPostgres opens a PostgreSQL database connection, runs migrations,
+// and returns a ready-to-use Store.
+func OpenPostgres(connStr string) (*Store, error) {
+	database, err := sqlx.Open("pgx", connStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open postgres: %w", err)
+	}
+
+	if err := database.Ping(); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("failed to ping postgres: %w", err)
+	}
+
+	if err := migratePostgres(database.DB); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("failed to run postgres migrations: %w", err)
+	}
+
+	return &Store{DB: database, Dialect: DialectPostgres}, nil
 }
 
 // migrate runs all pending schema migrations.
@@ -251,6 +299,24 @@ var migrations = []migration{
 				last_polled_at TEXT,
 				enabled INTEGER DEFAULT 1
 			);
+		`,
+	},
+	{
+		version: 4,
+		sql: `
+			-- API keys for server authentication
+			CREATE TABLE api_keys (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				key_hash TEXT NOT NULL UNIQUE,
+				name TEXT NOT NULL,
+				created_at TEXT NOT NULL DEFAULT (datetime('now')),
+				last_used_at TEXT,
+				revoked INTEGER DEFAULT 0
+			);
+
+			-- Track which user pushed data
+			ALTER TABLE sessions ADD COLUMN pushed_by TEXT;
+			ALTER TABLE prs ADD COLUMN pushed_by TEXT;
 		`,
 	},
 }

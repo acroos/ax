@@ -29,6 +29,7 @@ type PR struct {
 	Additions     int            `db:"additions"`
 	Deletions     int            `db:"deletions"`
 	ChangedFiles  int            `db:"changed_files"`
+	PushedBy      sql.NullString `db:"pushed_by"`
 }
 
 // Commit represents a git commit associated with a repo and optionally a PR.
@@ -63,6 +64,7 @@ type Session struct {
 	CacheReadInputTokens     int             `db:"cache_read_input_tokens"`
 	TotalCostUSD             sql.NullFloat64 `db:"total_cost_usd"`
 	PrimaryModel             sql.NullString  `db:"primary_model"`
+	PushedBy                 sql.NullString  `db:"pushed_by"`
 }
 
 // SessionPR represents the correlation between a session and a PR.
@@ -93,6 +95,16 @@ type PRMetrics struct {
 	MetricsFinalized      int             `db:"metrics_finalized"`
 	FinalizedAt           sql.NullString  `db:"finalized_at"`
 	ComputedAt            string          `db:"computed_at"`
+}
+
+// APIKey stores a hashed API key for server authentication.
+type APIKey struct {
+	ID         int64          `db:"id"`
+	KeyHash    string         `db:"key_hash"`
+	Name       string         `db:"name"`
+	CreatedAt  string         `db:"created_at"`
+	LastUsedAt sql.NullString `db:"last_used_at"`
+	Revoked    int            `db:"revoked"`
 }
 
 // WatchedRepo tracks a repo being polled for GitHub state changes.

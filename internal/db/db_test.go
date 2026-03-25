@@ -10,11 +10,11 @@ func TestOpenAndMigrate(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "test.db")
 
-	db, err := Open(dbPath)
+	store, err := Open(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer store.Close()
 
 	// Verify the database file was created
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
@@ -25,23 +25,28 @@ func TestOpenAndMigrate(t *testing.T) {
 	tables := []string{"repos", "sessions", "prs", "commits", "session_prs", "pr_metrics", "plan_analyses", "repo_metrics", "watched_repos", "schema_migrations"}
 	for _, table := range tables {
 		var name string
-		err := db.Get(&name, "SELECT name FROM sqlite_master WHERE type='table' AND name=?", table)
+		err := store.DB.Get(&name, "SELECT name FROM sqlite_master WHERE type='table' AND name=?", table)
 		if err != nil {
 			t.Errorf("table %s does not exist: %v", table, err)
 		}
+	}
+
+	// Verify dialect
+	if store.Dialect != DialectSQLite {
+		t.Errorf("expected SQLite dialect, got %s", store.Dialect)
 	}
 }
 
 func TestUpsertRepo(t *testing.T) {
 	dir := t.TempDir()
-	db, err := Open(filepath.Join(dir, "test.db"))
+	store, err := Open(filepath.Join(dir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer store.Close()
 
 	// Insert a repo
-	id, err := UpsertRepo(db, "/tmp/test-repo", "https://github.com/test/repo.git", "test", "repo")
+	id, err := UpsertRepo(store.DB, "/tmp/test-repo", "https://github.com/test/repo.git", "test", "repo")
 	if err != nil {
 		t.Fatalf("failed to upsert repo: %v", err)
 	}
@@ -50,7 +55,7 @@ func TestUpsertRepo(t *testing.T) {
 	}
 
 	// Verify it was inserted
-	repo, err := GetRepoByPath(db, "/tmp/test-repo")
+	repo, err := GetRepoByPath(store.DB, "/tmp/test-repo")
 	if err != nil {
 		t.Fatalf("failed to get repo: %v", err)
 	}
@@ -62,7 +67,7 @@ func TestUpsertRepo(t *testing.T) {
 	}
 
 	// Upsert again (update)
-	id2, err := UpsertRepo(db, "/tmp/test-repo", "https://github.com/test/repo2.git", "test", "repo2")
+	id2, err := UpsertRepo(store.DB, "/tmp/test-repo", "https://github.com/test/repo2.git", "test", "repo2")
 	if err != nil {
 		t.Fatalf("failed to upsert repo: %v", err)
 	}
@@ -71,7 +76,7 @@ func TestUpsertRepo(t *testing.T) {
 	}
 
 	// Verify update
-	repo, err = GetRepoByPath(db, "/tmp/test-repo")
+	repo, err = GetRepoByPath(store.DB, "/tmp/test-repo")
 	if err != nil {
 		t.Fatalf("failed to get repo: %v", err)
 	}
@@ -82,13 +87,13 @@ func TestUpsertRepo(t *testing.T) {
 
 func TestUpsertPRAndMetrics(t *testing.T) {
 	dir := t.TempDir()
-	db, err := Open(filepath.Join(dir, "test.db"))
+	store, err := Open(filepath.Join(dir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer store.Close()
 
-	repoID, err := UpsertRepo(db, "/tmp/test-repo", "", "", "")
+	repoID, err := UpsertRepo(store.DB, "/tmp/test-repo", "", "", "")
 	if err != nil {
 		t.Fatalf("failed to upsert repo: %v", err)
 	}
@@ -97,7 +102,7 @@ func TestUpsertPRAndMetrics(t *testing.T) {
 		RepoID: repoID,
 		Number: 42,
 	}
-	prID, err := UpsertPR(db, pr)
+	prID, err := UpsertPR(store.DB, pr)
 	if err != nil {
 		t.Fatalf("failed to upsert PR: %v", err)
 	}
@@ -109,11 +114,11 @@ func TestUpsertPRAndMetrics(t *testing.T) {
 	metrics := &PRMetrics{
 		PRID: prID,
 	}
-	if err := UpsertPRMetrics(db, metrics); err != nil {
+	if err := UpsertPRMetrics(store.DB, metrics); err != nil {
 		t.Fatalf("failed to upsert metrics: %v", err)
 	}
 
-	got, err := GetPRMetrics(db, prID)
+	got, err := GetPRMetrics(store.DB, prID)
 	if err != nil {
 		t.Fatalf("failed to get metrics: %v", err)
 	}
@@ -127,21 +132,21 @@ func TestUpsertPRAndMetrics(t *testing.T) {
 
 func TestMigrationV2_TokenColumns(t *testing.T) {
 	dir := t.TempDir()
-	db, err := Open(filepath.Join(dir, "test.db"))
+	store, err := Open(filepath.Join(dir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer store.Close()
 
 	// Verify v2 migration applied — sessions should have token columns
-	_, err = db.Exec(`INSERT INTO sessions (id, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, total_cost_usd, primary_model)
+	_, err = store.DB.Exec(`INSERT INTO sessions (id, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, total_cost_usd, primary_model)
 		VALUES ('test-session', 1000, 500, 200, 300, 0.05, 'claude-sonnet-4-6')`)
 	if err != nil {
 		t.Fatalf("failed to insert session with token columns: %v", err)
 	}
 
 	var session Session
-	err = db.Get(&session, "SELECT * FROM sessions WHERE id = 'test-session'")
+	err = store.DB.Get(&session, "SELECT * FROM sessions WHERE id = 'test-session'")
 	if err != nil {
 		t.Fatalf("failed to get session: %v", err)
 	}
@@ -153,23 +158,23 @@ func TestMigrationV2_TokenColumns(t *testing.T) {
 	}
 
 	// Verify repo_metrics table works
-	repoID, _ := UpsertRepo(db, "/tmp/test", "", "", "")
+	repoID, _ := UpsertRepo(store.DB, "/tmp/test", "", "", "")
 	rm := &RepoMetrics{
-		RepoID:         repoID,
-		PeriodStart:    "2026-03-01",
-		PeriodEnd:      "2026-03-31",
-		PeriodType:     "month",
-		TotalSessions:  10,
-		TotalTokens:    500000,
-		TotalCostUSD:   25.50,
-		UnmergedTokens: 50000,
+		RepoID:          repoID,
+		PeriodStart:     "2026-03-01",
+		PeriodEnd:       "2026-03-31",
+		PeriodType:      "month",
+		TotalSessions:   10,
+		TotalTokens:     500000,
+		TotalCostUSD:    25.50,
+		UnmergedTokens:  50000,
 		UnmergedCostUSD: 2.55,
 	}
-	if err := UpsertRepoMetrics(db, rm); err != nil {
+	if err := UpsertRepoMetrics(store.DB, rm); err != nil {
 		t.Fatalf("failed to upsert repo metrics: %v", err)
 	}
 
-	got, err := GetRepoMetrics(db, repoID, "month")
+	got, err := GetRepoMetrics(store.DB, repoID, "month")
 	if err != nil {
 		t.Fatalf("failed to get repo metrics: %v", err)
 	}

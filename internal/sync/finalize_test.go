@@ -38,14 +38,14 @@ func setupTestDB(t *testing.T) *db.PR {
 
 func TestFinalizePR(t *testing.T) {
 	dir := t.TempDir()
-	database, err := db.Open(filepath.Join(dir, "test.db"))
+	store, err := db.Open(filepath.Join(dir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer database.Close()
+	defer store.Close()
 
 	// Create a repo and PR
-	repoID, err := db.UpsertRepo(database, "/tmp/test-repo", "", "test", "repo")
+	repoID, err := db.UpsertRepo(store.DB, "/tmp/test-repo", "", "test", "repo")
 	if err != nil {
 		t.Fatalf("failed to upsert repo: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestFinalizePR(t *testing.T) {
 		Number: 1,
 		State:  sql.NullString{String: "merged", Valid: true},
 	}
-	prID, err := db.UpsertPR(database, pr)
+	prID, err := db.UpsertPR(store.DB, pr)
 	if err != nil {
 		t.Fatalf("failed to upsert PR: %v", err)
 	}
@@ -67,12 +67,12 @@ func TestFinalizePR(t *testing.T) {
 		CISuccessRate:   sql.NullFloat64{Float64: 0.95, Valid: true},
 	}
 
-	if err := FinalizePR(database, prID, metrics); err != nil {
+	if err := FinalizePR(store.DB, prID, metrics); err != nil {
 		t.Fatalf("failed to finalize PR: %v", err)
 	}
 
 	// Verify it's finalized
-	finalized, err := db.IsPRFinalized(database, prID)
+	finalized, err := db.IsPRFinalized(store.DB, prID)
 	if err != nil {
 		t.Fatalf("failed to check finalization: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestFinalizePR(t *testing.T) {
 	}
 
 	// Verify metrics are stored
-	got, err := db.GetPRMetrics(database, prID)
+	got, err := db.GetPRMetrics(store.DB, prID)
 	if err != nil {
 		t.Fatalf("failed to get metrics: %v", err)
 	}
@@ -98,37 +98,37 @@ func TestFinalizePR(t *testing.T) {
 
 func TestFinalizedPRsAreImmutable(t *testing.T) {
 	dir := t.TempDir()
-	database, err := db.Open(filepath.Join(dir, "test.db"))
+	store, err := db.Open(filepath.Join(dir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer database.Close()
+	defer store.Close()
 
-	repoID, _ := db.UpsertRepo(database, "/tmp/test-repo", "", "test", "repo")
+	repoID, _ := db.UpsertRepo(store.DB, "/tmp/test-repo", "", "test", "repo")
 
 	pr := &db.PR{
 		RepoID: repoID,
 		Number: 1,
 		State:  sql.NullString{String: "merged", Valid: true},
 	}
-	prID, _ := db.UpsertPR(database, pr)
+	prID, _ := db.UpsertPR(store.DB, pr)
 
 	// Finalize with specific values
 	metrics := &db.PRMetrics{
 		PRID:            prID,
 		PostOpenCommits: sql.NullInt64{Int64: 5, Valid: true},
 	}
-	FinalizePR(database, prID, metrics)
+	FinalizePR(store.DB, prID, metrics)
 
 	// Try to upsert with different values — should be a no-op
 	newMetrics := &db.PRMetrics{
 		PRID:            prID,
 		PostOpenCommits: sql.NullInt64{Int64: 99, Valid: true},
 	}
-	db.UpsertPRMetrics(database, newMetrics)
+	db.UpsertPRMetrics(store.DB, newMetrics)
 
 	// Verify original values are preserved
-	got, _ := db.GetPRMetrics(database, prID)
+	got, _ := db.GetPRMetrics(store.DB, prID)
 	if got.PostOpenCommits.Int64 != 5 {
 		t.Errorf("finalized metrics were overwritten: expected 5, got %d", got.PostOpenCommits.Int64)
 	}
@@ -136,31 +136,31 @@ func TestFinalizedPRsAreImmutable(t *testing.T) {
 
 func TestMaybeFinalizePR_SkipsOpenPRs(t *testing.T) {
 	dir := t.TempDir()
-	database, err := db.Open(filepath.Join(dir, "test.db"))
+	store, err := db.Open(filepath.Join(dir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer database.Close()
+	defer store.Close()
 
-	repoID, _ := db.UpsertRepo(database, "/tmp/test-repo", "", "test", "repo")
+	repoID, _ := db.UpsertRepo(store.DB, "/tmp/test-repo", "", "test", "repo")
 	pr := &db.PR{
 		RepoID: repoID,
 		Number: 1,
 		State:  sql.NullString{String: "open", Valid: true},
 	}
-	prID, _ := db.UpsertPR(database, pr)
+	prID, _ := db.UpsertPR(store.DB, pr)
 
 	// Insert metrics (not finalized)
-	db.UpsertPRMetrics(database, &db.PRMetrics{PRID: prID})
+	db.UpsertPRMetrics(store.DB, &db.PRMetrics{PRID: prID})
 
 	// Should not finalize
-	finalized := MaybeFinalizePR(database, prID, "open")
+	finalized := MaybeFinalizePR(store.DB, prID, "open")
 	if finalized {
 		t.Error("expected MaybeFinalizePR to return false for open PR")
 	}
 
 	// Verify not finalized
-	isFinalized, _ := db.IsPRFinalized(database, prID)
+	isFinalized, _ := db.IsPRFinalized(store.DB, prID)
 	if isFinalized {
 		t.Error("open PR should not be finalized")
 	}
@@ -168,34 +168,34 @@ func TestMaybeFinalizePR_SkipsOpenPRs(t *testing.T) {
 
 func TestGetFinalizedPRsForRepo(t *testing.T) {
 	dir := t.TempDir()
-	database, err := db.Open(filepath.Join(dir, "test.db"))
+	store, err := db.Open(filepath.Join(dir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer database.Close()
+	defer store.Close()
 
-	repoID, _ := db.UpsertRepo(database, "/tmp/test-repo", "", "test", "repo")
+	repoID, _ := db.UpsertRepo(store.DB, "/tmp/test-repo", "", "test", "repo")
 
 	// Create 3 PRs: one finalized, one not finalized, one open with no metrics
 	pr1 := &db.PR{RepoID: repoID, Number: 1, State: sql.NullString{String: "merged", Valid: true}}
 	pr2 := &db.PR{RepoID: repoID, Number: 2, State: sql.NullString{String: "open", Valid: true}}
 	pr3 := &db.PR{RepoID: repoID, Number: 3, State: sql.NullString{String: "closed", Valid: true}}
 
-	prID1, _ := db.UpsertPR(database, pr1)
-	prID2, _ := db.UpsertPR(database, pr2)
-	prID3, _ := db.UpsertPR(database, pr3)
+	prID1, _ := db.UpsertPR(store.DB, pr1)
+	prID2, _ := db.UpsertPR(store.DB, pr2)
+	prID3, _ := db.UpsertPR(store.DB, pr3)
 
 	// Finalize PR1
-	FinalizePR(database, prID1, &db.PRMetrics{PRID: prID1})
+	FinalizePR(store.DB, prID1, &db.PRMetrics{PRID: prID1})
 
 	// PR2 gets metrics but not finalized
-	db.UpsertPRMetrics(database, &db.PRMetrics{PRID: prID2})
+	db.UpsertPRMetrics(store.DB, &db.PRMetrics{PRID: prID2})
 
 	// Finalize PR3
-	FinalizePR(database, prID3, &db.PRMetrics{PRID: prID3})
+	FinalizePR(store.DB, prID3, &db.PRMetrics{PRID: prID3})
 
 	// Should only get PR1 and PR3
-	finalizedPRs, err := db.GetFinalizedPRsForRepo(database, repoID)
+	finalizedPRs, err := db.GetFinalizedPRsForRepo(store.DB, repoID)
 	if err != nil {
 		t.Fatalf("failed to get finalized PRs: %v", err)
 	}
@@ -214,13 +214,13 @@ func TestGetFinalizedPRsForRepo(t *testing.T) {
 
 func TestPreviousStateTracking(t *testing.T) {
 	dir := t.TempDir()
-	database, err := db.Open(filepath.Join(dir, "test.db"))
+	store, err := db.Open(filepath.Join(dir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer database.Close()
+	defer store.Close()
 
-	repoID, _ := db.UpsertRepo(database, "/tmp/test-repo", "", "test", "repo")
+	repoID, _ := db.UpsertRepo(store.DB, "/tmp/test-repo", "", "test", "repo")
 
 	// Insert as open
 	pr := &db.PR{
@@ -228,15 +228,15 @@ func TestPreviousStateTracking(t *testing.T) {
 		Number: 1,
 		State:  sql.NullString{String: "open", Valid: true},
 	}
-	db.UpsertPR(database, pr)
+	db.UpsertPR(store.DB, pr)
 
 	// Update to merged
 	pr.State = sql.NullString{String: "merged", Valid: true}
-	db.UpsertPR(database, pr)
+	db.UpsertPR(store.DB, pr)
 
 	// Check previous_state
 	var previousState sql.NullString
-	database.Get(&previousState, "SELECT previous_state FROM prs WHERE repo_id = ? AND number = 1", repoID)
+	store.DB.Get(&previousState, "SELECT previous_state FROM prs WHERE repo_id = ? AND number = 1", repoID)
 	if !previousState.Valid || previousState.String != "open" {
 		t.Errorf("expected previous_state 'open', got %v", previousState)
 	}
@@ -244,13 +244,13 @@ func TestPreviousStateTracking(t *testing.T) {
 
 func TestWatchedRepos(t *testing.T) {
 	dir := t.TempDir()
-	database, err := db.Open(filepath.Join(dir, "test.db"))
+	store, err := db.Open(filepath.Join(dir, "test.db"))
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
-	defer database.Close()
+	defer store.Close()
 
-	repoID, _ := db.UpsertRepo(database, "/tmp/test-repo", "", "test", "repo")
+	repoID, _ := db.UpsertRepo(store.DB, "/tmp/test-repo", "", "test", "repo")
 
 	// Insert watched repo
 	wr := &db.WatchedRepo{
@@ -258,12 +258,12 @@ func TestWatchedRepos(t *testing.T) {
 		PollIntervalSeconds: 300,
 		Enabled:             1,
 	}
-	if err := db.UpsertWatchedRepo(database, wr); err != nil {
+	if err := db.UpsertWatchedRepo(store.DB, wr); err != nil {
 		t.Fatalf("failed to upsert watched repo: %v", err)
 	}
 
 	// Get enabled repos
-	watched, err := db.GetEnabledWatchedRepos(database)
+	watched, err := db.GetEnabledWatchedRepos(store.DB)
 	if err != nil {
 		t.Fatalf("failed to get watched repos: %v", err)
 	}
@@ -275,21 +275,21 @@ func TestWatchedRepos(t *testing.T) {
 	}
 
 	// Update polled time
-	if err := db.UpdateWatchedRepoPolledAt(database, repoID); err != nil {
+	if err := db.UpdateWatchedRepoPolledAt(store.DB, repoID); err != nil {
 		t.Fatalf("failed to update polled time: %v", err)
 	}
 
 	// Verify polled time is set
-	watched, _ = db.GetEnabledWatchedRepos(database)
+	watched, _ = db.GetEnabledWatchedRepos(store.DB)
 	if !watched[0].LastPolledAt.Valid {
 		t.Error("expected last_polled_at to be set")
 	}
 
 	// Delete
-	if err := db.DeleteWatchedRepo(database, repoID); err != nil {
+	if err := db.DeleteWatchedRepo(store.DB, repoID); err != nil {
 		t.Fatalf("failed to delete watched repo: %v", err)
 	}
-	watched, _ = db.GetEnabledWatchedRepos(database)
+	watched, _ = db.GetEnabledWatchedRepos(store.DB)
 	if len(watched) != 0 {
 		t.Errorf("expected 0 watched repos after delete, got %d", len(watched))
 	}

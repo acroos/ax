@@ -47,7 +47,7 @@ func main() {
 }
 
 // openDB opens the ax database, creating it if needed.
-func openDB() (*sqlx.DB, error) {
+func openDB() (*db.Store, error) {
 	dbPath, err := db.DefaultDBPath()
 	if err != nil {
 		return nil, err
@@ -82,19 +82,19 @@ without making GitHub API calls. Useful for mid-session updates.`,
 				return err
 			}
 
-			database, err := openDB()
+			store, err := openDB()
 			if err != nil {
 				return err
 			}
-			defer database.Close()
+			defer store.Close()
 
 			var result *axsync.Result
 			if sessionsOnly {
-				result, err = axsync.RunSessionsOnly(database, axsync.Options{
+				result, err = axsync.RunSessionsOnly(store.DB, axsync.Options{
 					RepoPath: path,
 				})
 			} else {
-				result, err = axsync.Run(database, axsync.Options{
+				result, err = axsync.Run(store.DB, axsync.Options{
 					RepoPath: path,
 					Since:    since,
 				})
@@ -137,13 +137,13 @@ func newReportCmd() *cobra.Command {
 				return err
 			}
 
-			database, err := openDB()
+			store, err := openDB()
 			if err != nil {
 				return err
 			}
-			defer database.Close()
+			defer store.Close()
 
-			repo, err := db.GetRepoByPath(database, path)
+			repo, err := db.GetRepoByPath(store.DB, path)
 			if err != nil {
 				return err
 			}
@@ -152,9 +152,9 @@ func newReportCmd() *cobra.Command {
 			}
 
 			if prNumber > 0 {
-				return printPRReport(database, repo, prNumber)
+				return printPRReport(store.DB, repo, prNumber)
 			}
-			return printRepoReport(database, repo)
+			return printRepoReport(store.DB, repo)
 		},
 	}
 
@@ -412,13 +412,13 @@ func newStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show tracked repos and last sync time",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			database, err := openDB()
+			store, err := openDB()
 			if err != nil {
 				return err
 			}
-			defer database.Close()
+			defer store.Close()
 
-			repos, err := db.ListRepos(database)
+			repos, err := db.ListRepos(store.DB)
 			if err != nil {
 				return err
 			}
@@ -430,7 +430,7 @@ func newStatusCmd() *cobra.Command {
 
 			// Build watch status lookup
 			watchedMap := make(map[int64]*db.WatchedRepo)
-			watched, _ := db.GetAllWatchedRepos(database)
+			watched, _ := db.GetAllWatchedRepos(store.DB)
 			for i := range watched {
 				watchedMap[watched[i].RepoID] = &watched[i]
 			}
@@ -598,14 +598,14 @@ Use --uninstall to remove all AX hooks and polling.`,
 				}
 
 				// Also register current repo as watched if we're in a git repo
-				database, dbErr := openDB()
+				initStore, dbErr := openDB()
 				if dbErr == nil {
-					defer database.Close()
+					defer initStore.Close()
 					cwd, cwdErr := os.Getwd()
 					if cwdErr == nil {
-						repo, repoErr := db.GetRepoByPath(database, cwd)
+						repo, repoErr := db.GetRepoByPath(initStore.DB, cwd)
 						if repoErr == nil && repo != nil {
-							db.UpsertWatchedRepo(database, &db.WatchedRepo{
+							db.UpsertWatchedRepo(initStore.DB, &db.WatchedRepo{
 								RepoID:              repo.ID,
 								PollIntervalSeconds: watchInterval,
 								Enabled:             1,
@@ -648,16 +648,16 @@ to watch a specific repo.
 Use 'ax watch install' to set up automatic background polling via
 launchd (macOS) or cron (Linux).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			database, err := openDB()
+			store, err := openDB()
 			if err != nil {
 				return err
 			}
-			defer database.Close()
+			defer store.Close()
 
 			if once {
-				return runWatchOnce(database, repoPath)
+				return runWatchOnce(store.DB, repoPath)
 			}
-			return runWatchLoop(database, repoPath, interval)
+			return runWatchLoop(store.DB, repoPath, interval)
 		},
 	}
 
@@ -767,13 +767,13 @@ func newWatchStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show watched repos and polling status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			database, err := openDB()
+			store, err := openDB()
 			if err != nil {
 				return err
 			}
-			defer database.Close()
+			defer store.Close()
 
-			watched, err := db.GetAllWatchedRepos(database)
+			watched, err := db.GetAllWatchedRepos(store.DB)
 			if err != nil {
 				return err
 			}
@@ -798,7 +798,7 @@ func newWatchStatusCmd() *cobra.Command {
 			for _, wr := range watched {
 				// Look up repo name
 				var repoName string
-				err := database.Get(&repoName, `
+				err := store.DB.Get(&repoName, `
 					SELECT COALESCE(github_owner || '/' || github_repo, path)
 					FROM repos WHERE id = ?
 				`, wr.RepoID)
