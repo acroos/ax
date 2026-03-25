@@ -14,8 +14,10 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/austinroos/ax/internal/config"
 	"github.com/austinroos/ax/internal/db"
 	"github.com/austinroos/ax/internal/hooks"
+	"github.com/austinroos/ax/internal/push"
 	"github.com/austinroos/ax/internal/server"
 	axsync "github.com/austinroos/ax/internal/sync"
 	"github.com/austinroos/ax/internal/watch"
@@ -40,6 +42,7 @@ func main() {
 	root.AddCommand(newDashboardCmd())
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newWatchCmd())
+	root.AddCommand(newPushCmd())
 	root.AddCommand(newServerCmd())
 
 	if err := root.Execute(); err != nil {
@@ -114,6 +117,26 @@ without making GitHub API calls. Useful for mid-session updates.`,
 				fmt.Printf("  Sessions parsed: %d\n", result.SessionsParsed)
 				fmt.Printf("  Sessions correlated: %d\n", result.SessionsCorrelated)
 			}
+
+			// Auto-push to team server if configured
+			cfg, _ := config.LoadConfig()
+			if cfg.IsTeamMode() {
+				repo, repoErr := db.GetRepoByPath(store.DB, path)
+				if repoErr == nil && repo != nil {
+					payload, extractErr := push.ExtractPayload(store.DB, repo.ID)
+					if extractErr == nil {
+						client := push.NewClient(cfg.ServerURL, cfg.APIKey)
+						pushResp, pushErr := client.Push(payload)
+						if pushErr != nil {
+							log.Printf("Warning: failed to push to team server: %v", pushErr)
+						} else if pushResp.OK {
+							fmt.Printf("  Pushed to %s (%d PRs, %d sessions)\n",
+								cfg.ServerURL, pushResp.Entities["prs"], pushResp.Entities["sessions"])
+						}
+					}
+				}
+			}
+
 			return nil
 		},
 	}
@@ -543,20 +566,22 @@ func newInitCmd() *cobra.Command {
 	var liveSync bool
 	var noWatch bool
 	var watchInterval int
+	var teamURL string
+	var apiKey string
+	var userName string
 
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Install Claude Code hooks and GitHub polling for automatic metrics",
-		Long: `Install Claude Code hooks that automatically sync metrics, and set up
-background GitHub polling to detect PR merges and closures.
+		Short: "Set up AX for automatic metrics collection",
+		Long: `Set up AX for automatic metrics collection.
 
-By default, installs:
-  - A SessionEnd hook that runs a full sync when each session ends
-  - Background GitHub polling (via launchd/cron) to finalize metrics
-    when PRs are merged or closed
+LOCAL MODE (default):
+  Installs Claude Code hooks and background GitHub polling so your
+  metrics update automatically.
 
-With --live, also installs a Stop hook for mid-session updates.
-With --no-watch, skips background polling setup.
+TEAM MODE (--team):
+  Walks you through connecting to your team's AX server. Your metrics
+  will automatically sync locally AND push to the shared dashboard.
 
 Use --uninstall to remove all AX hooks and polling.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -570,58 +595,13 @@ Use --uninstall to remove all AX hooks and polling.`,
 				return nil
 			}
 
-			axBinary, err := os.Executable()
-			if err != nil {
-				axBinary = "ax"
+			// Team mode walkthrough
+			if teamURL != "" {
+				return initTeamMode(teamURL, apiKey, userName, settingsPath, liveSync, noWatch, watchInterval)
 			}
 
-			if hooks.IsInstalled(settingsPath) {
-				fmt.Println("Updating AX hooks...")
-			}
-
-			if err := hooks.Install(settingsPath, axBinary); err != nil {
-				return fmt.Errorf("failed to install SessionEnd hook: %w", err)
-			}
-			fmt.Println("SessionEnd hook installed — full sync after each session.")
-
-			if liveSync {
-				if err := hooks.InstallStopHook(settingsPath, axBinary); err != nil {
-					return fmt.Errorf("failed to install Stop hook: %w", err)
-				}
-				fmt.Println("Stop hook installed — lightweight sync after each response.")
-			}
-
-			if !noWatch {
-				if err := watch.Install(axBinary, watchInterval); err != nil {
-					log.Printf("Warning: failed to install background polling: %v", err)
-					fmt.Println("Background polling: failed (you can set up manually with 'ax watch install')")
-				} else {
-					fmt.Printf("Background polling installed (every %ds).\n", watchInterval)
-				}
-
-				// Also register current repo as watched if we're in a git repo
-				initStore, dbErr := openDB()
-				if dbErr == nil {
-					defer initStore.Close()
-					cwd, cwdErr := os.Getwd()
-					if cwdErr == nil {
-						repo, repoErr := db.GetRepoByPath(initStore.DB, cwd)
-						if repoErr == nil && repo != nil {
-							db.UpsertWatchedRepo(initStore.DB, &db.WatchedRepo{
-								RepoID:              repo.ID,
-								PollIntervalSeconds: watchInterval,
-								Enabled:             1,
-							})
-						}
-					}
-				}
-			}
-
-			fmt.Println()
-			fmt.Println("  Your metrics will now update automatically.")
-			fmt.Println("  To verify: check ~/.claude/settings.json")
-			fmt.Println("  To remove: run ax init --uninstall")
-			return nil
+			// Local mode (existing behavior)
+			return initLocalMode(settingsPath, liveSync, noWatch, watchInterval)
 		},
 	}
 
@@ -629,6 +609,241 @@ Use --uninstall to remove all AX hooks and polling.`,
 	cmd.Flags().BoolVar(&liveSync, "live", false, "Also install a Stop hook for mid-session metric updates")
 	cmd.Flags().BoolVar(&noWatch, "no-watch", false, "Skip background GitHub polling setup")
 	cmd.Flags().IntVar(&watchInterval, "watch-interval", 300, "Background polling interval in seconds")
+	cmd.Flags().StringVar(&teamURL, "team", "", "Team server URL (e.g., https://ax.internal.company.com:8080)")
+	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key for the team server")
+	cmd.Flags().StringVar(&userName, "user", "", "Your name (for attribution on the team dashboard)")
+
+	return cmd
+}
+
+func initLocalMode(settingsPath string, liveSync, noWatch bool, watchInterval int) error {
+	axBinary, err := os.Executable()
+	if err != nil {
+		axBinary = "ax"
+	}
+
+	if hooks.IsInstalled(settingsPath) {
+		fmt.Println("Updating AX hooks...")
+	}
+
+	if err := hooks.Install(settingsPath, axBinary); err != nil {
+		return fmt.Errorf("failed to install SessionEnd hook: %w", err)
+	}
+	fmt.Println("SessionEnd hook installed — full sync after each session.")
+
+	if liveSync {
+		if err := hooks.InstallStopHook(settingsPath, axBinary); err != nil {
+			return fmt.Errorf("failed to install Stop hook: %w", err)
+		}
+		fmt.Println("Stop hook installed — lightweight sync after each response.")
+	}
+
+	if !noWatch {
+		if err := watch.Install(axBinary, watchInterval); err != nil {
+			log.Printf("Warning: failed to install background polling: %v", err)
+			fmt.Println("Background polling: failed (you can set up manually with 'ax watch install')")
+		} else {
+			fmt.Printf("Background polling installed (every %ds).\n", watchInterval)
+		}
+
+		initStore, dbErr := openDB()
+		if dbErr == nil {
+			defer initStore.Close()
+			cwd, cwdErr := os.Getwd()
+			if cwdErr == nil {
+				repo, repoErr := db.GetRepoByPath(initStore.DB, cwd)
+				if repoErr == nil && repo != nil {
+					db.UpsertWatchedRepo(initStore.DB, &db.WatchedRepo{
+						RepoID:              repo.ID,
+						PollIntervalSeconds: watchInterval,
+						Enabled:             1,
+					})
+				}
+			}
+		}
+	}
+
+	fmt.Println()
+	fmt.Println("  Your metrics will now update automatically.")
+	fmt.Println("  To verify: check ~/.claude/settings.json")
+	fmt.Println("  To remove: run ax init --uninstall")
+	return nil
+}
+
+func initTeamMode(serverURL, apiKey, userName, settingsPath string, liveSync, noWatch bool, watchInterval int) error {
+	fmt.Println()
+	fmt.Println("  AX Team Setup")
+	fmt.Println("  =============")
+	fmt.Println()
+
+	// Step 1: Validate inputs
+	if serverURL == "" {
+		return fmt.Errorf("--team flag requires a server URL")
+	}
+	if apiKey == "" {
+		return fmt.Errorf("--api-key is required for team mode\n\n  Ask your team admin for the API key.\n  They can generate one with: ax server create-key <name>")
+	}
+	if userName == "" {
+		return fmt.Errorf("--user is required for team mode (your name for attribution)")
+	}
+
+	// Step 2: Test server connectivity
+	fmt.Printf("  Step 1/4: Testing server connectivity...\n")
+	fmt.Printf("           Server: %s\n", serverURL)
+
+	client := push.NewClient(serverURL, apiKey)
+
+	// Health check first (no auth)
+	if err := client.HealthCheck(); err != nil {
+		fmt.Printf("           FAILED\n\n")
+		fmt.Printf("  Could not reach the server at %s\n", serverURL)
+		fmt.Printf("  Check that:\n")
+		fmt.Printf("    - The URL is correct (include port if needed)\n")
+		fmt.Printf("    - The server is running (docker compose ps)\n")
+		fmt.Printf("    - Your network can reach it (VPN, firewall)\n")
+		return fmt.Errorf("server unreachable: %w", err)
+	}
+	fmt.Printf("           Server is reachable.\n")
+
+	// Step 3: Validate API key
+	fmt.Printf("\n  Step 2/4: Validating API key...\n")
+
+	if err := client.Ping(); err != nil {
+		fmt.Printf("           FAILED\n\n")
+		fmt.Printf("  The server is reachable but the API key was rejected.\n")
+		fmt.Printf("  Check that:\n")
+		fmt.Printf("    - The API key is correct (starts with ax_k1_)\n")
+		fmt.Printf("    - The key hasn't been revoked\n")
+		fmt.Printf("    - Ask your admin to verify with: ax server list-keys\n")
+		return fmt.Errorf("API key validation failed: %w", err)
+	}
+	fmt.Printf("           API key is valid.\n")
+
+	// Step 4: Save config
+	fmt.Printf("\n  Step 3/4: Saving team configuration...\n")
+
+	cfg := &config.Config{
+		Mode:      "team",
+		ServerURL: serverURL,
+		APIKey:    apiKey,
+		UserName:  userName,
+	}
+	if err := config.SaveConfig(cfg); err != nil {
+		return fmt.Errorf("failed to save config: %w", err)
+	}
+	fmt.Printf("           Saved to ~/.ax/config.json\n")
+
+	// Step 5: Install hooks (same as local mode)
+	fmt.Printf("\n  Step 4/4: Installing hooks...\n")
+
+	axBinary, err := os.Executable()
+	if err != nil {
+		axBinary = "ax"
+	}
+
+	if err := hooks.Install(settingsPath, axBinary); err != nil {
+		return fmt.Errorf("failed to install SessionEnd hook: %w", err)
+	}
+	fmt.Printf("           SessionEnd hook installed.\n")
+
+	if liveSync {
+		if err := hooks.InstallStopHook(settingsPath, axBinary); err != nil {
+			return fmt.Errorf("failed to install Stop hook: %w", err)
+		}
+		fmt.Printf("           Stop hook installed.\n")
+	}
+
+	if !noWatch {
+		if err := watch.Install(axBinary, watchInterval); err != nil {
+			log.Printf("           Warning: background polling setup failed: %v", err)
+		} else {
+			fmt.Printf("           Background polling installed.\n")
+		}
+	}
+
+	// Success summary
+	fmt.Println()
+	fmt.Println("  Setup complete!")
+	fmt.Println()
+	fmt.Println("  What happens now:")
+	fmt.Printf("    - When a Claude Code session ends, metrics sync locally\n")
+	fmt.Printf("      and automatically push to %s\n", serverURL)
+	fmt.Printf("    - Your data will appear on the team dashboard\n")
+	fmt.Printf("    - Your contributions are attributed to %q\n", userName)
+	fmt.Println()
+	fmt.Println("  Next step:")
+	fmt.Println("    Run 'ax sync --repo .' in a git repo to do your first sync + push.")
+	fmt.Println()
+	fmt.Println("  To remove: run 'ax init --uninstall'")
+
+	return nil
+}
+
+func newPushCmd() *cobra.Command {
+	var repoPath string
+	var serverURL string
+	var apiKey string
+
+	cmd := &cobra.Command{
+		Use:   "push",
+		Short: "Push local data to the team server",
+		Long: `Push local sync data to the team server.
+
+Reads server URL and API key from ~/.ax/config.json (set up by 'ax init --team').
+You can override with --server and --api-key flags.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			path, err := resolveRepoPath(repoPath)
+			if err != nil {
+				return err
+			}
+
+			// Load config for defaults
+			cfg, _ := config.LoadConfig()
+			if serverURL == "" {
+				serverURL = cfg.ServerURL
+			}
+			if apiKey == "" {
+				apiKey = cfg.APIKey
+			}
+
+			if serverURL == "" {
+				return fmt.Errorf("no server URL configured\n\n  Run 'ax init --team <url> --api-key <key> --user <name>' to set up team mode\n  Or pass --server and --api-key flags")
+			}
+			if apiKey == "" {
+				return fmt.Errorf("no API key configured — use --api-key or run 'ax init --team'")
+			}
+
+			store, err := openDB()
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			repo, err := db.GetRepoByPath(store.DB, path)
+			if err != nil || repo == nil {
+				return fmt.Errorf("repo not found — run 'ax sync --repo %s' first", path)
+			}
+
+			payload, err := push.ExtractPayload(store.DB, repo.ID)
+			if err != nil {
+				return fmt.Errorf("failed to extract data: %w", err)
+			}
+
+			client := push.NewClient(serverURL, apiKey)
+			resp, err := client.Push(payload)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Pushed to %s: %d PRs, %d sessions, %d commits\n",
+				serverURL, resp.Entities["prs"], resp.Entities["sessions"], resp.Entities["commits"])
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&repoPath, "repo", "", "Path to the git repository (defaults to current directory)")
+	cmd.Flags().StringVar(&serverURL, "server", "", "Team server URL (overrides config)")
+	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key (overrides config)")
 
 	return cmd
 }
