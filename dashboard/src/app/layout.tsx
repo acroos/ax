@@ -95,6 +95,17 @@ async function Sidebar() {
           Pull Requests
         </NavLink>
         <NavLink
+          href="/compare"
+          icon={
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="opacity-60">
+              <rect x="2" y="6" width="4" height="7" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="9" y="3" width="4" height="10" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+          }
+        >
+          Compare
+        </NavLink>
+        <NavLink
           href="/docs"
           icon={
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="opacity-60">
