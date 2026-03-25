@@ -8,12 +8,16 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"text/tabwriter"
+	"time"
 
 	"github.com/austinroos/ax/internal/db"
 	"github.com/austinroos/ax/internal/hooks"
 	axsync "github.com/austinroos/ax/internal/sync"
+	"github.com/austinroos/ax/internal/watch"
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 )
@@ -34,6 +38,7 @@ func main() {
 	root.AddCommand(newStatusCmd())
 	root.AddCommand(newDashboardCmd())
 	root.AddCommand(newInitCmd())
+	root.AddCommand(newWatchCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -167,13 +172,13 @@ func printRepoReport(database *sqlx.DB, repo *db.Repo) error {
 		fmt.Printf("  Last synced: %s\n\n", repo.LastSyncedAt.String)
 	}
 
-	prs, err := db.GetPRsForRepo(database, repo.ID)
+	prs, err := db.GetFinalizedPRsForRepo(database, repo.ID)
 	if err != nil {
 		return err
 	}
 
 	if len(prs) == 0 {
-		fmt.Println("  No PRs found.")
+		fmt.Println("  No finalized PRs found. Metrics are computed when PRs are merged or closed.")
 		return nil
 	}
 
@@ -321,11 +326,17 @@ func printPRReport(database *sqlx.DB, repo *db.Repo, prNumber int) error {
 
 	fmt.Printf("\n  PR #%d: %s\n", pr.Number, pr.Title.String)
 	fmt.Printf("  State: %s  |  Branch: %s\n", pr.State.String, pr.Branch.String)
-	fmt.Printf("  +%d -%d across %d files\n\n", pr.Additions, pr.Deletions, pr.ChangedFiles)
+	fmt.Printf("  +%d -%d across %d files\n", pr.Additions, pr.Deletions, pr.ChangedFiles)
 
 	if m == nil {
-		fmt.Println("  No metrics computed yet.")
+		fmt.Println("\n  No metrics computed yet.")
 		return nil
+	}
+
+	if m.MetricsFinalized == 1 {
+		fmt.Printf("  Metrics finalized: %s\n\n", m.FinalizedAt.String)
+	} else {
+		fmt.Printf("  Metrics: pending (PR still in-flight)\n\n")
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -417,9 +428,16 @@ func newStatusCmd() *cobra.Command {
 				return nil
 			}
 
+			// Build watch status lookup
+			watchedMap := make(map[int64]*db.WatchedRepo)
+			watched, _ := db.GetAllWatchedRepos(database)
+			for i := range watched {
+				watchedMap[watched[i].RepoID] = &watched[i]
+			}
+
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "\n  REPO\tLAST SYNCED")
-			fmt.Fprintln(w, "  ----\t-----------")
+			fmt.Fprintln(w, "\n  REPO\tLAST SYNCED\tWATCHING\tLAST POLLED")
+			fmt.Fprintln(w, "  ----\t-----------\t--------\t-----------")
 			for _, r := range repos {
 				name := r.Path
 				if r.GithubOwner.Valid && r.GithubRepo.Valid {
@@ -429,7 +447,17 @@ func newStatusCmd() *cobra.Command {
 				if r.LastSyncedAt.Valid {
 					synced = r.LastSyncedAt.String
 				}
-				fmt.Fprintf(w, "  %s\t%s\n", name, synced)
+				watching := "no"
+				polled := "-"
+				if wr, ok := watchedMap[r.ID]; ok && wr.Enabled == 1 {
+					watching = "yes"
+					if wr.LastPolledAt.Valid {
+						polled = wr.LastPolledAt.String
+					} else {
+						polled = "never"
+					}
+				}
+				fmt.Fprintf(w, "  %s\t%s\t%s\t%s\n", name, synced, watching, polled)
 			}
 			w.Flush()
 			fmt.Println()
@@ -511,27 +539,32 @@ func findDashboardDir() string {
 func newInitCmd() *cobra.Command {
 	var uninstall bool
 	var liveSync bool
+	var noWatch bool
+	var watchInterval int
 
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Install Claude Code hooks for automatic session capture",
-		Long: `Install Claude Code hooks that automatically sync metrics.
+		Short: "Install Claude Code hooks and GitHub polling for automatic metrics",
+		Long: `Install Claude Code hooks that automatically sync metrics, and set up
+background GitHub polling to detect PR merges and closures.
 
-By default, installs a SessionEnd hook that runs a full sync when each
-session ends.
+By default, installs:
+  - A SessionEnd hook that runs a full sync when each session ends
+  - Background GitHub polling (via launchd/cron) to finalize metrics
+    when PRs are merged or closed
 
-With --live, also installs a Stop hook that runs a lightweight
-sessions-only sync after each Claude response. This keeps your
-dashboard updated in real-time during long sessions.
+With --live, also installs a Stop hook for mid-session updates.
+With --no-watch, skips background polling setup.
 
-Use --uninstall to remove all AX hooks.`,
+Use --uninstall to remove all AX hooks and polling.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settingsPath := hooks.DefaultSettingsPath()
 
 			if uninstall {
 				hooks.Uninstall(settingsPath)
 				hooks.UninstallStopHook(settingsPath)
-				fmt.Println("All AX hooks removed from Claude Code settings.")
+				watch.Uninstall()
+				fmt.Println("All AX hooks and background polling removed.")
 				return nil
 			}
 
@@ -556,6 +589,32 @@ Use --uninstall to remove all AX hooks.`,
 				fmt.Println("Stop hook installed — lightweight sync after each response.")
 			}
 
+			if !noWatch {
+				if err := watch.Install(axBinary, watchInterval); err != nil {
+					log.Printf("Warning: failed to install background polling: %v", err)
+					fmt.Println("Background polling: failed (you can set up manually with 'ax watch install')")
+				} else {
+					fmt.Printf("Background polling installed (every %ds).\n", watchInterval)
+				}
+
+				// Also register current repo as watched if we're in a git repo
+				database, dbErr := openDB()
+				if dbErr == nil {
+					defer database.Close()
+					cwd, cwdErr := os.Getwd()
+					if cwdErr == nil {
+						repo, repoErr := db.GetRepoByPath(database, cwd)
+						if repoErr == nil && repo != nil {
+							db.UpsertWatchedRepo(database, &db.WatchedRepo{
+								RepoID:              repo.ID,
+								PollIntervalSeconds: watchInterval,
+								Enabled:             1,
+							})
+						}
+					}
+				}
+			}
+
 			fmt.Println()
 			fmt.Println("  Your metrics will now update automatically.")
 			fmt.Println("  To verify: check ~/.claude/settings.json")
@@ -564,10 +623,205 @@ Use --uninstall to remove all AX hooks.`,
 		},
 	}
 
-	cmd.Flags().BoolVar(&uninstall, "uninstall", false, "Remove all AX hooks from Claude Code")
+	cmd.Flags().BoolVar(&uninstall, "uninstall", false, "Remove all AX hooks and background polling")
 	cmd.Flags().BoolVar(&liveSync, "live", false, "Also install a Stop hook for mid-session metric updates")
+	cmd.Flags().BoolVar(&noWatch, "no-watch", false, "Skip background GitHub polling setup")
+	cmd.Flags().IntVar(&watchInterval, "watch-interval", 300, "Background polling interval in seconds")
 
 	return cmd
+}
+
+func newWatchCmd() *cobra.Command {
+	var repoPath string
+	var once bool
+	var interval int
+
+	cmd := &cobra.Command{
+		Use:   "watch",
+		Short: "Poll GitHub for PR state changes and finalize metrics",
+		Long: `Watch polls GitHub for PR state changes (merges, closures) and
+finalizes metrics for PRs that reach terminal states.
+
+By default, watches all repos in the watched_repos table. Use --repo
+to watch a specific repo.
+
+Use 'ax watch install' to set up automatic background polling via
+launchd (macOS) or cron (Linux).`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			database, err := openDB()
+			if err != nil {
+				return err
+			}
+			defer database.Close()
+
+			if once {
+				return runWatchOnce(database, repoPath)
+			}
+			return runWatchLoop(database, repoPath, interval)
+		},
+	}
+
+	cmd.Flags().StringVar(&repoPath, "repo", "", "Watch a specific repo (defaults to all watched repos)")
+	cmd.Flags().BoolVar(&once, "once", false, "Run a single poll cycle and exit")
+	cmd.Flags().IntVar(&interval, "interval", 300, "Poll interval in seconds (default: 5 minutes)")
+
+	cmd.AddCommand(newWatchInstallCmd())
+	cmd.AddCommand(newWatchUninstallCmd())
+	cmd.AddCommand(newWatchStatusCmd())
+
+	return cmd
+}
+
+func runWatchOnce(database *sqlx.DB, repoPath string) error {
+	var result *axsync.WatchResult
+	var err error
+
+	if repoPath != "" {
+		path, pathErr := resolveRepoPath(repoPath)
+		if pathErr != nil {
+			return pathErr
+		}
+		result, err = axsync.RunGitHubOnlyForRepo(database, path)
+	} else {
+		result, err = axsync.RunGitHubOnly(database)
+	}
+	if err != nil {
+		return err
+	}
+
+	if result.PRsFinalized > 0 {
+		fmt.Printf("Polled %d repo(s): %d PRs checked, %d finalized\n",
+			result.ReposPolled, result.PRsChecked, result.PRsFinalized)
+	}
+	return nil
+}
+
+func runWatchLoop(database *sqlx.DB, repoPath string, intervalSec int) error {
+	fmt.Printf("Watching for PR state changes every %ds. Press Ctrl+C to stop.\n", intervalSec)
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	ticker := time.NewTicker(time.Duration(intervalSec) * time.Second)
+	defer ticker.Stop()
+
+	// Run immediately on start
+	if err := runWatchOnce(database, repoPath); err != nil {
+		log.Printf("Warning: poll failed: %v", err)
+	}
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := runWatchOnce(database, repoPath); err != nil {
+				log.Printf("Warning: poll failed: %v", err)
+			}
+		case <-sigCh:
+			fmt.Println("\nStopping watch.")
+			return nil
+		}
+	}
+}
+
+func newWatchInstallCmd() *cobra.Command {
+	var interval int
+
+	cmd := &cobra.Command{
+		Use:   "install",
+		Short: "Install system-level background polling (launchd/cron)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			axBinary, err := os.Executable()
+			if err != nil {
+				axBinary = "ax"
+			}
+
+			if err := watch.Install(axBinary, interval); err != nil {
+				return err
+			}
+			fmt.Printf("Background polling installed (every %ds).\n", interval)
+			fmt.Println("Logs: /tmp/ax-watch.log")
+			return nil
+		},
+	}
+
+	cmd.Flags().IntVar(&interval, "interval", 300, "Poll interval in seconds")
+	return cmd
+}
+
+func newWatchUninstallCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "uninstall",
+		Short: "Remove system-level background polling",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := watch.Uninstall(); err != nil {
+				return err
+			}
+			fmt.Println("Background polling removed.")
+			return nil
+		},
+	}
+}
+
+func newWatchStatusCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Show watched repos and polling status",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			database, err := openDB()
+			if err != nil {
+				return err
+			}
+			defer database.Close()
+
+			watched, err := db.GetAllWatchedRepos(database)
+			if err != nil {
+				return err
+			}
+
+			// System-level scheduling status
+			if watch.IsInstalled() {
+				fmt.Println("\n  System polling: active")
+			} else {
+				fmt.Println("\n  System polling: not installed (run 'ax watch install')")
+			}
+
+			if len(watched) == 0 {
+				fmt.Println("  No watched repos. Run 'ax init' to set up watching.")
+				fmt.Println()
+				return nil
+			}
+
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fmt.Fprintln(w, "\n  REPO\tINTERVAL\tLAST POLLED\tENABLED")
+			fmt.Fprintln(w, "  ----\t--------\t-----------\t-------")
+
+			for _, wr := range watched {
+				// Look up repo name
+				var repoName string
+				err := database.Get(&repoName, `
+					SELECT COALESCE(github_owner || '/' || github_repo, path)
+					FROM repos WHERE id = ?
+				`, wr.RepoID)
+				if err != nil {
+					repoName = fmt.Sprintf("repo#%d", wr.RepoID)
+				}
+
+				polled := "never"
+				if wr.LastPolledAt.Valid {
+					polled = wr.LastPolledAt.String
+				}
+				enabled := "yes"
+				if wr.Enabled == 0 {
+					enabled = "no"
+				}
+				fmt.Fprintf(w, "  %s\t%ds\t%s\t%s\n", repoName, wr.PollIntervalSeconds, polled, enabled)
+			}
+			w.Flush()
+			fmt.Println()
+
+			return nil
+		},
+	}
 }
 
 func init() {

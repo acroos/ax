@@ -57,7 +57,7 @@ func ListRepos(db *sqlx.DB) ([]Repo, error) {
 	return repos, nil
 }
 
-// UpsertPR inserts or updates a pull request.
+// UpsertPR inserts or updates a pull request, tracking state transitions.
 func UpsertPR(db *sqlx.DB, pr *PR) (int64, error) {
 	result, err := db.Exec(`
 		INSERT INTO prs (repo_id, number, title, branch, state, created_at, merged_at, closed_at, url, additions, deletions, changed_files)
@@ -65,6 +65,7 @@ func UpsertPR(db *sqlx.DB, pr *PR) (int64, error) {
 		ON CONFLICT(repo_id, number) DO UPDATE SET
 			title = excluded.title,
 			branch = excluded.branch,
+			previous_state = prs.state,
 			state = excluded.state,
 			created_at = excluded.created_at,
 			merged_at = excluded.merged_at,
@@ -112,36 +113,121 @@ func UpsertCommit(db *sqlx.DB, c *Commit) error {
 }
 
 // UpsertPRMetrics inserts or replaces metrics for a PR.
+// If the PR's metrics are already finalized, this is a no-op.
 func UpsertPRMetrics(db *sqlx.DB, m *PRMetrics) error {
 	_, err := db.Exec(`
 		INSERT INTO pr_metrics (pr_id, messages_per_pr, iteration_depth, post_open_commits, first_pass_accepted,
 			ci_success_rate, diff_churn_lines, has_tests, line_revisit_rate, plan_coverage_score,
 			plan_deviation_score, scope_creep_detected, self_correction_rate, context_efficiency,
-			error_recovery_attempts, token_cost_usd, computed_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+			error_recovery_attempts, token_cost_usd, metrics_finalized, finalized_at, computed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
 		ON CONFLICT(pr_id) DO UPDATE SET
-			messages_per_pr = excluded.messages_per_pr,
-			iteration_depth = excluded.iteration_depth,
-			post_open_commits = excluded.post_open_commits,
-			first_pass_accepted = excluded.first_pass_accepted,
-			ci_success_rate = excluded.ci_success_rate,
-			diff_churn_lines = excluded.diff_churn_lines,
-			has_tests = excluded.has_tests,
-			line_revisit_rate = excluded.line_revisit_rate,
-			plan_coverage_score = excluded.plan_coverage_score,
-			plan_deviation_score = excluded.plan_deviation_score,
-			scope_creep_detected = excluded.scope_creep_detected,
-			self_correction_rate = excluded.self_correction_rate,
-			context_efficiency = excluded.context_efficiency,
-			error_recovery_attempts = excluded.error_recovery_attempts,
-			token_cost_usd = excluded.token_cost_usd,
-			computed_at = datetime('now')
+			messages_per_pr = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.messages_per_pr ELSE excluded.messages_per_pr END,
+			iteration_depth = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.iteration_depth ELSE excluded.iteration_depth END,
+			post_open_commits = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.post_open_commits ELSE excluded.post_open_commits END,
+			first_pass_accepted = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.first_pass_accepted ELSE excluded.first_pass_accepted END,
+			ci_success_rate = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.ci_success_rate ELSE excluded.ci_success_rate END,
+			diff_churn_lines = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.diff_churn_lines ELSE excluded.diff_churn_lines END,
+			has_tests = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.has_tests ELSE excluded.has_tests END,
+			line_revisit_rate = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.line_revisit_rate ELSE excluded.line_revisit_rate END,
+			plan_coverage_score = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.plan_coverage_score ELSE excluded.plan_coverage_score END,
+			plan_deviation_score = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.plan_deviation_score ELSE excluded.plan_deviation_score END,
+			scope_creep_detected = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.scope_creep_detected ELSE excluded.scope_creep_detected END,
+			self_correction_rate = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.self_correction_rate ELSE excluded.self_correction_rate END,
+			context_efficiency = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.context_efficiency ELSE excluded.context_efficiency END,
+			error_recovery_attempts = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.error_recovery_attempts ELSE excluded.error_recovery_attempts END,
+			token_cost_usd = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.token_cost_usd ELSE excluded.token_cost_usd END,
+			metrics_finalized = CASE WHEN pr_metrics.metrics_finalized = 1 THEN 1 ELSE excluded.metrics_finalized END,
+			finalized_at = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.finalized_at ELSE excluded.finalized_at END,
+			computed_at = CASE WHEN pr_metrics.metrics_finalized = 1 THEN pr_metrics.computed_at ELSE datetime('now') END
 	`, m.PRID, m.MessagesPerPR, m.IterationDepth, m.PostOpenCommits, m.FirstPassAccepted,
 		m.CISuccessRate, m.DiffChurnLines, m.HasTests, m.LineRevisitRate,
 		m.PlanCoverageScore, m.PlanDeviationScore, m.ScopeCreepDetected,
-		m.SelfCorrectionRate, m.ContextEfficiency, m.ErrorRecoveryAttempts, m.TokenCostUSD)
+		m.SelfCorrectionRate, m.ContextEfficiency, m.ErrorRecoveryAttempts, m.TokenCostUSD,
+		m.MetricsFinalized, m.FinalizedAt)
 	if err != nil {
 		return fmt.Errorf("failed to upsert PR metrics: %w", err)
+	}
+	return nil
+}
+
+// IsPRFinalized returns true if a PR's metrics have been finalized.
+func IsPRFinalized(db *sqlx.DB, prID int64) (bool, error) {
+	var finalized int
+	err := db.Get(&finalized, "SELECT COALESCE(metrics_finalized, 0) FROM pr_metrics WHERE pr_id = ?", prID)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to check finalization: %w", err)
+	}
+	return finalized == 1, nil
+}
+
+// GetFinalizedPRsForRepo returns only PRs with finalized metrics for a repo.
+func GetFinalizedPRsForRepo(db *sqlx.DB, repoID int64) ([]PR, error) {
+	var prs []PR
+	err := db.Select(&prs, `
+		SELECT p.* FROM prs p
+		INNER JOIN pr_metrics m ON p.id = m.pr_id
+		WHERE p.repo_id = ? AND m.metrics_finalized = 1
+		ORDER BY p.number DESC
+	`, repoID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get finalized PRs: %w", err)
+	}
+	return prs, nil
+}
+
+// UpsertWatchedRepo adds or updates a watched repo configuration.
+func UpsertWatchedRepo(db *sqlx.DB, w *WatchedRepo) error {
+	_, err := db.Exec(`
+		INSERT INTO watched_repos (repo_id, poll_interval_seconds, enabled)
+		VALUES (?, ?, ?)
+		ON CONFLICT(repo_id) DO UPDATE SET
+			poll_interval_seconds = excluded.poll_interval_seconds,
+			enabled = excluded.enabled
+	`, w.RepoID, w.PollIntervalSeconds, w.Enabled)
+	if err != nil {
+		return fmt.Errorf("failed to upsert watched repo: %w", err)
+	}
+	return nil
+}
+
+// GetEnabledWatchedRepos returns all enabled watched repos with their repo details.
+func GetEnabledWatchedRepos(db *sqlx.DB) ([]WatchedRepo, error) {
+	var repos []WatchedRepo
+	err := db.Select(&repos, "SELECT * FROM watched_repos WHERE enabled = 1")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get watched repos: %w", err)
+	}
+	return repos, nil
+}
+
+// UpdateWatchedRepoPolledAt updates the last_polled_at timestamp.
+func UpdateWatchedRepoPolledAt(db *sqlx.DB, repoID int64) error {
+	_, err := db.Exec("UPDATE watched_repos SET last_polled_at = datetime('now') WHERE repo_id = ?", repoID)
+	if err != nil {
+		return fmt.Errorf("failed to update polled time: %w", err)
+	}
+	return nil
+}
+
+// GetAllWatchedRepos returns all watched repos (for status display).
+func GetAllWatchedRepos(db *sqlx.DB) ([]WatchedRepo, error) {
+	var repos []WatchedRepo
+	err := db.Select(&repos, "SELECT * FROM watched_repos")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get watched repos: %w", err)
+	}
+	return repos, nil
+}
+
+// DeleteWatchedRepo removes a repo from the watch list.
+func DeleteWatchedRepo(db *sqlx.DB, repoID int64) error {
+	_, err := db.Exec("DELETE FROM watched_repos WHERE repo_id = ?", repoID)
+	if err != nil {
+		return fmt.Errorf("failed to delete watched repo: %w", err)
 	}
 	return nil
 }

@@ -176,7 +176,27 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		}
 		prNumberToID[ghPR.Number] = prID
 
-		// Compute Phase 1 metrics
+		// Skip metric computation for already-finalized PRs
+		finalized, _ := db.IsPRFinalized(database, prID)
+		if finalized {
+			log.Printf("  PR #%d already finalized, skipping metrics", ghPR.Number)
+			result.PRsSynced++
+			continue
+		}
+
+		// Skip metric computation for open (non-terminal) PRs
+		if !IsTerminalState(state) {
+			log.Printf("  PR #%d is %s (in-flight), skipping metrics", ghPR.Number, state)
+			// Still fetch commits for correlation purposes
+			commits, err := ghParser.GetPRCommits(ghPR.Number)
+			if err == nil {
+				prCommits[ghPR.Number] = commits
+			}
+			result.PRsSynced++
+			continue
+		}
+
+		// Compute Phase 1 metrics for terminal PRs
 		prMetrics := &db.PRMetrics{PRID: prID}
 
 		// -- Post-open commits --
@@ -275,8 +295,14 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 			}
 		}
 
-		// Store metrics (Phase 1 fields set so far)
-		db.UpsertPRMetrics(database, prMetrics)
+		// Finalize metrics for this terminal PR
+		if err := FinalizePR(database, prID, prMetrics); err != nil {
+			log.Printf("  Warning: failed to finalize PR #%d: %v", ghPR.Number, err)
+			// Fall back to regular upsert without finalization
+			db.UpsertPRMetrics(database, prMetrics)
+		} else {
+			log.Printf("  Finalized metrics for PR #%d", ghPR.Number)
+		}
 
 		result.PRsSynced++
 	}
@@ -324,7 +350,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 			}
 		}
 
-		// Compute session-dependent metrics per PR
+		// Compute session-dependent metrics per PR (only for terminal, non-finalized PRs)
 		// When a session correlates to N PRs, its metrics are divided by N
 		for prNum, sessions := range prSessions {
 			prID, ok := prNumberToID[prNum]
@@ -332,44 +358,33 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 				continue
 			}
 
-			// Build weights: each session's contribution is 1/N where N = PRs it correlates to
-			var weightedMessages, weightedIterations, weightedCost float64
-			var weightedErrors float64
-			for _, s := range sessions {
-				weight := 1.0 / float64(sessionPRCount[s.ID])
-				weightedMessages += float64(s.HumanMessages) * weight
-				weightedIterations += float64(s.TurnCount) * weight
-				weightedCost += s.TotalCostUSD * weight
-				weightedErrors += float64(s.BashErrors) * weight
+			// Skip already-finalized PRs
+			finalized, _ := db.IsPRFinalized(database, prID)
+			if finalized {
+				continue
 			}
 
-			msgCount := int(weightedMessages + 0.5) // round
-			iterDepth := int(weightedIterations + 0.5)
-			selfCorrection := metrics.SelfCorrectionRate(sessions)
-			ctxEfficiency := metrics.ContextEfficiency(sessions)
-			errorRecovery := int(weightedErrors + 0.5)
-			tokenCost := weightedCost
+			// Load existing metrics to update with session data
+			existing, _ := db.GetPRMetrics(database, prID)
+			if existing == nil {
+				existing = &db.PRMetrics{PRID: prID}
+			}
 
-			// Update PR metrics with session-dependent values
-			database.Exec(`
-				UPDATE pr_metrics SET
-					messages_per_pr = ?,
-					iteration_depth = ?,
-					self_correction_rate = CASE WHEN ? >= 0 THEN ? ELSE NULL END,
-					context_efficiency = CASE WHEN ? >= 0 THEN ? ELSE NULL END,
-					error_recovery_attempts = ?,
-					token_cost_usd = ?
-				WHERE pr_id = ?
-			`, msgCount, iterDepth,
-				selfCorrection, selfCorrection,
-				ctxEfficiency, ctxEfficiency,
-				errorRecovery,
-				tokenCost,
-				prID)
+			ComputeSessionMetricsForPR(sessions, sessionPRCount, existing)
+
+			// Re-finalize if this is a terminal PR
+			// Look up the PR state
+			var prState string
+			database.Get(&prState, "SELECT COALESCE(state, '') FROM prs WHERE id = ?", prID)
+			if IsTerminalState(prState) {
+				FinalizePR(database, prID, existing)
+			} else {
+				db.UpsertPRMetrics(database, existing)
+			}
 		}
 	}
 
-	// 7. Line revisit rates
+	// 7. Line revisit rates (skip finalized PRs)
 	revisits := metrics.CalculateLineRevisits(prFiles)
 	if len(revisits) > 0 {
 		log.Printf("Found %d files modified across multiple PRs", len(revisits))
@@ -386,7 +401,10 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 			if revisitCount > 0 && len(files) > 0 {
 				rate := float64(revisitCount) / float64(len(files))
 				if prID, ok := prNumberToID[prNum]; ok {
-					database.Exec("UPDATE pr_metrics SET line_revisit_rate = ? WHERE pr_id = ?", rate, prID)
+					finalized, _ := db.IsPRFinalized(database, prID)
+					if !finalized {
+						database.Exec("UPDATE pr_metrics SET line_revisit_rate = ? WHERE pr_id = ?", rate, prID)
+					}
 				}
 			}
 		}
@@ -403,6 +421,12 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		for prNum, sessions := range prSessions {
 			prID, ok := prNumberToID[prNum]
 			if !ok {
+				continue
+			}
+
+			// Skip already-finalized PRs
+			finalized, _ := db.IsPRFinalized(database, prID)
+			if finalized {
 				continue
 			}
 

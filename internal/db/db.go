@@ -234,4 +234,23 @@ var migrations = []migration{
 			CREATE INDEX idx_repo_metrics_repo ON repo_metrics(repo_id);
 		`,
 	},
+	{
+		version: 3,
+		sql: `
+			-- Track metric finalization lifecycle
+			ALTER TABLE pr_metrics ADD COLUMN metrics_finalized INTEGER DEFAULT 0;
+			ALTER TABLE pr_metrics ADD COLUMN finalized_at TEXT;
+
+			-- Track previous PR state for transition detection
+			ALTER TABLE prs ADD COLUMN previous_state TEXT;
+
+			-- Repos being watched for GitHub state changes
+			CREATE TABLE watched_repos (
+				repo_id INTEGER PRIMARY KEY REFERENCES repos(id),
+				poll_interval_seconds INTEGER DEFAULT 300,
+				last_polled_at TEXT,
+				enabled INTEGER DEFAULT 1
+			);
+		`,
+	},
 }

@@ -15,19 +15,20 @@ type Repo struct {
 
 // PR represents a GitHub pull request.
 type PR struct {
-	ID           int64          `db:"id"`
-	RepoID       int64          `db:"repo_id"`
-	Number       int            `db:"number"`
-	Title        sql.NullString `db:"title"`
-	Branch       sql.NullString `db:"branch"`
-	State        sql.NullString `db:"state"`
-	CreatedAt    sql.NullString `db:"created_at"`
-	MergedAt     sql.NullString `db:"merged_at"`
-	ClosedAt     sql.NullString `db:"closed_at"`
-	URL          sql.NullString `db:"url"`
-	Additions    int            `db:"additions"`
-	Deletions    int            `db:"deletions"`
-	ChangedFiles int            `db:"changed_files"`
+	ID            int64          `db:"id"`
+	RepoID        int64          `db:"repo_id"`
+	Number        int            `db:"number"`
+	Title         sql.NullString `db:"title"`
+	Branch        sql.NullString `db:"branch"`
+	State         sql.NullString `db:"state"`
+	PreviousState sql.NullString `db:"previous_state"`
+	CreatedAt     sql.NullString `db:"created_at"`
+	MergedAt      sql.NullString `db:"merged_at"`
+	ClosedAt      sql.NullString `db:"closed_at"`
+	URL           sql.NullString `db:"url"`
+	Additions     int            `db:"additions"`
+	Deletions     int            `db:"deletions"`
+	ChangedFiles  int            `db:"changed_files"`
 }
 
 // Commit represents a git commit associated with a repo and optionally a PR.
@@ -89,7 +90,17 @@ type PRMetrics struct {
 	ContextEfficiency     sql.NullFloat64 `db:"context_efficiency"`
 	ErrorRecoveryAttempts sql.NullInt64   `db:"error_recovery_attempts"`
 	TokenCostUSD          sql.NullFloat64 `db:"token_cost_usd"`
+	MetricsFinalized      int             `db:"metrics_finalized"`
+	FinalizedAt           sql.NullString  `db:"finalized_at"`
 	ComputedAt            string          `db:"computed_at"`
+}
+
+// WatchedRepo tracks a repo being polled for GitHub state changes.
+type WatchedRepo struct {
+	RepoID               int64          `db:"repo_id"`
+	PollIntervalSeconds  int            `db:"poll_interval_seconds"`
+	LastPolledAt         sql.NullString `db:"last_polled_at"`
+	Enabled              int            `db:"enabled"`
 }
 
 // RepoMetrics stores aggregate metrics for a repository over a time period.

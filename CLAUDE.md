@@ -67,6 +67,7 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [007 — Dashboard Packaging](docs/decisions/007-dashboard-packaging.md): Embedded static build via `go:embed` for users, `npm run dev` for contributors.
 - [008 — Distribution](docs/decisions/008-distribution-strategy.md): Homebrew tap + GoReleaser. Relevant when setting up releases.
 - [009 — Token Cost Metrics](docs/decisions/009-token-cost-metrics.md): Token Cost per PR and Unmerged Token Spend. Dollar-cost metrics with model-specific pricing. Relevant when building session cost computation or repo-level metrics.
+- [010 — GitHub Event Ingestion](docs/decisions/010-github-event-ingestion.md): `ax watch` poller + metric finalization lifecycle. Metrics only computed for terminal (merged/closed) PRs. Relevant when modifying sync paths or metric computation timing.
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.
 
