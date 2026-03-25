@@ -71,8 +71,8 @@ func ListRepos(db DBTX) ([]Repo, error) {
 // UpsertPR inserts or updates a pull request, tracking state transitions.
 func UpsertPR(db DBTX, pr *PR) (int64, error) {
 	result, err := db.Exec(`
-		INSERT INTO prs (repo_id, number, title, branch, state, created_at, merged_at, closed_at, url, additions, deletions, changed_files)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO prs (repo_id, number, title, branch, state, created_at, merged_at, closed_at, url, additions, deletions, changed_files, author)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(repo_id, number) DO UPDATE SET
 			title = excluded.title,
 			branch = excluded.branch,
@@ -84,10 +84,11 @@ func UpsertPR(db DBTX, pr *PR) (int64, error) {
 			url = excluded.url,
 			additions = excluded.additions,
 			deletions = excluded.deletions,
-			changed_files = excluded.changed_files
+			changed_files = excluded.changed_files,
+			author = COALESCE(excluded.author, prs.author)
 	`, pr.RepoID, pr.Number, pr.Title, pr.Branch, pr.State,
 		pr.CreatedAt, pr.MergedAt, pr.ClosedAt, pr.URL,
-		pr.Additions, pr.Deletions, pr.ChangedFiles)
+		pr.Additions, pr.Deletions, pr.ChangedFiles, pr.Author)
 	if err != nil {
 		return 0, fmt.Errorf("failed to upsert PR: %w", err)
 	}

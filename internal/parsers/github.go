@@ -20,6 +20,9 @@ type GHPullRequest struct {
 	Additions    int    `json:"additions"`
 	Deletions    int    `json:"deletions"`
 	ChangedFiles int    `json:"changedFiles"`
+	Author       struct {
+		Login string `json:"login"`
+	} `json:"author"`
 }
 
 // GHReview represents a GitHub PR review.
@@ -95,7 +98,7 @@ func (g *GitHubParser) ListPRs(state string, limit int) ([]GHPullRequest, error)
 		"-R", g.repoFlag(),
 		"--state", state,
 		"--limit", fmt.Sprintf("%d", limit),
-		"--json", "number,title,headRefName,state,url,createdAt,mergedAt,closedAt,additions,deletions,changedFiles",
+		"--json", "number,title,headRefName,state,url,createdAt,mergedAt,closedAt,additions,deletions,changedFiles,author",
 	)
 	if err != nil {
 		return nil, err
@@ -113,7 +116,7 @@ func (g *GitHubParser) GetPR(number int) (*GHPullRequest, error) {
 	out, err := g.gh("pr", "view",
 		"-R", g.repoFlag(),
 		fmt.Sprintf("%d", number),
-		"--json", "number,title,headRefName,state,url,createdAt,mergedAt,closedAt,additions,deletions,changedFiles",
+		"--json", "number,title,headRefName,state,url,createdAt,mergedAt,closedAt,additions,deletions,changedFiles,author",
 	)
 	if err != nil {
 		return nil, err

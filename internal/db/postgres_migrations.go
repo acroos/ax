@@ -95,6 +95,7 @@ var postgresMigrations = []migration{
 				deletions INTEGER DEFAULT 0,
 				changed_files INTEGER DEFAULT 0,
 				pushed_by TEXT,
+				author TEXT,
 				UNIQUE(repo_id, number)
 			);
 

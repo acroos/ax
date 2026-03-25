@@ -30,6 +30,7 @@ type PR struct {
 	Deletions     int            `db:"deletions"`
 	ChangedFiles  int            `db:"changed_files"`
 	PushedBy      sql.NullString `db:"pushed_by"`
+	Author        sql.NullString `db:"author"`
 }
 
 // Commit represents a git commit associated with a repo and optionally a PR.

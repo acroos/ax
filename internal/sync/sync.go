@@ -166,6 +166,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 			Additions:    ghPR.Additions,
 			Deletions:    ghPR.Deletions,
 			ChangedFiles: ghPR.ChangedFiles,
+			Author:       sql.NullString{String: ghPR.Author.Login, Valid: ghPR.Author.Login != ""},
 		}
 
 		prID, err := db.UpsertPR(database, pr)

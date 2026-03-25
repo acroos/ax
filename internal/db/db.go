@@ -317,4 +317,11 @@ var migrations = []migration{
 			ALTER TABLE prs ADD COLUMN pushed_by TEXT;
 		`,
 	},
+	{
+		version: 5,
+		sql: `
+			-- PR author (GitHub login) for developer comparison views
+			ALTER TABLE prs ADD COLUMN author TEXT;
+		`,
+	},
 }
