@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/austinroos/ax/internal/db"
+	"github.com/austinroos/ax/internal/events"
+	"github.com/austinroos/ax/internal/events/adapters"
 )
 
 // Server is the AX team HTTP server.
@@ -49,6 +51,26 @@ func (s *Server) routes() {
 	s.mux.Handle("GET /api/v1/repos/{id}/metrics", s.requireAuth(http.HandlerFunc(s.handleAggregateMetrics)))
 	s.mux.Handle("GET /api/v1/repos/{id}/timeline", s.requireAuth(http.HandlerFunc(s.handleTimeline)))
 	s.mux.Handle("GET /api/v1/watch-status", s.requireAuth(http.HandlerFunc(s.handleWatchStatus)))
+
+	// Webhook receiver (validated by adapter-specific signatures, not API keys)
+	s.mountWebhooks()
+}
+
+func (s *Server) mountWebhooks() {
+	// Read webhook secrets from environment
+	secrets := map[events.Platform]string{}
+	if v := os.Getenv("AX_WEBHOOK_GITHUB_SECRET"); v != "" {
+		secrets[events.PlatformGitHub] = v
+	}
+
+	dispatcher := events.NewDispatcher()
+	dispatcher.Register(&events.PRHandler{DB: s.store.DB})
+
+	receiver := events.NewReceiver(events.ReceiverConfig{Secrets: secrets}, dispatcher)
+	receiver.RegisterAdapter(&adapters.GitHubAdapter{})
+
+	receiver.Mount(s.mux)
+	log.Printf("Webhook receiver mounted at /webhooks/{platform}")
 }
 
 // ListenAndServe starts the server with graceful shutdown.

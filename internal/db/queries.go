@@ -244,6 +244,19 @@ func DeleteWatchedRepo(db DBTX, repoID int64) error {
 	return nil
 }
 
+// GetRepoByOwnerAndName returns a repo by GitHub owner and repo name.
+func GetRepoByOwnerAndName(db DBTX, owner, name string) (*Repo, error) {
+	var repo Repo
+	err := db.Get(&repo, "SELECT * FROM repos WHERE github_owner = ? AND github_repo = ?", owner, name)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repo: %w", err)
+	}
+	return &repo, nil
+}
+
 // --- API Key Management ---
 
 // GenerateAPIKey creates a new API key, stores its bcrypt hash, and returns the raw key.
