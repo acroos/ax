@@ -4,6 +4,7 @@ import { TrendChart, Sparkline } from "@/components/trend-chart";
 import Link from "next/link";
 
 interface MetricDef {
+  slug: string;
   label: string;
   value: string;
   description: string;
@@ -45,6 +46,7 @@ function buildCategories(
       name: "Output Quality",
       metrics: [
         {
+          slug: "post-open-commits",
           label: "Post-Open Commits",
           value: formatNum(m.avgPostOpenCommits),
           description: "Avg commits after PR opened",
@@ -53,6 +55,7 @@ function buildCategories(
           sparkData: postOpenSpark,
         },
         {
+          slug: "first-pass-acceptance",
           label: "First-Pass Acceptance",
           value: formatPct(m.firstPassAcceptanceRate),
           description: "PRs merged without change requests",
@@ -60,6 +63,7 @@ function buildCategories(
           available: true,
         },
         {
+          slug: "ci-success-rate",
           label: "CI Success Rate",
           value: m.ciSuccessRate !== null ? formatPct(m.ciSuccessRate) : "—",
           description: "Checks passing on first push",
@@ -68,6 +72,7 @@ function buildCategories(
           sparkData: ciSpark,
         },
         {
+          slug: "test-coverage",
           label: "Test Coverage",
           value: formatPct(m.testCoverageRate),
           description: "PRs that include test files",
@@ -75,6 +80,7 @@ function buildCategories(
           available: true,
         },
         {
+          slug: "diff-churn",
           label: "Diff Churn",
           value: m.avgDiffChurnLines !== null ? `${Math.round(m.avgDiffChurnLines)} lines` : "—",
           description: "Avg lines written then rewritten",
@@ -82,6 +88,7 @@ function buildCategories(
           available: m.avgDiffChurnLines !== null,
         },
         {
+          slug: "line-revisit-rate",
           label: "Line Revisit Rate",
           value: m.avgLineRevisitRate !== null ? formatNum(m.avgLineRevisitRate, 2) : "—",
           description: "Cross-PR file re-modification",
@@ -94,6 +101,7 @@ function buildCategories(
       name: "Prompt Efficiency",
       metrics: [
         {
+          slug: "messages-per-pr",
           label: "Messages / PR",
           value: m.avgMessagesPerPR !== null ? formatNum(m.avgMessagesPerPR) : "—",
           description: "Avg human messages per PR",
@@ -102,6 +110,7 @@ function buildCategories(
           sparkData: msgSpark,
         },
         {
+          slug: "iteration-depth",
           label: "Iteration Depth",
           value: m.avgIterationDepth !== null ? formatNum(m.avgIterationDepth) : "—",
           description: "Avg human-agent turn pairs",
@@ -109,6 +118,7 @@ function buildCategories(
           available: m.avgIterationDepth !== null,
         },
         {
+          slug: "token-cost-per-pr",
           label: "Token Cost / PR",
           value: m.avgTokenCost !== null ? formatCost(m.avgTokenCost) : "—",
           description: "Avg dollar cost per PR",
@@ -122,6 +132,7 @@ function buildCategories(
       name: "Agent Behavior",
       metrics: [
         {
+          slug: "self-correction-rate",
           label: "Self-Correction",
           value: m.avgSelfCorrectionRate !== null ? formatPct(m.avgSelfCorrectionRate) : "—",
           description: "Agent error recovery rate",
@@ -129,6 +140,7 @@ function buildCategories(
           available: m.avgSelfCorrectionRate !== null,
         },
         {
+          slug: "context-efficiency",
           label: "Context Efficiency",
           value: m.avgContextEfficiency !== null ? formatNum(m.avgContextEfficiency, 2) : "—",
           description: "Files modified / files read",
@@ -136,6 +148,7 @@ function buildCategories(
           available: m.avgContextEfficiency !== null,
         },
         {
+          slug: "error-recovery",
           label: "Error Recovery",
           value: m.avgErrorRecoveryAttempts !== null ? formatNum(m.avgErrorRecoveryAttempts) : "—",
           description: "Avg bash errors per PR",
@@ -155,6 +168,7 @@ function buildCategories(
         : undefined,
       metrics: [
         {
+          slug: "plan-coverage",
           label: "Plan Coverage",
           value: m.avgPlanCoverage !== null ? formatPct(m.avgPlanCoverage) : "—",
           description: "Changes anticipated by plan",
@@ -162,6 +176,7 @@ function buildCategories(
           available: m.avgPlanCoverage !== null,
         },
         {
+          slug: "plan-deviation",
           label: "Plan Deviation",
           value: m.avgPlanDeviation !== null ? formatPct(m.avgPlanDeviation) : "—",
           description: "Planned files actually changed",
@@ -169,6 +184,7 @@ function buildCategories(
           available: m.avgPlanDeviation !== null,
         },
         {
+          slug: "scope-creep",
           label: "Scope Creep",
           value: m.scopeCreepRate !== null ? formatPct(m.scopeCreepRate) : "—",
           description: "PRs with unplanned changes",
@@ -182,10 +198,12 @@ function buildCategories(
   return categories;
 }
 
-function MetricCard({ metric, index }: { metric: MetricDef; index: number }) {
+function MetricCard({ metric, index, repoId }: { metric: MetricDef; index: number; repoId?: number }) {
+  const href = `/metrics/${metric.slug}${repoId ? `?repo=${repoId}` : ""}`;
   return (
-    <div
-      className="metric-card rounded-xl border border-border-subtle bg-surface-1 p-5 animate-in"
+    <Link
+      href={href}
+      className="metric-card rounded-xl border border-border-subtle bg-surface-1 p-5 animate-in hover:border-accent/30 transition-colors block"
       style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className="flex items-start justify-between mb-3">
@@ -235,7 +253,7 @@ function MetricCard({ metric, index }: { metric: MetricDef; index: number }) {
           </span>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -495,7 +513,7 @@ export default async function OverviewPage({
           </div>
           <div className="grid grid-cols-3 gap-3">
             {category.metrics.map((m) => (
-              <MetricCard key={m.label} metric={m} index={cardIndex++} />
+              <MetricCard key={m.label} metric={m} index={cardIndex++} repoId={repoId} />
             ))}
           </div>
         </div>
