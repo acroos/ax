@@ -108,6 +108,31 @@ func (s *Server) handleAggregateMetrics(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, agg)
 }
 
+// handleRepoLevelMetrics returns repo-level metrics (unmerged token spend).
+func (s *Server) handleRepoLevelMetrics(w http.ResponseWriter, r *http.Request) {
+	repoID, err := parseIntParam(r, "id")
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid repo ID"})
+		return
+	}
+
+	repoMetrics, _ := db.GetRepoMetrics(s.store.DB, repoID, "all")
+	result := map[string]interface{}{
+		"unmergedCostUSD": nil,
+		"totalCostUSD":    nil,
+		"unmergedRate":    nil,
+	}
+	if len(repoMetrics) > 0 {
+		rm := repoMetrics[0]
+		result["unmergedCostUSD"] = rm.UnmergedCostUSD
+		result["totalCostUSD"] = rm.TotalCostUSD
+		if rm.UnmergedRate.Valid {
+			result["unmergedRate"] = rm.UnmergedRate.Float64
+		}
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 // handleTimeline returns time-series metric data for trend charts.
 func (s *Server) handleTimeline(w http.ResponseWriter, r *http.Request) {
 	repoID, err := parseIntParam(r, "id")
@@ -220,6 +245,15 @@ func computeAggregates(database db.DBTX, prs []db.PR) map[string]interface{} {
 	var scCount int
 	var ceSum float64
 	var ceCount int
+	var churnSum, churnCount int
+	var revisitSum float64
+	var revisitCount int
+	var errRecSum, errRecCount int
+	var planCovSum float64
+	var planCovCount int
+	var planDevSum float64
+	var planDevCount int
+	var scopeCreepYes, scopeCreepTotal int
 
 	for _, pr := range prs {
 		m, _ := db.GetPRMetrics(database, pr.ID)
@@ -268,6 +302,32 @@ func computeAggregates(database db.DBTX, prs []db.PR) map[string]interface{} {
 			ceSum += m.ContextEfficiency.Float64
 			ceCount++
 		}
+		if m.DiffChurnLines.Valid {
+			churnSum += int(m.DiffChurnLines.Int64)
+			churnCount++
+		}
+		if m.LineRevisitRate.Valid {
+			revisitSum += m.LineRevisitRate.Float64
+			revisitCount++
+		}
+		if m.ErrorRecoveryAttempts.Valid {
+			errRecSum += int(m.ErrorRecoveryAttempts.Int64)
+			errRecCount++
+		}
+		if m.PlanCoverageScore.Valid {
+			planCovSum += m.PlanCoverageScore.Float64
+			planCovCount++
+		}
+		if m.PlanDeviationScore.Valid {
+			planDevSum += m.PlanDeviationScore.Float64
+			planDevCount++
+		}
+		if m.ScopeCreepDetected.Valid {
+			scopeCreepTotal++
+			if m.ScopeCreepDetected.Int64 == 1 {
+				scopeCreepYes++
+			}
+		}
 	}
 
 	result := map[string]interface{}{
@@ -302,6 +362,29 @@ func computeAggregates(database db.DBTX, prs []db.PR) map[string]interface{} {
 	if ceCount > 0 {
 		result["avgContextEfficiency"] = ceSum / float64(ceCount)
 	}
+	if churnCount > 0 {
+		result["avgDiffChurnLines"] = float64(churnSum) / float64(churnCount)
+	}
+	if revisitCount > 0 {
+		result["avgLineRevisitRate"] = revisitSum / float64(revisitCount)
+	}
+	if errRecCount > 0 {
+		result["avgErrorRecoveryAttempts"] = float64(errRecSum) / float64(errRecCount)
+	}
+	if planCovCount > 0 {
+		result["avgPlanCoverage"] = planCovSum / float64(planCovCount)
+	}
+	if planDevCount > 0 {
+		result["avgPlanDeviation"] = planDevSum / float64(planDevCount)
+	}
+	if scopeCreepTotal > 0 {
+		result["scopeCreepRate"] = float64(scopeCreepYes) / float64(scopeCreepTotal)
+	}
+	planDataCount := planCovCount
+	if planDevCount > planDataCount {
+		planDataCount = planDevCount
+	}
+	result["planDataCount"] = planDataCount
 
 	// Unmerged token spend
 	repoMetrics, _ := db.GetRepoMetrics(database, 0, "all")

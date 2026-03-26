@@ -77,7 +77,9 @@ export default async function ComparePage({ searchParams }: Props) {
                 <th className="px-5 py-2 font-medium text-right">1st Pass</th>
                 <th className="px-5 py-2 font-medium text-right">CI Rate</th>
                 <th className="px-5 py-2 font-medium text-right">Msgs/PR</th>
+                <th className="px-5 py-2 font-medium text-right">Depth</th>
                 <th className="px-5 py-2 font-medium text-right">Cost/PR</th>
+                <th className="px-5 py-2 font-medium text-right">Errors</th>
               </tr>
             </thead>
             <tbody>
@@ -105,8 +107,18 @@ export default async function ComparePage({ searchParams }: Props) {
                       : "—"}
                   </td>
                   <td className="px-5 py-2.5 text-right text-text-secondary">
+                    {dev.metrics.avgIterationDepth !== null
+                      ? dev.metrics.avgIterationDepth.toFixed(0)
+                      : "—"}
+                  </td>
+                  <td className="px-5 py-2.5 text-right text-text-secondary">
                     {dev.metrics.avgTokenCost !== null
                       ? `$${dev.metrics.avgTokenCost.toFixed(2)}`
+                      : "—"}
+                  </td>
+                  <td className="px-5 py-2.5 text-right text-text-secondary">
+                    {dev.metrics.avgErrorRecoveryAttempts !== null
+                      ? dev.metrics.avgErrorRecoveryAttempts.toFixed(0)
                       : "—"}
                   </td>
                 </tr>
@@ -133,8 +145,18 @@ export default async function ComparePage({ searchParams }: Props) {
                       : "—"}
                   </td>
                   <td className="px-5 py-2.5 text-right text-text-tertiary">
+                    {teamMetrics.avgIterationDepth !== null
+                      ? teamMetrics.avgIterationDepth.toFixed(0)
+                      : "—"}
+                  </td>
+                  <td className="px-5 py-2.5 text-right text-text-tertiary">
                     {teamMetrics.avgTokenCost !== null
                       ? `$${teamMetrics.avgTokenCost.toFixed(2)}`
+                      : "—"}
+                  </td>
+                  <td className="px-5 py-2.5 text-right text-text-tertiary">
+                    {teamMetrics.avgErrorRecoveryAttempts !== null
+                      ? teamMetrics.avgErrorRecoveryAttempts.toFixed(0)
                       : "—"}
                   </td>
                 </tr>
@@ -161,8 +183,12 @@ function MetricCard({ title, metrics }: { title: string; metrics: AggregateMetri
     { label: "CI Success Rate", value: metrics.ciSuccessRate !== null ? `${(metrics.ciSuccessRate * 100).toFixed(0)}%` : "—" },
     { label: "Messages/PR", value: metrics.avgMessagesPerPR !== null ? metrics.avgMessagesPerPR.toFixed(0) : "—" },
     { label: "Token Cost/PR", value: metrics.avgTokenCost !== null ? `$${metrics.avgTokenCost.toFixed(2)}` : "—" },
+    { label: "Iteration Depth", value: metrics.avgIterationDepth !== null ? metrics.avgIterationDepth.toFixed(0) : "—" },
     { label: "Self-Correction", value: metrics.avgSelfCorrectionRate !== null ? `${(metrics.avgSelfCorrectionRate * 100).toFixed(0)}%` : "—" },
     { label: "Context Efficiency", value: metrics.avgContextEfficiency !== null ? metrics.avgContextEfficiency.toFixed(2) : "—" },
+    { label: "Error Recovery", value: metrics.avgErrorRecoveryAttempts !== null ? metrics.avgErrorRecoveryAttempts.toFixed(0) : "—" },
+    { label: "Diff Churn", value: metrics.avgDiffChurnLines !== null ? `${Math.round(metrics.avgDiffChurnLines)} lines` : "—" },
+    { label: "Line Revisit Rate", value: metrics.avgLineRevisitRate !== null ? metrics.avgLineRevisitRate.toFixed(2) : "—" },
   ];
 
   return (

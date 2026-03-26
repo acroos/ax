@@ -83,6 +83,10 @@ export default async function PRsPage({
                 <span className="tooltip-content">Commits after PR opened</span>
               </th>
               <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
+                Churn
+                <span className="tooltip-content">Lines written then rewritten</span>
+              </th>
+              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
                 1st Pass
                 <span className="tooltip-content">Merged without change requests</span>
               </th>
@@ -97,6 +101,10 @@ export default async function PRsPage({
               <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
                 Msgs
                 <span className="tooltip-content">Human messages in session</span>
+              </th>
+              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
+                Depth
+                <span className="tooltip-content">Human-agent turn pairs</span>
               </th>
               <th className="text-right px-4 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
                 Cost
@@ -149,6 +157,9 @@ export default async function PRsPage({
                 <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
                   {pr.metrics?.post_open_commits ?? "—"}
                 </td>
+                <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
+                  {pr.metrics?.diff_churn_lines ?? "—"}
+                </td>
                 <td className="px-3 py-3 text-center">
                   {pr.metrics?.first_pass_accepted !== null ? (
                     <CheckMark value={pr.metrics!.first_pass_accepted === 1} />
@@ -170,6 +181,9 @@ export default async function PRsPage({
                 </td>
                 <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
                   {pr.metrics?.messages_per_pr ?? "—"}
+                </td>
+                <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
+                  {pr.metrics?.iteration_depth ?? "—"}
                 </td>
                 <td className="px-4 py-3 text-right font-mono text-[13px] text-text-secondary">
                   {pr.metrics?.token_cost_usd !== null

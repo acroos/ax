@@ -50,6 +50,7 @@ func (s *Server) routes() {
 	s.mux.Handle("GET /api/v1/repos/{id}/prs", s.requireAuth(http.HandlerFunc(s.handleListPRs)))
 	s.mux.Handle("GET /api/v1/repos/{id}/metrics", s.requireAuth(http.HandlerFunc(s.handleAggregateMetrics)))
 	s.mux.Handle("GET /api/v1/repos/{id}/timeline", s.requireAuth(http.HandlerFunc(s.handleTimeline)))
+	s.mux.Handle("GET /api/v1/repos/{id}/repo-metrics", s.requireAuth(http.HandlerFunc(s.handleRepoLevelMetrics)))
 	s.mux.Handle("GET /api/v1/watch-status", s.requireAuth(http.HandlerFunc(s.handleWatchStatus)))
 
 	// Webhook receiver (validated by adapter-specific signatures, not API keys)

@@ -1,6 +1,7 @@
-import { getAggregateMetricsAsync, getTimelineAsync, listReposAsync, getRepoAsync, listWatchStatusesAsync } from "@/lib/db";
-import type { AggregateMetrics, TimelinePoint, Repo, WatchStatus } from "@/lib/db";
+import { getAggregateMetricsAsync, getTimelineAsync, listReposAsync, getRepoAsync, listWatchStatusesAsync, getRepoLevelMetricsAsync, listPRsWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
+import type { AggregateMetrics, TimelinePoint, Repo, WatchStatus, RepoLevelMetrics, PRWithMetrics } from "@/lib/db";
 import { TrendChart, Sparkline } from "@/components/trend-chart";
+import Link from "next/link";
 
 interface MetricDef {
   label: string;
@@ -9,6 +10,12 @@ interface MetricDef {
   tooltip: string;
   available: boolean;
   sparkData?: number[];
+}
+
+interface MetricCategory {
+  name: string;
+  subtitle?: string;
+  metrics: MetricDef[];
 }
 
 function formatPct(n: number): string {
@@ -24,98 +31,155 @@ function formatCost(n: number): string {
   return `$${n.toFixed(2)}`;
 }
 
-function buildMetrics(
+function buildCategories(
   m: AggregateMetrics,
   timeline: TimelinePoint[]
-): MetricDef[] {
+): MetricCategory[] {
   const postOpenSpark = timeline.filter((t) => t.postOpenCommits !== null).map((t) => t.postOpenCommits!);
   const msgSpark = timeline.filter((t) => t.messagesPerPR !== null).map((t) => t.messagesPerPR!);
   const costSpark = timeline.filter((t) => t.tokenCostUSD !== null).map((t) => t.tokenCostUSD!);
   const ciSpark = timeline.filter((t) => t.ciSuccessRate !== null).map((t) => t.ciSuccessRate!);
 
-  return [
+  const categories: MetricCategory[] = [
     {
-      label: "Total PRs",
-      value: String(m.totalPRs),
-      description: "Pull requests tracked",
-      tooltip: "Total number of PRs ingested across synced repositories.",
-      available: true,
+      name: "Output Quality",
+      metrics: [
+        {
+          label: "Post-Open Commits",
+          value: formatNum(m.avgPostOpenCommits),
+          description: "Avg commits after PR opened",
+          tooltip: "Average commits pushed after a PR is opened. Lower is better. Good: < 1.0. Concerning: > 3.0.",
+          available: true,
+          sparkData: postOpenSpark,
+        },
+        {
+          label: "First-Pass Acceptance",
+          value: formatPct(m.firstPassAcceptanceRate),
+          description: "PRs merged without change requests",
+          tooltip: "Percentage of PRs merged without reviewer requesting changes. Good: > 80%. Concerning: < 50%.",
+          available: true,
+        },
+        {
+          label: "CI Success Rate",
+          value: m.ciSuccessRate !== null ? formatPct(m.ciSuccessRate) : "—",
+          description: "Checks passing on first push",
+          tooltip: "Percentage of CI checks passing on first push. Good: > 90%. Concerning: < 70%.",
+          available: m.ciSuccessRate !== null,
+          sparkData: ciSpark,
+        },
+        {
+          label: "Test Coverage",
+          value: formatPct(m.testCoverageRate),
+          description: "PRs that include test files",
+          tooltip: "Percentage of PRs that include test file changes. Good: > 70%. Concerning: < 40%.",
+          available: true,
+        },
+        {
+          label: "Diff Churn",
+          value: m.avgDiffChurnLines !== null ? `${Math.round(m.avgDiffChurnLines)} lines` : "—",
+          description: "Avg lines written then rewritten",
+          tooltip: "Average lines written then rewritten before merge. Lower is better. Good: < 20. Concerning: > 100.",
+          available: m.avgDiffChurnLines !== null,
+        },
+        {
+          label: "Line Revisit Rate",
+          value: m.avgLineRevisitRate !== null ? formatNum(m.avgLineRevisitRate, 2) : "—",
+          description: "Cross-PR file re-modification",
+          tooltip: "How often modified files get re-modified in later PRs. Lower suggests more stable code.",
+          available: m.avgLineRevisitRate !== null,
+        },
+      ],
     },
     {
-      label: "Post-Open Commits",
-      value: formatNum(m.avgPostOpenCommits),
-      description: "Avg commits after PR opened",
-      tooltip:
-        "Average commits pushed after a PR is opened. Lower is better. Good: < 1.0. Concerning: > 3.0.",
-      available: true,
-      sparkData: postOpenSpark,
+      name: "Prompt Efficiency",
+      metrics: [
+        {
+          label: "Messages / PR",
+          value: m.avgMessagesPerPR !== null ? formatNum(m.avgMessagesPerPR) : "—",
+          description: "Avg human messages per PR",
+          tooltip: "Average human messages per PR. Good: < 10. Concerning: > 30. Requires session data.",
+          available: m.avgMessagesPerPR !== null,
+          sparkData: msgSpark,
+        },
+        {
+          label: "Iteration Depth",
+          value: m.avgIterationDepth !== null ? formatNum(m.avgIterationDepth) : "—",
+          description: "Avg human-agent turn pairs",
+          tooltip: "Average human-agent turn pairs per PR. Good: < 5. Concerning: > 15.",
+          available: m.avgIterationDepth !== null,
+        },
+        {
+          label: "Token Cost / PR",
+          value: m.avgTokenCost !== null ? formatCost(m.avgTokenCost) : "—",
+          description: "Avg dollar cost per PR",
+          tooltip: "Average token cost per PR using model-specific pricing. Bug fixes ~$5, features ~$15-30.",
+          available: m.avgTokenCost !== null,
+          sparkData: costSpark,
+        },
+      ],
     },
     {
-      label: "First-Pass Acceptance",
-      value: formatPct(m.firstPassAcceptanceRate),
-      description: "PRs merged without change requests",
-      tooltip:
-        "Percentage of PRs merged without reviewer requesting changes. Good: > 80%. Concerning: < 50%.",
-      available: true,
-    },
-    {
-      label: "CI Success Rate",
-      value: m.ciSuccessRate !== null ? formatPct(m.ciSuccessRate) : "—",
-      description: "Checks passing on first push",
-      tooltip:
-        "Percentage of CI checks passing on first push. Good: > 90%. Concerning: < 70%.",
-      available: m.ciSuccessRate !== null,
-      sparkData: ciSpark,
-    },
-    {
-      label: "Test Coverage",
-      value: formatPct(m.testCoverageRate),
-      description: "PRs that include test files",
-      tooltip:
-        "Percentage of PRs that include test file changes. Good: > 70%. Concerning: < 40%.",
-      available: true,
-    },
-    {
-      label: "Messages / PR",
-      value: m.avgMessagesPerPR !== null ? formatNum(m.avgMessagesPerPR) : "—",
-      description: "Avg human messages per PR",
-      tooltip:
-        "Average human messages per PR. Good: < 10. Concerning: > 30. Requires session data.",
-      available: m.avgMessagesPerPR !== null,
-      sparkData: msgSpark,
-    },
-    {
-      label: "Token Cost / PR",
-      value: m.avgTokenCost !== null ? formatCost(m.avgTokenCost) : "—",
-      description: "Avg dollar cost per PR",
-      tooltip:
-        "Average token cost per PR using model-specific pricing. Bug fixes ~$5, features ~$15-30.",
-      available: m.avgTokenCost !== null,
-      sparkData: costSpark,
-    },
-    {
-      label: "Self-Correction",
-      value:
-        m.avgSelfCorrectionRate !== null
-          ? formatPct(m.avgSelfCorrectionRate)
-          : "—",
-      description: "Agent error recovery rate",
-      tooltip:
-        "How often the agent recovers from errors without human help. Good: > 80%. Concerning: < 50%.",
-      available: m.avgSelfCorrectionRate !== null,
-    },
-    {
-      label: "Context Efficiency",
-      value:
-        m.avgContextEfficiency !== null
-          ? formatNum(m.avgContextEfficiency, 2)
-          : "—",
-      description: "Files modified / files read",
-      tooltip:
-        "Ratio of files modified to read. 0.3-0.5 is typical. Very high (> 2.0) may mean writing without reading enough.",
-      available: m.avgContextEfficiency !== null,
+      name: "Agent Behavior",
+      metrics: [
+        {
+          label: "Self-Correction",
+          value: m.avgSelfCorrectionRate !== null ? formatPct(m.avgSelfCorrectionRate) : "—",
+          description: "Agent error recovery rate",
+          tooltip: "How often the agent recovers from errors without human help. Good: > 80%. Concerning: < 50%.",
+          available: m.avgSelfCorrectionRate !== null,
+        },
+        {
+          label: "Context Efficiency",
+          value: m.avgContextEfficiency !== null ? formatNum(m.avgContextEfficiency, 2) : "—",
+          description: "Files modified / files read",
+          tooltip: "Ratio of files modified to read. 0.3-0.5 is typical. Very high (> 2.0) may mean writing without reading enough.",
+          available: m.avgContextEfficiency !== null,
+        },
+        {
+          label: "Error Recovery",
+          value: m.avgErrorRecoveryAttempts !== null ? formatNum(m.avgErrorRecoveryAttempts) : "—",
+          description: "Avg bash errors per PR",
+          tooltip: "Average bash errors per PR. Lower means the agent gets things right sooner.",
+          available: m.avgErrorRecoveryAttempts !== null,
+        },
+      ],
     },
   ];
+
+  // Only include Planning Effectiveness if there's plan data
+  if (m.planDataCount > 0) {
+    categories.push({
+      name: "Planning Effectiveness",
+      subtitle: m.planDataCount < m.totalPRs
+        ? `Based on ${m.planDataCount} of ${m.totalPRs} PRs`
+        : undefined,
+      metrics: [
+        {
+          label: "Plan Coverage",
+          value: m.avgPlanCoverage !== null ? formatPct(m.avgPlanCoverage) : "—",
+          description: "Changes anticipated by plan",
+          tooltip: "Fraction of actual changes that were anticipated by the plan. Good: > 70%.",
+          available: m.avgPlanCoverage !== null,
+        },
+        {
+          label: "Plan Deviation",
+          value: m.avgPlanDeviation !== null ? formatPct(m.avgPlanDeviation) : "—",
+          description: "Planned files actually changed",
+          tooltip: "Fraction of planned files that were actually changed. Good: > 80%.",
+          available: m.avgPlanDeviation !== null,
+        },
+        {
+          label: "Scope Creep",
+          value: m.scopeCreepRate !== null ? formatPct(m.scopeCreepRate) : "—",
+          description: "PRs with unplanned changes",
+          tooltip: "Fraction of PRs where most changes came from outside the plan. Lower is better.",
+          available: m.scopeCreepRate !== null,
+        },
+      ],
+    });
+  }
+
+  return categories;
 }
 
 function MetricCard({ metric, index }: { metric: MetricDef; index: number }) {
@@ -175,6 +239,150 @@ function MetricCard({ metric, index }: { metric: MetricDef; index: number }) {
   );
 }
 
+function SummaryBanner({
+  metrics,
+  repoMetrics,
+}: {
+  metrics: AggregateMetrics;
+  repoMetrics: RepoLevelMetrics;
+}) {
+  return (
+    <div
+      className="mb-6 rounded-xl border border-border-subtle bg-surface-1 p-5 animate-in"
+      style={{ animationDelay: "0ms" }}
+    >
+      <div className="flex items-baseline gap-6 flex-wrap">
+        <div>
+          <span className="font-mono text-[32px] font-medium text-text-primary tracking-tight">
+            {metrics.totalPRs}
+          </span>
+          <span className="text-[13px] text-text-secondary ml-2">
+            PR{metrics.totalPRs !== 1 && "s"} tracked
+          </span>
+        </div>
+
+        {metrics.totalTokenCost !== null && (
+          <div className="border-l border-border-subtle pl-6">
+            <span className="font-mono text-[32px] font-medium text-text-primary tracking-tight">
+              {formatCost(metrics.totalTokenCost)}
+            </span>
+            <span className="text-[13px] text-text-secondary ml-2">
+              total token spend
+            </span>
+          </div>
+        )}
+
+        {repoMetrics.unmergedCostUSD !== null && repoMetrics.unmergedCostUSD > 0 && (
+          <div className="border-l border-border-subtle pl-6">
+            <span className="font-mono text-[32px] font-medium text-amber tracking-tight">
+              {formatCost(repoMetrics.unmergedCostUSD)}
+            </span>
+            <span className="text-[13px] text-text-secondary ml-2">
+              unmerged
+              {repoMetrics.unmergedRate !== null && (
+                <span className="text-text-tertiary">
+                  {" "}({Math.round(repoMetrics.unmergedRate * 100)}% waste)
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PRTable({ prs }: { prs: PRWithMetrics[] }) {
+  if (prs.length === 0) return null;
+
+  return (
+    <div className="animate-in" style={{ animationDelay: "600ms" }}>
+      <h2 className="text-[14px] font-semibold text-text-primary tracking-[-0.01em] mb-3">
+        Pull Requests
+      </h2>
+      <div className="rounded-xl border border-border-subtle bg-surface-1 overflow-hidden">
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="border-b border-border-subtle text-text-tertiary text-[11px] uppercase tracking-wider">
+              <th className="text-left px-4 py-2.5 font-medium">PR</th>
+              <th className="text-left px-4 py-2.5 font-medium">Title</th>
+              <th className="text-center px-3 py-2.5 font-medium">Size</th>
+              <th className="text-center px-3 py-2.5 font-medium">State</th>
+              <th className="text-right px-3 py-2.5 font-medium">Post-Open</th>
+              <th className="text-center px-3 py-2.5 font-medium">1st Pass</th>
+              <th className="text-right px-3 py-2.5 font-medium">Messages</th>
+              <th className="text-right px-4 py-2.5 font-medium">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {prs.map((pr) => {
+              const size = getPRSize(pr.additions, pr.deletions);
+              const sizeColor = getPRSizeColor(size);
+              return (
+                <tr
+                  key={pr.id}
+                  className="border-b border-border-subtle last:border-0 hover:bg-surface-2 transition-colors"
+                >
+                  <td className="px-4 py-2.5 font-mono text-text-secondary">
+                    <Link
+                      href={`/prs/${pr.id}`}
+                      className="text-accent hover:text-text-primary transition-colors"
+                    >
+                      #{pr.number}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2.5 text-text-primary truncate max-w-[300px]">
+                    <Link
+                      href={`/prs/${pr.id}`}
+                      className="hover:text-accent transition-colors"
+                    >
+                      {pr.title || `PR #${pr.number}`}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-medium ${sizeColor}`}>
+                      {size}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-medium ${
+                      pr.state === "merged"
+                        ? "text-purple bg-purple-muted"
+                        : "text-text-tertiary bg-surface-2"
+                    }`}>
+                      {pr.state}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-mono text-text-secondary">
+                    {pr.metrics?.post_open_commits ?? "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    {pr.metrics?.first_pass_accepted === 1 ? (
+                      <span className="text-green">&#10003;</span>
+                    ) : pr.metrics?.first_pass_accepted === 0 ? (
+                      <span className="text-red">&#10007;</span>
+                    ) : (
+                      <span className="text-text-tertiary">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-mono text-text-secondary">
+                    {pr.metrics?.messages_per_pr ?? "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-mono text-text-secondary">
+                    {pr.metrics?.token_cost_usd !== null && pr.metrics?.token_cost_usd !== undefined
+                      ? formatCost(pr.metrics.token_cost_usd)
+                      : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default async function OverviewPage({
   searchParams,
 }: {
@@ -188,12 +396,18 @@ export default async function OverviewPage({
   let timeline: TimelinePoint[];
   let selectedRepo: Repo | undefined;
   let watchStatuses: WatchStatus[];
+  let repoMetrics: RepoLevelMetrics;
+  let prs: PRWithMetrics[];
 
   try {
-    metrics = await getAggregateMetricsAsync(repoId);
-    repos = await listReposAsync();
-    timeline = await getTimelineAsync(repoId);
-    watchStatuses = await listWatchStatusesAsync();
+    [metrics, repos, timeline, watchStatuses, repoMetrics, prs] = await Promise.all([
+      getAggregateMetricsAsync(repoId),
+      listReposAsync(),
+      getTimelineAsync(repoId),
+      listWatchStatusesAsync(),
+      getRepoLevelMetricsAsync(repoId),
+      listPRsWithMetricsAsync(repoId),
+    ]);
     if (repoId) selectedRepo = await getRepoAsync(repoId);
   } catch {
     return (
@@ -213,7 +427,7 @@ export default async function OverviewPage({
     );
   }
 
-  const metricDefs = buildMetrics(metrics, timeline);
+  const categories = buildCategories(metrics, timeline);
   const reposWithPRs = repos.filter((r) => r.github_owner && r.github_repo);
   const lastSync = reposWithPRs.map((r) => r.last_synced_at).filter(Boolean).sort().pop();
   const watchedCount = watchStatuses.length;
@@ -235,6 +449,8 @@ export default async function OverviewPage({
   const messagesChartData = timeline
     .filter((t) => t.messagesPerPR !== null)
     .map((t) => ({ label: `#${t.prNumber}`, value: t.messagesPerPR! }));
+
+  let cardIndex = 0;
 
   return (
     <div>
@@ -263,30 +479,30 @@ export default async function OverviewPage({
         </p>
       </div>
 
-      {metrics.totalTokenCost !== null && (
-        <div
-          className="mb-6 rounded-xl border border-border-subtle bg-surface-1 p-5 animate-in"
-          style={{ animationDelay: "0ms" }}
-        >
-          <div className="flex items-baseline gap-3">
-            <span className="font-mono text-[32px] font-medium text-text-primary tracking-tight">
-              {formatCost(metrics.totalTokenCost)}
-            </span>
-            <span className="text-[13px] text-text-secondary">
-              total token spend across {metrics.totalPRs} PR{metrics.totalPRs !== 1 && "s"}
-            </span>
+      <SummaryBanner metrics={metrics} repoMetrics={repoMetrics} />
+
+      {categories.map((category) => (
+        <div key={category.name} className="mb-6">
+          <div className="flex items-baseline gap-2 mb-3">
+            <h2 className="text-[14px] font-semibold text-text-primary tracking-[-0.01em]">
+              {category.name}
+            </h2>
+            {category.subtitle && (
+              <span className="text-[11px] text-text-tertiary">
+                {category.subtitle}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {category.metrics.map((m) => (
+              <MetricCard key={m.label} metric={m} index={cardIndex++} />
+            ))}
           </div>
         </div>
-      )}
-
-      <div className="grid grid-cols-3 gap-3 mb-8">
-        {metricDefs.map((m, i) => (
-          <MetricCard key={m.label} metric={m} index={i} />
-        ))}
-      </div>
+      ))}
 
       {(costChartData.length >= 2 || messagesChartData.length >= 2) && (
-        <div className="grid grid-cols-2 gap-4 animate-in" style={{ animationDelay: "400ms" }}>
+        <div className="grid grid-cols-2 gap-4 mb-8 animate-in" style={{ animationDelay: "400ms" }}>
           {costChartData.length >= 2 && (
             <div className="rounded-xl border border-border-subtle bg-surface-1 p-5">
               <h3 className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider mb-4">
@@ -305,6 +521,8 @@ export default async function OverviewPage({
           )}
         </div>
       )}
+
+      <PRTable prs={prs} />
     </div>
   );
 }

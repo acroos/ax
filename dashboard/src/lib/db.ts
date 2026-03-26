@@ -114,6 +114,19 @@ export interface AggregateMetrics {
   totalTokenCost: number | null;
   avgSelfCorrectionRate: number | null;
   avgContextEfficiency: number | null;
+  avgDiffChurnLines: number | null;
+  avgLineRevisitRate: number | null;
+  avgErrorRecoveryAttempts: number | null;
+  avgPlanCoverage: number | null;
+  avgPlanDeviation: number | null;
+  scopeCreepRate: number | null;
+  planDataCount: number;
+}
+
+export interface RepoLevelMetrics {
+  unmergedCostUSD: number | null;
+  totalCostUSD: number | null;
+  unmergedRate: number | null;
 }
 
 export interface TimelinePoint {
@@ -265,6 +278,28 @@ export async function getAggregateMetricsAsync(repoId?: number): Promise<Aggrega
   return computeAggregates(prs);
 }
 
+export function getRepoLevelMetrics(repoId?: number): RepoLevelMetrics {
+  if (isAPIMode() || !repoId) {
+    return { unmergedCostUSD: null, totalCostUSD: null, unmergedRate: null };
+  }
+  const row = getDb().prepare(
+    "SELECT unmerged_cost_usd, total_cost_usd, unmerged_rate FROM repo_metrics WHERE repo_id = ? AND period_type = 'all' ORDER BY computed_at DESC LIMIT 1"
+  ).get(repoId) as { unmerged_cost_usd: number; total_cost_usd: number; unmerged_rate: number | null } | undefined;
+  if (!row) return { unmergedCostUSD: null, totalCostUSD: null, unmergedRate: null };
+  return {
+    unmergedCostUSD: row.unmerged_cost_usd,
+    totalCostUSD: row.total_cost_usd,
+    unmergedRate: row.unmerged_rate,
+  };
+}
+
+export async function getRepoLevelMetricsAsync(repoId?: number): Promise<RepoLevelMetrics> {
+  if (isAPIMode() && repoId) {
+    return fetchAPI<RepoLevelMetrics>(`/api/v1/repos/${repoId}/repo-metrics`);
+  }
+  return getRepoLevelMetrics(repoId);
+}
+
 function computeAggregates(prs: PRWithMetrics[]): AggregateMetrics {
   const withMetrics = prs.filter((p) => p.metrics);
   const totalPRs = prs.length;
@@ -275,6 +310,9 @@ function computeAggregates(prs: PRWithMetrics[]): AggregateMetrics {
       ciSuccessRate: null, testCoverageRate: 0, avgMessagesPerPR: null,
       avgIterationDepth: null, avgTokenCost: null, totalTokenCost: null,
       avgSelfCorrectionRate: null, avgContextEfficiency: null,
+      avgDiffChurnLines: null, avgLineRevisitRate: null,
+      avgErrorRecoveryAttempts: null, avgPlanCoverage: null,
+      avgPlanDeviation: null, scopeCreepRate: null, planDataCount: 0,
     };
   }
 
@@ -326,11 +364,47 @@ function computeAggregates(prs: PRWithMetrics[]): AggregateMetrics {
     ? ce.reduce((s, p) => s + p.metrics!.context_efficiency!, 0) / ce.length
     : null;
 
+  const churn = withMetrics.filter((p) => p.metrics!.diff_churn_lines !== null);
+  const avgDiffChurnLines = churn.length
+    ? churn.reduce((s, p) => s + p.metrics!.diff_churn_lines!, 0) / churn.length
+    : null;
+
+  const revisit = withMetrics.filter((p) => p.metrics!.line_revisit_rate !== null);
+  const avgLineRevisitRate = revisit.length
+    ? revisit.reduce((s, p) => s + p.metrics!.line_revisit_rate!, 0) / revisit.length
+    : null;
+
+  const errRec = withMetrics.filter((p) => p.metrics!.error_recovery_attempts !== null);
+  const avgErrorRecoveryAttempts = errRec.length
+    ? errRec.reduce((s, p) => s + p.metrics!.error_recovery_attempts!, 0) / errRec.length
+    : null;
+
+  const planCov = withMetrics.filter((p) => p.metrics!.plan_coverage_score !== null);
+  const avgPlanCoverage = planCov.length
+    ? planCov.reduce((s, p) => s + p.metrics!.plan_coverage_score!, 0) / planCov.length
+    : null;
+
+  const planDev = withMetrics.filter((p) => p.metrics!.plan_deviation_score !== null);
+  const avgPlanDeviation = planDev.length
+    ? planDev.reduce((s, p) => s + p.metrics!.plan_deviation_score!, 0) / planDev.length
+    : null;
+
+  const scopeCreepPRs = withMetrics.filter((p) => p.metrics!.scope_creep_detected !== null);
+  const scopeCreepRate = scopeCreepPRs.length
+    ? scopeCreepPRs.filter((p) => p.metrics!.scope_creep_detected === 1).length / scopeCreepPRs.length
+    : null;
+
+  const planDataCount = withMetrics.filter(
+    (p) => p.metrics!.plan_coverage_score !== null || p.metrics!.plan_deviation_score !== null
+  ).length;
+
   return {
     totalPRs, avgPostOpenCommits, firstPassAcceptanceRate,
     ciSuccessRate, testCoverageRate, avgMessagesPerPR,
     avgIterationDepth, avgTokenCost, totalTokenCost,
     avgSelfCorrectionRate, avgContextEfficiency,
+    avgDiffChurnLines, avgLineRevisitRate, avgErrorRecoveryAttempts,
+    avgPlanCoverage, avgPlanDeviation, scopeCreepRate, planDataCount,
   };
 }
 
