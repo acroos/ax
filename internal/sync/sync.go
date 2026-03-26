@@ -13,6 +13,7 @@ import (
 	"github.com/austinroos/ax/internal/db"
 	"github.com/austinroos/ax/internal/metrics"
 	"github.com/austinroos/ax/internal/parsers"
+	"github.com/austinroos/ax/internal/ui"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -76,11 +77,13 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 	// 3. Fetch PRs from GitHub
 	ghParser := parsers.NewGitHubParser(owner, repo)
 
-	fmt.Printf("  Fetching PRs from GitHub...\n")
+	sp := ui.NewSpinner("Fetching PRs from GitHub...")
 	prs, err := ghParser.ListPRs("all", 100)
 	if err != nil {
+		sp.StopFail("Failed to fetch PRs")
 		return nil, fmt.Errorf("failed to list PRs: %w", err)
 	}
+	sp.Stop(fmt.Sprintf("Fetched %d PRs from GitHub", len(prs)))
 
 	defaultBranch, err := gitParser.DefaultBranch()
 	if err != nil {
@@ -94,12 +97,12 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 
 	sessionFiles, _ := parsers.FindSessionFiles(claudeDir, repoRoot)
 	if len(sessionFiles) > 0 {
-		fmt.Printf("  Parsing %d Claude Code sessions...\n", len(sessionFiles))
+		sp = ui.NewSpinner(fmt.Sprintf("Parsing %d Claude Code sessions...", len(sessionFiles)))
 		sessionsByID = make(map[string]*parsers.ParsedSession)
 		for _, f := range sessionFiles {
 			session, err := parsers.ParseSession(f)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "  Warning: failed to parse session %s: %v\n", filepath.Base(f), err)
+				ui.Warnf("failed to parse session %s: %v", filepath.Base(f), err)
 				continue
 			}
 			session.Project = repoRoot
@@ -145,6 +148,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 				dbSession.CacheCreationInputTokens, dbSession.CacheReadInputTokens,
 				dbSession.TotalCostUSD, dbSession.PrimaryModel)
 		}
+		sp.Stop(fmt.Sprintf("Parsed %d Claude Code sessions", result.SessionsParsed))
 	}
 
 	// 5. Process each PR
@@ -154,7 +158,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 	// Build PR number → ID mapping for correlator
 	prNumberToID := make(map[int]int64)
 
-	fmt.Printf("  Processing %d PRs...\n", len(prs))
+	sp = ui.NewSpinner(fmt.Sprintf("Processing %d PRs...", len(prs)))
 	for _, ghPR := range prs {
 
 		state := strings.ToLower(ghPR.State)
@@ -177,7 +181,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 
 		prID, err := db.UpsertPR(database, pr)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  Warning: failed to upsert PR #%d: %v\n", ghPR.Number, err)
+			ui.Warnf("failed to upsert PR #%d: %v", ghPR.Number, err)
 			result.PRsFailed++
 			continue
 		}
@@ -209,7 +213,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		// -- Post-open commits --
 		commits, err := ghParser.GetPRCommits(ghPR.Number)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  Warning: failed to get commits for PR #%d: %v\n", ghPR.Number, err)
+			ui.Warnf("failed to get commits for PR #%d: %v", ghPR.Number, err)
 		} else {
 			prCommits[ghPR.Number] = commits
 			postOpen := metrics.PostOpenCommits(commits, ghPR.CreatedAt)
@@ -226,7 +230,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		// -- First-pass acceptance --
 		reviews, err := ghParser.GetPRReviews(ghPR.Number)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  Warning: failed to get reviews for PR #%d: %v\n", ghPR.Number, err)
+			ui.Warnf("failed to get reviews for PR #%d: %v", ghPR.Number, err)
 		} else {
 			accepted := metrics.FirstPassAccepted(reviews)
 			val := int64(0)
@@ -239,7 +243,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 		// -- CI success rate --
 		checks, err := ghParser.GetPRChecks(ghPR.Number)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  Warning: failed to get checks for PR #%d: %v\n", ghPR.Number, err)
+			ui.Warnf("failed to get checks for PR #%d: %v", ghPR.Number, err)
 		} else {
 			rate := metrics.CISuccessRate(checks)
 			if rate >= 0 {
@@ -307,11 +311,12 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 
 		result.PRsSynced++
 	}
+	sp.Stop(fmt.Sprintf("Processed %d PRs", result.PRsSynced))
 
 	// 6. Correlate sessions to PRs and compute session-dependent metrics
 	var prSessions map[int][]*parsers.ParsedSession
 	if len(sessionsByID) > 0 {
-		fmt.Printf("  Correlating sessions to PRs...\n")
+		sp = ui.NewSpinner("Correlating sessions to PRs...")
 
 		// First pass: correlate all sessions and count how many PRs each session maps to
 		sessionCorrelations := make(map[string][]correlator.Correlation) // session ID → correlations
@@ -343,7 +348,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 					ON CONFLICT(session_id, pr_id) DO UPDATE SET confidence = excluded.confidence
 				`, c.SessionID, prID, c.Confidence)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "  Warning: failed to store correlation %s→PR#%d: %v\n", c.SessionID[:8], c.PRNumber, err)
+					ui.Warnf("failed to store correlation %s→PR#%d: %v", c.SessionID[:8], c.PRNumber, err)
 				}
 
 				prSessions[c.PRNumber] = append(prSessions[c.PRNumber], sessionsByID[sessionID])
@@ -368,6 +373,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 			ComputeSessionMetricsForPR(sessions, sessionPRCount, existing)
 			db.UpsertPRMetrics(database, existing)
 		}
+		sp.Stop(fmt.Sprintf("Correlated %d sessions", result.SessionsCorrelated))
 	}
 
 	// 7. Line revisit rates (skip finalized PRs)
@@ -448,6 +454,7 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 	}
 
 	// 9. Finalize all terminal PRs (after all metrics are computed)
+	sp = ui.NewSpinner("Finalizing metrics...")
 	for _, ghPR := range prs {
 		state := strings.ToLower(ghPR.State)
 		if !IsTerminalState(state) {
@@ -466,10 +473,15 @@ func Run(database *sqlx.DB, opts Options) (*Result, error) {
 			existing = &db.PRMetrics{PRID: prID}
 		}
 		if err := FinalizePR(database, prID, existing); err != nil {
-			fmt.Fprintf(os.Stderr, "  Warning: failed to finalize PR #%d: %v\n", ghPR.Number, err)
+			ui.Warnf("failed to finalize PR #%d: %v", ghPR.Number, err)
 		} else {
 			result.PRsFinalized++
 		}
+	}
+	if result.PRsFinalized > 0 {
+		sp.Stop(fmt.Sprintf("Finalized %d PRs", result.PRsFinalized))
+	} else {
+		sp.Stop("All PRs up to date")
 	}
 
 	// 10. Compute unmerged token spend (repo-level metric)
@@ -610,7 +622,7 @@ func RunSessionsOnly(database *sqlx.DB, opts Options) (*Result, error) {
 		return result, nil
 	}
 
-	fmt.Printf("  Parsing %d Claude Code sessions...\n", len(sessionFiles))
+	sp := ui.NewSpinner(fmt.Sprintf("Parsing %d Claude Code sessions...", len(sessionFiles)))
 
 	sessionsByID := make(map[string]*parsers.ParsedSession)
 	for _, f := range sessionFiles {
@@ -644,6 +656,7 @@ func RunSessionsOnly(database *sqlx.DB, opts Options) (*Result, error) {
 			session.CacheCreationInputTokens, session.CacheReadInputTokens,
 			session.TotalCostUSD, session.PrimaryModel)
 	}
+	sp.Stop(fmt.Sprintf("Parsed %d sessions", result.SessionsParsed))
 
 	// Load existing PRs from database for correlation
 	existingPRs, err := db.GetPRsForRepo(database, repo.ID)

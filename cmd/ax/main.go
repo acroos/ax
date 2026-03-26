@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -21,7 +22,9 @@ import (
 	"github.com/austinroos/ax/internal/push"
 	"github.com/austinroos/ax/internal/server"
 	axsync "github.com/austinroos/ax/internal/sync"
+	"github.com/austinroos/ax/internal/ui"
 	"github.com/austinroos/ax/internal/watch"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 )
@@ -111,36 +114,41 @@ without making GitHub API calls. Useful for mid-session updates.`,
 			}
 
 			if result.Owner == "" && result.Repo == "" {
-				fmt.Printf("\n✓ No data to sync (repo not yet tracked)\n")
+				ui.CompleteBanner("No data to sync (repo not yet tracked)")
 				return nil
 			}
-			fmt.Printf("\n✓ Sync complete for %s/%s\n", result.Owner, result.Repo)
-			fmt.Printf("  PRs:       %d synced", result.PRsSynced)
+			ui.CompleteBanner(fmt.Sprintf("Sync complete for %s", ui.Highlight.Render(result.Owner+"/"+result.Repo)))
+
+			// PR summary line
+			prParts := []string{fmt.Sprintf("%d synced", result.PRsSynced)}
 			if result.PRsFinalized > 0 {
-				fmt.Printf(", %d finalized", result.PRsFinalized)
+				prParts = append(prParts, ui.Success.Render(fmt.Sprintf("%d finalized", result.PRsFinalized)))
 			}
 			if result.PRsSkipped > 0 {
-				fmt.Printf(", %d unchanged", result.PRsSkipped)
+				prParts = append(prParts, ui.Muted(fmt.Sprintf("%d unchanged", result.PRsSkipped)))
 			}
 			if result.PRsOpen > 0 {
-				fmt.Printf(", %d open", result.PRsOpen)
+				prParts = append(prParts, fmt.Sprintf("%d open", result.PRsOpen))
 			}
 			if result.PRsFailed > 0 {
-				fmt.Printf(", %d failed", result.PRsFailed)
+				prParts = append(prParts, ui.Error.Render(fmt.Sprintf("%d failed", result.PRsFailed)))
 			}
-			fmt.Println()
+			ui.MetricRow("PRs", strings.Join(prParts, ", "))
+
 			if result.SessionsParsed > 0 {
-				fmt.Printf("  Sessions:  %d parsed, %d correlated\n", result.SessionsParsed, result.SessionsCorrelated)
+				ui.MetricRow("Sessions", fmt.Sprintf("%d parsed, %d correlated", result.SessionsParsed, result.SessionsCorrelated))
 			}
 			if result.PlansAnalyzed > 0 {
-				fmt.Printf("  Plans:     %d analyzed\n", result.PlansAnalyzed)
+				ui.MetricRow("Plans", fmt.Sprintf("%d analyzed", result.PlansAnalyzed))
 			}
 			if result.TotalCostUSD > 0 {
-				fmt.Printf("  Cost:      $%.2f total", result.TotalCostUSD)
+				costStr := ui.FormatCost(result.TotalCostUSD) + " total"
 				if result.UnmergedCostUSD > 0 {
-					fmt.Printf(", $%.2f unmerged (%.0f%% waste)", result.UnmergedCostUSD, result.UnmergedRate*100)
+					wasteColor := ui.GoodBad(result.UnmergedRate, 0.1, false)
+					wasteStyle := lipgloss.NewStyle().Foreground(wasteColor)
+					costStr += ", " + wasteStyle.Render(fmt.Sprintf("%s unmerged (%.0f%% waste)", ui.FormatCost(result.UnmergedCostUSD), result.UnmergedRate*100))
 				}
-				fmt.Println()
+				ui.MetricRow("Cost", costStr)
 			}
 
 			// Auto-push to team server if configured
@@ -153,10 +161,10 @@ without making GitHub API calls. Useful for mid-session updates.`,
 						client := push.NewClient(cfg.ServerURL, cfg.APIKey)
 						pushResp, pushErr := client.Push(payload)
 						if pushErr != nil {
-							log.Printf("Warning: failed to push to team server: %v", pushErr)
+							ui.Warnf("failed to push to team server: %v", pushErr)
 						} else if pushResp.OK {
-							fmt.Printf("  Pushed to %s (%d PRs, %d sessions)\n",
-								cfg.ServerURL, pushResp.Entities["prs"], pushResp.Entities["sessions"])
+							ui.MetricRow("Pushed", fmt.Sprintf("%s (%d PRs, %d sessions)",
+								ui.URL.Render(cfg.ServerURL), pushResp.Entities["prs"], pushResp.Entities["sessions"]))
 						}
 					}
 				}
@@ -217,9 +225,9 @@ func newReportCmd() *cobra.Command {
 func printRepoReport(database *sqlx.DB, repo *db.Repo) error {
 	owner := repo.GithubOwner.String
 	repoName := repo.GithubRepo.String
-	fmt.Printf("\n  %s/%s\n", owner, repoName)
+	ui.SectionHeader(ui.Highlight.Render(owner+"/"+repoName))
 	if repo.LastSyncedAt.Valid {
-		fmt.Printf("  Last synced: %s\n\n", repo.LastSyncedAt.String)
+		ui.MetricRow("Last synced", repo.LastSyncedAt.String)
 	}
 
 	prs, err := db.GetFinalizedPRsForRepo(database, repo.ID)
@@ -228,7 +236,8 @@ func printRepoReport(database *sqlx.DB, repo *db.Repo) error {
 	}
 
 	if len(prs) == 0 {
-		fmt.Println("  No finalized PRs found. Metrics are computed when PRs are merged or closed.")
+		fmt.Println()
+		fmt.Printf("  %s\n\n", ui.Faint.Render("No finalized PRs found. Metrics are computed when PRs are merged or closed."))
 		return nil
 	}
 
@@ -293,69 +302,77 @@ func printRepoReport(database *sqlx.DB, repo *db.Repo) error {
 		}
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "  METRIC\tVALUE\tDESCRIPTION")
-	fmt.Fprintln(w, "  ------\t-----\t-----------")
-
+	fmt.Println()
+	fmt.Printf("  %s\n", ui.SubHeader.Render("OUTPUT QUALITY"))
 	if prCount > 0 {
 		avgPostOpen := float64(totalPostOpen) / float64(prCount)
-		fmt.Fprintf(w, "  Avg post-open commits\t%.1f\tCommits after PR opened\n", avgPostOpen)
+		ui.MetricRowColored("Avg post-open commits", fmt.Sprintf("%.1f", avgPostOpen), ui.GoodBad(avgPostOpen, 1.0, false))
 
-		acceptRate := float64(acceptedCount) / float64(prCount) * 100
-		fmt.Fprintf(w, "  First-pass acceptance\t%.0f%%\tPRs merged without changes requested\n", acceptRate)
+		acceptRate := float64(acceptedCount) / float64(prCount)
+		ui.MetricRowColored("First-pass acceptance", ui.FormatPct(acceptRate), ui.GoodBad(acceptRate, 0.8, true))
 	}
-
 	if ciCount > 0 {
-		avgCI := totalCI / float64(ciCount) * 100
-		fmt.Fprintf(w, "  CI success rate\t%.0f%%\tChecks passing on first push\n", avgCI)
+		avgCI := totalCI / float64(ciCount)
+		ui.MetricRowColored("CI success rate", ui.FormatPct(avgCI), ui.GoodBad(avgCI, 0.9, true))
 	}
-
 	testTotal := withTests + withoutTests
 	if testTotal > 0 {
-		testRate := float64(withTests) / float64(testTotal) * 100
-		fmt.Fprintf(w, "  PRs with tests\t%.0f%%\tPRs that include test file changes\n", testRate)
+		testRate := float64(withTests) / float64(testTotal)
+		ui.MetricRowColored("Test coverage", ui.FormatPct(testRate), ui.GoodBad(testRate, 0.7, true))
 	}
 
-	// Session-dependent metrics
-	if msgCount > 0 {
-		avgMsg := float64(totalMessages) / float64(msgCount)
-		fmt.Fprintf(w, "  Avg messages/PR\t%.1f\tHuman messages per PR\n", avgMsg)
-	}
-	if iterCount > 0 {
-		avgIter := float64(totalIterations) / float64(iterCount)
-		fmt.Fprintf(w, "  Avg iteration depth\t%.1f\tHuman→agent turn pairs per PR\n", avgIter)
-	}
-	if costCount > 0 {
-		avgCost := totalCost / float64(costCount)
-		fmt.Fprintf(w, "  Avg token cost/PR\t$%.2f\tDollar cost per PR\n", avgCost)
-		fmt.Fprintf(w, "  Total token cost\t$%.2f\tAcross %d PRs\n", totalCost, costCount)
-	}
-	if scCount > 0 {
-		avgSC := totalSelfCorrection / float64(scCount) * 100
-		fmt.Fprintf(w, "  Self-correction rate\t%.0f%%\tAgent error recovery without human help\n", avgSC)
-	}
-	if ceCount > 0 {
-		avgCE := totalCtxEfficiency / float64(ceCount)
-		fmt.Fprintf(w, "  Context efficiency\t%.2f\tFiles modified / files read\n", avgCE)
+	if msgCount > 0 || costCount > 0 {
+		fmt.Println()
+		fmt.Printf("  %s\n", ui.SubHeader.Render("PROMPT EFFICIENCY"))
+		if msgCount > 0 {
+			avgMsg := float64(totalMessages) / float64(msgCount)
+			ui.MetricRowColored("Avg messages/PR", fmt.Sprintf("%.1f", avgMsg), ui.GoodBad(avgMsg, 10, false))
+		}
+		if iterCount > 0 {
+			avgIter := float64(totalIterations) / float64(iterCount)
+			ui.MetricRowColored("Avg iteration depth", fmt.Sprintf("%.1f", avgIter), ui.GoodBad(avgIter, 5, false))
+		}
+		if costCount > 0 {
+			avgCost := totalCost / float64(costCount)
+			ui.MetricRow("Avg token cost/PR", ui.FormatCost(avgCost))
+			ui.MetricRow("Total token cost", fmt.Sprintf("%s across %d PRs", ui.FormatCost(totalCost), costCount))
+		}
 	}
 
-	fmt.Fprintf(w, "  Total PRs\t%d\t\n", len(prs))
+	if scCount > 0 || ceCount > 0 {
+		fmt.Println()
+		fmt.Printf("  %s\n", ui.SubHeader.Render("AGENT BEHAVIOR"))
+		if scCount > 0 {
+			avgSC := totalSelfCorrection / float64(scCount)
+			ui.MetricRowColored("Self-correction rate", ui.FormatPct(avgSC), ui.GoodBad(avgSC, 0.8, true))
+		}
+		if ceCount > 0 {
+			avgCE := totalCtxEfficiency / float64(ceCount)
+			ui.MetricRow("Context efficiency", fmt.Sprintf("%.2f", avgCE))
+		}
+		if errorCount > 0 {
+			avgErr := float64(totalErrors) / float64(errorCount)
+			ui.MetricRowColored("Avg error recovery", fmt.Sprintf("%.1f", avgErr), ui.GoodBad(avgErr, 3, false))
+		}
+	}
 
-	w.Flush()
+	fmt.Println()
+	ui.MetricRow("Total PRs", fmt.Sprintf("%d", len(prs)))
 
 	// Show unmerged token spend if available
 	repoMetrics, _ := db.GetRepoMetrics(database, repo.ID, "all")
 	if len(repoMetrics) > 0 {
 		rm := repoMetrics[0]
 		if rm.UnmergedCostUSD > 0 {
-			fmt.Println()
-			fmt.Printf("  Unmerged spend: $%.2f / $%.2f (%.0f%% waste rate)\n",
-				rm.UnmergedCostUSD, rm.TotalCostUSD, rm.UnmergedRate.Float64*100)
+			wasteColor := ui.GoodBad(rm.UnmergedRate.Float64, 0.1, false)
+			wasteStyle := lipgloss.NewStyle().Foreground(wasteColor)
+			ui.MetricRow("Unmerged spend", fmt.Sprintf("%s / %s (%s)",
+				ui.FormatCost(rm.UnmergedCostUSD), ui.FormatCost(rm.TotalCostUSD),
+				wasteStyle.Render(fmt.Sprintf("%.0f%% waste", rm.UnmergedRate.Float64*100))))
 		}
 	}
 
 	fmt.Println()
-
 	return nil
 }
 
@@ -374,84 +391,95 @@ func printPRReport(database *sqlx.DB, repo *db.Repo, prNumber int) error {
 		return err
 	}
 
-	fmt.Printf("\n  PR #%d: %s\n", pr.Number, pr.Title.String)
-	fmt.Printf("  State: %s  |  Branch: %s\n", pr.State.String, pr.Branch.String)
-	fmt.Printf("  +%d -%d across %d files\n", pr.Additions, pr.Deletions, pr.ChangedFiles)
+	ui.SectionHeader(fmt.Sprintf("PR #%d: %s", pr.Number, ui.Bold.Render(pr.Title.String)))
+	stateColor := ui.Green
+	if pr.State.String == "closed" {
+		stateColor = ui.Red
+	} else if pr.State.String == "merged" {
+		stateColor = ui.Purple
+	}
+	stateStyle := lipgloss.NewStyle().Foreground(stateColor)
+	ui.MetricRow("State", stateStyle.Render(pr.State.String))
+	ui.MetricRow("Branch", pr.Branch.String)
+	ui.MetricRow("Changes", fmt.Sprintf("%s  %s  %d files",
+		ui.Success.Render(fmt.Sprintf("+%d", pr.Additions)),
+		ui.Error.Render(fmt.Sprintf("-%d", pr.Deletions)),
+		pr.ChangedFiles))
 
 	if m == nil {
-		fmt.Println("\n  No metrics computed yet.")
+		fmt.Printf("\n  %s\n\n", ui.Faint.Render("No metrics computed yet."))
 		return nil
 	}
 
 	if m.MetricsFinalized == 1 {
-		fmt.Printf("  Metrics finalized: %s\n\n", m.FinalizedAt.String)
+		ui.MetricRow("Finalized", m.FinalizedAt.String)
 	} else {
-		fmt.Printf("  Metrics: pending (PR still in-flight)\n\n")
+		ui.MetricRow("Status", ui.Warning.Render("pending (PR still in-flight)"))
 	}
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "  METRIC\tVALUE")
-	fmt.Fprintln(w, "  ------\t-----")
-
+	fmt.Println()
+	fmt.Printf("  %s\n", ui.SubHeader.Render("OUTPUT QUALITY"))
 	if m.PostOpenCommits.Valid {
-		fmt.Fprintf(w, "  Post-open commits\t%d\n", m.PostOpenCommits.Int64)
+		ui.MetricRowColored("Post-open commits", fmt.Sprintf("%d", m.PostOpenCommits.Int64), ui.GoodBad(float64(m.PostOpenCommits.Int64), 1.0, false))
 	}
 	if m.FirstPassAccepted.Valid {
-		if m.FirstPassAccepted.Int64 == 1 {
-			fmt.Fprintf(w, "  First-pass accepted\tYes\n")
-		} else {
-			fmt.Fprintf(w, "  First-pass accepted\tNo\n")
-		}
+		ui.MetricRow("First-pass accepted", ui.YesNo(m.FirstPassAccepted.Int64 == 1))
 	}
 	if m.CISuccessRate.Valid {
-		fmt.Fprintf(w, "  CI success rate\t%.0f%%\n", m.CISuccessRate.Float64*100)
+		ui.MetricRowColored("CI success rate", ui.FormatPct(m.CISuccessRate.Float64), ui.GoodBad(m.CISuccessRate.Float64, 0.9, true))
 	}
 	if m.HasTests.Valid {
-		if m.HasTests.Int64 == 1 {
-			fmt.Fprintf(w, "  Includes tests\tYes\n")
-		} else {
-			fmt.Fprintf(w, "  Includes tests\tNo\n")
-		}
+		ui.MetricRow("Includes tests", ui.YesNo(m.HasTests.Int64 == 1))
 	}
 	if m.DiffChurnLines.Valid {
-		fmt.Fprintf(w, "  Diff churn (lines)\t%d\n", m.DiffChurnLines.Int64)
+		ui.MetricRow("Diff churn", fmt.Sprintf("%d lines", m.DiffChurnLines.Int64))
 	}
 	if m.LineRevisitRate.Valid {
-		fmt.Fprintf(w, "  Line revisit rate\t%.2f\n", m.LineRevisitRate.Float64)
+		ui.MetricRow("Line revisit rate", fmt.Sprintf("%.2f", m.LineRevisitRate.Float64))
 	}
-	if m.MessagesPerPR.Valid {
-		fmt.Fprintf(w, "  Messages\t%d\n", m.MessagesPerPR.Int64)
-	}
-	if m.IterationDepth.Valid {
-		fmt.Fprintf(w, "  Iteration depth\t%d\n", m.IterationDepth.Int64)
-	}
-	if m.TokenCostUSD.Valid {
-		fmt.Fprintf(w, "  Token cost\t$%.2f\n", m.TokenCostUSD.Float64)
-	}
-	if m.SelfCorrectionRate.Valid {
-		fmt.Fprintf(w, "  Self-correction rate\t%.0f%%\n", m.SelfCorrectionRate.Float64*100)
-	}
-	if m.ContextEfficiency.Valid {
-		fmt.Fprintf(w, "  Context efficiency\t%.2f\n", m.ContextEfficiency.Float64)
-	}
-	if m.ErrorRecoveryAttempts.Valid {
-		fmt.Fprintf(w, "  Error recovery attempts\t%d\n", m.ErrorRecoveryAttempts.Int64)
-	}
-	if m.PlanCoverageScore.Valid {
-		fmt.Fprintf(w, "  Plan coverage\t%.0f%%\n", m.PlanCoverageScore.Float64*100)
-	}
-	if m.PlanDeviationScore.Valid {
-		fmt.Fprintf(w, "  Plan deviation\t%.0f%%\n", m.PlanDeviationScore.Float64*100)
-	}
-	if m.ScopeCreepDetected.Valid {
-		if m.ScopeCreepDetected.Int64 == 1 {
-			fmt.Fprintf(w, "  Scope creep\tYes\n")
-		} else {
-			fmt.Fprintf(w, "  Scope creep\tNo\n")
+
+	if m.MessagesPerPR.Valid || m.TokenCostUSD.Valid {
+		fmt.Println()
+		fmt.Printf("  %s\n", ui.SubHeader.Render("PROMPT EFFICIENCY"))
+		if m.MessagesPerPR.Valid {
+			ui.MetricRow("Messages", fmt.Sprintf("%d", m.MessagesPerPR.Int64))
+		}
+		if m.IterationDepth.Valid {
+			ui.MetricRow("Iteration depth", fmt.Sprintf("%d", m.IterationDepth.Int64))
+		}
+		if m.TokenCostUSD.Valid {
+			ui.MetricRow("Token cost", ui.FormatCost(m.TokenCostUSD.Float64))
 		}
 	}
 
-	w.Flush()
+	if m.SelfCorrectionRate.Valid || m.ContextEfficiency.Valid {
+		fmt.Println()
+		fmt.Printf("  %s\n", ui.SubHeader.Render("AGENT BEHAVIOR"))
+		if m.SelfCorrectionRate.Valid {
+			ui.MetricRowColored("Self-correction rate", ui.FormatPct(m.SelfCorrectionRate.Float64), ui.GoodBad(m.SelfCorrectionRate.Float64, 0.8, true))
+		}
+		if m.ContextEfficiency.Valid {
+			ui.MetricRow("Context efficiency", fmt.Sprintf("%.2f", m.ContextEfficiency.Float64))
+		}
+		if m.ErrorRecoveryAttempts.Valid {
+			ui.MetricRow("Error recovery", fmt.Sprintf("%d", m.ErrorRecoveryAttempts.Int64))
+		}
+	}
+
+	if m.PlanCoverageScore.Valid || m.PlanDeviationScore.Valid {
+		fmt.Println()
+		fmt.Printf("  %s\n", ui.SubHeader.Render("PLANNING"))
+		if m.PlanCoverageScore.Valid {
+			ui.MetricRow("Plan coverage", ui.FormatPct(m.PlanCoverageScore.Float64))
+		}
+		if m.PlanDeviationScore.Valid {
+			ui.MetricRow("Plan deviation", ui.FormatPct(m.PlanDeviationScore.Float64))
+		}
+		if m.ScopeCreepDetected.Valid {
+			ui.MetricRow("Scope creep", ui.YesNo(m.ScopeCreepDetected.Int64 == 1))
+		}
+	}
+
 	fmt.Println()
 
 	return nil
@@ -474,7 +502,7 @@ func newStatusCmd() *cobra.Command {
 			}
 
 			if len(repos) == 0 {
-				fmt.Println("No tracked repos. Run 'ax sync --repo <path>' to start.")
+				fmt.Printf("\n  %s\n\n", ui.Faint.Render("No tracked repos. Run 'ax sync --repo <path>' to start."))
 				return nil
 			}
 
@@ -486,28 +514,31 @@ func newStatusCmd() *cobra.Command {
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "\n  REPO\tLAST SYNCED\tWATCHING\tLAST POLLED")
-			fmt.Fprintln(w, "  ----\t-----------\t--------\t-----------")
+			fmt.Fprintf(w, "\n  %s\t%s\t%s\t%s\n",
+				ui.SubHeader.Render("REPO"),
+				ui.SubHeader.Render("LAST SYNCED"),
+				ui.SubHeader.Render("WATCHING"),
+				ui.SubHeader.Render("LAST POLLED"))
 			for _, r := range repos {
 				name := r.Path
 				if r.GithubOwner.Valid && r.GithubRepo.Valid {
 					name = r.GithubOwner.String + "/" + r.GithubRepo.String
 				}
-				synced := "never"
+				synced := ui.Muted("never")
 				if r.LastSyncedAt.Valid {
 					synced = r.LastSyncedAt.String
 				}
-				watching := "no"
-				polled := "-"
+				watching := ui.Muted("no")
+				polled := ui.Muted("-")
 				if wr, ok := watchedMap[r.ID]; ok && wr.Enabled == 1 {
-					watching = "yes"
+					watching = ui.Success.Render("yes")
 					if wr.LastPolledAt.Valid {
 						polled = wr.LastPolledAt.String
 					} else {
-						polled = "never"
+						polled = ui.Muted("never")
 					}
 				}
-				fmt.Fprintf(w, "  %s\t%s\t%s\t%s\n", name, synced, watching, polled)
+				fmt.Fprintf(w, "  %s\t%s\t%s\t%s\n", ui.Bold.Render(name), synced, watching, polled)
 			}
 			w.Flush()
 			fmt.Println()
@@ -531,12 +562,12 @@ func newDashboardCmd() *cobra.Command {
 				return fmt.Errorf("dashboard not found — expected at <ax-repo>/dashboard/\nRun from the ax source directory or set AX_DASHBOARD_DIR")
 			}
 
-			fmt.Printf("Starting AX dashboard at http://localhost:%d\n", port)
-			fmt.Println("Press Ctrl+C to stop.")
+			fmt.Printf("\n  %s Starting dashboard at %s\n", ui.InfoIcon(), ui.URL.Render(fmt.Sprintf("http://localhost:%d", port)))
+			fmt.Printf("  %s\n", ui.Faint.Render("Press Ctrl+C to stop."))
 
 			// Check if node_modules exists
 			if _, err := os.Stat(filepath.Join(dashboardDir, "node_modules")); os.IsNotExist(err) {
-				fmt.Println("Installing dashboard dependencies...")
+				ui.Step("Installing dashboard dependencies...")
 				install := exec.Command("npm", "install")
 				install.Dir = dashboardDir
 				install.Stdout = os.Stdout
@@ -616,7 +647,7 @@ Use --uninstall to remove all AX hooks and polling.`,
 				hooks.Uninstall(settingsPath)
 				hooks.UninstallStopHook(settingsPath)
 				watch.Uninstall()
-				fmt.Println("All AX hooks and background polling removed.")
+				ui.StepDone("All AX hooks and background polling removed")
 				return nil
 			}
 
@@ -648,27 +679,27 @@ func initLocalMode(settingsPath string, liveSync, noWatch bool, watchInterval in
 	}
 
 	if hooks.IsInstalled(settingsPath) {
-		fmt.Println("Updating AX hooks...")
+		ui.Step("Updating AX hooks...")
 	}
 
 	if err := hooks.Install(settingsPath, axBinary); err != nil {
 		return fmt.Errorf("failed to install SessionEnd hook: %w", err)
 	}
-	fmt.Println("SessionEnd hook installed — full sync after each session.")
+	ui.StepDone("SessionEnd hook installed — full sync after each session")
 
 	if liveSync {
 		if err := hooks.InstallStopHook(settingsPath, axBinary); err != nil {
 			return fmt.Errorf("failed to install Stop hook: %w", err)
 		}
-		fmt.Println("Stop hook installed — lightweight sync after each response.")
+		ui.StepDone("Stop hook installed — lightweight sync after each response")
 	}
 
 	if !noWatch {
 		if err := watch.Install(axBinary, watchInterval); err != nil {
-			log.Printf("Warning: failed to install background polling: %v", err)
-			fmt.Println("Background polling: failed (you can set up manually with 'ax watch install')")
+			ui.Warnf("failed to install background polling: %v", err)
+			ui.StepFail("Background polling failed (set up manually with 'ax watch install')")
 		} else {
-			fmt.Printf("Background polling installed (every %ds).\n", watchInterval)
+			ui.StepDone(fmt.Sprintf("Background polling installed (every %ds)", watchInterval))
 		}
 
 		initStore, dbErr := openDB()
@@ -689,17 +720,14 @@ func initLocalMode(settingsPath string, liveSync, noWatch bool, watchInterval in
 	}
 
 	fmt.Println()
-	fmt.Println("  Your metrics will now update automatically.")
-	fmt.Println("  To verify: check ~/.claude/settings.json")
-	fmt.Println("  To remove: run ax init --uninstall")
+	fmt.Printf("  %s\n", ui.Bold.Render("Your metrics will now update automatically."))
+	fmt.Printf("  To verify: check %s\n", ui.Code.Render("~/.claude/settings.json"))
+	fmt.Printf("  To remove: run %s\n", ui.Code.Render("ax init --uninstall"))
 	return nil
 }
 
 func initTeamMode(serverURL, apiKey, userName, settingsPath string, liveSync, noWatch bool, watchInterval int) error {
-	fmt.Println()
-	fmt.Println("  AX Team Setup")
-	fmt.Println("  =============")
-	fmt.Println()
+	ui.SectionHeader(ui.Bold.Render("AX Team Setup"))
 
 	// Step 1: Validate inputs
 	if serverURL == "" {
@@ -713,39 +741,42 @@ func initTeamMode(serverURL, apiKey, userName, settingsPath string, liveSync, no
 	}
 
 	// Step 2: Test server connectivity
-	fmt.Printf("  Step 1/4: Testing server connectivity...\n")
-	fmt.Printf("           Server: %s\n", serverURL)
+	ui.NumberedStep(1, 4, "Testing server connectivity...")
+	fmt.Printf("           Server: %s\n", ui.URL.Render(serverURL))
 
 	client := push.NewClient(serverURL, apiKey)
 
-	// Health check first (no auth)
 	if err := client.HealthCheck(); err != nil {
-		fmt.Printf("           FAILED\n\n")
-		fmt.Printf("  Could not reach the server at %s\n", serverURL)
+		ui.StepFail("Server unreachable")
+		fmt.Println()
+		fmt.Printf("  Could not reach the server at %s\n", ui.URL.Render(serverURL))
 		fmt.Printf("  Check that:\n")
-		fmt.Printf("    - The URL is correct (include port if needed)\n")
-		fmt.Printf("    - The server is running (docker compose ps)\n")
-		fmt.Printf("    - Your network can reach it (VPN, firewall)\n")
+		fmt.Printf("    %s The URL is correct (include port if needed)\n", ui.ArrowIcon())
+		fmt.Printf("    %s The server is running (%s)\n", ui.ArrowIcon(), ui.Code.Render("docker compose ps"))
+		fmt.Printf("    %s Your network can reach it (VPN, firewall)\n", ui.ArrowIcon())
 		return fmt.Errorf("server unreachable: %w", err)
 	}
-	fmt.Printf("           Server is reachable.\n")
+	fmt.Printf("           %s\n", ui.Success.Render("Server is reachable"))
 
 	// Step 3: Validate API key
-	fmt.Printf("\n  Step 2/4: Validating API key...\n")
+	fmt.Println()
+	ui.NumberedStep(2, 4, "Validating API key...")
 
 	if err := client.Ping(); err != nil {
-		fmt.Printf("           FAILED\n\n")
+		ui.StepFail("API key rejected")
+		fmt.Println()
 		fmt.Printf("  The server is reachable but the API key was rejected.\n")
 		fmt.Printf("  Check that:\n")
-		fmt.Printf("    - The API key is correct (starts with ax_k1_)\n")
-		fmt.Printf("    - The key hasn't been revoked\n")
-		fmt.Printf("    - Ask your admin to verify with: ax server list-keys\n")
+		fmt.Printf("    %s The API key is correct (starts with %s)\n", ui.ArrowIcon(), ui.Code.Render("ax_k1_"))
+		fmt.Printf("    %s The key hasn't been revoked\n", ui.ArrowIcon())
+		fmt.Printf("    %s Ask your admin to verify with: %s\n", ui.ArrowIcon(), ui.Code.Render("ax server list-keys"))
 		return fmt.Errorf("API key validation failed: %w", err)
 	}
-	fmt.Printf("           API key is valid.\n")
+	fmt.Printf("           %s\n", ui.Success.Render("API key is valid"))
 
 	// Step 4: Save config
-	fmt.Printf("\n  Step 3/4: Saving team configuration...\n")
+	fmt.Println()
+	ui.NumberedStep(3, 4, "Saving team configuration...")
 
 	cfg := &config.Config{
 		Mode:      "team",
@@ -756,10 +787,11 @@ func initTeamMode(serverURL, apiKey, userName, settingsPath string, liveSync, no
 	if err := config.SaveConfig(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
 	}
-	fmt.Printf("           Saved to ~/.ax/config.json\n")
+	fmt.Printf("           Saved to %s\n", ui.Code.Render("~/.ax/config.json"))
 
-	// Step 5: Install hooks (same as local mode)
-	fmt.Printf("\n  Step 4/4: Installing hooks...\n")
+	// Step 5: Install hooks
+	fmt.Println()
+	ui.NumberedStep(4, 4, "Installing hooks...")
 
 	axBinary, err := os.Executable()
 	if err != nil {
@@ -769,37 +801,35 @@ func initTeamMode(serverURL, apiKey, userName, settingsPath string, liveSync, no
 	if err := hooks.Install(settingsPath, axBinary); err != nil {
 		return fmt.Errorf("failed to install SessionEnd hook: %w", err)
 	}
-	fmt.Printf("           SessionEnd hook installed.\n")
+	fmt.Printf("           %s SessionEnd hook installed\n", ui.SuccessIcon())
 
 	if liveSync {
 		if err := hooks.InstallStopHook(settingsPath, axBinary); err != nil {
 			return fmt.Errorf("failed to install Stop hook: %w", err)
 		}
-		fmt.Printf("           Stop hook installed.\n")
+		fmt.Printf("           %s Stop hook installed\n", ui.SuccessIcon())
 	}
 
 	if !noWatch {
 		if err := watch.Install(axBinary, watchInterval); err != nil {
-			log.Printf("           Warning: background polling setup failed: %v", err)
+			ui.Warnf("background polling setup failed: %v", err)
 		} else {
-			fmt.Printf("           Background polling installed.\n")
+			fmt.Printf("           %s Background polling installed\n", ui.SuccessIcon())
 		}
 	}
 
 	// Success summary
+	ui.CompleteBanner("Setup complete!")
 	fmt.Println()
-	fmt.Println("  Setup complete!")
+	fmt.Printf("  %s\n", ui.Bold.Render("What happens now:"))
+	fmt.Printf("    %s Sessions sync locally and push to %s\n", ui.ArrowIcon(), ui.URL.Render(serverURL))
+	fmt.Printf("    %s Your data will appear on the team dashboard\n", ui.ArrowIcon())
+	fmt.Printf("    %s Contributions attributed to %s\n", ui.ArrowIcon(), ui.Accent.Render(userName))
 	fmt.Println()
-	fmt.Println("  What happens now:")
-	fmt.Printf("    - When a Claude Code session ends, metrics sync locally\n")
-	fmt.Printf("      and automatically push to %s\n", serverURL)
-	fmt.Printf("    - Your data will appear on the team dashboard\n")
-	fmt.Printf("    - Your contributions are attributed to %q\n", userName)
+	fmt.Printf("  %s\n", ui.Bold.Render("Next step:"))
+	fmt.Printf("    Run %s in a git repo to do your first sync + push.\n", ui.Code.Render("ax sync --repo ."))
 	fmt.Println()
-	fmt.Println("  Next step:")
-	fmt.Println("    Run 'ax sync --repo .' in a git repo to do your first sync + push.")
-	fmt.Println()
-	fmt.Println("  To remove: run 'ax init --uninstall'")
+	fmt.Printf("  To remove: %s\n", ui.Code.Render("ax init --uninstall"))
 
 	return nil
 }
@@ -860,8 +890,9 @@ You can override with --server and --api-key flags.`,
 				return err
 			}
 
-			fmt.Printf("Pushed to %s: %d PRs, %d sessions, %d commits\n",
-				serverURL, resp.Entities["prs"], resp.Entities["sessions"], resp.Entities["commits"])
+			ui.CompleteBanner(fmt.Sprintf("Pushed to %s", ui.URL.Render(serverURL)))
+			ui.MetricRow("Data", fmt.Sprintf("%d PRs, %d sessions, %d commits",
+				resp.Entities["prs"], resp.Entities["sessions"], resp.Entities["commits"]))
 			return nil
 		},
 	}
@@ -940,14 +971,15 @@ func runWatchOnce(database *sqlx.DB, repoPath string) error {
 	}
 
 	if result.PRsFinalized > 0 {
-		fmt.Printf("Polled %d repo(s): %d PRs checked, %d finalized\n",
-			result.ReposPolled, result.PRsChecked, result.PRsFinalized)
+		ui.StepDone(fmt.Sprintf("Polled %d repo(s): %d PRs checked, %s",
+			result.ReposPolled, result.PRsChecked,
+			ui.Success.Render(fmt.Sprintf("%d finalized", result.PRsFinalized))))
 	}
 	return nil
 }
 
 func runWatchLoop(database *sqlx.DB, repoPath string, intervalSec int) error {
-	fmt.Printf("Watching for PR state changes every %ds. Press Ctrl+C to stop.\n", intervalSec)
+	fmt.Printf("\n  %s Watching for PR state changes every %ds. %s\n", ui.InfoIcon(), intervalSec, ui.Faint.Render("Press Ctrl+C to stop."))
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -957,17 +989,17 @@ func runWatchLoop(database *sqlx.DB, repoPath string, intervalSec int) error {
 
 	// Run immediately on start
 	if err := runWatchOnce(database, repoPath); err != nil {
-		log.Printf("Warning: poll failed: %v", err)
+		ui.Warnf("poll failed: %v", err)
 	}
 
 	for {
 		select {
 		case <-ticker.C:
 			if err := runWatchOnce(database, repoPath); err != nil {
-				log.Printf("Warning: poll failed: %v", err)
+				ui.Warnf("poll failed: %v", err)
 			}
 		case <-sigCh:
-			fmt.Println("\nStopping watch.")
+			fmt.Printf("\n  %s\n", ui.Faint.Render("Stopping watch."))
 			return nil
 		}
 	}
@@ -988,8 +1020,8 @@ func newWatchInstallCmd() *cobra.Command {
 			if err := watch.Install(axBinary, interval); err != nil {
 				return err
 			}
-			fmt.Printf("Background polling installed (every %ds).\n", interval)
-			fmt.Println("Logs: /tmp/ax-watch.log")
+			ui.StepDone(fmt.Sprintf("Background polling installed (every %ds)", interval))
+			fmt.Printf("  Logs: %s\n", ui.Code.Render("/tmp/ax-watch.log"))
 			return nil
 		},
 	}
@@ -1006,7 +1038,7 @@ func newWatchUninstallCmd() *cobra.Command {
 			if err := watch.Uninstall(); err != nil {
 				return err
 			}
-			fmt.Println("Background polling removed.")
+			ui.StepDone("Background polling removed")
 			return nil
 		},
 	}
@@ -1030,23 +1062,24 @@ func newWatchStatusCmd() *cobra.Command {
 
 			// System-level scheduling status
 			if watch.IsInstalled() {
-				fmt.Println("\n  System polling: active")
+				fmt.Printf("\n  System polling: %s\n", ui.Success.Render("active"))
 			} else {
-				fmt.Println("\n  System polling: not installed (run 'ax watch install')")
+				fmt.Printf("\n  System polling: %s (run %s)\n", ui.Faint.Render("not installed"), ui.Code.Render("ax watch install"))
 			}
 
 			if len(watched) == 0 {
-				fmt.Println("  No watched repos. Run 'ax init' to set up watching.")
-				fmt.Println()
+				fmt.Printf("  %s\n\n", ui.Faint.Render("No watched repos. Run 'ax init' to set up watching."))
 				return nil
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "\n  REPO\tINTERVAL\tLAST POLLED\tENABLED")
-			fmt.Fprintln(w, "  ----\t--------\t-----------\t-------")
+			fmt.Fprintf(w, "\n  %s\t%s\t%s\t%s\n",
+				ui.SubHeader.Render("REPO"),
+				ui.SubHeader.Render("INTERVAL"),
+				ui.SubHeader.Render("LAST POLLED"),
+				ui.SubHeader.Render("ENABLED"))
 
 			for _, wr := range watched {
-				// Look up repo name
 				var repoName string
 				err := store.DB.Get(&repoName, `
 					SELECT COALESCE(github_owner || '/' || github_repo, path)
@@ -1056,15 +1089,15 @@ func newWatchStatusCmd() *cobra.Command {
 					repoName = fmt.Sprintf("repo#%d", wr.RepoID)
 				}
 
-				polled := "never"
+				polled := ui.Muted("never")
 				if wr.LastPolledAt.Valid {
 					polled = wr.LastPolledAt.String
 				}
-				enabled := "yes"
-				if wr.Enabled == 0 {
-					enabled = "no"
+				enabled := ui.Muted("no")
+				if wr.Enabled == 1 {
+					enabled = ui.Success.Render("yes")
 				}
-				fmt.Fprintf(w, "  %s\t%ds\t%s\t%s\n", repoName, wr.PollIntervalSeconds, polled, enabled)
+				fmt.Fprintf(w, "  %s\t%ds\t%s\t%s\n", ui.Bold.Render(repoName), wr.PollIntervalSeconds, polled, enabled)
 			}
 			w.Flush()
 			fmt.Println()
@@ -1253,10 +1286,11 @@ func newServerInitCmd() *cobra.Command {
 				return fmt.Errorf("failed to generate API key: %w", err)
 			}
 
-			fmt.Println("AX server initialized.")
-			fmt.Printf("Your API key: %s\n\n", key)
-			fmt.Println("Share this key securely with your team.")
-			fmt.Println("Each developer will need it for 'ax init --team'.")
+			ui.CompleteBanner("AX server initialized")
+			fmt.Println()
+			fmt.Printf("  Your API key: %s\n\n", ui.Key.Render(key))
+			fmt.Printf("  Share this key securely with your team.\n")
+			fmt.Printf("  Each developer will need it for %s.\n", ui.Code.Render("ax init --team"))
 			return nil
 		},
 	}
@@ -1288,7 +1322,7 @@ func newServerCreateKeyCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("API key for %q: %s\n", args[0], key)
+			fmt.Printf("\n  API key for %s: %s\n", ui.Bold.Render(args[0]), ui.Key.Render(key))
 			return nil
 		},
 	}
@@ -1320,23 +1354,26 @@ func newServerListKeysCmd() *cobra.Command {
 			}
 
 			if len(keys) == 0 {
-				fmt.Println("No API keys. Run 'ax server init' to create one.")
+				fmt.Printf("\n  %s\n", ui.Faint.Render("No API keys. Run 'ax server init' to create one."))
 				return nil
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "NAME\tCREATED\tLAST USED\tREVOKED")
-			fmt.Fprintln(w, "----\t-------\t---------\t-------")
+			fmt.Fprintf(w, "\n  %s\t%s\t%s\t%s\n",
+				ui.SubHeader.Render("NAME"),
+				ui.SubHeader.Render("CREATED"),
+				ui.SubHeader.Render("LAST USED"),
+				ui.SubHeader.Render("REVOKED"))
 			for _, k := range keys {
-				lastUsed := "never"
+				lastUsed := ui.Muted("never")
 				if k.LastUsedAt.Valid {
 					lastUsed = k.LastUsedAt.String
 				}
-				revoked := "no"
+				revoked := ui.Success.Render("no")
 				if k.Revoked == 1 {
-					revoked = "yes"
+					revoked = ui.Error.Render("yes")
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", k.Name, k.CreatedAt, lastUsed, revoked)
+				fmt.Fprintf(w, "  %s\t%s\t%s\t%s\n", ui.Bold.Render(k.Name), k.CreatedAt, lastUsed, revoked)
 			}
 			w.Flush()
 			return nil
@@ -1369,7 +1406,7 @@ func newServerRevokeKeyCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("Revoked API key %q.\n", args[0])
+			ui.StepDone(fmt.Sprintf("Revoked API key %s", ui.Bold.Render(args[0])))
 			return nil
 		},
 	}
