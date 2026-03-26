@@ -207,7 +207,7 @@ func pollRepo(database *sqlx.DB, repo *db.Repo) (*pollResult, error) {
 	// Recompute unmerged token spend
 	sessionsByID := loadSessionsForRepo(database, repo.ID)
 	if len(sessionsByID) > 0 {
-		computeUnmergedTokenSpend(database, repo.ID, sessionsByID)
+		computeUnmergedTokenSpend(database, repo.ID, sessionsByID, nil)
 	}
 
 	return result, nil

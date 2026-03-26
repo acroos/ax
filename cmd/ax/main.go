@@ -110,14 +110,37 @@ without making GitHub API calls. Useful for mid-session updates.`,
 				return err
 			}
 
-			fmt.Printf("\nSync complete for %s/%s\n", result.Owner, result.Repo)
-			fmt.Printf("  PRs synced: %d\n", result.PRsSynced)
-			if result.PRsFailed > 0 {
-				fmt.Printf("  PRs failed: %d\n", result.PRsFailed)
+			if result.Owner == "" && result.Repo == "" {
+				fmt.Printf("\n✓ No data to sync (repo not yet tracked)\n")
+				return nil
 			}
+			fmt.Printf("\n✓ Sync complete for %s/%s\n", result.Owner, result.Repo)
+			fmt.Printf("  PRs:       %d synced", result.PRsSynced)
+			if result.PRsFinalized > 0 {
+				fmt.Printf(", %d finalized", result.PRsFinalized)
+			}
+			if result.PRsSkipped > 0 {
+				fmt.Printf(", %d unchanged", result.PRsSkipped)
+			}
+			if result.PRsOpen > 0 {
+				fmt.Printf(", %d open", result.PRsOpen)
+			}
+			if result.PRsFailed > 0 {
+				fmt.Printf(", %d failed", result.PRsFailed)
+			}
+			fmt.Println()
 			if result.SessionsParsed > 0 {
-				fmt.Printf("  Sessions parsed: %d\n", result.SessionsParsed)
-				fmt.Printf("  Sessions correlated: %d\n", result.SessionsCorrelated)
+				fmt.Printf("  Sessions:  %d parsed, %d correlated\n", result.SessionsParsed, result.SessionsCorrelated)
+			}
+			if result.PlansAnalyzed > 0 {
+				fmt.Printf("  Plans:     %d analyzed\n", result.PlansAnalyzed)
+			}
+			if result.TotalCostUSD > 0 {
+				fmt.Printf("  Cost:      $%.2f total", result.TotalCostUSD)
+				if result.UnmergedCostUSD > 0 {
+					fmt.Printf(", $%.2f unmerged (%.0f%% waste)", result.UnmergedCostUSD, result.UnmergedRate*100)
+				}
+				fmt.Println()
 			}
 
 			// Auto-push to team server if configured
