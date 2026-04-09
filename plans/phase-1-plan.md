@@ -14,7 +14,7 @@ AX is an open-source CLI + web dashboard that analyzes git history, GitHub PR da
 │  Engineer runs `ax sync` locally, views metrics in CLI/dashboard│
 ├─────────────────────────────────────────────────────────────────┤
 │  Phase 4: Team / Self-Hosted                                    │
-│  Central server ingests data from all engineers via hooks        │
+│  Central server ingests data from all engineers via hooks       │
 │  DX/platform team runs the server, org-wide dashboard           │
 ├─────────────────────────────────────────────────────────────────┤
 │  Phase 5: Managed Service                                       │
@@ -50,10 +50,12 @@ Layer 5: Presentation  — Dashboard (local Next.js → hosted app)
 ## Approved Metrics (14)
 
 ### Prompt Efficiency
+
 1. **Messages per PR** — human messages in Claude Code session(s) that produced a PR
 2. **Iteration depth** — back-and-forth turn count (user→agent cycles)
 
 ### Output Quality
+
 3. **Post-open commits** — commits landing after PR was opened
 4. **First-pass acceptance rate** — % of PRs merged without reviewer change requests
 5. **CI success rate** — % of commits/PRs passing CI on first push
@@ -62,16 +64,19 @@ Layer 5: Presentation  — Dashboard (local Next.js → hosted app)
 8. **Line revisit rate** — how often the same lines are modified across different PRs (code stability)
 
 ### Planning Effectiveness
+
 9. **Plan-to-implementation coverage** — how much of the final impl was captured in the plan
 10. **Plan deviation score** — files planned vs files actually changed
 11. **Scope creep detection** — changes beyond what was asked
 
 ### Agent Behavior
+
 12. **Self-correction rate** — agent-initiated fixes vs human-requested changes
 13. **Context efficiency** — files read vs files modified
 14. **Error recovery efficiency** — attempts needed to resolve build/test/lint failures
 
 ### Deferred for Future Consideration
+
 - **Time-to-PR** — wall-clock time is muddied by context switching; needs more thought on what to actually measure
 - **Review feedback density** — low comment density might indicate rubber-stamping, not quality
 - **PR size distribution** — treated as a dimension (S/M/L/XL) on other metrics, not a standalone metric
@@ -100,10 +105,10 @@ Go module for the CLI + core engine. Separate Next.js app for the dashboard. The
 
 ### Data Sources
 
-| Source | What it provides | Required? |
-|--------|-----------------|-----------|
-| Git | Commits, diffs, branches, blame | Yes |
-| GitHub API (via `gh` CLI) | PRs, reviews, CI status, comments | Yes |
+| Source                              | What it provides                      | Required?                   |
+| ----------------------------------- | ------------------------------------- | --------------------------- |
+| Git                                 | Commits, diffs, branches, blame       | Yes                         |
+| GitHub API (via `gh` CLI)           | PRs, reviews, CI status, comments     | Yes                         |
 | Claude Code sessions (`~/.claude/`) | Messages, tool calls, branches, plans | Optional (enriches metrics) |
 
 ### Key Challenge: Session-to-PR Correlation
@@ -120,6 +125,7 @@ Store confidence level with each correlation.
 ### Data Model (SQLite)
 
 **Core tables:**
+
 - `repos` — tracked repositories (path, remote URL, GitHub owner/repo)
 - `sessions` — Claude Code sessions (ID, repo, branch, timestamps, message count)
 - `prs` — pull requests (number, branch, state, timestamps, additions/deletions/files_changed)
@@ -153,6 +159,7 @@ ax status                                    # Show tracked repos and last sync 
 **This is critical.** The dashboard must feel like Linear — sleek, minimal, intentional. Not a data dump. These metrics can easily feel meaningless without strong content design.
 
 Key principles:
+
 - **Every metric needs context.** Each metric card should include a short explanation of what it measures, why it matters, and what a "good" vs "concerning" value looks like. Not buried in docs — visible inline, always accessible (e.g., hover/expand).
 - **Tell the story, not just the number.** Use trend lines, comparisons, and plain-language summaries ("Your first-pass acceptance rate improved 15% this month — your initial PR quality is getting stronger").
 - **Visual hierarchy matters.** Not all 14 metrics are equally important at a glance. The overview should surface what's interesting/changed, not show everything equally.
@@ -209,6 +216,7 @@ Documentation is a first-class deliverable, not an afterthought:
 ### Phase 1: MVP — Git/GitHub Metrics + CLI
 
 Metrics that need **only git + GitHub data** (no Claude Code session parsing):
+
 - Post-open commits
 - First-pass acceptance rate
 - CI success rate
@@ -217,6 +225,7 @@ Metrics that need **only git + GitHub data** (no Claude Code session parsing):
 - Line revisit rate
 
 Steps:
+
 1. Initialize Go module, project structure, Makefile
 2. Copy plan to `plans/`, create `docs/decisions/` with ADR template and all existing decisions, create `docs/metrics/` stubs
 3. `internal/db/` — SQLite schema, migrations, connection
@@ -232,6 +241,7 @@ Steps:
 ### Phase 2: Session Metrics + Dashboard
 
 Add metrics that need **Claude Code session data**:
+
 - Messages per PR
 - Iteration depth
 - Self-correction rate
@@ -239,6 +249,7 @@ Add metrics that need **Claude Code session data**:
 - Error recovery efficiency
 
 Steps:
+
 1. `internal/parsers/claude_sessions.go` — parse `history.jsonl` and per-project session JSONLs
 2. `internal/correlator/correlator.go` — session-to-PR correlation engine
 3. `internal/metrics/prompt_efficiency.go` and `internal/metrics/agent_behavior.go`
@@ -250,11 +261,13 @@ Steps:
 ### Phase 3: Plan Analysis + Hooks
 
 Add metrics that need **plan files + deeper analysis**:
+
 - Plan-to-implementation coverage
 - Plan deviation score
 - Scope creep detection
 
 Steps:
+
 1. Plan file parser (extract mentioned file paths from markdown)
 2. Plan-to-diff comparison (file set intersection/difference)
 3. Optional LLM-assisted semantic analysis behind `--analyze-plans` flag
@@ -280,6 +293,7 @@ Steps:
 ## Key Dependencies
 
 ### Go (CLI + core)
+
 - `cobra` — CLI framework
 - `mattn/go-sqlite3` or `modernc.org/sqlite` — SQLite driver (pure Go option avoids CGO)
 - `charmbracelet/lipgloss` + `charmbracelet/bubbletea` — terminal UI/formatting
@@ -287,6 +301,7 @@ Steps:
 - `gorelease` — automated release builds
 
 ### TypeScript (dashboard)
+
 - Next.js — framework
 - `recharts` — charting
 - `better-sqlite3` — reads from same SQLite DB as CLI
@@ -297,11 +312,10 @@ No GitHub SDK — shell out to `gh` CLI to avoid auth complexity.
 ## Configuration
 
 `~/.ax/config.json`:
+
 ```json
 {
-  "repos": [
-    { "path": "/path/to/repo", "github": "owner/repo" }
-  ],
+  "repos": [{ "path": "/path/to/repo", "github": "owner/repo" }],
   "claudeDataDir": "~/.claude",
   "dbPath": "~/.ax/ax.db",
   "server": null
