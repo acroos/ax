@@ -71,24 +71,25 @@ func ListRepos(db DBTX) ([]Repo, error) {
 // UpsertPR inserts or updates a pull request, tracking state transitions.
 func UpsertPR(db DBTX, pr *PR) (int64, error) {
 	result, err := db.Exec(`
-		INSERT INTO prs (repo_id, number, title, branch, state, created_at, merged_at, closed_at, url, additions, deletions, changed_files, author)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO prs (repo_id, number, title, branch, state, created_at, merged_at, closed_at, url, additions, deletions, changed_files, author, open_commit_count)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(repo_id, number) DO UPDATE SET
 			title = excluded.title,
 			branch = excluded.branch,
 			previous_state = prs.state,
 			state = excluded.state,
-			created_at = excluded.created_at,
+			created_at = COALESCE(excluded.created_at, prs.created_at),
 			merged_at = excluded.merged_at,
 			closed_at = excluded.closed_at,
 			url = excluded.url,
 			additions = excluded.additions,
 			deletions = excluded.deletions,
 			changed_files = excluded.changed_files,
-			author = COALESCE(excluded.author, prs.author)
+			author = COALESCE(excluded.author, prs.author),
+			open_commit_count = COALESCE(prs.open_commit_count, excluded.open_commit_count)
 	`, pr.RepoID, pr.Number, pr.Title, pr.Branch, pr.State,
 		pr.CreatedAt, pr.MergedAt, pr.ClosedAt, pr.URL,
-		pr.Additions, pr.Deletions, pr.ChangedFiles, pr.Author)
+		pr.Additions, pr.Deletions, pr.ChangedFiles, pr.Author, pr.OpenCommitCount)
 	if err != nil {
 		return 0, fmt.Errorf("failed to upsert PR: %w", err)
 	}
@@ -324,6 +325,20 @@ func RevokeAPIKey(db DBTX, name string) error {
 		return fmt.Errorf("no active API key found with name %q", name)
 	}
 	return nil
+}
+
+// GetPRByRepoAndNumber returns a single PR by repo ID and PR number.
+// Returns nil if not found.
+func GetPRByRepoAndNumber(db DBTX, repoID int64, number int) (*PR, error) {
+	var pr PR
+	err := db.Get(&pr, "SELECT * FROM prs WHERE repo_id = ? AND number = ?", repoID, number)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get PR: %w", err)
+	}
+	return &pr, nil
 }
 
 // GetPRsForRepo returns all PRs for a given repo.

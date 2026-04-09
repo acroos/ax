@@ -65,6 +65,10 @@ func (s *Server) mountWebhooks() {
 	}
 
 	dispatcher := events.NewDispatcher()
+	dispatcher.Register(&events.PROpenedHandler{DB: s.store.DB})
+	dispatcher.Register(&events.SynchronizeHandler{DB: s.store.DB})
+	dispatcher.Register(&events.ReviewHandler{DB: s.store.DB})
+	dispatcher.Register(&events.CIHandler{DB: s.store.DB})
 	dispatcher.Register(&events.PRHandler{DB: s.store.DB})
 
 	receiver := events.NewReceiver(events.ReceiverConfig{Secrets: secrets}, dispatcher)

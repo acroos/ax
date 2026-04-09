@@ -324,4 +324,11 @@ var migrations = []migration{
 			ALTER TABLE prs ADD COLUMN author TEXT;
 		`,
 	},
+	{
+		version: 6,
+		sql: `
+			-- Initial commit count at PR open time (for post_open_commits delta)
+			ALTER TABLE prs ADD COLUMN open_commit_count INTEGER;
+		`,
+	},
 }

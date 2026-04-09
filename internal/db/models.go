@@ -29,8 +29,9 @@ type PR struct {
 	Additions     int            `db:"additions"`
 	Deletions     int            `db:"deletions"`
 	ChangedFiles  int            `db:"changed_files"`
-	PushedBy      sql.NullString `db:"pushed_by"`
-	Author        sql.NullString `db:"author"`
+	PushedBy        sql.NullString `db:"pushed_by"`
+	Author          sql.NullString `db:"author"`
+	OpenCommitCount sql.NullInt64  `db:"open_commit_count"`
 }
 
 // Commit represents a git commit associated with a repo and optionally a PR.

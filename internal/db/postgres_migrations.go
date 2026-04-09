@@ -195,4 +195,11 @@ var postgresMigrations = []migration{
 			CREATE INDEX idx_repo_metrics_repo ON repo_metrics(repo_id);
 		`,
 	},
+	{
+		version: 2,
+		sql: `
+			-- Initial commit count at PR open time (for post_open_commits delta)
+			ALTER TABLE prs ADD COLUMN open_commit_count INTEGER;
+		`,
+	},
 }

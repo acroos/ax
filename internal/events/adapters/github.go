@@ -60,14 +60,19 @@ func (g *GitHubAdapter) ParseEvents(r *http.Request, body []byte) ([]events.Even
 type ghPRWebhook struct {
 	Action      string `json:"action"`
 	PullRequest struct {
-		Number   int    `json:"number"`
-		Title    string `json:"title"`
-		State    string `json:"state"`
-		Merged   bool   `json:"merged"`
-		HTMLURL  string `json:"html_url"`
-		MergedAt string `json:"merged_at"`
-		ClosedAt string `json:"closed_at"`
-		Head     struct {
+		Number    int    `json:"number"`
+		Title     string `json:"title"`
+		State     string `json:"state"`
+		Merged    bool   `json:"merged"`
+		HTMLURL   string `json:"html_url"`
+		CreatedAt string `json:"created_at"`
+		MergedAt  string `json:"merged_at"`
+		ClosedAt  string `json:"closed_at"`
+		Commits   int    `json:"commits"`
+		User      struct {
+			Login string `json:"login"`
+		} `json:"user"`
+		Head struct {
 			Ref string `json:"ref"`
 		} `json:"head"`
 		Base struct {
@@ -126,35 +131,47 @@ func (g *GitHubAdapter) parsePullRequest(body []byte) ([]events.Event, error) {
 		return nil, fmt.Errorf("failed to parse pull_request webhook: %w", err)
 	}
 
-	// Only handle "closed" action
-	if payload.Action != "closed" {
+	pr := payload.PullRequest
+	base := events.Event{
+		ID:            fmt.Sprintf("gh-pr-%s-%s-%d-%s", pr.Base.Repo.Owner.Login, pr.Base.Repo.Name, pr.Number, payload.Action),
+		Platform:      events.PlatformGitHub,
+		Timestamp:     time.Now(),
+		RepoOwner:     pr.Base.Repo.Owner.Login,
+		RepoName:      pr.Base.Repo.Name,
+		PRNumber:      pr.Number,
+		PRTitle:       pr.Title,
+		PRBranch:      pr.Head.Ref,
+		PRURL:         pr.HTMLURL,
+		PRCreatedAt:   pr.CreatedAt,
+		PRAuthor:      pr.User.Login,
+		PRCommitCount: pr.Commits,
+		MergedAt:      pr.MergedAt,
+		ClosedAt:      pr.ClosedAt,
+	}
+
+	switch payload.Action {
+	case "opened":
+		base.Type = events.EventPROpened
+		base.PRState = "open"
+		return []events.Event{base}, nil
+
+	case "synchronize":
+		base.Type = events.EventPRSynchronized
+		return []events.Event{base}, nil
+
+	case "closed":
+		if pr.Merged {
+			base.Type = events.EventPRMerged
+			base.PRState = "merged"
+		} else {
+			base.Type = events.EventPRClosed
+			base.PRState = "closed"
+		}
+		return []events.Event{base}, nil
+
+	default:
 		return nil, nil
 	}
-
-	pr := payload.PullRequest
-	evt := events.Event{
-		ID:        fmt.Sprintf("gh-pr-%s-%s-%d-%s", pr.Base.Repo.Owner.Login, pr.Base.Repo.Name, pr.Number, payload.Action),
-		Platform:  events.PlatformGitHub,
-		Timestamp: time.Now(),
-		RepoOwner: pr.Base.Repo.Owner.Login,
-		RepoName:  pr.Base.Repo.Name,
-		PRNumber:  pr.Number,
-		PRTitle:   pr.Title,
-		PRBranch:  pr.Head.Ref,
-		PRURL:     pr.HTMLURL,
-		MergedAt:  pr.MergedAt,
-		ClosedAt:  pr.ClosedAt,
-	}
-
-	if pr.Merged {
-		evt.Type = events.EventPRMerged
-		evt.PRState = "merged"
-	} else {
-		evt.Type = events.EventPRClosed
-		evt.PRState = "closed"
-	}
-
-	return []events.Event{evt}, nil
 }
 
 func (g *GitHubAdapter) parseReview(body []byte) ([]events.Event, error) {
