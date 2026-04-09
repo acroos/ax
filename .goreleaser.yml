@@ -15,7 +15,8 @@ builds:
       - arm64
 
 archives:
-  - format: tar.gz
+  - formats:
+      - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
@@ -29,18 +30,16 @@ changelog:
       - "^test:"
       - "^chore:"
 
-brews:
-  - repository:
+homebrew_casks:
+  - name: ax
+    binaries:
+      - ax
+    repository:
       owner: acroos
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: "https://github.com/acroos/ax"
     description: "Agentic coding DX metrics"
-    license: "MIT"
-    install: |
-      bin.install "ax"
-    test: |
-      system "#{bin}/ax", "--version"
 
 release:
   github:
