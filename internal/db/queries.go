@@ -1,12 +1,8 @@
 package db
 
 import (
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"fmt"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 // DBTX is an interface satisfied by both *sqlx.DB and *sqlx.Tx,
@@ -256,75 +252,6 @@ func GetRepoByOwnerAndName(db DBTX, owner, name string) (*Repo, error) {
 		return nil, fmt.Errorf("failed to get repo: %w", err)
 	}
 	return &repo, nil
-}
-
-// --- API Key Management ---
-
-// GenerateAPIKey creates a new API key, stores its bcrypt hash, and returns the raw key.
-// The raw key is only available at creation time.
-func GenerateAPIKey(db DBTX, name string) (string, error) {
-	// Generate random key: ax_k1_ + 32 hex chars
-	raw := make([]byte, 16)
-	if _, err := rand.Read(raw); err != nil {
-		return "", fmt.Errorf("failed to generate random key: %w", err)
-	}
-	key := "ax_k1_" + hex.EncodeToString(raw)
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(key), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("failed to hash key: %w", err)
-	}
-
-	_, err = db.Exec(`
-		INSERT INTO api_keys (key_hash, name) VALUES (?, ?)
-	`, string(hash), name)
-	if err != nil {
-		return "", fmt.Errorf("failed to store API key: %w", err)
-	}
-
-	return key, nil
-}
-
-// ValidateAPIKey checks if a raw API key is valid (not revoked) and returns the key name.
-func ValidateAPIKey(db DBTX, rawKey string) (string, error) {
-	var keys []APIKey
-	err := db.Select(&keys, "SELECT * FROM api_keys WHERE revoked = 0")
-	if err != nil {
-		return "", fmt.Errorf("failed to query API keys: %w", err)
-	}
-
-	for _, k := range keys {
-		if err := bcrypt.CompareHashAndPassword([]byte(k.KeyHash), []byte(rawKey)); err == nil {
-			// Update last_used_at
-			db.Exec("UPDATE api_keys SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?", k.ID)
-			return k.Name, nil
-		}
-	}
-
-	return "", fmt.Errorf("invalid API key")
-}
-
-// ListAPIKeys returns all API keys (without hashes).
-func ListAPIKeys(db DBTX) ([]APIKey, error) {
-	var keys []APIKey
-	err := db.Select(&keys, "SELECT id, '' as key_hash, name, created_at, last_used_at, revoked FROM api_keys ORDER BY created_at DESC")
-	if err != nil {
-		return nil, fmt.Errorf("failed to list API keys: %w", err)
-	}
-	return keys, nil
-}
-
-// RevokeAPIKey revokes an API key by name.
-func RevokeAPIKey(db DBTX, name string) error {
-	result, err := db.Exec("UPDATE api_keys SET revoked = 1 WHERE name = ? AND revoked = 0", name)
-	if err != nil {
-		return fmt.Errorf("failed to revoke API key: %w", err)
-	}
-	rows, _ := result.RowsAffected()
-	if rows == 0 {
-		return fmt.Errorf("no active API key found with name %q", name)
-	}
-	return nil
 }
 
 // GetPRByRepoAndNumber returns a single PR by repo ID and PR number.

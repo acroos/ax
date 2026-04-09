@@ -17,8 +17,7 @@ import (
 type Dialect string
 
 const (
-	DialectSQLite   Dialect = "sqlite"
-	DialectPostgres Dialect = "postgres"
+	DialectSQLite Dialect = "sqlite"
 )
 
 // Store wraps a database connection with dialect awareness.
@@ -71,27 +70,6 @@ func Open(dbPath string) (*Store, error) {
 	}
 
 	return &Store{DB: database, Dialect: DialectSQLite}, nil
-}
-
-// OpenPostgres opens a PostgreSQL database connection, runs migrations,
-// and returns a ready-to-use Store.
-func OpenPostgres(connStr string) (*Store, error) {
-	database, err := sqlx.Open("pgx", connStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open postgres: %w", err)
-	}
-
-	if err := database.Ping(); err != nil {
-		database.Close()
-		return nil, fmt.Errorf("failed to ping postgres: %w", err)
-	}
-
-	if err := migratePostgres(database.DB); err != nil {
-		database.Close()
-		return nil, fmt.Errorf("failed to run postgres migrations: %w", err)
-	}
-
-	return &Store{DB: database, Dialect: DialectPostgres}, nil
 }
 
 // migrate runs all pending schema migrations.

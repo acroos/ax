@@ -7,7 +7,6 @@ require (
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/crypto v0.49.0
 	golang.org/x/term v0.41.0
 	modernc.org/sqlite v1.47.0
 )

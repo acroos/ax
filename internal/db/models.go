@@ -99,16 +99,6 @@ type PRMetrics struct {
 	ComputedAt            string          `db:"computed_at"`
 }
 
-// APIKey stores a hashed API key for server authentication.
-type APIKey struct {
-	ID         int64          `db:"id"`
-	KeyHash    string         `db:"key_hash"`
-	Name       string         `db:"name"`
-	CreatedAt  string         `db:"created_at"`
-	LastUsedAt sql.NullString `db:"last_used_at"`
-	Revoked    int            `db:"revoked"`
-}
-
 // WatchedRepo tracks a repo being polled for GitHub state changes.
 type WatchedRepo struct {
 	RepoID               int64          `db:"repo_id"`
