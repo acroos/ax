@@ -33,6 +33,7 @@ brews:
   - repository:
       owner: acroos
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: "https://github.com/acroos/ax"
     description: "Agentic coding DX metrics"
     license: "MIT"
