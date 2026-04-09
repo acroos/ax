@@ -11,7 +11,7 @@ module Api
           return render json: { ok: false, error: "Payload too large" }, status: :payload_too_large
         end
 
-        result = PushService.new(push_params).execute
+        result = PushService.new(push_params, user: current_user).execute
         render json: { ok: true, entities: result }
       rescue PushService::Error => e
         render json: { ok: false, error: e.message }, status: :unprocessable_entity

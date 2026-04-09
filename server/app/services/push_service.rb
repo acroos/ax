@@ -1,8 +1,9 @@
 class PushService
   class Error < StandardError; end
 
-  def initialize(params)
+  def initialize(params, user:)
     @params = params
+    @user = user
   end
 
   def execute
@@ -38,6 +39,17 @@ class PushService
 
   def upsert_repo!
     repo = Repo.find_or_initialize_by(path: @params[:repo_path])
+
+    if repo.organization_id.present?
+      # Existing repo — validate user is a member of its org
+      unless @user.member_of?(repo.organization)
+        raise Error, "You are not a member of the organization that owns this repository"
+      end
+    else
+      # New repo (or repo without an org) — assign to user's personal org
+      repo.organization = @user.personal_org
+    end
+
     repo.update!(
       remote_url: @params[:remote_url],
       github_owner: @params[:owner],

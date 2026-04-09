@@ -23,6 +23,7 @@ module Api
 
       def find_org!
         @org = Organization.find_by!(slug: params[:slug] || params[:org_slug])
+        head :forbidden unless current_user&.member_of?(@org)
       end
 
       def find_org_as_admin!

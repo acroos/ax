@@ -1,7 +1,7 @@
 module Api
   module V1
     class ReposController < BaseController
-      before_action :require_api_key_auth!
+      before_action :require_session_auth!
       before_action :find_org!, only: [:index, :prs, :metrics, :timeline, :repo_metrics]
       before_action :find_repo!, only: [:prs, :metrics, :timeline, :repo_metrics]
 

@@ -1,7 +1,9 @@
 require "rails_helper"
 
 RSpec.describe PushService do
-  let(:org) { create(:organization) }
+  let(:user) { create(:user) }
+  let(:org) { create(:organization, created_by: user, is_personal: true) }
+  let!(:membership) { create(:org_membership, user: user, organization: org, role: "owner") }
 
   let(:push_params) do
     {
@@ -96,7 +98,7 @@ RSpec.describe PushService do
 
   describe "#execute" do
     it "creates all entities in a single transaction" do
-      result = PushService.new(push_params).execute
+      result = PushService.new(push_params, user: user).execute
 
       expect(result[:repos]).to eq(1)
       expect(result[:prs]).to eq(1)
@@ -108,7 +110,7 @@ RSpec.describe PushService do
     end
 
     it "creates the repo with correct attributes" do
-      PushService.new(push_params).execute
+      PushService.new(push_params, user: user).execute
 
       repo = Repo.find_by(path: "/home/user/myproject")
       expect(repo.github_owner).to eq("owner")
@@ -116,7 +118,7 @@ RSpec.describe PushService do
     end
 
     it "creates PR with metrics" do
-      PushService.new(push_params).execute
+      PushService.new(push_params, user: user).execute
 
       repo = Repo.find_by(path: "/home/user/myproject")
       pr = repo.prs.find_by(number: 42)
@@ -126,8 +128,8 @@ RSpec.describe PushService do
     end
 
     it "is idempotent on re-push" do
-      PushService.new(push_params).execute
-      result = PushService.new(push_params).execute
+      PushService.new(push_params, user: user).execute
+      result = PushService.new(push_params, user: user).execute
 
       expect(Repo.count).to eq(1)
       expect(Pr.count).to eq(1)
@@ -135,14 +137,37 @@ RSpec.describe PushService do
       expect(result[:repos]).to eq(1)
     end
 
+    it "assigns the repo to the user's personal org" do
+      PushService.new(push_params, user: user).execute
+
+      repo = Repo.find_by(path: "/home/user/myproject")
+      expect(repo.organization).to eq(org)
+    end
+
+    it "allows re-push to a repo the user's org owns" do
+      PushService.new(push_params, user: user).execute
+      result = PushService.new(push_params, user: user).execute
+
+      expect(result[:repos]).to eq(1)
+    end
+
+    it "rejects push to a repo owned by another org" do
+      other_org = create(:organization)
+      create(:repo, path: "/home/user/myproject", organization: other_org)
+
+      expect {
+        PushService.new(push_params, user: user).execute
+      }.to raise_error(PushService::Error, /not a member/)
+    end
+
     it "skips finalized metrics on re-push" do
-      PushService.new(push_params).execute
+      PushService.new(push_params, user: user).execute
 
       # Modify the metrics data
       modified_params = push_params.deep_dup
       modified_params[:pr_metrics][0][:messages_per_pr] = 999
 
-      PushService.new(modified_params).execute
+      PushService.new(modified_params, user: user).execute
 
       repo = Repo.find_by(path: "/home/user/myproject")
       pr = repo.prs.find_by(number: 42)
