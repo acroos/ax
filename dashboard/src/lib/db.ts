@@ -3,12 +3,12 @@ import path from "path";
 import os from "os";
 
 // --- Mode detection ---
-// When AX_API_URL is set, the dashboard fetches from the Go server API.
-// Otherwise, it reads from the local SQLite database directly.
+// When AX_API_URL is set, the dashboard fetches from the Rails API (managed mode).
+// Otherwise, it reads from the local SQLite database directly (local mode).
 const API_URL = process.env.AX_API_URL;
 const API_KEY = process.env.AX_API_KEY || "";
 
-function isAPIMode(): boolean {
+export function isAPIMode(): boolean {
   return !!API_URL;
 }
 
@@ -20,11 +20,27 @@ async function fetchAPI<T>(urlPath: string): Promise<T> {
   if (API_KEY) {
     headers["Authorization"] = `Bearer ${API_KEY}`;
   }
+  // In managed mode, forward the session cookie for browser-based auth
+  const { cookies } = await import("next/headers");
+  try {
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get("_ax_session")?.value;
+    if (sessionToken) {
+      headers["Cookie"] = `_ax_session=${sessionToken}`;
+    }
+  } catch {
+    // Not in a request context (e.g., build time)
+  }
   const res = await fetch(url, { headers, cache: "no-store" });
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<T>;
+}
+
+// Org-scoped API helper for managed mode
+function orgApiPath(orgSlug: string, path: string): string {
+  return `/api/v1/orgs/${orgSlug}${path}`;
 }
 
 // --- SQLite (local mode) ---
@@ -153,8 +169,11 @@ export function listRepos(): Repo[] {
   return getDb().prepare("SELECT * FROM repos ORDER BY path").all() as Repo[];
 }
 
-export async function listReposAsync(): Promise<Repo[]> {
+export async function listReposAsync(orgSlug?: string): Promise<Repo[]> {
   if (isAPIMode()) {
+    if (orgSlug) {
+      return fetchAPI<Repo[]>(orgApiPath(orgSlug, "/repos"));
+    }
     return fetchAPI<Repo[]>("/api/v1/repos");
   }
   return getDb().prepare("SELECT * FROM repos ORDER BY path").all() as Repo[];
@@ -199,11 +218,15 @@ export function listPRsWithMetrics(repoId?: number): PRWithMetrics[] {
   return mapPRRows(rows as (PR & PRMetrics & { github_owner: string; github_repo: string })[]);
 }
 
-export async function listPRsWithMetricsAsync(repoId?: number): Promise<PRWithMetrics[]> {
+export async function listPRsWithMetricsAsync(repoId?: number, orgSlug?: string): Promise<PRWithMetrics[]> {
+  if (isAPIMode() && repoId) {
+    const apiPath = orgSlug
+      ? orgApiPath(orgSlug, `/repos/${repoId}/prs`)
+      : `/api/v1/repos/${repoId}/prs`;
+    return fetchAPI<PRWithMetrics[]>(apiPath);
+  }
   if (isAPIMode()) {
-    const path = repoId ? `/api/v1/repos/${repoId}/prs` : `/api/v1/repos/0/prs`;
-    const data = await fetchAPI<PRWithMetrics[]>(path);
-    return data;
+    return [];
   }
   return listPRsWithMetrics(repoId);
 }
@@ -270,11 +293,14 @@ export function getAggregateMetrics(repoId?: number): AggregateMetrics {
   return computeAggregates(prs);
 }
 
-export async function getAggregateMetricsAsync(repoId?: number): Promise<AggregateMetrics> {
+export async function getAggregateMetricsAsync(repoId?: number, orgSlug?: string): Promise<AggregateMetrics> {
   if (isAPIMode() && repoId) {
-    return fetchAPI<AggregateMetrics>(`/api/v1/repos/${repoId}/metrics`);
+    const apiPath = orgSlug
+      ? orgApiPath(orgSlug, `/repos/${repoId}/metrics`)
+      : `/api/v1/repos/${repoId}/metrics`;
+    return fetchAPI<AggregateMetrics>(apiPath);
   }
-  const prs = await listPRsWithMetricsAsync(repoId);
+  const prs = await listPRsWithMetricsAsync(repoId, orgSlug);
   return computeAggregates(prs);
 }
 
@@ -293,9 +319,12 @@ export function getRepoLevelMetrics(repoId?: number): RepoLevelMetrics {
   };
 }
 
-export async function getRepoLevelMetricsAsync(repoId?: number): Promise<RepoLevelMetrics> {
+export async function getRepoLevelMetricsAsync(repoId?: number, orgSlug?: string): Promise<RepoLevelMetrics> {
   if (isAPIMode() && repoId) {
-    return fetchAPI<RepoLevelMetrics>(`/api/v1/repos/${repoId}/repo-metrics`);
+    const apiPath = orgSlug
+      ? orgApiPath(orgSlug, `/repos/${repoId}/repo-metrics`)
+      : `/api/v1/repos/${repoId}/repo-metrics`;
+    return fetchAPI<RepoLevelMetrics>(apiPath);
   }
   return getRepoLevelMetrics(repoId);
 }
@@ -437,11 +466,14 @@ export function getTimeline(repoId?: number): TimelinePoint[] {
   return buildTimeline(prs);
 }
 
-export async function getTimelineAsync(repoId?: number): Promise<TimelinePoint[]> {
+export async function getTimelineAsync(repoId?: number, orgSlug?: string): Promise<TimelinePoint[]> {
   if (isAPIMode() && repoId) {
-    return fetchAPI<TimelinePoint[]>(`/api/v1/repos/${repoId}/timeline`);
+    const apiPath = orgSlug
+      ? orgApiPath(orgSlug, `/repos/${repoId}/timeline`)
+      : `/api/v1/repos/${repoId}/timeline`;
+    return fetchAPI<TimelinePoint[]>(apiPath);
   }
-  const prs = await listPRsWithMetricsAsync(repoId);
+  const prs = await listPRsWithMetricsAsync(repoId, orgSlug);
   return buildTimeline(prs);
 }
 
