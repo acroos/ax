@@ -2,7 +2,16 @@ Rails.application.routes.draw do
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Webhooks (signature-validated, not API key auth)
+  # Auth (Devise + OmniAuth)
+  devise_for :users, controllers: { omniauth_callbacks: "auth/omniauth_callbacks" }
+  get  "/auth/me", to: "auth/sessions#me"
+  post "/auth/logout", to: "auth/sessions#destroy"
+
+  # Public
+  post "/waitlist", to: "waitlist#create"
+  get  "/invite/:token", to: "invites#show"
+
+  # Webhooks (signature-validated, not session/key auth)
   post "/webhooks/github", to: "webhooks#github"
 
   namespace :api do
@@ -16,8 +25,14 @@ Rails.application.routes.draw do
       # Watch status
       get "/watch-status", to: "watch_status#index"
 
-      # Org-scoped read endpoints
-      resources :orgs, param: :slug, only: [] do
+      # Session-authenticated (dashboard)
+      resources :orgs, param: :slug, only: [:index, :create] do
+        member do
+          get "/", to: "organizations#show"
+          put "/", to: "organizations#update"
+        end
+        resources :members, only: [:index, :update, :destroy]
+        resources :invites, controller: "org_invites", only: [:index, :create, :destroy]
         resources :repos, only: [:index] do
           member do
             get :prs
@@ -26,6 +41,11 @@ Rails.application.routes.draw do
             get "repo-metrics", to: "repos#repo_metrics"
           end
         end
+      end
+
+      # User settings
+      resource :api_key, only: [:show] do
+        post :rotate
       end
     end
   end

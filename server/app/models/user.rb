@@ -1,4 +1,6 @@
 class User < ApplicationRecord
+  devise :omniauthable, omniauth_providers: [:github]
+
   has_many :org_memberships, dependent: :destroy
   has_many :organizations, through: :org_memberships
   has_one  :api_key, -> { where(revoked: false) }, dependent: :destroy

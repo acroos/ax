@@ -41,6 +41,10 @@ module Server
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
 
+    # Add cookie and session middleware back for OmniAuth + session auth
+    config.middleware.use ActionDispatch::Cookies
+    config.middleware.use ActionDispatch::Session::CookieStore, key: "_ax_server_session"
+
     # Use Sidekiq for background jobs
     config.active_job.queue_adapter = :sidekiq
   end
