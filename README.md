@@ -145,29 +145,24 @@ Formats: `json` (default), `jsonl` (streaming), `csv` (flat).
 
 ## Team Mode
 
-Deploy a shared server so your whole team's metrics flow into one dashboard:
+AX has two modes:
+
+- **Local mode** — Go CLI + SQLite. Everything runs on your machine.
+- **Managed mode** — Your team's metrics flow to a shared Rails API at `app.ax.dev`, with a Next.js dashboard, GitHub OAuth, and org-based multi-tenancy.
+
+### Getting started with managed mode
 
 ```bash
-# Server admin
-docker compose up -d
-docker compose exec server ax server init  # generates API key
+# Sign up at app.ax.dev (GitHub OAuth)
+# Copy your API key from the onboarding page
 
-# Each developer
-ax init --team https://your-server:8080 --api-key ax_k1_... --user "Name"
-ax sync --repo .  # syncs locally + pushes to team server
+ax init --team https://api.ax.dev --api-key ax_k1_... --user "Your Name"
+ax sync --repo .   # Syncs locally + pushes to managed server
 ```
 
-Also supports Kubernetes via Helm chart. See the full [Team Setup Guide](docs/team-setup.md).
+GitHub webhooks provide real-time metric finalization — no polling required.
 
----
-
-## GitHub Webhooks
-
-For real-time metric finalization (instead of 5-minute polling):
-
-1. Add a webhook to your GitHub repo pointing to `https://your-server:8080/webhooks/github`
-2. Set `AX_WEBHOOK_GITHUB_SECRET` in your server environment
-3. Select "Pull requests", "Pull request reviews", and "Check suites" events
+See the [Team Setup Guide](docs/team-setup.md) for details.
 
 ---
 
@@ -179,10 +174,8 @@ AX is purpose-built for [Claude Code](https://docs.anthropic.com/en/docs/agents-
 
 ## Docs
 
-- [Setup Guide](docs/setup-guide.md) — Full walkthrough from install to first report
-- [Team Setup Guide](docs/team-setup.md) — Deploy for your team (Docker Compose + Helm)
-- [Architecture](docs/architecture.md) — How the pieces fit together
 - [Metric Reference](docs/metrics/index.md) — All 16 metrics, explained
+- [Team Setup Guide](docs/team-setup.md) — Connect to the managed service
 - [Architecture Decision Records](docs/decisions/) — Why things are the way they are
 
 ---

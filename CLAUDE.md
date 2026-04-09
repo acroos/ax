@@ -2,14 +2,21 @@
 
 ## What is this?
 
-AX is a CLI + web dashboard that measures developer experience for agentic coding workflows. It analyzes git history, GitHub PR data, and Claude Code session data to surface actionable metrics about how effectively engineers work with AI coding agents. Deployable locally for individuals or as a shared server for teams.
+AX is a CLI + web dashboard that measures developer experience for agentic coding workflows. It analyzes git history, GitHub PR data, and Claude Code session data to surface actionable metrics about how effectively engineers work with AI coding agents.
+
+AX has two modes:
+- **Local mode**: Go CLI + SQLite (`~/.ax/ax.db`). Everything runs on your machine.
+- **Managed mode**: Rails API at `app.ax.dev` + Next.js dashboard. Multi-tenant with GitHub OAuth, orgs, and team-based access.
+
+There is no self-hosted server option. The Go CLI handles local analysis; the Rails app handles the managed service.
 
 ## Architecture
 
-- **Go** — CLI binary, core engine, and team server (`cmd/ax/`, `internal/`)
+- **Go** — CLI binary and core engine (`cmd/ax/`, `internal/`)
+- **Ruby on Rails** — Managed service API (`server/`)
 - **TypeScript/Next.js** — Dashboard (`dashboard/`)
 - **SQLite** — Local data storage at `~/.ax/ax.db`
-- **PostgreSQL** — Team server data storage (Docker Compose or Helm)
+- **PostgreSQL** — Managed service data storage (Rails)
 
 ```
 cmd/ax/              CLI entry point (cobra)
@@ -17,9 +24,7 @@ internal/
   api/               Push payload types + conversion functions
   config/            Team mode configuration (~/.ax/config.json)
   correlator/        Session-to-PR correlation
-  db/                Schema, migrations (SQLite + Postgres), queries, models
-  events/            Normalized event model + dispatcher
-    adapters/        Platform-specific webhook adapters (GitHub, etc.)
+  db/                Schema, migrations (SQLite only), queries, models
   export/            Machine-readable data export (JSON, JSONL, CSV)
   hooks/             Claude Code hook installation/management
   metrics/           Metric calculators (output quality, agent behavior, planning)
@@ -29,32 +34,54 @@ internal/
     claude_sessions.go  Claude Code session JSONL parser
   pricing/           Token cost computation with model-specific pricing
   push/              Push client + data extraction for team mode
-  server/            HTTP server for team mode (push API + read endpoints + webhooks)
   sync/
     sync.go          Orchestrates data ingestion + metric computation
     finalize.go      Metric finalization for terminal PRs
     watch.go         GitHub polling (RunGitHubOnly)
   watch/             System-level scheduling (launchd/cron)
+server/              Rails API application (managed service)
+  app/
+    models/          ActiveRecord models (16 core + identity)
+    controllers/     API controllers (push, read, webhooks, auth, orgs)
+    jobs/            Sidekiq background jobs (webhook processing)
+    services/        Business logic (push, auth, org, webhook handlers)
+  config/
+  db/
+    migrate/         Rails migrations (16 tables)
 dashboard/           Next.js web dashboard
   src/app/           Pages: /, /prs, /prs/[id], /compare, /docs, /docs/[slug]
+  src/app/[slug]/    Org-scoped pages (managed mode)
+  src/app/login/     Auth pages (managed mode)
   src/lib/db.ts      Data layer (dual-mode: SQLite local or API remote)
-  src/components/    Shared components (charts, time picker, developer selector)
-deploy/helm/ax/      Helm chart for Kubernetes deployment
+  src/lib/auth.ts    Auth helpers (managed mode)
+  src/components/    Shared components (charts, time picker, org switcher)
 docs/
   decisions/         Architecture Decision Records (12 ADRs)
   metrics/           Per-metric documentation (16 files)
-  team-setup.md      Team deployment guide (Docker Compose + Helm)
+  team-setup.md      Managed service setup guide
 plans/               Feature planning artifacts
 ```
 
 ## Build & Test
 
 ```bash
+# Go CLI
 make build           # Build binary to bin/ax
 make test            # Run all tests
 go test ./... -v     # Verbose test output
 make fmt             # Format code
 make lint            # Lint (requires golangci-lint)
+
+# Rails server
+cd server
+bundle install
+bundle exec rails db:create db:migrate
+bundle exec rspec
+
+# Dashboard
+cd dashboard
+npm install
+npm run dev          # Development server on :3333
 ```
 
 ## Key Commands
@@ -86,13 +113,8 @@ ax watch status                     # Show watched repos + poll times
 ax dashboard                        # Start the web dashboard (dev mode)
 
 # Team mode
-ax init --team <url> --api-key <key> --user "Name"  # Interactive team setup
-ax push --repo .                    # Manually push to team server
-ax server                           # Start team HTTP server (requires Postgres)
-ax server init                      # Create DB schema + first API key
-ax server create-key <name>         # Generate additional API key
-ax server list-keys                 # List all API keys
-ax server revoke-key <name>         # Revoke an API key
+ax init --team <url> --api-key <key> --user "Name"  # Connect to managed service
+ax push --repo .                    # Manually push to managed server
 ```
 
 ## Metrics (16 across 4 categories)
@@ -111,6 +133,8 @@ Metrics are only computed for finalized (merged/closed) PRs. Open PRs are exclud
 
 ## Dashboard Routes
 
+### Local mode
+
 | Route | Page | Description |
 |-------|------|-------------|
 | `/` | Overview | Aggregate metric cards, sparklines, trend charts |
@@ -119,6 +143,17 @@ Metrics are only computed for finalized (merged/closed) PRs. Open PRs are exclud
 | `/compare` | Compare | Developer leaderboard, individual vs team, time filtering |
 | `/docs` | Docs Index | Metric documentation listing |
 | `/docs/[slug]` | Metric Doc | Individual metric explanation |
+
+### Managed mode (org-scoped)
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/login` | Login | GitHub OAuth sign-in |
+| `/onboarding` | Onboarding | First-time setup with API key |
+| `/{slug}/prs` | PR List | Org-scoped PR list |
+| `/{slug}/compare` | Compare | Org-scoped developer comparison |
+| `/{slug}/settings` | Org Settings | Members, invites |
+| `/settings` | User Settings | API key management |
 
 ## Data Flow
 
@@ -132,45 +167,35 @@ Local mode (ax sync):
   ↓
   SQLite (~/.ax/ax.db)
   ↓ (if team mode configured)
-  ax push → POST /api/v1/push → team server (Postgres)
+  ax push → POST /api/v1/push → Rails API (Postgres)
 
-Team server (ax server):
+Managed mode (Rails server):
   POST /api/v1/push ← developer CLIs push data
   POST /webhooks/github ← GitHub webhooks (real-time PR events)
-  ax watch (watcher container) → polls GitHub → finalizes metrics
   ↓
-  GET /api/v1/* → dashboard reads via API
+  GET /api/v1/orgs/:slug/* → dashboard reads via API
 ```
 
-## Webhook Events (Event Service)
+## Webhook Events
 
-The server accepts platform-specific webhooks at `POST /webhooks/{platform}`, normalizes them into events, and dispatches to handlers:
+The Rails server accepts GitHub webhooks at `POST /webhooks/github`, validates HMAC-SHA256 signatures, and processes events via Sidekiq:
 
 | Event | Trigger | Action |
 |-------|---------|--------|
-| `pr_merged` | PR merged on GitHub | Finalize all metrics |
+| `pr_opened` | PR opened on GitHub | Create PR, initialize metrics |
+| `pr_synchronized` | Commits pushed to PR | Update post-open commits |
+| `pr_merged` | PR merged | Finalize all metrics |
 | `pr_closed` | PR closed without merge | Finalize as abandoned |
 | `review_submitted` | Review posted | Update first-pass acceptance |
 | `ci_completed` | Check suite finished | Update CI success rate |
 
-Configure with `AX_WEBHOOK_GITHUB_SECRET` env var. Polling via `ax watch` remains as a fallback.
+Configure with `AX_WEBHOOK_GITHUB_SECRET` env var.
 
 ## Deployment
 
 **Local:** `brew install acroos/tap/ax` → `ax init` → `ax sync --repo .`
 
-**Team (Docker Compose):**
-```bash
-cp .env.example .env && docker compose up -d
-docker compose exec server ax server init
-```
-
-**Team (Kubernetes):**
-```bash
-helm install ax deploy/helm/ax/ --set postgresql.auth.password=<pw> --set github.token=<tok>
-```
-
-See `docs/team-setup.md` for complete instructions.
+**Managed:** Rails API deployed at `app.ax.dev`. Developers connect via `ax init --team`.
 
 ## Decisions
 
@@ -186,8 +211,8 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [008 — Distribution](docs/decisions/008-distribution-strategy.md): Homebrew tap + GoReleaser. Relevant when setting up releases.
 - [009 — Token Cost Metrics](docs/decisions/009-token-cost-metrics.md): Token Cost per PR and Unmerged Token Spend. Dollar-cost metrics with model-specific pricing.
 - [010 — GitHub Event Ingestion](docs/decisions/010-github-event-ingestion.md): `ax watch` poller + metric finalization lifecycle. Metrics only computed for terminal (merged/closed) PRs.
-- [011 — Team Server](docs/decisions/011-team-server.md): Push-based team data collection with Postgres, API key auth, Docker Compose + Helm deployment.
-- [012 — Event Service](docs/decisions/012-event-service.md): Platform-agnostic webhook receiver with normalized events. GitHub adapter implemented; GitLab/Jira/Linear adapters planned.
+- [011 — Team Server](docs/decisions/011-team-server.md): Original Go server design. **Superseded by Rails migration** — see `plans/rails-migration.md`.
+- [012 — Event Service](docs/decisions/012-event-service.md): Platform-agnostic webhook receiver. **Reimplemented in Rails** — see `server/app/services/webhook_handlers/`.
 - [Open Questions](docs/decisions/open-questions.md): Pending decisions (CI images, PR author tracking, managed service path, etc.)
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.
@@ -198,15 +223,17 @@ When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and
 - Parsers shell out to `git` and `gh` CLI via `os/exec` — no SDK dependencies
 - Database queries go in `internal/db/queries.go`, models in `internal/db/models.go`
 - Query functions accept `db.DBTX` interface (works with both `*sqlx.DB` and `*sqlx.Tx`)
-- Schema changes: SQLite in `internal/db/db.go` (versioned migrations), Postgres in `internal/db/postgres_migrations.go`
-- Use `CURRENT_TIMESTAMP` in SQL (works in both SQLite and Postgres — never `datetime('now')`)
+- Schema changes: SQLite in `internal/db/db.go` (versioned migrations), Rails in `server/db/migrate/`
+- Use `CURRENT_TIMESTAMP` in SQL — never `datetime('now')`
 - Tests use `t.TempDir()` for database files — no cleanup needed
 - Dashboard data functions have sync (local SQLite) and async (API mode) variants
+- Rails models live in `server/app/models/`, controllers in `server/app/controllers/`
+- Rails specs use RSpec + FactoryBot in `server/spec/`
 
 ## Documentation
 
 Documentation is a first-class deliverable:
 - Every metric has a dedicated doc in `docs/metrics/` explaining what it measures, why it matters, how it's calculated, and how to interpret values
 - The dashboard renders these at `/docs` and `/docs/[slug]`
-- Team deployment has a complete setup guide at `docs/team-setup.md`
-- Feature plans live in `plans/` (event service, comparison views, dashboard auth, export)
+- Team setup guide at `docs/team-setup.md`
+- Feature plans live in `plans/` (rails migration, managed service identity, comparison views, export)
