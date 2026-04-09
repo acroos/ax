@@ -1,0 +1,22 @@
+module WebhookHandlers
+  class PrOpened < Base
+    def initialize(pr_data, repo_data)
+      @pr_data = pr_data
+      @repo_data = repo_data
+    end
+
+    def call
+      repo = find_repo(@repo_data)
+      return unless repo
+
+      pr = find_or_create_pr(repo, @pr_data)
+      pr.update!(
+        state: "open",
+        open_commit_count: @pr_data[:commits]
+      )
+
+      metrics = ensure_pr_metrics(pr)
+      metrics.update!(post_open_commits: 0) unless metrics.finalized?
+    end
+  end
+end
