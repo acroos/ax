@@ -23,16 +23,13 @@ module Auth
         invite&.accept!(user)
       end
 
-      response.set_cookie(:_ax_session, {
-        value: session.session_token,
-        httponly: true,
-        secure: Rails.env.production?,
-        same_site: :lax,
-        path: "/",
-        expires: 30.days.from_now
-      })
-
-      redirect_to after_sign_in_path(user), allow_other_host: true
+      # Cross-origin auth handoff: we cannot set a cookie on the dashboard's
+      # domain from here, so we pass the session token through the URL to the
+      # dashboard's /auth/accept route, which then sets the cookie on its own
+      # domain and redirects to the final destination. This is a stopgap until
+      # both services share a parent domain (see project memory).
+      redirect_to handoff_url(session.session_token, after_sign_in_next(user)),
+                  allow_other_host: true
     end
 
     def failure
@@ -55,13 +52,21 @@ module Auth
       request.env["omniauth.auth"]
     end
 
-    def after_sign_in_path(user)
-      dashboard_url = ENV.fetch("DASHBOARD_URL", "http://localhost:3333").chomp("/")
+    def dashboard_url
+      ENV.fetch("DASHBOARD_URL", "http://localhost:3333").chomp("/")
+    end
+
+    def after_sign_in_next(user)
       if user.previously_new_record?
-        "#{dashboard_url}/onboarding"
+        "/onboarding"
       else
-        "#{dashboard_url}/#{user.personal_org&.slug}"
+        "/#{user.personal_org&.slug}"
       end
+    end
+
+    def handoff_url(token, next_path)
+      query = URI.encode_www_form(token: token, next: next_path)
+      "#{dashboard_url}/auth/accept?#{query}"
     end
   end
 end
