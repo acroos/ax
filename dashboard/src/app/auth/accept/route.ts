@@ -25,7 +25,15 @@ export function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  const res = NextResponse.redirect(new URL(safeNext, req.url));
+  // If the user was mid-invite when they hit /login, honor that intent
+  // instead of the default next destination. The invite page reads the
+  // cookie and clears it once the invite is successfully accepted.
+  const pendingInvite = req.cookies.get("pending_invite")?.value;
+  const destination = pendingInvite
+    ? `/invite/${encodeURIComponent(pendingInvite)}`
+    : safeNext;
+
+  const res = NextResponse.redirect(new URL(destination, req.url));
   res.cookies.set("_ax_session", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

@@ -1,10 +1,5 @@
 module Auth
   class OmniauthCallbacksController < ApplicationController
-    # ActionController::API does not include the cookies helper by default.
-    # We need it here for reading the signed pending_invite cookie and for
-    # setting the session cookie after sign-in.
-    include ActionController::Cookies
-
     def github
       Rails.logger.info("[omniauth] github callback: auth_hash present=#{!auth_hash.nil?} omniauth_error=#{request.env['omniauth.error']&.class} omniauth_error_type=#{request.env['omniauth.error.type']}")
 
@@ -16,18 +11,13 @@ module Auth
       user = AuthService.find_or_create_from_github(auth_hash)
       session = UserSession.create_for(user, request)
 
-      # Check for pending invite token in cookie
-      if (invite_token = cookies.signed[:pending_invite])
-        cookies.delete(:pending_invite)
-        invite = Invite.pending.find_by(token: invite_token)
-        invite&.accept!(user)
-      end
-
       # Cross-origin auth handoff: we cannot set a cookie on the dashboard's
       # domain from here, so we pass the session token through the URL to the
       # dashboard's /auth/accept route, which then sets the cookie on its own
-      # domain and redirects to the final destination. This is a stopgap until
-      # both services share a parent domain (see project memory).
+      # domain and redirects to the final destination. Invite acceptance is
+      # handled entirely on the dashboard via a pending_invite cookie stored
+      # there. This is a stopgap until both services share a parent domain
+      # (see project memory).
       redirect_to handoff_url(session.session_token, after_sign_in_next(user)),
                   allow_other_host: true
     end

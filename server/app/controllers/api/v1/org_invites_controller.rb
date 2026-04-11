@@ -22,9 +22,10 @@ module Api
           role: params[:role],
           invited_by: current_user
         )
+        dashboard_url = ENV.fetch("DASHBOARD_URL", "http://localhost:3333").chomp("/")
         render json: {
           token: invite.token,
-          link: "https://app.ax.dev/invite/#{invite.token}"
+          link: "#{dashboard_url}/invite/#{invite.token}"
         }, status: :created
       end
 

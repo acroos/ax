@@ -9,7 +9,6 @@ Rails.application.routes.draw do
 
   # Public
   post "/waitlist", to: "waitlist#create"
-  get  "/invite/:token", to: "invites#show"
 
   # Webhooks (signature-validated, not session/key auth)
   post "/webhooks/github", to: "webhooks#github"
@@ -42,6 +41,10 @@ Rails.application.routes.draw do
           end
         end
       end
+
+      # Invite acceptance (session-authed, not org-scoped — the accepting
+      # user's session identifies them, and the invite token identifies the org)
+      post "/invites/:token/accept", to: "invites#create"
 
       # User settings
       resource :api_key, only: [:show] do
