@@ -32,7 +32,7 @@ module Auth
         expires: 30.days.from_now
       })
 
-      redirect_to after_sign_in_path(user)
+      redirect_to after_sign_in_path(user), allow_other_host: true
     end
 
     def failure
@@ -56,7 +56,7 @@ module Auth
     end
 
     def after_sign_in_path(user)
-      dashboard_url = ENV.fetch("DASHBOARD_URL", "http://localhost:3333")
+      dashboard_url = ENV.fetch("DASHBOARD_URL", "http://localhost:3333").chomp("/")
       if user.previously_new_record?
         "#{dashboard_url}/onboarding"
       else
