@@ -1,5 +1,10 @@
 module Auth
   class OmniauthCallbacksController < ApplicationController
+    # ActionController::API does not include the cookies helper by default.
+    # We need it here for reading the signed pending_invite cookie and for
+    # setting the session cookie after sign-in.
+    include ActionController::Cookies
+
     def github
       Rails.logger.info("[omniauth] github callback: auth_hash present=#{!auth_hash.nil?} omniauth_error=#{request.env['omniauth.error']&.class} omniauth_error_type=#{request.env['omniauth.error.type']}")
 
