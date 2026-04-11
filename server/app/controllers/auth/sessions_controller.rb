@@ -16,9 +16,11 @@ module Auth
     end
 
     def destroy
-      token = cookies[:_ax_session]
-      UserSession.find_by(session_token: token)&.destroy
-      cookies.delete(:_ax_session)
+      # require_session_auth! has already resolved @current_user from the
+      # X-Ax-Session header. Destroy that specific session record. The
+      # dashboard is responsible for clearing its own _ax_session cookie.
+      token = request.headers["X-Ax-Session"]
+      UserSession.find_by(session_token: token)&.destroy if token.present?
       head :no_content
     end
   end

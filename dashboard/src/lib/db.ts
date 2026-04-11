@@ -20,13 +20,15 @@ async function fetchAPI<T>(urlPath: string): Promise<T> {
   if (API_KEY) {
     headers["Authorization"] = `Bearer ${API_KEY}`;
   }
-  // In managed mode, forward the session cookie for browser-based auth
+  // In managed mode, forward the session token as an explicit header.
+  // We do not use a Cookie header because Rails' cookie-jar semantics are
+  // unreliable for raw (unsigned) values forwarded from another origin.
   const { cookies } = await import("next/headers");
   try {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get("_ax_session")?.value;
     if (sessionToken) {
-      headers["Cookie"] = `_ax_session=${sessionToken}`;
+      headers["X-Ax-Session"] = sessionToken;
     }
   } catch {
     // Not in a request context (e.g., build time)

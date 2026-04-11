@@ -21,7 +21,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
     const res = await fetch(`${API_URL}/auth/me`, {
       headers: {
-        Cookie: `_ax_session=${sessionToken}`,
+        "X-Ax-Session": sessionToken,
       },
       cache: "no-store",
     });
