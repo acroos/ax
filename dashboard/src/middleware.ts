@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Public paths that don't require authentication
-const PUBLIC_PATHS = ["/login", "/invite", "/api", "/docs", "/_next", "/favicon"];
+// Public paths that don't require authentication.
+// /auth covers the cross-origin handoff route /auth/accept which runs *before*
+// the session cookie exists, so it must be reachable without auth.
+const PUBLIC_PATHS = ["/login", "/invite", "/auth", "/api", "/docs", "/_next", "/favicon"];
 
 export function middleware(request: NextRequest) {
   // Only enforce auth in managed mode (when AX_API_URL is set)
