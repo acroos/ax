@@ -213,6 +213,7 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [010 — GitHub Event Ingestion](docs/decisions/010-github-event-ingestion.md): `ax watch` poller + metric finalization lifecycle. Metrics only computed for terminal (merged/closed) PRs.
 - [011 — Team Server](docs/decisions/011-team-server.md): Original Go server design. **Superseded by Rails migration** — see `plans/rails-migration.md`.
 - [012 — Event Service](docs/decisions/012-event-service.md): Platform-agnostic webhook receiver. **Reimplemented in Rails** — see `server/app/services/webhook_handlers/`.
+- [013 — GitHub Integration Model](docs/decisions/013-github-integration-model.md): Dual-app architecture — OAuth App for login, GitHub App for repo access and webhook delivery. Relevant to any managed-service auth or repo ingestion work.
 - [Open Questions](docs/decisions/open-questions.md): Pending decisions (CI images, PR author tracking, managed service path, etc.)
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.
