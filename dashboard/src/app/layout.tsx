@@ -87,12 +87,18 @@ async function Sidebar() {
 
   let repos: { id: number; github_owner: string | null; github_repo: string | null }[] = [];
   let watchedRepoIds = new Set<number>();
-  try {
-    repos = await listReposAsync();
-    const watchStatuses = await listWatchStatusesAsync();
-    watchedRepoIds = new Set(watchStatuses.map((w) => w.repo_id));
-  } catch {
-    // DB might not exist yet, or API not reachable
+  // In managed (API) mode, repos are org-scoped and the root layout has no
+  // access to the current org slug. The org-scoped repo list will be surfaced
+  // from within [slug]/layout.tsx in a follow-up. For now, skip the fetch in
+  // API mode so we don't hammer a nonexistent unscoped endpoint.
+  if (!apiMode) {
+    try {
+      repos = await listReposAsync();
+      const watchStatuses = await listWatchStatusesAsync();
+      watchedRepoIds = new Set(watchStatuses.map((w) => w.repo_id));
+    } catch {
+      // DB might not exist yet, or API not reachable
+    }
   }
 
   const filteredRepos = repos.filter((r) => r.github_owner && r.github_repo);
