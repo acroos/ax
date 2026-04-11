@@ -1,234 +1,364 @@
-# AX Team Setup Guide
+# AX Team Setup
 
-Connect your team to the AX managed service so everyone's Claude Code sessions and PR metrics flow into a shared dashboard.
+Connect the `ax` CLI to the AX managed service so your team's PR metrics,
+Claude Code session data, and cost figures flow into a shared dashboard.
 
-## What you'll set up
+This guide is for developers setting up AX in **managed mode**. If you just
+want everything running locally against `~/.ax/ax.db`, run `ax init` with no
+flags and skip this doc.
 
-- Each developer connected to the managed service at `app.ax.dev`
-- Automatic data collection via Claude Code hooks on each developer's machine
-- Real-time metric finalization via GitHub webhooks
-- Org-based multi-tenancy with GitHub OAuth
+---
 
-**Time to complete:** ~5 minutes per developer.
+## What managed mode gives you
+
+- **Team-wide aggregation.** Every developer's finalized PRs, session costs,
+  and agent-behavior metrics land in a single Postgres-backed store.
+- **A shared dashboard.** One URL per organization at
+  `https://ax-metrics.vercel.app/{org-slug}` where anyone on the team can
+  compare developers, filter by time window, and drill into individual PRs.
+- **Historical trends across developers.** The Compare page ranks developers,
+  shows individual-vs-team deltas, and supports 7d / 30d / 90d / all-time
+  windows.
+- **No self-hosted option.** Managed mode runs on the AX-hosted Rails API at
+  `https://ax.up.railway.app`. There is no self-hosted server distribution.
+
+Local mode and managed mode are not mutually exclusive. Your `~/.ax/ax.db`
+continues to be the source of truth on your machine, and `ax push` forwards
+finalized PR metrics from that local store to the managed service.
 
 ---
 
 ## Prerequisites
 
-### Each developer
+- **`ax` CLI.** Install via the Homebrew tap:
 
-- **`ax` CLI** installed: `brew install acroos/tap/ax` or download from [GitHub Releases](https://github.com/acroos/ax/releases)
-- **Claude Code** installed and working
-- **`gh` CLI** installed and authenticated (for local syncing)
+  ```bash
+  brew install acroos/tap/ax
+  ```
 
-### Org admin
+  This is the only supported distribution channel (see
+  [ADR-008](decisions/008-distribution-strategy.md)). You can also build from
+  source with `make build` if you're contributing.
 
-- An AX account at `app.ax.dev` (sign up with GitHub OAuth)
-- Waitlist approval to create a team organization
+- **A GitHub account.** Sign-in is GitHub OAuth. There is no email/password
+  flow.
 
----
+- **Claude Code.** The `ax` CLI reads session data from `~/.claude/projects/`
+  and installs hooks into `~/.claude/settings.json`. If you're not using
+  Claude Code, session metrics will be empty but git and GitHub metrics still
+  work.
 
-## Getting Started
-
-### Step 1: Sign up
-
-Visit [app.ax.dev](https://app.ax.dev) and sign in with GitHub. A personal organization is created automatically using your GitHub username.
-
-### Step 2: Create a team organization (admin)
-
-If you've been approved on the waitlist, create a new organization from the dashboard. Choose a slug (e.g., `my-team`) — this becomes part of your dashboard URL.
-
-### Step 3: Invite your team (admin)
-
-From **Organization Settings → Invites**, enter each team member's GitHub username and assign a role (admin or member). Copy the invite link and share it.
-
-Invited users can sign up freely — no waitlist required for joining an existing org.
-
-### Step 4: Get your API key
-
-After signing in, your API key is shown on the onboarding page and available in **Settings**. Each developer gets one key, scoped to their user account.
+- **`gh` CLI, authenticated.** `ax sync` shells out to `gh` for PR, review,
+  and check-run data. Run `gh auth status` to confirm you're logged in.
 
 ---
 
-## Developer Setup
+## Step 1 — Sign in to the dashboard
 
-Share these instructions with each developer on your team.
+Open `https://ax-metrics.vercel.app` and click **Sign in with GitHub**.
+You'll be bounced through GitHub's OAuth consent screen (scopes: `read:user`
+and `user:email`), then back to the dashboard.
 
-### Step 1: Install ax
+On first sign-in:
 
-```bash
-brew install acroos/tap/ax
+- A `User` record is created from your GitHub profile.
+- A **personal organization** is created automatically, slugged from your
+  GitHub username. You land on the onboarding page.
+- An **API key** is minted for your user account. You'll use it in Step 3.
+
+The OAuth App used for login is separate from the GitHub App that will
+eventually handle repo data and webhooks. See
+[ADR-013](decisions/013-github-integration-model.md) for why these are split.
+
+---
+
+## Step 2 — Grab your API key
+
+The API key drives CLI authentication. It's displayed on the onboarding page
+right after you sign in, and lives at:
+
+```
+https://ax-metrics.vercel.app/settings
 ```
 
-### Step 2: Connect to the managed service
+On the Settings page you can **Rotate API Key** at any time. Rotation
+immediately invalidates the previous key — any CLI still using the old one
+will start failing with 401. Copy the new key into `~/.ax/config.json` or
+re-run `ax init --team` after rotating.
+
+Keys are stored server-side as bcrypt hashes. The raw key string is only
+visible at the moment of creation or rotation, so paste it into your password
+manager immediately.
+
+---
+
+## Step 3 — Connect your CLI
+
+From any directory, run:
 
 ```bash
-ax init --team https://api.ax.dev \
-        --api-key ax_k1_your_key_here \
+ax init --team https://ax.up.railway.app \
+        --api-key <your-key> \
         --user "Your Name"
 ```
 
-This walks you through setup:
-1. Tests server connectivity
-2. Validates your API key
-3. Saves team config to `~/.ax/config.json`
-4. Installs Claude Code hooks for automatic syncing
+All three flags are required in team mode. `ax init` will:
 
-### Step 3: Initial sync
+1. Health-check `https://ax.up.railway.app` to confirm the server is
+   reachable.
+2. Validate the API key against the server.
+3. Write `~/.ax/config.json` with the server URL, key, and attribution name.
+4. Install Claude Code hooks into `~/.claude/settings.json` — specifically a
+   `SessionEnd` hook that runs `ax sync` after each Claude Code session ends.
+5. Install a background GitHub poller (`launchd` on macOS, `cron` on Linux)
+   that runs `ax watch --once` every 5 minutes by default.
+
+If you want mid-session sync as well, pass `--live`:
 
 ```bash
-cd /path/to/your/repo
+ax init --team https://ax.up.railway.app \
+        --api-key <your-key> \
+        --user "Your Name" \
+        --live
+```
+
+This adds a `Stop` hook that runs a lightweight `ax sync --sessions-only`
+after each Claude Code response, so cost and session metrics update in
+near-real-time rather than waiting for the session to end.
+
+Flag reference:
+
+| Flag | Purpose |
+|---|---|
+| `--team <url>` | Managed service URL. Use `https://ax.up.railway.app`. |
+| `--api-key <key>` | Your API key from the Settings page. |
+| `--user "Name"` | Display name used for attribution on the dashboard. |
+| `--live` | Also install the `Stop` hook for mid-session sync. |
+| `--no-watch` | Skip background GitHub polling installation. |
+| `--watch-interval <seconds>` | Override the default 300-second poll interval. |
+| `--uninstall` | Remove all hooks and polling (does not touch `config.json`). |
+
+To undo everything, run `ax init --uninstall`.
+
+---
+
+## Step 4 — First sync
+
+Change into a git repo on your machine and run a full sync:
+
+```bash
+cd ~/code/your-repo
 ax sync --repo .
 ```
 
-You should see:
-```
-Sync complete for owner/repo
-  PRs synced: 15
-  Sessions parsed: 3
-  Sessions correlated: 2
-  Pushed to https://api.ax.dev (15 PRs, 3 sessions)
-```
+`ax sync` does the following, in order:
 
-### Step 4: Verify on dashboard
+1. Shells out to `git log` / `git diff` to ingest commits and diffs.
+2. Shells out to `gh` to pull PRs, reviews, and check runs for the repo.
+3. Parses Claude Code session JSONL files from `~/.claude/projects/` and
+   correlates sessions to PRs by branch and time window.
+4. Computes all 16 metrics for PRs that have reached a terminal state
+   (merged or closed).
+5. If `~/.ax/config.json` has a server URL configured, automatically pushes
+   the resulting payload to `https://ax.up.railway.app/api/v1/push`.
 
-Open [app.ax.dev](https://app.ax.dev) and confirm your repo appears with metrics.
-
----
-
-## GitHub Webhooks (Recommended)
-
-For real-time metric finalization, configure GitHub webhooks to push events directly to the server.
-
-### Setup
-
-1. In your GitHub repo (or org settings), go to **Settings → Webhooks → Add webhook**
-
-2. Configure:
-   - **Payload URL:** `https://api.ax.dev/webhooks/github`
-   - **Content type:** `application/json`
-   - **Secret:** A strong random string (coordinate with AX admin)
-   - **Events:** Select "Pull requests", "Pull request reviews", and "Check suites"
-
-3. Verify by merging a PR — metrics should finalize within seconds.
-
----
-
-## How It Works
-
-```
-Developer machines                    Managed service (app.ax.dev)
-┌──────────────────┐                 ┌──────────────────────────────┐
-│ Claude Code      │                 │                              │
-│   ↓ session end  │                 │  Rails API                   │
-│ ax sync          │──── POST ──────→│    /api/v1/push              │
-│   ↓ auto-push    │                 │    writes → Postgres         │
-│                  │                 │                              │
-└──────────────────┘                 │  Next.js dashboard           │
-                                     │    reads via /api/v1/*       │
-GitHub                               │                              │
-┌──────────────────┐                 │  Sidekiq (background jobs)   │
-│ PR events        │──── webhook ──→ │    processes GitHub events   │
-│ Review events    │                 │    finalizes metrics         │
-│ CI events        │                 │                              │
-└──────────────────┘                 └──────────────────────────────┘
-```
-
-- **When a Claude Code session ends**, the SessionEnd hook triggers `ax sync`, which syncs locally and auto-pushes to the managed service.
-- **GitHub webhooks** notify the server of PR state changes (merges, reviews, CI) for real-time metric finalization.
-- **Metrics are only computed** for merged or closed PRs — open PRs don't appear in reports or the dashboard.
-
----
-
-## Security
-
-### API keys
-
-- Keys are stored as **bcrypt hashes** — the raw key is only shown at creation time.
-- Each developer has one key, scoped to their user account.
-- Keys can be rotated from the Settings page. Rotating immediately invalidates the old key.
-
-### Data sensitivity
-
-The database contains:
-- Repo names, PR titles, branch names
-- Session token counts and dollar costs
-- Commit messages and author names
-
-It does **not** contain:
-- Source code or file contents
-- Claude conversation content
-- Credentials or secrets
-
-### Authentication
-
-- **Dashboard:** GitHub OAuth via Devise + OmniAuth. Session cookies with 30-day expiry.
-- **CLI push:** API key in `Authorization: Bearer` header.
-- **Webhooks:** HMAC-SHA256 signature validation.
-
----
-
-## Verification Checklist
-
-After setup, confirm each of these:
-
-- [ ] Dashboard at [app.ax.dev](https://app.ax.dev) loads and shows your org
-- [ ] At least one developer has run `ax sync --repo .` successfully
-- [ ] Pushed data appears on the dashboard
-- [ ] Start and end a Claude Code session — new data appears within 60 seconds
-- [ ] (If webhooks configured) Merge a PR — metrics finalize within seconds
-
----
-
-## Exporting Data
-
-Use `ax export` to extract metrics for BI tools, spreadsheets, or custom integrations:
+That auto-push means you usually don't need to run `ax push` manually. If
+you want to push without re-syncing — for example after tweaking local data,
+or if the auto-push failed — run:
 
 ```bash
-# JSON (default)
-ax export --repo .
+ax push --repo .
+```
 
-# CSV for spreadsheets
-ax export --format csv --all-repos --output metrics.csv
+`ax push` reads the server URL and API key from `~/.ax/config.json`, extracts
+the finalized PR payload from `~/.ax/ax.db`, and POSTs it to `/api/v1/push`.
+You can override either with `--server` or `--api-key`.
 
-# JSONL for streaming/piping
-ax export --format jsonl --since 2026-01-01 | jq '.metrics.token_cost_usd'
+For a fast iteration loop (no GitHub API calls, just re-parse Claude Code
+sessions), use:
 
-# Repo-level aggregates
-ax export --aggregate --all-repos --format csv
+```bash
+ax sync --sessions-only --repo .
 ```
 
 ---
 
-## Dashboard Features
+## Step 5 — View results on the dashboard
 
-The team dashboard includes:
+Open `https://ax-metrics.vercel.app/{your-org-slug}`. On first sign-in your
+org slug is your GitHub username.
 
-| Page | URL | What it shows |
-|------|-----|---------------|
-| **Overview** | `/{slug}` | Aggregate metric cards with sparklines and trend charts |
-| **Pull Requests** | `/{slug}/prs` | Table of all finalized PRs with inline metrics |
-| **Compare** | `/{slug}/compare` | Developer leaderboard, individual vs team comparison, time window filtering |
-| **Org Settings** | `/{slug}/settings` | Member management, invites |
-| **Docs** | `/docs` | In-dashboard metric documentation |
+**What you'll see today:**
 
-### Compare Page
+- **Settings (`/settings`)** — API key management and rotation. Fully wired
+  up.
+- **Onboarding (`/onboarding`)** — The first-time setup screen showing your
+  API key and the exact `ax init --team` command for your account.
+- **Org-scoped PR list (`/{slug}/prs`)** — Route exists, but currently
+  renders a placeholder. Full PR table is under active development.
+- **Org-scoped Compare (`/{slug}/compare`)** — Route exists; see
+  `plans/comparison-views.md` for status.
+- **Org Settings (`/{slug}/settings`)** — Route exists; member list and
+  invite UI render placeholders while they're being built.
 
-The compare page helps teams understand individual and team-wide patterns:
+**Important:** metrics are only computed for **finalized** PRs (merged or
+closed). Open PRs are deliberately excluded from reports and the dashboard —
+see [ADR-010](decisions/010-github-event-ingestion.md). If you just opened a
+PR and don't see it, that's expected.
 
-- **Developer leaderboard** — All developers ranked by PR count, with metrics columns
-- **Individual vs team** — Select a developer to see their metrics side-by-side with team averages
-- **Time filtering** — 7d, 30d, 90d, or all-time windows
+To inspect a specific PR locally before it shows up on the dashboard:
+
+```bash
+ax report --pr 42
+```
+
+---
+
+## Inviting teammates
+
+From `/{slug}/settings` (once the UI is implemented), an org admin can
+invite team members by GitHub username. The invite flow is:
+
+1. Admin creates an invite. Rails generates a single-use token.
+2. Admin copies the invite link (`/invite/{token}`) and sends it to the
+   teammate.
+3. Teammate clicks the link.
+   - If signed in: the invite is accepted server-side and they're redirected
+     to `/{slug}`.
+   - If not signed in: the token is stashed in a `pending_invite` cookie,
+     they're redirected to `/login` to sign in with GitHub, and the invite
+     is consumed automatically after the callback.
+4. Once joined, the teammate follows Steps 2–4 of this guide: grab their own
+   API key from `/settings`, run `ax init --team`, and run `ax sync`.
+
+Each teammate has their own API key. Keys are scoped per user, not per org.
+
+---
+
+## Current limitations (be honest about what isn't built)
+
+Managed mode is under active development. Here's what works today and
+what's still coming:
+
+| Area | Status | Tracked in |
+|---|---|---|
+| GitHub OAuth sign-in | Working | [ADR-013](decisions/013-github-integration-model.md) |
+| API key auth + rotation | Working | — |
+| `ax push` + `/api/v1/push` ingestion | Working | — |
+| Org-scoped PR list UI | Placeholder route | `plans/comparison-views.md` |
+| Org-scoped Compare UI | Placeholder route | `plans/comparison-views.md` |
+| Member / invite management UI | Placeholder route | `plans/managed-service-identity.md` |
+| Invite acceptance API + cookie flow | Working | — |
+| GitHub App installation flow | **Not built** | [ADR-013](decisions/013-github-integration-model.md) |
+| Real-time webhooks for PR / review / CI events | **Not built** | [ADR-013](decisions/013-github-integration-model.md), `plans/event-service.md` |
+| Automatic repo ingestion (no CLI push required) | **Not built** | [ADR-013](decisions/013-github-integration-model.md) |
+
+Concretely: **today, all data enters the managed service via CLI push.**
+There is no automatic ingestion, no org-wide GitHub App install, and no
+real-time webhook finalization. Metrics appear on the dashboard only after
+one of your developers next runs `ax sync` + (auto-)`ax push`.
+
+The GitHub App installation flow described in ADR-013 — one-click install
+on an org, automatic webhook delivery, installation-token-based repo reads —
+is the target end state. It is not yet implemented. Until then, the
+background poller installed by `ax init` (`ax watch`, every 5 minutes) is
+the mechanism that keeps managed-mode data fresh.
 
 ---
 
 ## Troubleshooting
 
-| Problem | Likely cause | Fix |
-|---------|-------------|-----|
-| `ax init --team` says "connection refused" | Server not reachable | Check network connectivity to api.ax.dev |
-| `ax init --team` says "API key is invalid" | Wrong key or key revoked | Verify key in Settings; rotate if needed |
-| `ax push` hangs | Network issue | Try `curl https://api.ax.dev/api/v1/health` |
-| Dashboard shows no data | No data pushed yet | Run `ax sync --repo .` in a repo |
-| Dashboard shows no finalized PRs | Only open PRs in data | Metrics only appear for merged/closed PRs |
-| Push returns 401 | API key invalid or revoked | Rotate key in Settings; update `~/.ax/config.json` |
+### "Sign in with GitHub does nothing" / the dashboard bounces me in a loop
+
+Two things to check:
+
+1. **`AX_API_URL` on the dashboard deploy.** The Next.js app at
+   `https://ax-metrics.vercel.app` reads `AX_API_URL` to know where to send
+   auth requests. It should be set to `https://ax.up.railway.app`. If it
+   defaults to `http://localhost:3000`, the OAuth redirect will fail on
+   production. Check the Vercel environment variables for the project.
+
+2. **GitHub OAuth App callback URL.** The OAuth App used for login must have
+   its callback URL set to exactly:
+
+   ```
+   https://ax.up.railway.app/users/auth/github/callback
+   ```
+
+   A mismatch here silently breaks the Devise + OmniAuth callback. Check the
+   OAuth App settings on GitHub.
+
+### `ax push` returns 401
+
+The API key stored in `~/.ax/config.json` is missing, wrong, or has been
+rotated out from under you. Fix it by:
+
+1. Going to `https://ax-metrics.vercel.app/settings`.
+2. Clicking **Rotate API Key**. Copy the new key immediately — it's only
+   shown once.
+3. Re-running `ax init --team https://ax.up.railway.app --api-key <new-key>
+   --user "Your Name"`. This overwrites `~/.ax/config.json` with the new
+   key.
+
+You can also hand-edit `~/.ax/config.json` if you'd rather skip the `init`
+walkthrough.
+
+### My PRs aren't showing up on the dashboard
+
+Three possible causes, in order of likelihood:
+
+1. **The PRs aren't finalized.** Metrics are only computed for merged or
+   closed PRs. Open PRs are excluded by design. Confirm locally:
+
+   ```bash
+   ax report --pr <number>
+   ```
+
+   If `ax report` says the PR isn't tracked or has no metrics, the PR is
+   still open.
+
+2. **You haven't pushed yet.** Sync auto-pushes when `~/.ax/config.json`
+   has a server URL, but if the auto-push failed (network, auth) the data
+   stays local. Run `ax push --repo .` manually and watch for errors.
+
+3. **Repo isn't tracked.** Run `ax status` to see which repos AX knows
+   about. If the repo isn't listed, run `ax sync --repo .` from inside it.
+
+### `ax init --team` says "server unreachable"
+
+Hit the health endpoint directly to isolate the problem:
+
+```bash
+curl https://ax.up.railway.app/api/v1/health
+```
+
+If that fails, it's a network or Railway outage, not an AX bug. If it
+succeeds but `ax init --team` still fails, double-check the URL you passed
+— a trailing slash or `http://` instead of `https://` will cause the
+health check to reject the response.
+
+### The background poller isn't running
+
+Check with:
+
+```bash
+ax watch status
+```
+
+On macOS, `ax init` installs a `launchd` agent; on Linux, a `cron` entry.
+If `ax watch status` says "not installed," re-run `ax init --team ...` to
+reinstall it, or install the poller alone with `ax watch install`.
+
+---
+
+## Reference
+
+- [ADR-008 — Distribution Strategy](decisions/008-distribution-strategy.md)
+  — why `brew install acroos/tap/ax` is the only supported install path.
+- [ADR-010 — GitHub Event Ingestion](decisions/010-github-event-ingestion.md)
+  — why metrics only exist for finalized PRs.
+- [ADR-013 — GitHub Integration Model](decisions/013-github-integration-model.md)
+  — the OAuth App + GitHub App split, and the staged rollout plan.
+- `plans/managed-service-identity.md` — auth, orgs, invites, API keys.
+- `plans/comparison-views.md` — dashboard UI work in flight.
+- `plans/event-service.md` — webhook receiver design.
