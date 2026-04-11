@@ -7,21 +7,27 @@ import type { NextRequest } from "next/server";
 const PUBLIC_PATHS = ["/login", "/invite", "/auth", "/api", "/docs", "/_next", "/favicon"];
 
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Forward the pathname to server components via a request header. The root
+  // layout uses this to derive the org slug for org-scoped sidebar rendering
+  // without having direct access to route params at the root level.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+
   // Only enforce auth in managed mode (when AX_API_URL is set)
   if (!process.env.AX_API_URL) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
-
-  const { pathname } = request.nextUrl;
 
   // Allow public paths
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // Allow health check
   if (pathname === "/up") {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // Check for session cookie
@@ -32,7 +38,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {

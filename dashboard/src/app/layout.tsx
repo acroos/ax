@@ -1,9 +1,39 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import "./globals.css";
 import { listReposAsync, listWatchStatusesAsync, isAPIMode } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { OrgSwitcher } from "@/components/org-switcher";
+
+// Extract the first path segment as an org slug, but only if it looks like
+// an org slug (lowercase, alphanumeric with hyphens) and isn't a known
+// non-slug top-level route like /login, /settings, /docs, /onboarding, etc.
+const NON_ORG_SEGMENTS = new Set([
+  "login",
+  "logout",
+  "onboarding",
+  "settings",
+  "docs",
+  "prs",
+  "compare",
+  "metrics",
+  "invite",
+  "auth",
+  "api",
+  "up",
+]);
+
+function parseOrgSlug(pathname: string | null): string | null {
+  if (!pathname) return null;
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length === 0) return null;
+  const first = segments[0];
+  if (NON_ORG_SEGMENTS.has(first)) return null;
+  // Basic sanity check — org slugs are lowercase kebab-ish
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(first)) return null;
+  return first;
+}
 
 export const metadata: Metadata = {
   title: "AX — Agentic Coding Metrics",
@@ -85,13 +115,35 @@ async function Sidebar() {
   const apiMode = isAPIMode();
   const user = apiMode ? await getCurrentUser() : null;
 
+  // Resolve the current org slug from the request path (in managed mode).
+  // Middleware injects x-pathname on every request; the root layout has no
+  // direct access to route params, so we read it here.
+  const hdrs = await headers();
+  const pathname = hdrs.get("x-pathname");
+  const pathOrgSlug = apiMode ? parseOrgSlug(pathname) : null;
+  // Fall back to the user's first org when the current path has no slug
+  // (e.g. /onboarding, /settings) — the sidebar still shows something useful.
+  const orgSlug =
+    pathOrgSlug ?? (apiMode ? user?.organizations[0]?.slug ?? null : null);
+
+  // Managed-mode nav link prefix: /{slug}. Local-mode stays "".
+  const base = orgSlug ? `/${orgSlug}` : "";
+  const overviewHref = base || "/";
+
   let repos: { id: number; github_owner: string | null; github_repo: string | null }[] = [];
   let watchedRepoIds = new Set<number>();
-  // In managed (API) mode, repos are org-scoped and the root layout has no
-  // access to the current org slug. The org-scoped repo list will be surfaced
-  // from within [slug]/layout.tsx in a follow-up. For now, skip the fetch in
-  // API mode so we don't hammer a nonexistent unscoped endpoint.
-  if (!apiMode) {
+
+  if (apiMode) {
+    // Managed mode: org-scoped repos via the Rails API. Watch status is
+    // local-poller state and intentionally not surfaced here.
+    if (orgSlug) {
+      try {
+        repos = await listReposAsync(orgSlug);
+      } catch {
+        // API unreachable or org not found — leave empty
+      }
+    }
+  } else {
     try {
       repos = await listReposAsync();
       const watchStatuses = await listWatchStatusesAsync();
@@ -117,9 +169,9 @@ async function Sidebar() {
       )}
 
       <nav className="flex-1 px-2.5 space-y-0.5">
-        <NavLink href="/" icon={HomeIcon}>Overview</NavLink>
-        <NavLink href="/prs" icon={PRIcon}>Pull Requests</NavLink>
-        <NavLink href="/compare" icon={CompareIcon}>Compare</NavLink>
+        <NavLink href={overviewHref} icon={HomeIcon}>Overview</NavLink>
+        <NavLink href={`${base}/prs`} icon={PRIcon}>Pull Requests</NavLink>
+        <NavLink href={`${base}/compare`} icon={CompareIcon}>Compare</NavLink>
         <NavLink href="/docs" icon={DocsIcon}>Docs</NavLink>
       </nav>
 
@@ -130,7 +182,7 @@ async function Sidebar() {
           </div>
           <div className="space-y-0.5 max-h-[200px] overflow-y-auto">
             <Link
-              href="/"
+              href={overviewHref}
               className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-colors"
             >
               <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
@@ -139,7 +191,7 @@ async function Sidebar() {
             {filteredRepos.map((r) => (
               <Link
                 key={r.id}
-                href={`/?repo=${r.id}`}
+                href={`${overviewHref}?repo=${r.id}`}
                 className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] text-text-tertiary hover:text-text-primary hover:bg-surface-2 transition-colors"
               >
                 <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${watchedRepoIds.has(r.id) ? "bg-green/60" : "bg-text-tertiary/30"}`} />
