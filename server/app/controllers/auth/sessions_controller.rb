@@ -16,7 +16,7 @@ module Auth
     end
 
     def destroy
-      token = cookies.signed[:_ax_session]
+      token = cookies[:_ax_session]
       UserSession.find_by(session_token: token)&.destroy
       cookies.delete(:_ax_session)
       head :no_content
