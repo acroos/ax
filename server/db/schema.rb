@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_11_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_12_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -120,6 +120,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_11_000002) do
     t.boolean "scope_creep_detected", default: false
     t.datetime "updated_at", null: false
     t.index ["pr_id"], name: "index_plan_analyses_on_pr_id"
+  end
+
+  create_table "pr_files", force: :cascade do |t|
+    t.integer "additions", default: 0
+    t.datetime "created_at", null: false
+    t.integer "deletions", default: 0
+    t.string "filename", null: false
+    t.integer "line_changes", default: 0
+    t.bigint "pr_id", null: false
+    t.string "status"
+    t.datetime "updated_at", null: false
+    t.index ["pr_id", "filename"], name: "index_pr_files_on_pr_id_and_filename", unique: true
+    t.index ["pr_id"], name: "index_pr_files_on_pr_id"
   end
 
   create_table "pr_metrics", force: :cascade do |t|
@@ -423,6 +436,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_11_000002) do
   add_foreign_key "org_memberships", "users", column: "invited_by_id"
   add_foreign_key "organizations", "users", column: "created_by_id"
   add_foreign_key "plan_analyses", "prs"
+  add_foreign_key "pr_files", "prs"
   add_foreign_key "pr_metrics", "prs"
   add_foreign_key "prs", "repos"
   add_foreign_key "repo_metrics", "repos"

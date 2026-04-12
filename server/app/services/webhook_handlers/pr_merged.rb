@@ -13,10 +13,21 @@ module WebhookHandlers
       return if pr_finalized?(pr)
 
       pr.update!(state: "merged", merged_at: @pr_data[:merged_at])
+      fetch_and_compute(pr)
       finalize_metrics(pr)
     end
 
     private
+
+    def fetch_and_compute(pr)
+      GithubDataFetcher.new(pr).call
+      computed = MetricsComputer.new(pr).call
+
+      metrics = ensure_pr_metrics(pr)
+      metrics.update!(computed.compact)
+    rescue => e
+      Rails.logger.error("Failed to fetch/compute metrics for PR ##{pr.number}: #{e.message}")
+    end
 
     def finalize_metrics(pr)
       metrics = ensure_pr_metrics(pr)

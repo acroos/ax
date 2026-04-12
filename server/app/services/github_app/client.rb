@@ -25,6 +25,14 @@ module GithubApp
       client.list_app_installation_repositories[:repositories]
     end
 
+    def list_pull_files(owner:, repo:, number:)
+      client.pull_request_files("#{owner}/#{repo}", number)
+    end
+
+    def list_pull_commits(owner:, repo:, number:)
+      client.pull_request_commits("#{owner}/#{repo}", number)
+    end
+
     private
 
     def client

@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe WebhookHandlers::PrMerged do
+RSpec.describe WebhookHandlers::PrClosed do
   let(:installation) { create(:github_installation) }
   let(:repo) { create(:repo, github_owner: "octocat", github_repo: "hello-world", github_installation: installation) }
   let!(:pr) { create(:pr, repo: repo, number: 1, state: "open") }
@@ -10,10 +10,9 @@ RSpec.describe WebhookHandlers::PrMerged do
   let(:pr_data) do
     {
       number: 1,
-      title: "Merged PR",
+      title: "Closed PR",
       state: "closed",
-      merged: true,
-      merged_at: "2026-01-02T00:00:00Z",
+      merged: false,
       head: { ref: "feature" },
       created_at: "2026-01-01T00:00:00Z",
       closed_at: "2026-01-02T00:00:00Z",
@@ -35,28 +34,23 @@ RSpec.describe WebhookHandlers::PrMerged do
     stub_request(:get, %r{api\.github\.com/repos/octocat/hello-world/pulls/1/files})
       .to_return(
         status: 200,
-        body: [
-          { filename: "src/app.rb", additions: 8, deletions: 1, changes: 9, status: "modified" },
-          { filename: "src/app.test.ts", additions: 2, deletions: 1, changes: 3, status: "modified" }
-        ].to_json,
+        body: [{ filename: "src/app.rb", additions: 10, deletions: 2, changes: 12, status: "modified" }].to_json,
         headers: { "Content-Type" => "application/json" }
       )
 
     stub_request(:get, %r{api\.github\.com/repos/octocat/hello-world/pulls/1/commits})
       .to_return(
         status: 200,
-        body: [
-          { sha: "aaa111", commit: { author: { name: "octocat" }, message: "feat" }, stats: { additions: 12, deletions: 2 } }
-        ].to_json,
+        body: [{ sha: "bbb222", commit: { author: { name: "octocat" }, message: "wip" }, stats: { additions: 10, deletions: 2 } }].to_json,
         headers: { "Content-Type" => "application/json" }
       )
   end
 
-  it "finalizes the PR metrics" do
+  it "finalizes the PR metrics with state closed" do
     handler = described_class.new(pr_data, repo_data)
     handler.call
 
-    expect(pr.reload.state).to eq("merged")
+    expect(pr.reload.state).to eq("closed")
     expect(metrics.reload.metrics_finalized).to be true
     expect(metrics.finalized_at).to be_present
   end
@@ -65,9 +59,9 @@ RSpec.describe WebhookHandlers::PrMerged do
     handler = described_class.new(pr_data, repo_data)
     handler.call
 
-    expect(PrFile.where(pr: pr).count).to eq(2)
-    expect(metrics.reload.has_tests).to be true
-    expect(metrics.diff_churn_lines).to eq(2) # 12 commit additions - 10 PR additions
+    expect(PrFile.where(pr: pr).count).to eq(1)
+    expect(metrics.reload.has_tests).to be false
+    expect(metrics.diff_churn_lines).to eq(0) # 10 - 10 = 0
   end
 
   it "skips already finalized PRs" do
@@ -78,28 +72,5 @@ RSpec.describe WebhookHandlers::PrMerged do
     handler.call
 
     expect(metrics.reload.finalized_at).to be_within(1.second).of(original_time)
-  end
-
-  it "still finalizes when GitHub API fetch fails" do
-    stub_request(:get, %r{api\.github\.com/repos/octocat/hello-world/pulls/1/files})
-      .to_return(status: 500, body: "Internal Server Error")
-
-    handler = described_class.new(pr_data, repo_data)
-    handler.call
-
-    expect(metrics.reload.metrics_finalized).to be true
-    expect(metrics.finalized_at).to be_present
-  end
-
-  context "when repo has no GitHub installation" do
-    let(:repo) { create(:repo, github_owner: "octocat", github_repo: "hello-world", github_installation: nil) }
-
-    it "finalizes metrics without fetching" do
-      handler = described_class.new(pr_data, repo_data)
-      handler.call
-
-      expect(metrics.reload.metrics_finalized).to be true
-      expect(PrFile.where(pr: pr).count).to eq(0)
-    end
   end
 end
