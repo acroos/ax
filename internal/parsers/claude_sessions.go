@@ -47,23 +47,23 @@ type ParsedSession struct {
 	BashCommands  []string       // all Bash command strings
 
 	// Extracted signals
-	PRURLs       []string // PR URLs found in gh pr create output
-	CommitSHAs   []string // commit SHAs from git commit output
-	PlanFiles    []string // plan files written/edited during session
-	BashErrors   int      // Bash commands that failed (non-zero exit)
-	BashSuccesses int     // Bash commands that succeeded
+	PRURLs        []string // PR URLs found in gh pr create output
+	CommitSHAs    []string // commit SHAs from git commit output
+	PlanFiles     []string // plan files written/edited during session
+	BashErrors    int      // Bash commands that failed (non-zero exit)
+	BashSuccesses int      // Bash commands that succeeded
 }
 
 // sessionMessage represents a single line in a session JSONL file.
 type sessionMessage struct {
-	Type      string          `json:"type"`
-	UUID      string          `json:"uuid"`
-	ParentUUID *string        `json:"parentUuid"`
-	SessionID string          `json:"sessionId"`
-	GitBranch string          `json:"gitBranch"`
-	Timestamp string          `json:"timestamp"`
-	IsMeta    bool            `json:"isMeta"`
-	Message   json.RawMessage `json:"message"`
+	Type       string          `json:"type"`
+	UUID       string          `json:"uuid"`
+	ParentUUID *string         `json:"parentUuid"`
+	SessionID  string          `json:"sessionId"`
+	GitBranch  string          `json:"gitBranch"`
+	Timestamp  string          `json:"timestamp"`
+	IsMeta     bool            `json:"isMeta"`
+	Message    json.RawMessage `json:"message"`
 	// For tool_result type messages
 	ToolResultUUID string `json:"toolResultUuid"`
 }
@@ -198,7 +198,7 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 		ToolCalls: make(map[string]int),
 	}
 
-	modelCounts := make(map[string]int) // track model usage frequency
+	modelCounts := make(map[string]int)     // track model usage frequency
 	seenMessageIDs := make(map[string]bool) // deduplicate by message ID
 	filesReadSet := make(map[string]bool)
 	filesModifiedSet := make(map[string]bool)

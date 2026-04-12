@@ -10,10 +10,10 @@ var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 
 // Spinner displays an animated spinner with a message.
 type Spinner struct {
-	msg    string
-	stop   chan struct{}
-	done   chan struct{}
-	mu     sync.Mutex
+	msg  string
+	stop chan struct{}
+	done chan struct{}
+	mu   sync.Mutex
 }
 
 // NewSpinner creates and starts a spinner with the given message.

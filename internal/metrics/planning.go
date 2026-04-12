@@ -7,14 +7,14 @@ import (
 
 // PlanMetrics contains the results of comparing a plan to actual implementation.
 type PlanMetrics struct {
-	CoverageScore     float64  // 0.0-1.0: what fraction of actual files were planned
-	DeviationScore    float64  // 0.0-1.0: what fraction of planned files were actually changed
-	ScopeCreep        bool     // true if unplanned files exceed a threshold
-	PlannedFiles      []string // files mentioned in the plan
-	ActualFiles       []string // files actually changed in the PR
-	CoveredFiles      []string // files that appear in both plan and diff
-	UnplannedFiles    []string // files changed but not in the plan
-	MissedFiles       []string // files in the plan but not changed
+	CoverageScore  float64  // 0.0-1.0: what fraction of actual files were planned
+	DeviationScore float64  // 0.0-1.0: what fraction of planned files were actually changed
+	ScopeCreep     bool     // true if unplanned files exceed a threshold
+	PlannedFiles   []string // files mentioned in the plan
+	ActualFiles    []string // files actually changed in the PR
+	CoveredFiles   []string // files that appear in both plan and diff
+	UnplannedFiles []string // files changed but not in the plan
+	MissedFiles    []string // files in the plan but not changed
 }
 
 // ignoredFiles are files that are expected to change without being explicitly planned.
@@ -35,13 +35,16 @@ var ignoredFiles = map[string]bool{
 // actualFiles: files changed in the PR diff
 //
 // Coverage = |planned ∩ actual| / |actual - ignored|
-//   "How much of what we built was planned?"
+//
+//	"How much of what we built was planned?"
 //
 // Deviation = |planned ∩ actual| / |planned|
-//   "How much of what we planned did we actually build?"
+//
+//	"How much of what we planned did we actually build?"
 //
 // Scope creep = |unplanned| / |actual - ignored| > 0.5
-//   "Did more than half the changes come from outside the plan?"
+//
+//	"Did more than half the changes come from outside the plan?"
 func ComparePlanToImplementation(plannedFiles, actualFiles []string) *PlanMetrics {
 	result := &PlanMetrics{
 		PlannedFiles: plannedFiles,

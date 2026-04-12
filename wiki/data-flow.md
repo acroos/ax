@@ -1,72 +1,27 @@
 # Data Flow
 
-This page traces data from raw sources to displayed metrics. There are three ingestion paths: full sync (CLI), background polling (CLI), and webhooks (server).
+This page traces data from raw sources to displayed metrics. There are two ingestion paths: CLI push (session data) and webhooks (PR events).
 
-## Full Sync (`ax sync`)
+## CLI Push (`ax push`)
 
-The primary ingestion path. Runs locally via the CLI.
-
-```
-Step 1: Parse Sources
-  git log/diff/blame  →  GitParser    →  commits, diffs, branches, remote URL
-  gh pr list/view     →  GitHubParser →  PRs, reviews, CI checks, PR commits
-  ~/.claude/projects/ →  SessionParser →  token counts, costs, tool calls, branches
-
-Step 2: Store Raw Data
-  Upsert repo → Upsert PRs → Store commits (with claude-authored flags) → Store sessions
-
-Step 3: Correlate Sessions to PRs
-  For each session, try (in order):
-    1. Direct match  — PR URL found in session output
-    2. Branch match  — Session branch == PR head branch
-    3. Commit match  — Session commit SHAs found in PR
-    4. Heuristic     — Time-window overlap (fallback)
-  Result: session_prs join records with confidence levels
-
-Step 4: Compute Metrics
-  Phase 1 (GitHub-sourced):
-    post_open_commits, first_pass_accepted, ci_success_rate,
-    has_tests, diff_churn_lines, line_revisit_rate
-
-  Phase 2 (Session-dependent, weighted by correlation count):
-    messages_per_pr, iteration_depth, token_cost_usd,
-    self_correction_rate, context_efficiency, error_recovery_attempts
-
-  Phase 3 (Plan analysis):
-    plan_coverage_score, plan_deviation_score, scope_creep_detected
-
-Step 5: Finalize
-  For each terminal PR (merged or closed):
-    Set metrics_finalized = true, finalized_at = CURRENT_TIMESTAMP
-  Compute repo-level: unmerged_token_spend
-
-Step 6: Push (if team mode)
-  Extract all data → POST /api/v1/push → Rails stores in PostgreSQL
-```
-
-Orchestrated by `internal/sync/sync.go`. Each step is idempotent — re-running sync is safe due to upsert-based writes.
-
-## Background Polling (`ax watch`)
-
-Lightweight path that only checks GitHub for PR state changes. Does not re-parse sessions.
+The CLI parses Claude Code session data locally and pushes it to the server.
 
 ```
-For each watched repo:
-  Fetch PR list from GitHub
-  For each PR that transitioned to terminal state:
-    Fetch reviews, checks, commits
-    Compute Phase 1 metrics
-    Finalize PR
-  Recompute unmerged token spend
+Step 1: Parse Sessions
+  ~/.claude/projects/ → SessionParser → token counts, costs, tool calls, branches
+
+Step 2: Identify Repo
+  git remote get-url origin → owner/repo
+
+Step 3: Push to Server
+  Build PushPayload with sessions → POST /api/v1/push → Rails API
 ```
 
-Runs as a foreground process (`ax watch`), single cycle (`ax watch --once`), or system job (`ax watch install` → launchd on macOS, cron on Linux).
-
-See: [Go CLI — Watch System](go-cli.md#watch-system)
+This runs automatically via the SessionEnd hook installed by `ax init`, or manually via `ax push --repo .`.
 
 ## Webhook Ingestion (Rails Server)
 
-Real-time path for managed mode. GitHub sends events directly to the server.
+Real-time path for PR events. GitHub sends events directly to the server.
 
 ```
 GitHub Event → POST /webhooks/github → Validate HMAC-SHA256 signature
@@ -80,40 +35,38 @@ GitHub Event → POST /webhooks/github → Validate HMAC-SHA256 signature
   check_suite.completed     → Update ci_success_rate
 ```
 
-Webhook handlers only update Phase 1 metrics. Session-dependent metrics come from CLI push.
-
 See: [Rails Server — Webhook Handling](rails-server.md#webhook-handling)
 
 ## Metric Lifecycle
 
 ```
-PR opened → metrics initialized (all null)
-  ↓
-Commits pushed → post_open_commits updated
-Reviews posted → first_pass_accepted updated
-CI runs        → ci_success_rate updated
-  ↓
-PR merged/closed → ALL metrics finalized (immutable)
-  ↓
-Open PRs are never shown in reports or dashboard
+PR opened
+  → metrics initialized (all null)
+  → individual metrics updated as data arrives (webhooks + push)
+  → PR reaches terminal state (merged or closed)
+  → ALL metrics finalized: metrics_finalized = true, finalized_at = timestamp
+  → Record becomes immutable
 ```
 
-Once finalized, metrics are write-protected. The `PrMetrics` model in Rails has a callback that prevents updates to finalized records. In SQLite, the CLI checks `metrics_finalized` before writing.
+Open PRs are never shown in reports or dashboard.
+
+Once finalized, metrics are write-protected. The `PrMetrics` model in Rails has a callback that prevents updates to finalized records.
 
 See: [Metrics — Finalization](metrics.md#finalization)
 
+## Session-to-PR Correlation
+
+The server correlates pushed session data to PRs using strategies including:
+1. **Direct** — PR URL appears in session output
+2. **Branch** — Session's working branch matches PR head branch
+3. **Commit** — Commit SHAs from the session appear in the PR
+
+A single session can correlate to multiple PRs. Metrics are weighted inversely by correlation count.
+
 ## Display Path
 
-### Local Mode
-```
-SQLite → better-sqlite3 (sync read) → Next.js server component → rendered page
-```
-
-### Managed Mode
 ```
 PostgreSQL → Rails API (org-scoped) → fetch() with session token → Next.js server component → rendered page
 ```
 
-The dashboard's data layer (`dashboard/src/lib/db.ts`) provides both sync and async variants of every data function. Mode is detected by the presence of `AX_API_URL`.
-
-See: [Dashboard — Dual-Mode Data Layer](dashboard.md#dual-mode-data-layer)
+See: [Dashboard](dashboard.md)

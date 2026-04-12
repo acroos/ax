@@ -15,9 +15,9 @@ Measures the quality of code produced by the agent-human collaboration.
 | Post-Open Commits | int | GitHub | Commits pushed after PR was opened. Lower = cleaner first draft. |
 | First-Pass Acceptance | bool | GitHub | No CHANGES_REQUESTED reviews. True = reviewer approved without requesting changes. |
 | CI Success Rate | float | GitHub | Passing CI checks / total checks. 1.0 = all green. |
-| Test Coverage | bool | Git | Whether the PR includes test files (pattern-matched by filename). |
-| Diff Churn | int | Git | Lines added across all commits minus lines in the final diff. Higher = more rework. |
-| Line Revisit Rate | float | Git | Files in this PR that were also changed in other recent PRs. Higher = unstable areas. |
+| Test Coverage | bool | GitHub | Whether the PR includes test files (pattern-matched by filename). |
+| Diff Churn | int | GitHub | Lines added across all commits minus lines in the final diff. Higher = more rework. |
+| Line Revisit Rate | float | GitHub | Files in this PR that were also changed in other recent PRs. Higher = unstable areas. |
 
 ### Prompt Efficiency
 
@@ -57,28 +57,15 @@ Measures how well plans translated into implementation.
 
 ## Computation
 
-### Phase 1: GitHub-Sourced (during sync)
-Computed from PR reviews, CI checks, and git history. Does not require session data.
+All metric computation happens server-side in the Rails application.
 
-Metrics: post_open_commits, first_pass_accepted, ci_success_rate, has_tests, diff_churn_lines, line_revisit_rate
+- **GitHub-sourced metrics** (output quality) are computed from webhook data as PR events arrive
+- **Session-dependent metrics** (prompt efficiency, agent behavior) are computed after session data is pushed from the CLI and correlated to PRs
+- **Plan analysis metrics** (planning effectiveness) are computed from plan files referenced in session data
 
-Code: `internal/metrics/output_quality.go`
+The Go `internal/metrics/` package contains the original metric calculator implementations as pure functions. These are being ported to Ruby for server-side use.
 
-### Phase 2: Session-Dependent (after correlation)
-Computed from Claude Code session data, after sessions are linked to PRs.
-
-If a session correlates to N PRs, its contribution is divided by N (weighted metrics).
-
-Metrics: messages_per_pr, iteration_depth, token_cost_usd, self_correction_rate, context_efficiency, error_recovery_attempts
-
-Code: `internal/metrics/agent_behavior.go`, `internal/sync/finalize.go` (ComputeSessionMetricsForPR)
-
-### Phase 3: Plan Analysis
-Compares `.plan` files from sessions against actual file changes in the PR.
-
-Metrics: plan_coverage_score, plan_deviation_score, scope_creep_detected
-
-Code: `internal/metrics/planning.go`
+Code: `internal/metrics/output_quality.go`, `agent_behavior.go`, `prompt_efficiency.go`, `planning.go`
 
 ## Finalization
 
@@ -99,23 +86,16 @@ PR opened
 - Immutability means historical data never changes retroactively
 
 ### Where is finalization enforced?
-- **SQLite (CLI)**: `internal/sync/finalize.go` checks `metrics_finalized` before writing
 - **Rails**: `PrMetrics` model has a `before_update` callback that raises if already finalized
 - **Webhooks**: All handlers check `pr_finalized?` before updating
 
 ### Webhook-triggered finalization
-In managed mode, `PrMerged` and `PrClosed` webhook handlers set `metrics_finalized = true`. This happens in real time as GitHub sends events.
-
-### CLI-triggered finalization
-During `ax sync` or `ax watch`, the CLI detects terminal PR states and calls `FinalizePR()`.
+`PrMerged` and `PrClosed` webhook handlers set `metrics_finalized = true`. This happens in real time as GitHub sends events.
 
 ## Metric Storage
 
-### SQLite (`pr_metrics` table)
-One row per PR. All 16 metrics as columns plus `metrics_finalized` (bool) and `finalized_at` (timestamp).
-
 ### PostgreSQL (`pr_metrics` table)
-Same schema. The `PrMetrics` model mirrors the SQLite structure.
+One row per PR. All 16 metrics as columns plus `metrics_finalized` (bool) and `finalized_at` (timestamp).
 
 ### Repo-level metrics (`repo_metrics` table)
 Aggregated by period. Contains total_sessions, total_tokens, total_cost_usd, unmerged_tokens, unmerged_cost_usd, unmerged_rate.
