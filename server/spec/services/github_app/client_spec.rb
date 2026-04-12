@@ -53,7 +53,7 @@ RSpec.describe GithubApp::Client do
       stub_request(:get, %r{api\.github\.com/repos/acme/widget/pulls/42/reviews})
         .to_return(
           status: 200,
-          body: [{ id: 1, state: "APPROVED" }].to_json,
+          body: [ { id: 1, state: "APPROVED" } ].to_json,
           headers: { "Content-Type" => "application/json" }
         )
     end
@@ -70,7 +70,7 @@ RSpec.describe GithubApp::Client do
       stub_request(:get, %r{api\.github\.com/repos/acme/widget/commits/abc123/check-suites})
         .to_return(
           status: 200,
-          body: { total_count: 1, check_suites: [{ id: 1, status: "completed" }] }.to_json,
+          body: { total_count: 1, check_suites: [ { id: 1, status: "completed" } ] }.to_json,
           headers: { "Content-Type" => "application/json" }
         )
     end
