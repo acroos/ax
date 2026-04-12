@@ -287,8 +287,7 @@ export default async function PRDetailPage({
 
       {grouped.length === 0 ? (
         <div className="text-center py-12 text-text-tertiary animate-in">
-          No metrics computed yet. Run{" "}
-          <code className="font-mono text-accent">ax sync</code>.
+          No metrics computed yet.
         </div>
       ) : (
         <div className="space-y-6">

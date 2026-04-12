@@ -30,10 +30,14 @@ GitHub Event → POST /webhooks/github → Validate HMAC-SHA256 signature
 
   pull_request.opened       → Create PR, initialize empty metrics
   pull_request.synchronize  → Update post_open_commits
-  pull_request.closed       → Finalize metrics (merged or abandoned)
+  pull_request.closed       → Fetch file/commit data from GitHub API
+                              → Compute diff_churn, has_tests, line_revisit_rate
+                              → Finalize metrics (merged or abandoned)
   pull_request_review       → Update first_pass_accepted
   check_suite.completed     → Update ci_success_rate
 ```
+
+At finalization (merge/close), the server fetches file-level data from the GitHub API via `GithubDataFetcher`, then computes output quality metrics via `MetricsComputer`. This avoids unnecessary API calls for WIP PRs. Session-dependent metrics come from CLI push.
 
 See: [Rails Server — Webhook Handling](rails-server.md#webhook-handling)
 
@@ -69,4 +73,6 @@ A single session can correlate to multiple PRs. Metrics are weighted inversely b
 PostgreSQL → Rails API (org-scoped) → fetch() with session token → Next.js server component → rendered page
 ```
 
-See: [Dashboard](dashboard.md)
+The dashboard's data layer (`dashboard/src/lib/db.ts`) provides async functions that fetch from the Rails API. All data endpoints are org-scoped.
+
+See: [Dashboard — Data Layer](dashboard.md#data-layer)

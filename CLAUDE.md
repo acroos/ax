@@ -10,57 +10,27 @@ AX has two modes:
 
 There is no self-hosted server option. The Go CLI handles local analysis; the Rails app handles the managed service.
 
-## Architecture
+## Wiki — Read This First
 
-- **Go** — CLI binary and core engine (`cmd/ax/`, `internal/`)
-- **Ruby on Rails** — Managed service API (`server/`)
-- **TypeScript/Next.js** — Dashboard (`dashboard/`)
-- **SQLite** — Local data storage at `~/.ax/ax.db`
-- **PostgreSQL** — Managed service data storage (Rails)
+The `wiki/` directory is the primary knowledge base for this repository. **Before exploring the codebase or reading source files, consult the relevant wiki page(s).** The wiki contains architecture, data model, component guides, auth flows, conventions, and more — with specific file paths and function names.
 
-```
-cmd/ax/              CLI entry point (cobra)
-internal/
-  api/               Push payload types + conversion functions
-  config/            Team mode configuration (~/.ax/config.json)
-  correlator/        Session-to-PR correlation
-  db/                Schema, migrations (SQLite only), queries, models
-  export/            Machine-readable data export (JSON, JSONL, CSV)
-  hooks/             Claude Code hook installation/management
-  metrics/           Metric calculators (output quality, agent behavior, planning)
-  parsers/
-    git.go           Git log/diff/blame parser via os/exec
-    github.go        GitHub PR/review/CI parser via gh CLI
-    claude_sessions.go  Claude Code session JSONL parser
-  pricing/           Token cost computation with model-specific pricing
-  push/              Push client + data extraction for team mode
-  sync/
-    sync.go          Orchestrates data ingestion + metric computation
-    finalize.go      Metric finalization for terminal PRs
-    watch.go         GitHub polling (RunGitHubOnly)
-  watch/             System-level scheduling (launchd/cron)
-server/              Rails API application (managed service)
-  app/
-    models/          ActiveRecord models (16 core + identity)
-    controllers/     API controllers (push, read, webhooks, auth, orgs)
-    jobs/            Sidekiq background jobs (webhook processing)
-    services/        Business logic (push, auth, org, webhook handlers)
-  config/
-  db/
-    migrate/         Rails migrations (16 tables)
-dashboard/           Next.js web dashboard
-  src/app/           Pages: /, /prs, /prs/[id], /compare, /docs, /docs/[slug]
-  src/app/[slug]/    Org-scoped pages (managed mode)
-  src/app/login/     Auth pages (managed mode)
-  src/lib/db.ts      Data layer (dual-mode: SQLite local or API remote)
-  src/lib/auth.ts    Auth helpers (managed mode)
-  src/components/    Shared components (charts, time picker, org switcher)
-docs/
-  decisions/         Architecture Decision Records (12 ADRs)
-  metrics/           Per-metric documentation (16 files)
-  team-setup.md      Managed service setup guide
-plans/               Feature planning artifacts
-```
+Start at [`wiki/index.md`](wiki/index.md) to find the right page. Key pages:
+
+| Page | Use when... |
+|------|-------------|
+| [Architecture](wiki/architecture.md) | You need to understand components, modes, or how things connect |
+| [Data Flow](wiki/data-flow.md) | You need to trace how data moves through the system |
+| [Go CLI](wiki/go-cli.md) | Working on CLI commands, parsers, sync, hooks, or watch |
+| [Rails Server](wiki/rails-server.md) | Working on the managed service API, webhooks, or push ingestion |
+| [Dashboard](wiki/dashboard.md) | Working on the Next.js frontend, routes, or data layer |
+| [Metrics](wiki/metrics.md) | Working on metric computation, finalization, or adding metrics |
+| [Data Model](wiki/data-model.md) | Working on schema, tables, columns, or migrations |
+| [Authentication](wiki/authentication.md) | Working on auth, API keys, OAuth, or session tokens |
+| [Conventions](wiki/conventions.md) | Need to know coding patterns, file organization, or testing norms |
+
+**Workflow:** Wiki page → identify the specific files you need → read only those files. Do not do broad codebase exploration when the wiki already tells you where to look.
+
+**Keeping the wiki current:** When you make a code change that alters behavior, adds or removes features, changes architecture, modifies data flow, or would surprise someone reading the current wiki — update the relevant wiki pages and append an entry to `wiki/log.md`. Err on the side of updating. A bit of noise in the log is far better than an outdated wiki. The only changes that don't need a wiki update are purely cosmetic (typos, formatting) or internal refactors that don't change any observable behavior or structure.
 
 ## Build & Test
 
@@ -117,86 +87,6 @@ ax init --team <url> --api-key <key> --user "Name"  # Connect to managed service
 ax push --repo .                    # Manually push to managed server
 ```
 
-## Metrics (16 across 4 categories)
-
-**Output Quality:** post-open commits, first-pass acceptance rate, CI success rate, test coverage, diff churn, line revisit rate
-
-**Prompt Efficiency:** messages per PR, iteration depth, token cost per PR
-
-**Agent Behavior:** self-correction rate, context efficiency, error recovery attempts
-
-**Planning Effectiveness:** plan coverage, plan deviation, scope creep detection
-
-**Repo-Level:** unmerged token spend (waste rate)
-
-Metrics are only computed for finalized (merged/closed) PRs. Open PRs are excluded from reports and the dashboard.
-
-## Dashboard Routes
-
-### Local mode
-
-| Route | Page | Description |
-|-------|------|-------------|
-| `/` | Overview | Aggregate metric cards, sparklines, trend charts |
-| `/prs` | PR List | Table of finalized PRs with inline metrics |
-| `/prs/[id]` | PR Detail | All 15 metrics grouped by category |
-| `/compare` | Compare | Developer leaderboard, individual vs team, time filtering |
-| `/docs` | Docs Index | Metric documentation listing |
-| `/docs/[slug]` | Metric Doc | Individual metric explanation |
-
-### Managed mode (org-scoped)
-
-| Route | Page | Description |
-|-------|------|-------------|
-| `/login` | Login | GitHub OAuth sign-in |
-| `/onboarding` | Onboarding | First-time setup with API key |
-| `/{slug}/prs` | PR List | Org-scoped PR list |
-| `/{slug}/compare` | Compare | Org-scoped developer comparison |
-| `/{slug}/settings` | Org Settings | Members, invites |
-| `/settings` | User Settings | API key management |
-
-## Data Flow
-
-```
-Local mode (ax sync):
-  git CLI → GitParser → commits, diffs, branches
-  gh CLI  → GitHubParser → PRs, reviews, CI checks
-  Claude Code sessions → ParsedSession → token/cost data
-  ↓
-  sync.Run() → correlate sessions to PRs → compute metrics → finalize
-  ↓
-  SQLite (~/.ax/ax.db)
-  ↓ (if team mode configured)
-  ax push → POST /api/v1/push → Rails API (Postgres)
-
-Managed mode (Rails server):
-  POST /api/v1/push ← developer CLIs push data
-  POST /webhooks/github ← GitHub webhooks (real-time PR events)
-  ↓
-  GET /api/v1/orgs/:slug/* → dashboard reads via API
-```
-
-## Webhook Events
-
-The Rails server accepts GitHub webhooks at `POST /webhooks/github`, validates HMAC-SHA256 signatures, and processes events via Sidekiq:
-
-| Event | Trigger | Action |
-|-------|---------|--------|
-| `pr_opened` | PR opened on GitHub | Create PR, initialize metrics |
-| `pr_synchronized` | Commits pushed to PR | Update post-open commits |
-| `pr_merged` | PR merged | Finalize all metrics |
-| `pr_closed` | PR closed without merge | Finalize as abandoned |
-| `review_submitted` | Review posted | Update first-pass acceptance |
-| `ci_completed` | Check suite finished | Update CI success rate |
-
-Configure with `AX_WEBHOOK_GITHUB_SECRET` env var.
-
-## Deployment
-
-**Local:** `brew install acroos/tap/ax` → `ax init` → `ax sync --repo .`
-
-**Managed:** Rails API deployed at `app.ax.dev`. Developers connect via `ax init --team`.
-
 ## Decisions
 
 All architectural decisions are documented in `docs/decisions/`. Reference these when working in the related area:
@@ -217,25 +107,6 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [Open Questions](docs/decisions/open-questions.md): Pending decisions (CI images, PR author tracking, managed service path, etc.)
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.
-
-## Conventions
-
-- All metric calculators live in `internal/metrics/` with corresponding `_test.go` files
-- Parsers shell out to `git` and `gh` CLI via `os/exec` — no SDK dependencies
-- Database queries go in `internal/db/queries.go`, models in `internal/db/models.go`
-- Query functions accept `db.DBTX` interface (works with both `*sqlx.DB` and `*sqlx.Tx`)
-- Schema changes: SQLite in `internal/db/db.go` (versioned migrations), Rails in `server/db/migrate/`
-- Use `CURRENT_TIMESTAMP` in SQL — never `datetime('now')`
-- Tests use `t.TempDir()` for database files — no cleanup needed
-- Dashboard data functions have sync (local SQLite) and async (API mode) variants
-- Rails models live in `server/app/models/`, controllers in `server/app/controllers/`
-- Rails specs use RSpec + FactoryBot in `server/spec/`
-
-## Wiki
-
-The `wiki/` directory contains a structured, interlinked knowledge base for the repository. Start at `wiki/index.md`.
-
-**Keeping the wiki current:** When you make a code change that alters behavior, adds or removes features, changes architecture, modifies data flow, or would surprise someone reading the current wiki — update the relevant wiki pages and append an entry to `wiki/log.md`. Err on the side of updating. A bit of noise in the log is far better than an outdated wiki. The only changes that don't need a wiki update are purely cosmetic (typos, formatting) or internal refactors that don't change any observable behavior or structure.
 
 ## Documentation
 

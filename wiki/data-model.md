@@ -89,6 +89,21 @@ Many-to-many join: sessions to PRs, with correlation confidence.
 
 Unique on (session_id, pr_id).
 
+### pr_files
+File paths changed in a PR. Fetched from the GitHub API at PR finalization (merge/close). Used for test detection and line revisit rate computation.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | integer | PK |
+| pr_id | integer | FK → prs |
+| filename | text | File path relative to repo root |
+| additions | integer | Lines added in this file |
+| deletions | integer | Lines removed in this file |
+| line_changes | integer | Total line changes (additions + deletions) |
+| status | text | added, modified, removed, renamed |
+
+Unique on (pr_id, filename).
+
 ### pr_metrics
 All 16 computed metrics per PR. One row per PR.
 

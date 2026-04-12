@@ -15,11 +15,6 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
 
-  // Only enforce auth in managed mode (when AX_API_URL is set)
-  if (!process.env.AX_API_URL) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
-  }
-
   // Allow public paths
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next({ request: { headers: requestHeaders } });

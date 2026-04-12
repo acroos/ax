@@ -38,9 +38,9 @@ export default async function OnboardingPage() {
             {`ax init --team ${apiUrl} --api-key <your-key> --user "${user.display_name || user.github_username}"`}
           </pre>
 
-          <h2 className="text-sm font-medium text-text-primary mt-6">3. Sync your repo</h2>
+          <h2 className="text-sm font-medium text-text-primary mt-6">3. Push your data</h2>
           <pre className="bg-surface-0 rounded-lg p-3 text-xs text-text-secondary font-mono overflow-x-auto">
-            cd your-repo && ax sync --repo . && ax push
+            cd your-repo && ax push
           </pre>
         </div>
 

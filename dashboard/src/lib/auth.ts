@@ -12,8 +12,6 @@ export interface CurrentUser {
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  if (!isAPIMode()) return null;
-
   try {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get("_ax_session")?.value;
@@ -31,10 +29,6 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   } catch {
     return null;
   }
-}
-
-export function isAPIMode(): boolean {
-  return !!process.env.AX_API_URL;
 }
 
 export function getOrgSlug(pathname: string): string | null {
