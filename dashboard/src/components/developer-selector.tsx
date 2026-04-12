@@ -25,7 +25,7 @@ export function DeveloperSelector({ developers }: Props) {
   if (developers.length === 0) {
     return (
       <span className="text-[12px] text-text-tertiary">
-        No developer data — run ax sync to populate
+        No developer data available
       </span>
     );
   }

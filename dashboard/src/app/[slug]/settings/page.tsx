@@ -1,4 +1,4 @@
-import { getCurrentUser, isAPIMode } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export default async function OrgSettingsPage({
@@ -6,8 +6,6 @@ export default async function OrgSettingsPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  if (!isAPIMode()) redirect("/");
-
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 

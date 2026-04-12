@@ -104,16 +104,10 @@ See: [Metrics — Finalization](metrics.md#finalization)
 
 ## Display Path
 
-### Local Mode
-```
-SQLite → better-sqlite3 (sync read) → Next.js server component → rendered page
-```
-
-### Managed Mode
 ```
 PostgreSQL → Rails API (org-scoped) → fetch() with session token → Next.js server component → rendered page
 ```
 
-The dashboard's data layer (`dashboard/src/lib/db.ts`) provides both sync and async variants of every data function. Mode is detected by the presence of `AX_API_URL`.
+The dashboard's data layer (`dashboard/src/lib/db.ts`) provides async functions that fetch from the Rails API. All data endpoints are org-scoped.
 
-See: [Dashboard — Dual-Mode Data Layer](dashboard.md#dual-mode-data-layer)
+See: [Dashboard — Data Layer](dashboard.md#data-layer)
