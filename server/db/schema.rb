@@ -63,7 +63,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_11_000002) do
     t.index ["github_installation_id"], name: "index_github_installations_on_github_installation_id", unique: true
     t.index ["installed_by_id"], name: "index_github_installations_on_installed_by_id"
     t.index ["organization_id"], name: "index_github_installations_on_organization_id"
-    t.index ["status"], name: "index_github_installations_on_status"
   end
 
   create_table "invites", force: :cascade do |t|

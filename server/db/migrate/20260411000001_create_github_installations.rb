@@ -16,7 +16,5 @@ class CreateGithubInstallations < ActiveRecord::Migration[8.1]
       t.jsonb :events, null: false, default: []
       t.timestamps
     end
-
-    add_index :github_installations, :status
   end
 end
