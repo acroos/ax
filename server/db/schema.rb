@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_10_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_11_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -42,6 +42,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_000002) do
     t.index ["pr_id"], name: "index_commits_on_pr_id"
     t.index ["repo_id"], name: "index_commits_on_repo_id"
     t.index ["session_id"], name: "index_commits_on_session_id"
+  end
+
+  create_table "github_installations", force: :cascade do |t|
+    t.string "account_login", null: false
+    t.string "account_type", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "events", default: [], null: false
+    t.bigint "github_installation_id", null: false
+    t.datetime "installed_at"
+    t.bigint "installed_by_id"
+    t.datetime "last_synced_at"
+    t.bigint "organization_id", null: false
+    t.jsonb "permissions", default: {}, null: false
+    t.string "repository_selection", null: false
+    t.string "status", default: "active", null: false
+    t.string "target_type", null: false
+    t.datetime "updated_at", null: false
+    t.string "webhook_secret"
+    t.index ["github_installation_id"], name: "index_github_installations_on_github_installation_id", unique: true
+    t.index ["installed_by_id"], name: "index_github_installations_on_installed_by_id"
+    t.index ["organization_id"], name: "index_github_installations_on_organization_id"
   end
 
   create_table "invites", force: :cascade do |t|
@@ -169,6 +190,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_000002) do
 
   create_table "repos", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.bigint "github_installation_id"
     t.string "github_owner"
     t.string "github_repo"
     t.datetime "last_synced_at"
@@ -176,6 +198,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_000002) do
     t.string "path", null: false
     t.string "remote_url"
     t.datetime "updated_at", null: false
+    t.index ["github_installation_id"], name: "index_repos_on_github_installation_id"
     t.index ["organization_id"], name: "index_repos_on_organization_id"
     t.index ["path"], name: "index_repos_on_path", unique: true
   end
@@ -391,6 +414,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_000002) do
   add_foreign_key "api_keys", "users"
   add_foreign_key "commits", "prs"
   add_foreign_key "commits", "repos"
+  add_foreign_key "github_installations", "organizations"
+  add_foreign_key "github_installations", "users", column: "installed_by_id"
   add_foreign_key "invites", "organizations"
   add_foreign_key "invites", "users", column: "invited_by_id"
   add_foreign_key "org_memberships", "organizations"
@@ -401,6 +426,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_000002) do
   add_foreign_key "pr_metrics", "prs"
   add_foreign_key "prs", "repos"
   add_foreign_key "repo_metrics", "repos"
+  add_foreign_key "repos", "github_installations"
   add_foreign_key "repos", "organizations"
   add_foreign_key "session_prs", "prs"
   add_foreign_key "sessions", "repos"
