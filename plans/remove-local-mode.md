@@ -5,7 +5,7 @@
 
 ## Overview
 
-Remove local mode from AX, making managed mode (`app.ax.dev`) the only way to use the tool. The CLI becomes a thin client, the dashboard becomes API-only, and metric computation moves entirely to the Rails backend.
+Remove local mode from AX, making managed mode the only way to use the tool. The CLI becomes a thin client, the dashboard becomes API-only, and metric computation moves entirely to the Rails backend.
 
 ## Phases
 
@@ -62,7 +62,7 @@ Remove or gut these commands in `cmd/ax/main.go`:
 | `ax status` | **Remove entirely** (no local state to report) |
 | `ax export` | **Remove entirely** (API endpoint replaces it) |
 | `ax watch` (+ subcommands) | **Remove entirely** |
-| `ax init` | **Keep**, but remove local mode path. Always requires server connection. Rewrite hook installation — hooks now push session data to `app.ax.dev` instead of running `ax sync`. |
+| `ax init` | **Keep**, but remove local mode path. Always requires server connection. Rewrite hook installation — hooks now push session data to `ax.up.railway.app` instead of running `ax sync`. |
 | `ax push` | **Keep** — manual trigger to push session data. Useful for backfilling or debugging. |
 
 Remove helper functions: `openDB()`, `printRepoReport()`, `printPRReport()`, `runWatchLoop()`, `runWatchOnce()`, `findDashboardDir()`, etc.

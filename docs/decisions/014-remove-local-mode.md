@@ -10,7 +10,7 @@ Accepted
 AX currently supports two modes:
 
 - **Local mode**: Go CLI + SQLite (`~/.ax/ax.db`). All data stays on the developer's machine. The CLI parses git, GitHub, and Claude Code session data, computes metrics, stores them locally, and serves an embedded dashboard.
-- **Managed mode**: Rails API at `app.ax.dev` + hosted Next.js dashboard. Multi-tenant with GitHub OAuth, orgs, and team-based access.
+- **Managed mode**: Rails API at `ax.up.railway.app` + Next.js dashboard at `ax-metrics.vercel.app`. Multi-tenant with GitHub OAuth, orgs, and team-based access.
 
 Maintaining both modes creates significant complexity:
 
@@ -25,8 +25,8 @@ The cost of maintaining local mode outweighs its benefits. No users have express
 ## Decision
 Remove local mode entirely. AX becomes managed-mode only:
 
-- **CLI** becomes a thin client: authenticates with `app.ax.dev`, installs Claude Code hooks that push session data to the server, and provides convenience commands that read from the API.
-- **Dashboard** is hosted at `app.ax.dev`, always reads from the Rails API. No embedded dashboard, no SQLite.
+- **CLI** becomes a thin client: authenticates with `ax.up.railway.app`, installs Claude Code hooks that push session data to the server, and provides convenience commands that read from the API.
+- **Dashboard** is hosted at `ax-metrics.vercel.app`, always reads from the Rails API. No embedded dashboard, no SQLite.
 - **Metric computation** happens exclusively server-side (Rails).
 - **Data ingestion** flows through two paths: CLI push (session data via hooks) and GitHub webhooks (PR events).
 - **File-level data** (needed for diff churn, test detection, line revisit rate) is fetched server-side from the GitHub API at PR finalization (merge/close), not from the local git CLI. This avoids burdening webhook processing with API calls for PRs that may never merge.
@@ -57,7 +57,7 @@ Keep `ax report` and `ax export` as commands that read from the API. Considered,
 - Testing surface shrinks significantly
 
 ### What gets harder or changes
-- All users must create an account on `app.ax.dev` — zero-signup local usage is gone
+- All users must create an account — zero-signup local usage is gone
 - Internet connectivity is required — no offline analysis
 - Users who want fully private data have no option (until/unless self-hosted is offered)
 - The Go binary loses most of its functionality — worth evaluating whether the CLI should be rewritten or significantly trimmed
