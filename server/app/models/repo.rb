@@ -5,6 +5,7 @@ class Repo < ApplicationRecord
   has_many :repo_metrics, class_name: "RepoMetrics", dependent: :destroy
   has_one :watched_repo, dependent: :destroy
   belongs_to :organization, optional: true
+  belongs_to :github_installation, optional: true
 
   validates :path, presence: true, uniqueness: true
 end
