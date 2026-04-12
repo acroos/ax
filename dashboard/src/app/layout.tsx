@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import "./globals.css";
-import { listReposAsync, listWatchStatusesAsync, isAPIMode } from "@/lib/db";
+import { listReposAsync } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { OrgSwitcher } from "@/components/org-switcher";
 
@@ -112,44 +112,29 @@ const DocsIcon = (
 );
 
 async function Sidebar() {
-  const apiMode = isAPIMode();
-  const user = apiMode ? await getCurrentUser() : null;
+  const user = await getCurrentUser();
 
-  // Resolve the current org slug from the request path (in managed mode).
+  // Resolve the current org slug from the request path.
   // Middleware injects x-pathname on every request; the root layout has no
   // direct access to route params, so we read it here.
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname");
-  const pathOrgSlug = apiMode ? parseOrgSlug(pathname) : null;
+  const pathOrgSlug = parseOrgSlug(pathname);
   // Fall back to the user's first org when the current path has no slug
   // (e.g. /onboarding, /settings) — the sidebar still shows something useful.
-  const orgSlug =
-    pathOrgSlug ?? (apiMode ? user?.organizations[0]?.slug ?? null : null);
+  const orgSlug = pathOrgSlug ?? (user?.organizations[0]?.slug ?? null);
 
-  // Managed-mode nav link prefix: /{slug}. Local-mode stays "".
+  // Nav link prefix: /{slug}
   const base = orgSlug ? `/${orgSlug}` : "";
   const overviewHref = base || "/";
 
   let repos: { id: number; github_owner: string | null; github_repo: string | null }[] = [];
-  let watchedRepoIds = new Set<number>();
 
-  if (apiMode) {
-    // Managed mode: org-scoped repos via the Rails API. Watch status is
-    // local-poller state and intentionally not surfaced here.
-    if (orgSlug) {
-      try {
-        repos = await listReposAsync(orgSlug);
-      } catch {
-        // API unreachable or org not found — leave empty
-      }
-    }
-  } else {
+  if (orgSlug) {
     try {
-      repos = await listReposAsync();
-      const watchStatuses = await listWatchStatusesAsync();
-      watchedRepoIds = new Set(watchStatuses.map((w) => w.repo_id));
+      repos = await listReposAsync(orgSlug);
     } catch {
-      // DB might not exist yet, or API not reachable
+      // API unreachable or org not found — leave empty
     }
   }
 
@@ -161,7 +146,7 @@ async function Sidebar() {
         <Logo />
       </div>
 
-      {/* Org switcher (managed mode only) */}
+      {/* Org switcher */}
       {user && user.organizations.length > 0 && (
         <div className="px-3 pb-3">
           <OrgSwitcher orgs={user.organizations} />
@@ -194,22 +179,17 @@ async function Sidebar() {
                 href={`${overviewHref}?repo=${r.id}`}
                 className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] text-text-tertiary hover:text-text-primary hover:bg-surface-2 transition-colors"
               >
-                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${watchedRepoIds.has(r.id) ? "bg-green/60" : "bg-text-tertiary/30"}`} />
+                <div className="w-1.5 h-1.5 rounded-full bg-text-tertiary/30 flex-shrink-0" />
                 <span className="truncate">
                   {r.github_owner}/{r.github_repo}
                 </span>
-                {watchedRepoIds.has(r.id) && (
-                  <span className="text-[10px] text-text-tertiary ml-auto flex-shrink-0" title="Auto-polling enabled">
-                    watching
-                  </span>
-                )}
               </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* User menu (managed mode only) */}
+      {/* User menu */}
       {user && (
         <div className="px-3 pb-4 pt-2 border-t border-border-subtle">
           <div className="flex items-center gap-2 px-2 py-1.5">

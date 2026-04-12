@@ -1,16 +1,7 @@
-import Database from "better-sqlite3";
-import path from "path";
-import os from "os";
-
-// --- Mode detection ---
-// When AX_API_URL is set, the dashboard fetches from the Rails API (managed mode).
-// Otherwise, it reads from the local SQLite database directly (local mode).
+// --- API client ---
+// The dashboard always fetches from the Rails API (managed mode).
 const API_URL = process.env.AX_API_URL;
 const API_KEY = process.env.AX_API_KEY || "";
-
-export function isAPIMode(): boolean {
-  return !!API_URL;
-}
 
 async function fetchAPI<T>(urlPath: string): Promise<T> {
   const url = `${API_URL}${urlPath}`;
@@ -20,7 +11,7 @@ async function fetchAPI<T>(urlPath: string): Promise<T> {
   if (API_KEY) {
     headers["Authorization"] = `Bearer ${API_KEY}`;
   }
-  // In managed mode, forward the session token as an explicit header.
+  // Forward the session token as an explicit header.
   // We do not use a Cookie header because Rails' cookie-jar semantics are
   // unreliable for raw (unsigned) values forwarded from another origin.
   const { cookies } = await import("next/headers");
@@ -40,23 +31,9 @@ async function fetchAPI<T>(urlPath: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// Org-scoped API helper for managed mode
+// Org-scoped API helper
 function orgApiPath(orgSlug: string, path: string): string {
   return `/api/v1/orgs/${orgSlug}${path}`;
-}
-
-// --- SQLite (local mode) ---
-const DB_PATH =
-  process.env.AX_DB_PATH || path.join(os.homedir(), ".ax", "ax.db");
-
-let db: Database.Database | null = null;
-
-function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(DB_PATH, { readonly: true });
-    db.pragma("journal_mode = WAL");
-  }
-  return db;
 }
 
 // --- Interfaces ---
@@ -113,13 +90,6 @@ export interface PRWithMetrics extends PR {
   github_repo: string | null;
 }
 
-export interface WatchStatus {
-  repo_id: number;
-  poll_interval_seconds: number;
-  last_polled_at: string | null;
-  enabled: number;
-}
-
 export interface AggregateMetrics {
   totalPRs: number;
   avgPostOpenCommits: number;
@@ -158,145 +128,32 @@ export interface TimelinePoint {
   selfCorrectionRate: number | null;
 }
 
-// --- Data functions (sync for local, async for API) ---
-
-// listRepos returns all tracked repositories.
-// Sync version for local mode (used by Sidebar which is a sync server component).
-export function listRepos(): Repo[] {
-  if (isAPIMode()) {
-    // Sidebar needs sync access — return empty in API mode
-    // and use listReposAsync() in async contexts
-    return [];
-  }
-  return getDb().prepare("SELECT * FROM repos ORDER BY path").all() as Repo[];
-}
+// --- Data functions ---
 
 export async function listReposAsync(orgSlug?: string): Promise<Repo[]> {
-  if (isAPIMode()) {
-    if (orgSlug) {
-      return fetchAPI<Repo[]>(orgApiPath(orgSlug, "/repos"));
-    }
-    return fetchAPI<Repo[]>("/api/v1/repos");
+  if (orgSlug) {
+    return fetchAPI<Repo[]>(orgApiPath(orgSlug, "/repos"));
   }
-  return getDb().prepare("SELECT * FROM repos ORDER BY path").all() as Repo[];
-}
-
-export function getRepo(id: number): Repo | undefined {
-  return getDb().prepare("SELECT * FROM repos WHERE id = ?").get(id) as
-    | Repo
-    | undefined;
+  return fetchAPI<Repo[]>("/api/v1/repos");
 }
 
 export async function getRepoAsync(id: number): Promise<Repo | undefined> {
-  if (isAPIMode()) {
-    const repos = await fetchAPI<Repo[]>("/api/v1/repos");
-    return repos.find((r) => r.id === id);
-  }
-  return getRepo(id);
-}
-
-// listPRsWithMetrics returns finalized PRs with their computed metrics.
-export function listPRsWithMetrics(repoId?: number): PRWithMetrics[] {
-  const baseQuery = `SELECT p.*, p.author, pm.messages_per_pr, pm.iteration_depth, pm.post_open_commits,
-         pm.first_pass_accepted, pm.ci_success_rate, pm.diff_churn_lines,
-         pm.has_tests, pm.line_revisit_rate, pm.self_correction_rate,
-         pm.context_efficiency, pm.error_recovery_attempts, pm.token_cost_usd,
-         pm.plan_coverage_score, pm.plan_deviation_score, pm.scope_creep_detected,
-         pm.metrics_finalized, pm.finalized_at,
-         r.github_owner, r.github_repo
-       FROM prs p
-       INNER JOIN pr_metrics pm ON p.id = pm.pr_id
-       JOIN repos r ON p.repo_id = r.id
-       WHERE pm.metrics_finalized = 1`;
-
-  const query = repoId
-    ? `${baseQuery} AND p.repo_id = ? ORDER BY p.number DESC`
-    : `${baseQuery} ORDER BY p.created_at DESC`;
-
-  const rows = repoId
-    ? getDb().prepare(query).all(repoId)
-    : getDb().prepare(query).all();
-
-  return mapPRRows(rows as (PR & PRMetrics & { github_owner: string; github_repo: string })[]);
+  const repos = await fetchAPI<Repo[]>("/api/v1/repos");
+  return repos.find((r) => r.id === id);
 }
 
 export async function listPRsWithMetricsAsync(repoId?: number, orgSlug?: string): Promise<PRWithMetrics[]> {
-  if (isAPIMode() && repoId) {
+  if (repoId) {
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/prs`)
       : `/api/v1/repos/${repoId}/prs`;
     return fetchAPI<PRWithMetrics[]>(apiPath);
   }
-  if (isAPIMode()) {
-    return [];
-  }
-  return listPRsWithMetrics(repoId);
-}
-
-function mapPRRows(rows: (PR & PRMetrics & { github_owner: string; github_repo: string })[]): PRWithMetrics[] {
-  return rows.map((row) => ({
-    id: row.id,
-    repo_id: row.repo_id,
-    number: row.number,
-    title: row.title,
-    branch: row.branch,
-    state: row.state,
-    created_at: row.created_at,
-    merged_at: row.merged_at,
-    url: row.url,
-    additions: row.additions,
-    deletions: row.deletions,
-    changed_files: row.changed_files,
-    author: (row as unknown as Record<string, unknown>).author as string | null ?? null,
-    github_owner: row.github_owner,
-    github_repo: row.github_repo,
-    metrics: {
-      pr_id: row.id,
-      messages_per_pr: row.messages_per_pr,
-      iteration_depth: row.iteration_depth,
-      post_open_commits: row.post_open_commits,
-      first_pass_accepted: row.first_pass_accepted,
-      ci_success_rate: row.ci_success_rate,
-      diff_churn_lines: row.diff_churn_lines,
-      has_tests: row.has_tests,
-      line_revisit_rate: row.line_revisit_rate,
-      self_correction_rate: row.self_correction_rate,
-      context_efficiency: row.context_efficiency,
-      error_recovery_attempts: row.error_recovery_attempts,
-      token_cost_usd: row.token_cost_usd,
-      plan_coverage_score: row.plan_coverage_score,
-      plan_deviation_score: row.plan_deviation_score,
-      scope_creep_detected: row.scope_creep_detected,
-      metrics_finalized: row.metrics_finalized,
-      finalized_at: row.finalized_at,
-    },
-  }));
-}
-
-export function listWatchStatuses(): WatchStatus[] {
-  if (isAPIMode()) {
-    return [];
-  }
-  return getDb()
-    .prepare("SELECT * FROM watched_repos WHERE enabled = 1")
-    .all() as WatchStatus[];
-}
-
-export async function listWatchStatusesAsync(): Promise<WatchStatus[]> {
-  if (isAPIMode()) {
-    return fetchAPI<WatchStatus[]>("/api/v1/watch-status");
-  }
-  return listWatchStatuses();
-}
-
-// getAggregateMetrics computes aggregate metrics across finalized PRs.
-export function getAggregateMetrics(repoId?: number): AggregateMetrics {
-  const prs = listPRsWithMetrics(repoId);
-  return computeAggregates(prs);
+  return [];
 }
 
 export async function getAggregateMetricsAsync(repoId?: number, orgSlug?: string): Promise<AggregateMetrics> {
-  if (isAPIMode() && repoId) {
+  if (repoId) {
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/metrics`)
       : `/api/v1/repos/${repoId}/metrics`;
@@ -306,29 +163,14 @@ export async function getAggregateMetricsAsync(repoId?: number, orgSlug?: string
   return computeAggregates(prs);
 }
 
-export function getRepoLevelMetrics(repoId?: number): RepoLevelMetrics {
-  if (isAPIMode() || !repoId) {
-    return { unmergedCostUSD: null, totalCostUSD: null, unmergedRate: null };
-  }
-  const row = getDb().prepare(
-    "SELECT unmerged_cost_usd, total_cost_usd, unmerged_rate FROM repo_metrics WHERE repo_id = ? AND period_type = 'all' ORDER BY computed_at DESC LIMIT 1"
-  ).get(repoId) as { unmerged_cost_usd: number; total_cost_usd: number; unmerged_rate: number | null } | undefined;
-  if (!row) return { unmergedCostUSD: null, totalCostUSD: null, unmergedRate: null };
-  return {
-    unmergedCostUSD: row.unmerged_cost_usd,
-    totalCostUSD: row.total_cost_usd,
-    unmergedRate: row.unmerged_rate,
-  };
-}
-
 export async function getRepoLevelMetricsAsync(repoId?: number, orgSlug?: string): Promise<RepoLevelMetrics> {
-  if (isAPIMode() && repoId) {
+  if (repoId) {
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/repo-metrics`)
       : `/api/v1/repos/${repoId}/repo-metrics`;
     return fetchAPI<RepoLevelMetrics>(apiPath);
   }
-  return getRepoLevelMetrics(repoId);
+  return { unmergedCostUSD: null, totalCostUSD: null, unmergedRate: null };
 }
 
 function computeAggregates(prs: PRWithMetrics[]): AggregateMetrics {
@@ -462,14 +304,8 @@ export function getPRSizeColor(size: PRSize): string {
   }
 }
 
-// getTimeline returns time-series data for trend charts.
-export function getTimeline(repoId?: number): TimelinePoint[] {
-  const prs = listPRsWithMetrics(repoId);
-  return buildTimeline(prs);
-}
-
 export async function getTimelineAsync(repoId?: number, orgSlug?: string): Promise<TimelinePoint[]> {
-  if (isAPIMode() && repoId) {
+  if (repoId) {
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/timeline`)
       : `/api/v1/repos/${repoId}/timeline`;
@@ -499,6 +335,7 @@ function buildTimeline(prs: PRWithMetrics[]): TimelinePoint[] {
 
 export interface FilterOpts {
   repoId?: number;
+  orgSlug?: string;
   author?: string;
   since?: string;
   until?: string;
@@ -519,9 +356,8 @@ function filterPRs(prs: PRWithMetrics[], opts: FilterOpts): PRWithMetrics[] {
   });
 }
 
-// listDevelopers returns unique PR author logins for a repo.
-export function listDevelopers(repoId?: number): string[] {
-  const prs = listPRsWithMetrics(repoId);
+export async function listDevelopersAsync(repoId?: number, orgSlug?: string): Promise<string[]> {
+  const prs = await listPRsWithMetricsAsync(repoId, orgSlug);
   const authors = new Set<string>();
   for (const pr of prs) {
     if (pr.author) authors.add(pr.author);
@@ -529,25 +365,14 @@ export function listDevelopers(repoId?: number): string[] {
   return Array.from(authors).sort();
 }
 
-export async function listDevelopersAsync(repoId?: number): Promise<string[]> {
-  const prs = await listPRsWithMetricsAsync(repoId);
-  const authors = new Set<string>();
-  for (const pr of prs) {
-    if (pr.author) authors.add(pr.author);
-  }
-  return Array.from(authors).sort();
-}
-
-// getFilteredMetrics returns aggregate metrics with filtering.
 export async function getFilteredMetricsAsync(opts: FilterOpts): Promise<AggregateMetrics> {
-  const allPRs = await listPRsWithMetricsAsync(opts.repoId);
+  const allPRs = await listPRsWithMetricsAsync(opts.repoId, opts.orgSlug);
   const filtered = filterPRs(allPRs, opts);
   return computeAggregates(filtered);
 }
 
-// getDeveloperComparison returns per-developer aggregate metrics.
 export async function getDeveloperComparisonAsync(opts: FilterOpts): Promise<DeveloperMetrics[]> {
-  const allPRs = await listPRsWithMetricsAsync(opts.repoId);
+  const allPRs = await listPRsWithMetricsAsync(opts.repoId, opts.orgSlug);
   const filtered = filterPRs(allPRs, { since: opts.since, until: opts.until });
 
   // Group by author
@@ -570,7 +395,6 @@ export async function getDeveloperComparisonAsync(opts: FilterOpts): Promise<Dev
   return result.sort((a, b) => b.prCount - a.prCount);
 }
 
-// getPercentile computes where a value falls relative to all values.
 export function getPercentile(value: number, allValues: number[]): number {
   if (allValues.length === 0) return 50;
   const sorted = [...allValues].sort((a, b) => a - b);
@@ -578,9 +402,8 @@ export function getPercentile(value: number, allValues: number[]): number {
   return Math.round((rank / sorted.length) * 100);
 }
 
-// getFilteredTimeline returns timeline data with filtering.
 export async function getFilteredTimelineAsync(opts: FilterOpts): Promise<TimelinePoint[]> {
-  const allPRs = await listPRsWithMetricsAsync(opts.repoId);
+  const allPRs = await listPRsWithMetricsAsync(opts.repoId, opts.orgSlug);
   const filtered = filterPRs(allPRs, opts);
   return buildTimeline(filtered);
 }

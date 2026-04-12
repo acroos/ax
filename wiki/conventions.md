@@ -55,9 +55,8 @@ Patterns and norms for working in the AX codebase.
 - Data layer in `src/lib/db.ts`, auth in `src/lib/auth.ts`
 
 ### Data Functions
-- Sync variants (e.g., `listRepos()`) for local mode server components
-- Async variants (e.g., `listReposAsync()`) for both modes
-- Mode detected by `AX_API_URL` environment variable
+- All data functions are async and fetch from the Rails API
+- Org-scoped data functions accept an `orgSlug` parameter
 
 ### Styling
 - Tailwind CSS v4, dark mode only
