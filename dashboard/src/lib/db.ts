@@ -128,6 +128,52 @@ export interface TimelinePoint {
   selfCorrectionRate: number | null;
 }
 
+// --- GitHub Installation ---
+
+export interface GithubInstallationResponse {
+  installation: {
+    id: number;
+    github_installation_id: number;
+    account_login: string;
+    account_type: string;
+    repository_selection: string;
+    status: string;
+    installed_at: string | null;
+    last_synced_at: string | null;
+    repos_count: number;
+  } | null;
+  user_role: string;
+}
+
+export async function getGithubInstallation(orgSlug: string): Promise<GithubInstallationResponse> {
+  return fetchAPI<GithubInstallationResponse>(orgApiPath(orgSlug, "/github_installation"));
+}
+
+export async function requestGithubInstallUrl(orgSlug: string): Promise<{ install_url: string }> {
+  const url = `${API_URL}${orgApiPath(orgSlug, "/github_installation/install_url")}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (API_KEY) {
+    headers["Authorization"] = `Bearer ${API_KEY}`;
+  }
+  const { cookies } = await import("next/headers");
+  try {
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get("_ax_session")?.value;
+    if (sessionToken) {
+      headers["X-Ax-Session"] = sessionToken;
+    }
+  } catch {
+    // Not in a request context
+  }
+  const res = await fetch(url, { method: "POST", headers, cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<{ install_url: string }>;
+}
+
 // --- Data functions ---
 
 export async function listReposAsync(orgSlug?: string): Promise<Repo[]> {
