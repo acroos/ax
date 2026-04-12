@@ -28,18 +28,22 @@ type HookSpec struct {
 type Settings map[string]interface{}
 
 // hookCommand returns the shell command that runs ax sync on session end.
+// It handles both regular repos and Claude Code worktrees. If the CWD no longer
+// exists (e.g., worktree removed at session end), it resolves the main repo from
+// the worktree path pattern (<repo>/.claude/worktrees/<name>/).
 func hookCommand(axBinary string) string {
 	return fmt.Sprintf(
-		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\":\"[^\"]*\"" | cut -d\" -f4); if [ -n "$CWD" ] && [ -d "$CWD/.git" ]; then %s sync --repo "$CWD" > /dev/null 2>&1; fi'`,
-		axBinary,
+		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\":\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then exit 0; fi; if [ -e "$CWD/.git" ]; then %s sync --repo "$CWD" > /dev/null 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s sync --repo "$REPO" > /dev/null 2>&1; fi; fi'`,
+		axBinary, axBinary,
 	)
 }
 
 // sessionsSyncCommand returns a lightweight command for mid-session syncing.
+// Same worktree resolution logic as hookCommand.
 func sessionsSyncCommand(axBinary string) string {
 	return fmt.Sprintf(
-		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\":\"[^\"]*\"" | cut -d\" -f4); if [ -n "$CWD" ] && [ -d "$CWD/.git" ]; then %s sync --sessions-only --repo "$CWD" > /dev/null 2>&1; fi'`,
-		axBinary,
+		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\":\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then exit 0; fi; if [ -e "$CWD/.git" ]; then %s sync --sessions-only --repo "$CWD" > /dev/null 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s sync --sessions-only --repo "$REPO" > /dev/null 2>&1; fi; fi'`,
+		axBinary, axBinary,
 	)
 }
 
