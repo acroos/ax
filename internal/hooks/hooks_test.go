@@ -118,3 +118,95 @@ func TestIsInstalled_NoFile(t *testing.T) {
 		t.Error("Expected false for nonexistent file")
 	}
 }
+
+func TestInstallCleansUpStaleStopHook(t *testing.T) {
+	dir := t.TempDir()
+	settingsPath := filepath.Join(dir, "settings.json")
+
+	// Write settings with a stale Stop hook (from old local mode)
+	existing := `{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'ax sync --sessions-only'",
+            "timeout": 30,
+            "statusMessage": "Updating AX session metrics"
+          }
+        ]
+      }
+    ]
+  }
+}
+`
+	os.WriteFile(settingsPath, []byte(existing), 0644)
+
+	// IsInstalled should detect the Stop hook
+	if !IsInstalled(settingsPath) {
+		t.Error("Expected IsInstalled to detect Stop hook")
+	}
+
+	// Install should remove the Stop hook and add SessionEnd
+	err := Install(settingsPath, "/usr/local/bin/ax")
+	if err != nil {
+		t.Fatalf("Install failed: %v", err)
+	}
+
+	data, _ := os.ReadFile(settingsPath)
+	var settings Settings
+	json.Unmarshal(data, &settings)
+
+	hooks := settings["hooks"].(map[string]interface{})
+
+	// Stop hook should be gone
+	if _, ok := hooks["Stop"]; ok {
+		t.Error("Expected Stop hook to be removed after Install")
+	}
+
+	// SessionEnd hook should exist
+	sessionEnd, ok := hooks["SessionEnd"].([]interface{})
+	if !ok || len(sessionEnd) != 1 {
+		t.Error("Expected exactly 1 SessionEnd hook after Install")
+	}
+}
+
+func TestUninstallRemovesAllEvents(t *testing.T) {
+	dir := t.TempDir()
+	settingsPath := filepath.Join(dir, "settings.json")
+
+	// Write settings with hooks on both events
+	existing := `{
+  "hooks": {
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "command", "command": "ax push", "statusMessage": "Pushing session data to AX"}]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [{"type": "command", "command": "ax sync --sessions-only", "statusMessage": "Updating AX session metrics"}]
+      }
+    ]
+  }
+}
+`
+	os.WriteFile(settingsPath, []byte(existing), 0644)
+
+	err := Uninstall(settingsPath)
+	if err != nil {
+		t.Fatalf("Uninstall failed: %v", err)
+	}
+
+	data, _ := os.ReadFile(settingsPath)
+	var settings Settings
+	json.Unmarshal(data, &settings)
+
+	if _, ok := settings["hooks"]; ok {
+		t.Error("Expected hooks to be completely removed")
+	}
+}

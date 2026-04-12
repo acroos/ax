@@ -34,13 +34,17 @@ type Settings map[string]interface{}
 // the worktree path pattern (<repo>/.claude/worktrees/<name>/).
 func pushCommand(axBinary string) string {
 	return fmt.Sprintf(
-		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\":\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then exit 0; fi; if [ -e "$CWD/.git" ]; then %s push --repo "$CWD" > /dev/null 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s push --repo "$REPO" > /dev/null 2>&1; fi; fi'`,
+		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\": *\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then exit 0; fi; if [ -e "$CWD/.git" ]; then %s push --repo "$CWD" > /dev/null 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s push --repo "$REPO" > /dev/null 2>&1; fi; fi'`,
 		axBinary, axBinary,
 	)
 }
 
+// hookEvents lists all Claude Code hook events that AX may use.
+var hookEvents = []string{"SessionEnd", "Stop"}
+
 // Install adds an ax SessionEnd hook to the Claude Code settings file.
-// If a hook already exists, it is updated. Other settings are preserved.
+// If a hook already exists, it is updated. Stale AX hooks on other events
+// (e.g. Stop) are removed. Other settings are preserved.
 func Install(settingsPath, axBinary string) error {
 	// Read existing settings
 	settings := make(Settings)
@@ -69,10 +73,12 @@ func Install(settingsPath, axBinary string) error {
 		hooks = make(map[string]interface{})
 	}
 
-	// Check if an ax hook already exists in SessionEnd
-	existingHooks, ok := hooks["SessionEnd"].([]interface{})
-	if ok {
-		// Remove any existing ax hooks
+	// Remove any existing AX hooks from all events
+	for _, event := range hookEvents {
+		existingHooks, ok := hooks[event].([]interface{})
+		if !ok {
+			continue
+		}
 		var filtered []interface{}
 		for _, h := range existingHooks {
 			hMap, ok := h.(map[string]interface{})
@@ -84,14 +90,17 @@ func Install(settingsPath, axBinary string) error {
 				filtered = append(filtered, h)
 			}
 		}
-		existingHooks = filtered
-	} else {
-		existingHooks = nil
+		if len(filtered) == 0 {
+			delete(hooks, event)
+		} else {
+			hooks[event] = filtered
+		}
 	}
 
-	// Add our hook
-	existingHooks = append(existingHooks, hook)
-	hooks["SessionEnd"] = existingHooks
+	// Add our SessionEnd hook
+	sessionEnd, _ := hooks["SessionEnd"].([]interface{})
+	sessionEnd = append(sessionEnd, hook)
+	hooks["SessionEnd"] = sessionEnd
 	settings["hooks"] = hooks
 
 	// Write back
@@ -112,7 +121,7 @@ func Install(settingsPath, axBinary string) error {
 	return nil
 }
 
-// Uninstall removes the ax SessionEnd hook from the Claude Code settings file.
+// Uninstall removes all AX hooks from the Claude Code settings file.
 func Uninstall(settingsPath string) error {
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
@@ -129,27 +138,29 @@ func Uninstall(settingsPath string) error {
 		return nil
 	}
 
-	existingHooks, ok := hooks["SessionEnd"].([]interface{})
-	if !ok {
-		return nil
-	}
-
-	var filtered []interface{}
-	for _, h := range existingHooks {
-		hMap, ok := h.(map[string]interface{})
+	for _, event := range hookEvents {
+		existingHooks, ok := hooks[event].([]interface{})
 		if !ok {
-			filtered = append(filtered, h)
 			continue
 		}
-		if !isAXHook(hMap) {
-			filtered = append(filtered, h)
-		}
-	}
 
-	if len(filtered) == 0 {
-		delete(hooks, "SessionEnd")
-	} else {
-		hooks["SessionEnd"] = filtered
+		var filtered []interface{}
+		for _, h := range existingHooks {
+			hMap, ok := h.(map[string]interface{})
+			if !ok {
+				filtered = append(filtered, h)
+				continue
+			}
+			if !isAXHook(hMap) {
+				filtered = append(filtered, h)
+			}
+		}
+
+		if len(filtered) == 0 {
+			delete(hooks, event)
+		} else {
+			hooks[event] = filtered
+		}
 	}
 
 	if len(hooks) == 0 {
@@ -166,7 +177,7 @@ func Uninstall(settingsPath string) error {
 	return os.WriteFile(settingsPath, append(out, '\n'), 0o644)
 }
 
-// IsInstalled checks if an ax hook is already configured.
+// IsInstalled checks if an ax hook is already configured on any event.
 func IsInstalled(settingsPath string) bool {
 	data, err := os.ReadFile(settingsPath)
 	if err != nil {
@@ -183,15 +194,16 @@ func IsInstalled(settingsPath string) bool {
 		return false
 	}
 
-	existingHooks, ok := hooks["SessionEnd"].([]interface{})
-	if !ok {
-		return false
-	}
-
-	for _, h := range existingHooks {
-		hMap, ok := h.(map[string]interface{})
-		if ok && isAXHook(hMap) {
-			return true
+	for _, event := range hookEvents {
+		existingHooks, ok := hooks[event].([]interface{})
+		if !ok {
+			continue
+		}
+		for _, h := range existingHooks {
+			hMap, ok := h.(map[string]interface{})
+			if ok && isAXHook(hMap) {
+				return true
+			}
 		}
 	}
 	return false
@@ -210,7 +222,7 @@ func isAXHook(hookMap map[string]interface{}) bool {
 		}
 		cmd, _ := spec["command"].(string)
 		status, _ := spec["statusMessage"].(string)
-		if status == "Pushing session data to AX" || status == "Syncing session data to AX" {
+		if status == "Pushing session data to AX" || status == "Syncing session data to AX" || status == "Updating AX session metrics" {
 			return true
 		}
 		if len(cmd) > 0 && (strings.Contains(cmd, "ax push") || strings.Contains(cmd, "ax sync")) {

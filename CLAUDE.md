@@ -57,11 +57,11 @@ npm run dev          # Development server on :3333
 
 ```bash
 # Setup
-ax init --server <url> --api-key <key> --user "Name"  # Configure CLI + install hooks
-ax init --uninstall                                     # Remove hooks
+ax init --api-key <key>             # Validate API key, save config, install hooks
+ax init --uninstall                 # Remove all AX hooks
 
 # Data ingestion
-ax push --repo .                    # Parse sessions and push to server
+ax push --repo .                    # Push session data to the AX server
 ```
 
 ## Decisions
