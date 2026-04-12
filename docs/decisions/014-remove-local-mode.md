@@ -1,7 +1,7 @@
 # ADR-014: Remove Local Mode
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-04-12
