@@ -1,5 +1,5 @@
 // Package hooks manages Claude Code hook installation for automatic
-// session data capture after each session ends.
+// session data push to the AX managed service after each session ends.
 package hooks
 
 import (
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // HookConfig represents the hook entry for Claude Code settings.
@@ -27,22 +28,13 @@ type HookSpec struct {
 // We only care about the hooks field — everything else is preserved.
 type Settings map[string]interface{}
 
-// hookCommand returns the shell command that runs ax sync on session end.
+// pushCommand returns the shell command that runs ax push on session end.
 // It handles both regular repos and Claude Code worktrees. If the CWD no longer
 // exists (e.g., worktree removed at session end), it resolves the main repo from
 // the worktree path pattern (<repo>/.claude/worktrees/<name>/).
-func hookCommand(axBinary string) string {
+func pushCommand(axBinary string) string {
 	return fmt.Sprintf(
-		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\":\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then exit 0; fi; if [ -e "$CWD/.git" ]; then %s sync --repo "$CWD" > /dev/null 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s sync --repo "$REPO" > /dev/null 2>&1; fi; fi'`,
-		axBinary, axBinary,
-	)
-}
-
-// sessionsSyncCommand returns a lightweight command for mid-session syncing.
-// Same worktree resolution logic as hookCommand.
-func sessionsSyncCommand(axBinary string) string {
-	return fmt.Sprintf(
-		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\":\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then exit 0; fi; if [ -e "$CWD/.git" ]; then %s sync --sessions-only --repo "$CWD" > /dev/null 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s sync --sessions-only --repo "$REPO" > /dev/null 2>&1; fi; fi'`,
+		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\":\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then exit 0; fi; if [ -e "$CWD/.git" ]; then %s push --repo "$CWD" > /dev/null 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s push --repo "$REPO" > /dev/null 2>&1; fi; fi'`,
 		axBinary, axBinary,
 	)
 }
@@ -64,9 +56,9 @@ func Install(settingsPath, axBinary string) error {
 		Hooks: []HookSpec{
 			{
 				Type:          "command",
-				Command:       hookCommand(axBinary),
+				Command:       pushCommand(axBinary),
 				Timeout:       60,
-				StatusMessage: "Syncing session data to AX",
+				StatusMessage: "Pushing session data to AX",
 			},
 		},
 	}
@@ -118,108 +110,6 @@ func Install(settingsPath, axBinary string) error {
 	}
 
 	return nil
-}
-
-// InstallStopHook adds a Stop hook that runs a lightweight sessions-only sync
-// after each Claude response. This keeps metrics updated mid-session.
-func InstallStopHook(settingsPath, axBinary string) error {
-	settings := make(Settings)
-	if data, err := os.ReadFile(settingsPath); err == nil {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			return fmt.Errorf("failed to parse %s: %w", settingsPath, err)
-		}
-	}
-
-	hook := HookConfig{
-		Matcher: "",
-		Hooks: []HookSpec{
-			{
-				Type:          "command",
-				Command:       sessionsSyncCommand(axBinary),
-				Timeout:       30,
-				StatusMessage: "Updating AX session metrics",
-			},
-		},
-	}
-
-	hooks, ok := settings["hooks"].(map[string]interface{})
-	if !ok {
-		hooks = make(map[string]interface{})
-	}
-
-	existingHooks, ok := hooks["Stop"].([]interface{})
-	if ok {
-		var filtered []interface{}
-		for _, h := range existingHooks {
-			hMap, ok := h.(map[string]interface{})
-			if !ok || !isAXHook(hMap) {
-				filtered = append(filtered, h)
-			}
-		}
-		existingHooks = filtered
-	} else {
-		existingHooks = nil
-	}
-
-	existingHooks = append(existingHooks, hook)
-	hooks["Stop"] = existingHooks
-	settings["hooks"] = hooks
-
-	dir := filepath.Dir(settingsPath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(settingsPath, append(data, '\n'), 0o644)
-}
-
-// UninstallStopHook removes the ax Stop hook.
-func UninstallStopHook(settingsPath string) error {
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		return nil
-	}
-
-	settings := make(Settings)
-	if err := json.Unmarshal(data, &settings); err != nil {
-		return err
-	}
-
-	hooks, ok := settings["hooks"].(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
-	existingHooks, ok := hooks["Stop"].([]interface{})
-	if !ok {
-		return nil
-	}
-
-	var filtered []interface{}
-	for _, h := range existingHooks {
-		hMap, ok := h.(map[string]interface{})
-		if !ok || !isAXHook(hMap) {
-			filtered = append(filtered, h)
-		}
-	}
-
-	if len(filtered) == 0 {
-		delete(hooks, "Stop")
-	} else {
-		hooks["Stop"] = filtered
-	}
-
-	if len(hooks) == 0 {
-		delete(settings, "hooks")
-	}
-
-	out, _ := json.MarshalIndent(settings, "", "  ")
-	return os.WriteFile(settingsPath, append(out, '\n'), 0o644)
 }
 
 // Uninstall removes the ax SessionEnd hook from the Claude Code settings file.
@@ -320,24 +210,10 @@ func isAXHook(hookMap map[string]interface{}) bool {
 		}
 		cmd, _ := spec["command"].(string)
 		status, _ := spec["statusMessage"].(string)
-		if status == "Syncing session data to AX" {
+		if status == "Pushing session data to AX" || status == "Syncing session data to AX" {
 			return true
 		}
-		// Also match by command containing "ax sync"
-		if len(cmd) > 0 && (contains(cmd, "ax sync") || contains(cmd, "ax sync")) {
-			return true
-		}
-	}
-	return false
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && searchString(s, substr)
-}
-
-func searchString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
+		if len(cmd) > 0 && (strings.Contains(cmd, "ax push") || strings.Contains(cmd, "ax sync")) {
 			return true
 		}
 	}

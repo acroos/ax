@@ -21,21 +21,21 @@ type ModelPricing struct {
 // Includes both full model IDs and short aliases.
 var Models = map[string]ModelPricing{
 	// Claude Opus 4 / 4.5 / 4.6
-	"claude-opus-4-6":                {InputPerMTok: 15.0, OutputPerMTok: 75.0, CacheReadPerMTok: 1.5, CacheCreationPerMTok: 18.75},
-	"claude-opus-4-5-20250620":       {InputPerMTok: 15.0, OutputPerMTok: 75.0, CacheReadPerMTok: 1.5, CacheCreationPerMTok: 18.75},
-	"claude-opus-4-20250514":         {InputPerMTok: 15.0, OutputPerMTok: 75.0, CacheReadPerMTok: 1.5, CacheCreationPerMTok: 18.75},
+	"claude-opus-4-6":          {InputPerMTok: 15.0, OutputPerMTok: 75.0, CacheReadPerMTok: 1.5, CacheCreationPerMTok: 18.75},
+	"claude-opus-4-5-20250620": {InputPerMTok: 15.0, OutputPerMTok: 75.0, CacheReadPerMTok: 1.5, CacheCreationPerMTok: 18.75},
+	"claude-opus-4-20250514":   {InputPerMTok: 15.0, OutputPerMTok: 75.0, CacheReadPerMTok: 1.5, CacheCreationPerMTok: 18.75},
 
 	// Claude Sonnet 4 / 4.5 / 4.6
-	"claude-sonnet-4-6":              {InputPerMTok: 3.0, OutputPerMTok: 15.0, CacheReadPerMTok: 0.3, CacheCreationPerMTok: 3.75},
-	"claude-sonnet-4-5-20250514":     {InputPerMTok: 3.0, OutputPerMTok: 15.0, CacheReadPerMTok: 0.3, CacheCreationPerMTok: 3.75},
-	"claude-sonnet-4-20250514":       {InputPerMTok: 3.0, OutputPerMTok: 15.0, CacheReadPerMTok: 0.3, CacheCreationPerMTok: 3.75},
+	"claude-sonnet-4-6":          {InputPerMTok: 3.0, OutputPerMTok: 15.0, CacheReadPerMTok: 0.3, CacheCreationPerMTok: 3.75},
+	"claude-sonnet-4-5-20250514": {InputPerMTok: 3.0, OutputPerMTok: 15.0, CacheReadPerMTok: 0.3, CacheCreationPerMTok: 3.75},
+	"claude-sonnet-4-20250514":   {InputPerMTok: 3.0, OutputPerMTok: 15.0, CacheReadPerMTok: 0.3, CacheCreationPerMTok: 3.75},
 
 	// Claude Haiku 4.5
-	"claude-haiku-4-5-20251001":      {InputPerMTok: 0.80, OutputPerMTok: 4.0, CacheReadPerMTok: 0.08, CacheCreationPerMTok: 1.0},
+	"claude-haiku-4-5-20251001": {InputPerMTok: 0.80, OutputPerMTok: 4.0, CacheReadPerMTok: 0.08, CacheCreationPerMTok: 1.0},
 
 	// Legacy Claude 3.5
-	"claude-3-5-sonnet-20241022":     {InputPerMTok: 3.0, OutputPerMTok: 15.0, CacheReadPerMTok: 0.3, CacheCreationPerMTok: 3.75},
-	"claude-3-5-haiku-20241022":      {InputPerMTok: 0.80, OutputPerMTok: 4.0, CacheReadPerMTok: 0.08, CacheCreationPerMTok: 1.0},
+	"claude-3-5-sonnet-20241022": {InputPerMTok: 3.0, OutputPerMTok: 15.0, CacheReadPerMTok: 0.3, CacheCreationPerMTok: 3.75},
+	"claude-3-5-haiku-20241022":  {InputPerMTok: 0.80, OutputPerMTok: 4.0, CacheReadPerMTok: 0.08, CacheCreationPerMTok: 1.0},
 }
 
 // defaultPricing is used when the model is not recognized.

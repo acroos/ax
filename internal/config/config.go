@@ -1,4 +1,4 @@
-// Package config manages AX configuration for local and team modes.
+// Package config manages AX configuration for the managed service.
 package config
 
 import (
@@ -10,10 +10,9 @@ import (
 
 // Config holds AX configuration settings.
 type Config struct {
-	Mode      string `json:"mode"`                 // "local" or "team"
-	ServerURL string `json:"server_url,omitempty"`  // team server URL (e.g. "https://ax.internal.company.com:8080")
-	APIKey    string `json:"api_key,omitempty"`     // API key for team server
-	UserName  string `json:"user_name,omitempty"`   // developer name for attribution
+	ServerURL string `json:"server_url"` // AX server URL (e.g. "https://ax.up.railway.app")
+	APIKey    string `json:"api_key"`    // API key for the AX server
+	UserName  string `json:"user_name"`  // developer name for attribution
 }
 
 // DefaultConfigPath returns the path to the config file (~/.ax/config.json).
@@ -25,17 +24,17 @@ func DefaultConfigPath() (string, error) {
 	return filepath.Join(home, ".ax", "config.json"), nil
 }
 
-// LoadConfig reads the config file. Returns a local-mode config if the file doesn't exist.
+// LoadConfig reads the config file. Returns an empty config if the file doesn't exist.
 func LoadConfig() (*Config, error) {
 	path, err := DefaultConfigPath()
 	if err != nil {
-		return defaultConfig(), nil
+		return &Config{}, nil
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return defaultConfig(), nil
+			return &Config{}, nil
 		}
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
@@ -43,10 +42,6 @@ func LoadConfig() (*Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	if cfg.Mode == "" {
-		cfg.Mode = "local"
 	}
 
 	return &cfg, nil
@@ -74,13 +69,4 @@ func SaveConfig(cfg *Config) error {
 	}
 
 	return nil
-}
-
-// IsTeamMode returns true if the config is set to team mode.
-func (c *Config) IsTeamMode() bool {
-	return c.Mode == "team"
-}
-
-func defaultConfig() *Config {
-	return &Config{Mode: "local"}
 }

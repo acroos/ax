@@ -6,23 +6,18 @@ Patterns and norms for working in the AX codebase.
 
 ### File Organization
 - One metric area per file in `internal/metrics/` (e.g., `output_quality.go`, `planning.go`), each with a corresponding `_test.go`
-- Parsers in `internal/parsers/` — one per data source (git, github, claude_sessions)
-- Database queries in `internal/db/queries.go`, models in `internal/db/models.go`
-- All sync orchestration in `internal/sync/` (sync.go, finalize.go, watch.go)
-
-### Database
-- Query functions accept `db.DBTX` interface — works with both `*sqlx.DB` and `*sqlx.Tx`, enabling both direct calls and transactional batches
-- All writes use `ON CONFLICT ... DO UPDATE` (upsert) for idempotency
-- Use `CURRENT_TIMESTAMP` in SQL, never `datetime('now')`
-- Schema migrations are versioned in `internal/db/db.go` and applied on database open
+- Session parser in `internal/parsers/claude_sessions.go`
+- GitHub/git data types in `internal/parsers/github.go` (types only, no CLI interaction)
+- Token pricing in `internal/pricing/` with model-specific lookup tables
 
 ### Testing
-- Tests use `t.TempDir()` for SQLite database files — automatic cleanup
-- No test fixtures or factories — tests create data inline
+- Metric tests use inline data — no fixtures or factories
+- Session parser tests use temp files created in tests
 
 ### External Dependencies
-- Parsers shell out to `git` and `gh` CLI via `os/exec` — no Go SDK dependencies for GitHub or git
+- Session parser reads JSONL files directly (no external CLIs)
 - Token pricing lives in `internal/pricing/` with model-specific lookup tables
+- CLI shells out to `git` only to resolve remote URLs (for repo identification)
 
 ## Rails Server
 
@@ -54,10 +49,6 @@ Patterns and norms for working in the AX codebase.
 - Shared components in `src/components/`
 - Data layer in `src/lib/db.ts`, auth in `src/lib/auth.ts`
 
-### Data Functions
-- All data functions are async and fetch from the Rails API
-- Org-scoped data functions accept an `orgSlug` parameter
-
 ### Styling
 - Tailwind CSS v4, dark mode only
 - Custom theme tokens in `src/app/globals.css`
@@ -83,6 +74,3 @@ bundle exec rspec # Rails tests
 cd dashboard
 npm run dev       # Dashboard dev server (:3333)
 ```
-
-### Schema Symmetry
-SQLite and PostgreSQL share the same column names and types for data tables (repos, prs, commits, sessions, session_prs, pr_metrics, repo_metrics, watched_repos). The push payload maps directly between them.

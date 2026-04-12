@@ -1,10 +1,6 @@
 # Authentication
 
-AX has three authentication mechanisms, each serving a different component and use case.
-
-## Local Mode: No Auth
-
-In local mode, there is no authentication. The CLI writes to `~/.ax/ax.db` and the dashboard reads from it. Both run on the same machine as the user.
+AX has two authentication mechanisms, each serving a different component and use case.
 
 ## CLI → Rails API: API Key
 
@@ -24,7 +20,7 @@ Authorization: Bearer ax_k1_<hex>
 **Lifecycle**:
 1. Generated automatically when a user first signs in via GitHub OAuth
 2. Displayed during onboarding so the user can copy it
-3. Used in `ax init --team <url> --api-key <key>` to configure the CLI
+3. Used in `ax init --server <url> --api-key <key>` to configure the CLI
 4. Can be rotated via `POST /api/v1/api_key/rotate` (revokes old, generates new)
 5. `last_used_at` updated on each authenticated request
 
@@ -77,7 +73,7 @@ The OAuth flow connects the dashboard user to their GitHub identity.
 
 ### Cross-Origin Handoff
 
-The Rails server and dashboard run on different origins (e.g., `app.ax.dev` and `dashboard.ax.dev`). The server cannot set cookies on the dashboard's domain directly.
+The Rails server and dashboard run on different origins (e.g., `ax.up.railway.app` and `ax-metrics.vercel.app`). The server cannot set cookies on the dashboard's domain directly.
 
 Current approach (stopgap): the session token is passed via URL query parameter in step 7. The `/auth/accept` route on the dashboard reads the token, sets it as an HttpOnly cookie, and redirects — so the token does not persist in browser history.
 
@@ -94,7 +90,7 @@ When a user signs in for the first time:
 ## Authorization
 
 ### Org Membership
-All data access in managed mode is scoped to organizations. The user must be a member of the org to access its data.
+All data access is scoped to organizations. The user must be a member of the org to access its data.
 
 ### Roles
 | Role | Can read data | Can manage members/invites | Can delete org |
@@ -112,7 +108,6 @@ All data access in managed mode is scoped to organizations. The user must be a m
 
 `dashboard/src/middleware.ts` enforces authentication on the dashboard side:
 
-- Only active when `AX_API_URL` is set (managed mode)
 - Checks for `_ax_session` cookie
 - Redirects unauthenticated users to `/login?redirect=<original_path>`
 - Public paths exempt: `/login`, `/invite`, `/auth`, `/docs`, `/_next`, `/favicon`

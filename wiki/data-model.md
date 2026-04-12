@@ -1,30 +1,30 @@
 # Data Model
 
-AX uses two databases: SQLite for local mode and PostgreSQL for managed mode. They share the same logical schema for data tables, but the Rails database adds identity, org, and auth tables.
+AX uses PostgreSQL for the managed service. The schema covers data tables, identity, org, and auth tables.
 
-## Core Tables (Both Databases)
+## Core Tables
 
 ### repos
 Repository container. One row per tracked repo.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| id | integer | PK (auto-increment in SQLite, serial in PG) |
-| path | text | Unique. Absolute path or identifier. |
+| id | bigint | PK |
+| path | text | Identifier |
 | remote_url | text | Git remote origin URL |
 | github_owner | text | Extracted from remote (e.g., "acroos") |
 | github_repo | text | Extracted from remote (e.g., "ax") |
-| last_synced_at | timestamp | Last successful sync |
-
-Rails adds: `organization_id`, `github_installation_id`
+| last_synced_at | timestamp | Last successful data push |
+| organization_id | bigint | FK → organizations |
+| github_installation_id | bigint | FK → github_installations |
 
 ### prs
 Pull requests. Unique per (repo_id, number).
 
 | Column | Type | Notes |
 |--------|------|-------|
-| id | integer | PK |
-| repo_id | integer | FK → repos |
+| id | bigint | PK |
+| repo_id | bigint | FK → repos |
 | number | integer | PR number on GitHub |
 | title | text | |
 | branch | text | Head branch name |
@@ -45,8 +45,8 @@ Git commits. PK is `sha` (not auto-increment).
 | Column | Type | Notes |
 |--------|------|-------|
 | sha | text | PK |
-| repo_id | integer | FK → repos |
-| pr_id | integer | FK → prs (nullable) |
+| repo_id | bigint | FK → repos |
+| pr_id | bigint | FK → prs (nullable) |
 | session_id | text | FK → sessions (nullable) |
 | message | text | Commit message |
 | author | text | |
@@ -63,7 +63,7 @@ Claude Code sessions. PK is `id` (UUID string from session file).
 | Column | Type | Notes |
 |--------|------|-------|
 | id | text | PK (UUID from Claude Code) |
-| repo_id | integer | FK → repos |
+| repo_id | bigint | FK → repos |
 | branch | text | Working branch during session |
 | started_at | timestamp | |
 | ended_at | timestamp | |
@@ -75,8 +75,8 @@ Claude Code sessions. PK is `id` (UUID string from session file).
 | cache_read_input_tokens | integer | |
 | total_cost_usd | real | Computed via model-specific pricing |
 | primary_model | text | Majority model used |
-
-Rails adds: `cwd`, `pushed_by`
+| cwd | text | Working directory |
+| pushed_by | text | Who pushed this data |
 
 ### session_prs
 Many-to-many join: sessions to PRs, with correlation confidence.
@@ -84,7 +84,7 @@ Many-to-many join: sessions to PRs, with correlation confidence.
 | Column | Type | Notes |
 |--------|------|-------|
 | session_id | text | FK → sessions |
-| pr_id | integer | FK → prs |
+| pr_id | bigint | FK → prs |
 | confidence | text | direct, branch, commit, or heuristic |
 
 Unique on (session_id, pr_id).
@@ -109,7 +109,7 @@ All 16 computed metrics per PR. One row per PR.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| pr_id | integer | PK / unique FK → prs |
+| pr_id | bigint | PK / unique FK → prs |
 | messages_per_pr | integer | |
 | iteration_depth | integer | |
 | post_open_commits | integer | |
@@ -135,8 +135,8 @@ Repo-level aggregates, computed per period.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| id | integer | PK |
-| repo_id | integer | FK → repos |
+| id | bigint | PK |
+| repo_id | bigint | FK → repos |
 | period_start | timestamp | |
 | period_end | timestamp | |
 | period_type | text | Currently always "all" |
@@ -149,19 +149,7 @@ Repo-level aggregates, computed per period.
 
 Unique on (repo_id, period_start, period_type).
 
-### watched_repos
-Tracks which repos are being polled for PR state changes.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| repo_id | integer | PK / unique FK → repos |
-| poll_interval_seconds | integer | Default 300 |
-| last_polled_at | timestamp | |
-| enabled | boolean | Default true |
-
-## Rails-Only Tables
-
-These exist only in PostgreSQL for the managed service.
+## Identity & Auth Tables
 
 ### users
 GitHub OAuth identity (Devise).
@@ -254,7 +242,4 @@ Unique on (organization_id, user_id).
 
 ## Schema Management
 
-- **SQLite**: Versioned migrations in `internal/db/db.go`. Applied on database open. Currently 6 migrations.
 - **PostgreSQL**: Rails migrations in `server/db/migrate/`. Standard `rails db:migrate`. Currently ~20 migrations.
-
-Both databases use the same column names and types for shared tables, making the push payload a straightforward mapping.
