@@ -1,7 +1,7 @@
 # ADR-003: Open Source with Managed Service Path
 
 ## Status
-Accepted
+Superseded by [ADR-014 — Remove Local Mode](014-remove-local-mode.md)
 
 ## Date
 2026-03-24

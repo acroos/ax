@@ -1,7 +1,7 @@
 # ADR-007: Embedded Static Dashboard in Go Binary
 
 ## Status
-Accepted
+Superseded by [ADR-014 — Remove Local Mode](014-remove-local-mode.md)
 
 ## Date
 2026-03-24

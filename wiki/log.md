@@ -4,6 +4,14 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-12 — Phase 6: Documentation & project updates
+
+**Files updated:** CLAUDE.md, README.md, docs/decisions/003-target-scope.md, docs/decisions/007-dashboard-packaging.md, docs/decisions/013-github-integration-model.md, plans/github-app-installation.md
+
+**Summary:** Final phase of remove-local-mode (ADR-014). Rewrote CLAUDE.md to reflect managed-only architecture (removed two-mode description, local commands, SQLite references). Rewrote README.md for managed-only flow (removed `ax sync`, `ax report`, `ax dashboard`, `ax export`, local mode section). Renamed `docs/team-setup.md` to `docs/setup.md` and rewrote as the primary setup guide (no longer "team" specific, removed local mode references, `ax sync`, background poller). Marked ADR-003 and ADR-007 as superseded by ADR-014. Updated cross-references in ADR-013 and plans/github-app-installation.md.
+
+---
+
 ## 2026-04-12 — Remove local mode from CLI (Stream B)
 
 **Pages updated:** index, architecture, data-flow, go-cli, data-model, authentication, conventions, metrics

@@ -2,13 +2,12 @@
 
 ## What is this?
 
-AX is a CLI + web dashboard that measures developer experience for agentic coding workflows. It analyzes git history, GitHub PR data, and Claude Code session data to surface actionable metrics about how effectively engineers work with AI coding agents.
+AX is a managed service that measures developer experience for agentic coding workflows. It analyzes GitHub PR data and Claude Code session data to surface actionable metrics about how effectively engineers work with AI coding agents.
 
-AX has two modes:
-- **Local mode**: Go CLI + SQLite (`~/.ax/ax.db`). Everything runs on your machine.
-- **Managed mode**: Rails API at `app.ax.dev` + Next.js dashboard. Multi-tenant with GitHub OAuth, orgs, and team-based access.
-
-There is no self-hosted server option. The Go CLI handles local analysis; the Rails app handles the managed service.
+AX has three components:
+- **Go CLI** — Thin client that parses Claude Code session data and pushes it to the server. Installs hooks for automatic data collection.
+- **Rails API** (`ax.up.railway.app`) — Backend service handling data ingestion, GitHub webhooks, metric computation, auth, and multi-tenant org management.
+- **Next.js Dashboard** (`ax-metrics.vercel.app`) — Web UI for viewing metrics, comparing developers, and managing orgs.
 
 ## Wiki — Read This First
 
@@ -20,7 +19,7 @@ Start at [`wiki/index.md`](wiki/index.md) to find the right page. Key pages:
 |------|-------------|
 | [Architecture](wiki/architecture.md) | You need to understand components, modes, or how things connect |
 | [Data Flow](wiki/data-flow.md) | You need to trace how data moves through the system |
-| [Go CLI](wiki/go-cli.md) | Working on CLI commands, parsers, sync, hooks, or watch |
+| [Go CLI](wiki/go-cli.md) | Working on CLI commands, parsers, hooks, or push |
 | [Rails Server](wiki/rails-server.md) | Working on the managed service API, webhooks, or push ingestion |
 | [Dashboard](wiki/dashboard.md) | Working on the Next.js frontend, routes, or data layer |
 | [Metrics](wiki/metrics.md) | Working on metric computation, finalization, or adding metrics |
@@ -57,34 +56,12 @@ npm run dev          # Development server on :3333
 ## Key Commands
 
 ```bash
+# Setup
+ax init --server <url> --api-key <key> --user "Name"  # Configure CLI + install hooks
+ax init --uninstall                                     # Remove hooks
+
 # Data ingestion
-ax sync --repo .                    # Full sync: git + GitHub + sessions + metrics
-ax sync --sessions-only --repo .    # Lightweight: re-parse sessions only
-
-# Reporting
-ax report                           # Aggregate metrics for current repo
-ax report --pr 42                   # Metrics for a specific PR
-ax status                           # Tracked repos, sync times, watch status
-
-# Export
-ax export --format json --repo .    # Export finalized PR metrics as JSON
-ax export --format csv --all-repos  # CSV across all repos
-ax export --format jsonl --since 2026-01-01  # Streaming JSONL with date filter
-ax export --aggregate               # Repo-level aggregate metrics
-
-# Automation
-ax init                             # Install Claude Code hooks + background polling
-ax init --live                      # Also install mid-session sync hook
-ax watch                            # Foreground GitHub polling
-ax watch --once                     # Single poll cycle
-ax watch install                    # Install as launchd (macOS) / cron (Linux)
-ax watch uninstall                  # Remove system job
-ax watch status                     # Show watched repos + poll times
-ax dashboard                        # Start the web dashboard (dev mode)
-
-# Team mode
-ax init --team <url> --api-key <key> --user "Name"  # Connect to managed service
-ax push --repo .                    # Manually push to managed server
+ax push --repo .                    # Parse sessions and push to server
 ```
 
 ## Decisions
@@ -93,18 +70,19 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 
 - [001 — Metrics Selection](docs/decisions/001-metrics-selection.md): 16 metrics across 4 categories. Check this before adding or changing metrics.
 - [002 — Form Factor](docs/decisions/002-form-factor.md): CLI + web dashboard. Don't build a plugin-only solution.
-- [003 — Target Scope](docs/decisions/003-target-scope.md): Open source with a local → team → managed service path.
+- [003 — Target Scope](docs/decisions/003-target-scope.md): **Superseded by ADR-014.** Originally: local → team → managed service path.
 - [004 — CLI Language](docs/decisions/004-cli-language.md): Go for CLI, TypeScript for dashboard only.
 - [005 — Session Ingestion](docs/decisions/005-session-ingestion-strategy.md): Claude Code hooks for team data collection. Relevant when building `ax init` or `ax push`.
 - [006 — UX Philosophy](docs/decisions/006-ux-philosophy.md): Linear-inspired, dark mode first, inline metric context. **Read this before any dashboard work.**
-- [007 — Dashboard Packaging](docs/decisions/007-dashboard-packaging.md): Embedded static build via `go:embed` for users, `npm run dev` for contributors.
+- [007 — Dashboard Packaging](docs/decisions/007-dashboard-packaging.md): **Superseded by ADR-014.** Originally: embedded static build via `go:embed`.
 - [008 — Distribution](docs/decisions/008-distribution-strategy.md): Homebrew tap + GoReleaser. Relevant when setting up releases.
 - [009 — Token Cost Metrics](docs/decisions/009-token-cost-metrics.md): Token Cost per PR and Unmerged Token Spend. Dollar-cost metrics with model-specific pricing.
-- [010 — GitHub Event Ingestion](docs/decisions/010-github-event-ingestion.md): `ax watch` poller + metric finalization lifecycle. Metrics only computed for terminal (merged/closed) PRs.
+- [010 — GitHub Event Ingestion](docs/decisions/010-github-event-ingestion.md): GitHub webhooks + metric finalization lifecycle. Metrics only computed for terminal (merged/closed) PRs.
 - [011 — Team Server](docs/decisions/011-team-server.md): Original Go server design. **Superseded by Rails migration** — see `plans/rails-migration.md`.
 - [012 — Event Service](docs/decisions/012-event-service.md): Platform-agnostic webhook receiver. **Reimplemented in Rails** — see `server/app/services/webhook_handlers/`.
 - [013 — GitHub Integration Model](docs/decisions/013-github-integration-model.md): Dual-app architecture — OAuth App for login, GitHub App for repo access and webhook delivery. Relevant to any managed-service auth or repo ingestion work.
-- [Open Questions](docs/decisions/open-questions.md): Pending decisions (CI images, PR author tracking, managed service path, etc.)
+- [014 — Remove Local Mode](docs/decisions/014-remove-local-mode.md): Managed-only architecture. Supersedes ADR-003, ADR-007. CLI is a thin push client, metrics computed server-side.
+- [Open Questions](docs/decisions/open-questions.md): Pending decisions (CI images, PR author tracking, etc.)
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.
 
@@ -113,5 +91,5 @@ When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and
 Documentation is a first-class deliverable:
 - Every metric has a dedicated doc in `docs/metrics/` explaining what it measures, why it matters, how it's calculated, and how to interpret values
 - The dashboard renders these at `/docs` and `/docs/[slug]`
-- Team setup guide at `docs/team-setup.md`
+- Setup guide at `docs/setup.md`
 - Feature plans live in `plans/` (rails migration, managed service identity, comparison views, export)
