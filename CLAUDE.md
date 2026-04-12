@@ -231,6 +231,12 @@ When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and
 - Rails models live in `server/app/models/`, controllers in `server/app/controllers/`
 - Rails specs use RSpec + FactoryBot in `server/spec/`
 
+## Wiki
+
+The `wiki/` directory contains a structured, interlinked knowledge base for the repository. Start at `wiki/index.md`.
+
+**Keeping the wiki current:** When you make a code change that alters behavior, adds or removes features, changes architecture, modifies data flow, or would surprise someone reading the current wiki — update the relevant wiki pages and append an entry to `wiki/log.md`. Err on the side of updating. A bit of noise in the log is far better than an outdated wiki. The only changes that don't need a wiki update are purely cosmetic (typos, formatting) or internal refactors that don't change any observable behavior or structure.
+
 ## Documentation
 
 Documentation is a first-class deliverable:
