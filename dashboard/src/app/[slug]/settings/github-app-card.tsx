@@ -1,20 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { getInstallUrl } from "./actions";
+import type { GithubInstallation } from "@/lib/db";
 
-interface Installation {
-  id: number;
-  github_installation_id: number;
-  account_login: string;
-  account_type: string;
-  repository_selection: string;
-  status: string;
-  installed_at: string | null;
-  last_synced_at: string | null;
-  repos_count: number;
-}
+const ExternalLinkIcon = () => (
+  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+  </svg>
+);
 
 export function GitHubAppCard({
   slug,
@@ -24,12 +18,11 @@ export function GitHubAppCard({
   errorParam,
 }: {
   slug: string;
-  installation: Installation | null;
+  installation: GithubInstallation | null;
   isAdmin: boolean;
   installedParam?: string;
   errorParam?: string;
 }) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showBanner, setShowBanner] = useState(
@@ -64,6 +57,9 @@ export function GitHubAppCard({
 
   const isActive = installation?.status === "active";
   const isSuspended = installation?.status === "suspended";
+  const installationSettingsUrl = installation
+    ? `https://github.com/settings/installations/${installation.github_installation_id}`
+    : null;
 
   return (
     <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-4">
@@ -174,17 +170,15 @@ export function GitHubAppCard({
               </p>
             </div>
           </div>
-          {isAdmin && (
+          {isAdmin && installationSettingsUrl && (
             <a
-              href={`https://github.com/settings/installations/${installation.github_installation_id}`}
+              href={installationSettingsUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors"
             >
               Manage on GitHub
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
+              <ExternalLinkIcon />
             </a>
           )}
         </div>
@@ -198,17 +192,15 @@ export function GitHubAppCard({
             <span className="font-mono text-amber">{installation.account_login}</span>{" "}
             is suspended. Webhook events are paused.
           </p>
-          {isAdmin ? (
+          {isAdmin && installationSettingsUrl ? (
             <a
-              href={`https://github.com/settings/installations/${installation.github_installation_id}`}
+              href={installationSettingsUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 text-text-primary text-xs font-medium transition-colors"
             >
               Resume on GitHub
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
+              <ExternalLinkIcon />
             </a>
           ) : (
             <p className="text-xs text-text-tertiary">
