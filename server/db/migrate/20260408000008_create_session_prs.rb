@@ -7,6 +7,6 @@ class CreateSessionPrs < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :session_prs, [:session_id, :pr_id], unique: true
+    add_index :session_prs, [ :session_id, :pr_id ], unique: true
   end
 end

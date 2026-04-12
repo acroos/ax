@@ -2,8 +2,8 @@ module Api
   module V1
     class OrganizationsController < BaseController
       before_action :require_session_auth!
-      before_action :find_org!, only: [:show, :update]
-      before_action :find_org_as_admin!, only: [:update]
+      before_action :find_org!, only: [ :show, :update ]
+      before_action :find_org_as_admin!, only: [ :update ]
 
       def index
         orgs = current_user.organizations

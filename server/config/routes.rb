@@ -25,14 +25,14 @@ Rails.application.routes.draw do
       get "/watch-status", to: "watch_status#index"
 
       # Session-authenticated (dashboard)
-      resources :orgs, param: :slug, only: [:index, :create] do
+      resources :orgs, param: :slug, only: [ :index, :create ] do
         member do
           get "/", to: "organizations#show"
           put "/", to: "organizations#update"
         end
-        resources :members, only: [:index, :update, :destroy]
-        resources :invites, controller: "org_invites", only: [:index, :create, :destroy]
-        resources :repos, only: [:index] do
+        resources :members, only: [ :index, :update, :destroy ]
+        resources :invites, controller: "org_invites", only: [ :index, :create, :destroy ]
+        resources :repos, only: [ :index ] do
           member do
             get :prs
             get :metrics
@@ -47,7 +47,7 @@ Rails.application.routes.draw do
       post "/invites/:token/accept", to: "invites#create"
 
       # User settings
-      resource :api_key, only: [:show] do
+      resource :api_key, only: [ :show ] do
         post :rotate
       end
     end

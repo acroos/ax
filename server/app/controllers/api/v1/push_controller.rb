@@ -20,7 +20,34 @@ module Api
       private
 
       def push_params
-        params.permit!.to_h
+        params.permit(
+          :repo_path, :remote_url, :owner, :repo,
+          prs: [
+            :number, :title, :branch, :state, :created_at,
+            :merged_at, :closed_at, :url, :additions, :deletions, :changed_files
+          ],
+          sessions: [
+            :id, :branch, :started_at, :ended_at, :message_count, :turn_count,
+            :input_tokens, :output_tokens, :cache_creation_input_tokens,
+            :cache_read_input_tokens, :total_cost_usd, :primary_model
+          ],
+          commits: [
+            :sha, :pr_number, :session_id, :message, :author, :committed_at,
+            :is_claude_authored, :is_post_open, :additions, :deletions, :files_changed
+          ],
+          session_prs: [ :session_id, :pr_number, :confidence ],
+          pr_metrics: [
+            :pr_number, :messages_per_pr, :iteration_depth, :post_open_commits,
+            :first_pass_accepted, :ci_success_rate, :diff_churn_lines, :has_tests,
+            :line_revisit_rate, :self_correction_rate, :context_efficiency,
+            :error_recovery_attempts, :token_cost_usd, :plan_coverage_score,
+            :plan_deviation_score, :scope_creep_detected, :metrics_finalized, :finalized_at
+          ],
+          repo_metrics: [
+            :period_start, :period_end, :period_type, :total_sessions, :total_tokens,
+            :total_cost_usd, :unmerged_tokens, :unmerged_cost_usd, :unmerged_rate
+          ]
+        )
       end
     end
   end
