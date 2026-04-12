@@ -15,6 +15,6 @@ class CreateRepoMetrics < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :repo_metrics, [:repo_id, :period_start, :period_type], unique: true
+    add_index :repo_metrics, [ :repo_id, :period_start, :period_type ], unique: true
   end
 end

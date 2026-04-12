@@ -12,6 +12,6 @@ class CreateInvites < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :invites, [:organization_id, :github_username, :status], unique: true
+    add_index :invites, [ :organization_id, :github_username, :status ], unique: true
   end
 end

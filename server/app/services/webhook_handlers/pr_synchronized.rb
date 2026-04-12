@@ -15,7 +15,7 @@ module WebhookHandlers
 
       current_commits = @pr_data[:commits] || 0
       open_count = pr.open_commit_count || 0
-      post_open = [current_commits - open_count, 0].max
+      post_open = [ current_commits - open_count, 0 ].max
 
       metrics = ensure_pr_metrics(pr)
       metrics.update!(post_open_commits: post_open)

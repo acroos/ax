@@ -14,5 +14,5 @@
 #
 # Revisit this if/when we add additional identity providers or any flow that
 # links a new identity to an already-authenticated user.
-OmniAuth.config.allowed_request_methods = [:post, :get]
+OmniAuth.config.allowed_request_methods = [ :post, :get ]
 OmniAuth.config.silence_get_warning = true

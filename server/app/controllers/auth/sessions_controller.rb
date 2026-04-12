@@ -1,6 +1,6 @@
 module Auth
   class SessionsController < Api::V1::BaseController
-    before_action :require_session_auth!, only: [:me, :destroy]
+    before_action :require_session_auth!, only: [ :me, :destroy ]
 
     def me
       render json: {
