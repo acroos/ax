@@ -104,7 +104,12 @@ PR opened
 - **Webhooks**: All handlers check `pr_finalized?` before updating
 
 ### Webhook-triggered finalization
-In managed mode, `PrMerged` and `PrClosed` webhook handlers set `metrics_finalized = true`. This happens in real time as GitHub sends events.
+In managed mode, `PrMerged` and `PrClosed` webhook handlers:
+1. Fetch file paths and per-commit stats from the GitHub API (`GithubDataFetcher`)
+2. Compute `diff_churn_lines`, `has_tests`, and `line_revisit_rate` (`MetricsComputer`)
+3. Set `metrics_finalized = true`
+
+This happens in real time as GitHub sends events. File-level data is only fetched at finalization to avoid unnecessary API calls for WIP PRs.
 
 ### CLI-triggered finalization
 During `ax sync` or `ax watch`, the CLI detects terminal PR states and calls `FinalizePR()`.

@@ -34,6 +34,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 | Model | Table | Purpose |
 |-------|-------|---------|
 | `Repo` | `repos` | Repository (path, remote_url, github_owner, github_repo, org_id) |
+| `PrFile` | `pr_files` | File paths per PR (fetched from GitHub API at finalization) |
 | `PR` | `prs` | Pull request (number, state, branch, timestamps, diff stats) |
 | `Commit` | `commits` | Git commit (sha as PK, claude-authored flag, post-open flag) |
 | `CodingSession` | `sessions` | Claude Code session (tokens, cost, model, message counts) |
@@ -44,6 +45,8 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `PlanAnalysis` | `plan_analyses` | Plan-to-implementation comparison |
 
 ### Key Model Behaviors
+
+**PrFile** stores file paths fetched from the GitHub API at PR finalization. Used by server-side metric computation (has_tests, line_revisit_rate).
 
 **PrMetrics** has a `before_update` callback (`prevent_finalized_update`) that blocks changes once `metrics_finalized = true`. This ensures metric immutability after PR closure.
 
@@ -116,6 +119,21 @@ Handles OAuth and onboarding:
 - `process_pending_invites(user)` — Auto-accepts invites matching the user's GitHub username
 - `ensure_can_create_org!(user)` — Checks waitlist approval
 
+### GithubDataFetcher (`app/services/github_data_fetcher.rb`)
+Fetches file-level and commit data from the GitHub API at PR finalization:
+- `GET /repos/{owner}/{repo}/pulls/{number}/files` → PrFile records (for test detection + line revisit tracking)
+- `GET /repos/{owner}/{repo}/pulls/{number}/commits` → Commit records with per-commit additions (for diff churn)
+
+Only runs if the repo has a GitHub App installation. Skips gracefully otherwise.
+
+### MetricsComputer (`app/services/metrics_computer.rb`)
+Computes three metrics that require file-level data:
+- `diff_churn_lines`: sum of per-commit additions minus PR net additions (floor 0)
+- `has_tests`: pattern-matches file paths against test file conventions (.test., .spec., _test., test/, etc.)
+- `line_revisit_rate`: fraction of files also changed in other finalized PRs in the same repo
+
+Called by PrMerged and PrClosed handlers after GithubDataFetcher populates the data.
+
 ### OrgService (`app/services/org_service.rb`)
 Creates orgs, assigns owner membership, marks waitlist entry as "joined".
 
@@ -129,8 +147,8 @@ GitHub webhooks arrive at `POST /webhooks/github`. The controller validates the 
 |---------|---------|--------|
 | `PrOpened` | PR opened | Create PR record, initialize empty PrMetrics |
 | `PrSynchronized` | Commits pushed | Recalculate `post_open_commits` |
-| `PrMerged` | PR merged | Finalize all metrics (immutable) |
-| `PrClosed` | PR closed (not merged) | Finalize as abandoned |
+| `PrMerged` | PR merged | Fetch file/commit data from GitHub API, compute diff_churn/has_tests/line_revisit_rate, finalize all metrics (immutable) |
+| `PrClosed` | PR closed (not merged) | Fetch file/commit data from GitHub API, compute diff_churn/has_tests/line_revisit_rate, finalize as abandoned |
 | `ReviewSubmitted` | Review posted | Update `first_pass_accepted` |
 | `CiCompleted` | Check suite finished | Update `ci_success_rate` |
 

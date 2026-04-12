@@ -81,6 +81,44 @@ RSpec.describe GithubApp::Client do
     end
   end
 
+  describe "#list_pull_files" do
+    before do
+      stub_request(:get, %r{api\.github\.com/repos/acme/widget/pulls/42/files})
+        .to_return(
+          status: 200,
+          body: [
+            { filename: "src/app.rb", additions: 10, deletions: 2, changes: 12, status: "modified" }
+          ].to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+    end
+
+    it "returns files for the pull request" do
+      files = client.list_pull_files(owner: "acme", repo: "widget", number: 42)
+      expect(files.length).to eq(1)
+      expect(files.first[:filename]).to eq("src/app.rb")
+    end
+  end
+
+  describe "#list_pull_commits" do
+    before do
+      stub_request(:get, %r{api\.github\.com/repos/acme/widget/pulls/42/commits})
+        .to_return(
+          status: 200,
+          body: [
+            { sha: "abc123", commit: { message: "feat: add feature" }, stats: { additions: 10 } }
+          ].to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+    end
+
+    it "returns commits for the pull request" do
+      commits = client.list_pull_commits(owner: "acme", repo: "widget", number: 42)
+      expect(commits.length).to eq(1)
+      expect(commits.first[:sha]).to eq("abc123")
+    end
+  end
+
   describe "#list_repositories" do
     before do
       stub_request(:get, %r{api\.github\.com/installation/repositories})
