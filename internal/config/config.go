@@ -8,11 +8,12 @@ import (
 	"path/filepath"
 )
 
+// DefaultServerURL is the production AX managed service.
+const DefaultServerURL = "https://ax.up.railway.app"
+
 // Config holds AX configuration settings.
 type Config struct {
-	ServerURL string `json:"server_url"` // AX server URL (e.g. "https://ax.up.railway.app")
-	APIKey    string `json:"api_key"`    // API key for the AX server
-	UserName  string `json:"user_name"`  // developer name for attribution
+	APIKey string `json:"api_key"` // API key for the AX server
 }
 
 // DefaultConfigPath returns the path to the config file (~/.ax/config.json).

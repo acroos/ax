@@ -8,7 +8,7 @@ Entry point: `cmd/ax/main.go` (Cobra-based).
 
 | Command | Purpose |
 |---------|---------|
-| `ax init --server <url> --api-key <key> --user "Name"` | Set up AX: validate server, save config, install Claude Code hooks |
+| `ax init --api-key <key>` | Set up AX: validate server, save config, install Claude Code hooks |
 | `ax init --uninstall` | Remove all AX hooks |
 | `ax push --repo .` | Parse and push session data to the server |
 
@@ -41,8 +41,8 @@ Returns `ParsedSession` structs. Also discovers sessions from Claude Code worktr
 
 `internal/hooks/hooks.go` manages Claude Code hooks in `~/.claude/settings.json`.
 
-- `Install()` — Adds a `SessionEnd` hook that runs `ax push --repo <cwd>` after every Claude Code session
-- `Uninstall()` / `IsInstalled()` — Remove or check hook presence
+- `Install()` — Adds a `SessionEnd` hook that runs `ax push --repo <cwd>` after every Claude Code session. Also removes stale AX hooks from other events (e.g. `Stop`).
+- `Uninstall()` / `IsInstalled()` — Remove or check hook presence across all AX-managed events (`SessionEnd`, `Stop`)
 - Handles worktree resolution — if the CWD is a worktree path (`<repo>/.claude/worktrees/<name>/`), resolves back to the main repo
 - Preserves existing settings — reads the full JSON, modifies only hook entries
 
@@ -56,11 +56,11 @@ Returns `ParsedSession` structs. Also discovers sessions from Claude Code worktr
 Config lives at `~/.ax/config.json`:
 ```json
 {
-  "server_url": "https://ax.up.railway.app",
-  "api_key": "ax_k1_...",
-  "user_name": "Your Name"
+  "api_key": "ax_k1_..."
 }
 ```
+
+The server URL is hardcoded as `config.DefaultServerURL` (`https://ax.up.railway.app`).
 
 Written by `ax init`, read by `ax push`.
 

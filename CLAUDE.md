@@ -57,34 +57,12 @@ npm run dev          # Development server on :3333
 ## Key Commands
 
 ```bash
+# Setup
+ax init --api-key <key>             # Validate API key, save config, install hooks
+ax init --uninstall                 # Remove all AX hooks
+
 # Data ingestion
-ax sync --repo .                    # Full sync: git + GitHub + sessions + metrics
-ax sync --sessions-only --repo .    # Lightweight: re-parse sessions only
-
-# Reporting
-ax report                           # Aggregate metrics for current repo
-ax report --pr 42                   # Metrics for a specific PR
-ax status                           # Tracked repos, sync times, watch status
-
-# Export
-ax export --format json --repo .    # Export finalized PR metrics as JSON
-ax export --format csv --all-repos  # CSV across all repos
-ax export --format jsonl --since 2026-01-01  # Streaming JSONL with date filter
-ax export --aggregate               # Repo-level aggregate metrics
-
-# Automation
-ax init                             # Install Claude Code hooks + background polling
-ax init --live                      # Also install mid-session sync hook
-ax watch                            # Foreground GitHub polling
-ax watch --once                     # Single poll cycle
-ax watch install                    # Install as launchd (macOS) / cron (Linux)
-ax watch uninstall                  # Remove system job
-ax watch status                     # Show watched repos + poll times
-ax dashboard                        # Start the web dashboard (dev mode)
-
-# Team mode
-ax init --team <url> --api-key <key> --user "Name"  # Connect to managed service
-ax push --repo .                    # Manually push to managed server
+ax push --repo .                    # Push session data to the AX server
 ```
 
 ## Decisions

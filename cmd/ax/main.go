@@ -85,9 +85,7 @@ func parseGitRemote(remoteURL string) (owner, repo string, err error) {
 
 func newInitCmd() *cobra.Command {
 	var uninstall bool
-	var serverURL string
 	var apiKey string
-	var userName string
 
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -107,29 +105,23 @@ Use --uninstall to remove all AX hooks.`,
 				return nil
 			}
 
-			if serverURL == "" {
-				return fmt.Errorf("--server is required\n\n  Example: ax init --server https://ax.up.railway.app --api-key <key> --user <name>")
-			}
 			if apiKey == "" {
-				return fmt.Errorf("--api-key is required")
-			}
-			if userName == "" {
-				return fmt.Errorf("--user is required (your name for attribution)")
+				return fmt.Errorf("--api-key is required\n\n  Example: ax init --api-key <key>")
 			}
 
-			return initManagedMode(serverURL, apiKey, userName, settingsPath)
+			return initManagedMode(apiKey, settingsPath)
 		},
 	}
 
 	cmd.Flags().BoolVar(&uninstall, "uninstall", false, "Remove all AX hooks")
-	cmd.Flags().StringVar(&serverURL, "server", "", "AX server URL (e.g., https://ax.up.railway.app)")
 	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key for the AX server")
-	cmd.Flags().StringVar(&userName, "user", "", "Your name (for attribution on the dashboard)")
 
 	return cmd
 }
 
-func initManagedMode(serverURL, apiKey, userName, settingsPath string) error {
+func initManagedMode(apiKey, settingsPath string) error {
+	serverURL := config.DefaultServerURL
+
 	ui.SectionHeader(ui.Bold.Render("AX Setup"))
 
 	// Step 1: Test server connectivity
@@ -143,7 +135,6 @@ func initManagedMode(serverURL, apiKey, userName, settingsPath string) error {
 		fmt.Println()
 		fmt.Printf("  Could not reach the server at %s\n", ui.URL.Render(serverURL))
 		fmt.Printf("  Check that:\n")
-		fmt.Printf("    %s The URL is correct\n", ui.ArrowIcon())
 		fmt.Printf("    %s The server is running\n", ui.ArrowIcon())
 		fmt.Printf("    %s Your network can reach it (VPN, firewall)\n", ui.ArrowIcon())
 		return fmt.Errorf("server unreachable: %w", err)
@@ -170,9 +161,7 @@ func initManagedMode(serverURL, apiKey, userName, settingsPath string) error {
 	ui.NumberedStep(3, 3, "Saving configuration and installing hooks...")
 
 	cfg := &config.Config{
-		ServerURL: serverURL,
-		APIKey:    apiKey,
-		UserName:  userName,
+		APIKey: apiKey,
 	}
 	if err := config.SaveConfig(cfg); err != nil {
 		return fmt.Errorf("failed to save config: %w", err)
@@ -189,7 +178,7 @@ func initManagedMode(serverURL, apiKey, userName, settingsPath string) error {
 	}
 
 	if err := hooks.Install(settingsPath, axBinary); err != nil {
-		return fmt.Errorf("failed to install SessionEnd hook: %w", err)
+		return fmt.Errorf("failed to install hooks: %w", err)
 	}
 	fmt.Printf("           %s SessionEnd hook installed\n", ui.SuccessIcon())
 
@@ -197,9 +186,8 @@ func initManagedMode(serverURL, apiKey, userName, settingsPath string) error {
 	ui.CompleteBanner("Setup complete!")
 	fmt.Println()
 	fmt.Printf("  %s\n", ui.Bold.Render("What happens now:"))
-	fmt.Printf("    %s Session data pushes automatically to %s after each session\n", ui.ArrowIcon(), ui.URL.Render(serverURL))
+	fmt.Printf("    %s Session data pushes automatically after each coding session\n", ui.ArrowIcon())
 	fmt.Printf("    %s Your data will appear on the dashboard\n", ui.ArrowIcon())
-	fmt.Printf("    %s Contributions attributed to %s\n", ui.ArrowIcon(), ui.Accent.Render(userName))
 	fmt.Println()
 	fmt.Printf("  %s\n", ui.Bold.Render("Manual push:"))
 	fmt.Printf("    Run %s in a git repo to push session data now.\n", ui.Code.Render("ax push --repo ."))
@@ -211,7 +199,6 @@ func initManagedMode(serverURL, apiKey, userName, settingsPath string) error {
 
 func newPushCmd() *cobra.Command {
 	var repoPath string
-	var serverURL string
 	var apiKey string
 
 	cmd := &cobra.Command{
@@ -223,8 +210,8 @@ Parses session data from ~/.claude/ for the current repo and sends it
 to the server. This happens automatically via hooks installed by 'ax init',
 but can also be triggered manually for backfilling or debugging.
 
-Reads server URL and API key from ~/.ax/config.json (set up by 'ax init').
-You can override with --server and --api-key flags.`,
+Reads API key from ~/.ax/config.json (set up by 'ax init').
+You can override with --api-key.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path, err := resolveRepoPath(repoPath)
 			if err != nil {
@@ -233,15 +220,9 @@ You can override with --server and --api-key flags.`,
 
 			// Load config for defaults
 			cfg, _ := config.LoadConfig()
-			if serverURL == "" {
-				serverURL = cfg.ServerURL
-			}
+			serverURL := config.DefaultServerURL
 			if apiKey == "" {
 				apiKey = cfg.APIKey
-			}
-
-			if serverURL == "" {
-				return fmt.Errorf("no server URL configured\n\n  Run 'ax init --server <url> --api-key <key> --user <name>' to set up")
 			}
 			if apiKey == "" {
 				return fmt.Errorf("no API key configured — use --api-key or run 'ax init'")
@@ -314,7 +295,6 @@ You can override with --server and --api-key flags.`,
 	}
 
 	cmd.Flags().StringVar(&repoPath, "repo", "", "Path to the git repository (defaults to current directory)")
-	cmd.Flags().StringVar(&serverURL, "server", "", "AX server URL (overrides config)")
 	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key (overrides config)")
 
 	return cmd

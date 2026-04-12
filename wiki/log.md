@@ -4,6 +4,14 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-12 — Fix session end hook and simplify ax init
+
+**Pages updated:** go-cli
+
+**Summary:** Fixed three bugs in the hooks system: (1) CWD extraction grep pattern didn't handle spaces in Claude Code's JSON (`"cwd": "/path"` vs `"cwd":"/path"`), (2) `Install`/`Uninstall`/`IsInstalled` only managed `SessionEnd` hooks, leaving stale `Stop` hooks behind, (3) `ax init` required `--server` and `--user` flags that are no longer needed. Server URL now defaults to `config.DefaultServerURL`. Removed `UserName` from `Config` struct.
+
+---
+
 ## 2026-04-12 — Remove local mode from CLI (Stream B)
 
 **Pages updated:** index, architecture, data-flow, go-cli, data-model, authentication, conventions, metrics
