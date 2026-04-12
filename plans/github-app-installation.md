@@ -686,7 +686,7 @@ Minimal content:
    - If installation is active: "Installed on `<account_login>` — `<count>` repositories, last synced `<relative time>`" + Manage on GitHub link + Uninstall instructions.
    - If installation is suspended: warning banner + Resume on GitHub link.
 2. **`?installed=true` flash.** When the query param is present, show a success toast and strip the param from the URL.
-3. **`?installed=false&error=<code>` flash.** Show a dismissible error banner explaining which step failed and linking to team-setup docs.
+3. **`?installed=false&error=<code>` flash.** Show a dismissible error banner explaining which step failed and linking to setup docs.
 
 ### `/{slug}/settings` routing / membership checks
 
@@ -753,7 +753,7 @@ Each phase is independently landable and leaves the app in a working state.
 
 ### Phase 8 — Docs update
 
-- Extend `docs/team-setup.md` with a GitHub App installation section (the first version of that doc called this out as "not yet built" — update it to reflect reality).
+- Extend `docs/setup.md` with a GitHub App installation section (the first version of that doc called this out as "not yet built" — update it to reflect reality).
 - Add a troubleshooting entry for install-flow failures (error query param codes explained).
 - Update ADR-013's "Implementation is staged" list to mark the relevant items done.
 
@@ -817,7 +817,7 @@ Each phase is independently landable and leaves the app in a working state.
 - `dashboard/src/lib/db.ts` — `getGithubInstallationAsync(orgSlug)`
 
 **Docs — modified:**
-- `docs/team-setup.md` — GitHub App install section
+- `docs/setup.md` — GitHub App install section
 - `docs/decisions/013-github-integration-model.md` — mark items done
 
 ## Estimated Scope

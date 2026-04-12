@@ -1,90 +1,7 @@
 # AX — Agentic Coding DX Metrics
 
 **You're shipping PRs with Claude Code. But are they getting better?**
-AX is a CLI that measures what matters: cost per PR, first-pass acceptance, self-correction rate, and 13 other metrics that tell you whether your AI coding workflow is actually working.
-
-Three commands. Two minutes. Zero config files.
-
----
-
-## What it looks like
-
-```
-  acroos/escape-room-api
-  Last synced: 2026-03-25 05:42:47
-
-  METRIC                 VALUE    DESCRIPTION
-  ------                 -----    -----------
-  Avg post-open commits  2.0      Commits after PR opened
-  First-pass acceptance  100%     PRs merged without changes requested
-  CI success rate        100%     Checks passing on first push
-  PRs with tests         50%      PRs that include test file changes
-  Avg messages/PR        16.5     Human messages per PR
-  Avg token cost/PR      $23.66   Dollar cost per PR
-  Total token cost       $141.96  Across 6 PRs
-  Self-correction rate   97%      Agent error recovery without human help
-  Context efficiency     1.61     Files modified / files read
-  Total PRs              6
-```
-
-Drill into any PR for the full picture:
-
-```
-  PR #8: Add routes API, grade/type system, and gym stats
-  State: merged  |  Branch: routes-and-stats
-  +1594 -8 across 27 files
-
-  METRIC                   VALUE
-  ------                   -----
-  Post-open commits        2
-  First-pass accepted      Yes
-  CI success rate          100%
-  Includes tests           Yes
-  Diff churn (lines)       0
-  Line revisit rate        2.18
-  Messages                 18
-  Iteration depth          18
-  Token cost               $6.39
-  Self-correction rate     87%
-  Context efficiency       1.92
-  Error recovery attempts  2
-  Plan coverage            73%
-  Plan deviation           90%
-  Scope creep              No
-```
-
----
-
-## Install
-
-### Homebrew
-
-```bash
-brew install acroos/tap/ax
-```
-
-### From source
-
-```bash
-git clone https://github.com/acroos/ax.git
-cd ax
-make build
-# Binary at ./bin/ax
-```
-
-**Prerequisites:** git and the [GitHub CLI](https://cli.github.com/) (`gh`) authenticated. AX shells out to `git` and `gh` directly — no API keys, no SDK config.
-
----
-
-## Quick Start
-
-```bash
-ax sync --repo /path/to/your/repo   # Ingest git + GitHub data
-ax report                            # See aggregate metrics
-ax report --pr 8                     # Drill into a specific PR
-```
-
-That's it. You have data.
+AX measures what matters: cost per PR, first-pass acceptance, self-correction rate, and 13 other metrics that tell you whether your AI coding workflow is actually working.
 
 ---
 
@@ -106,63 +23,61 @@ Every metric has a dedicated doc explaining what it measures, why it matters, an
 
 ---
 
-## Automatic Sync
+## How It Works
 
-Set up once, never think about it again:
+AX is a managed service with three components:
 
-```bash
-ax init   # Installs Claude Code hooks + background GitHub polling
-```
+- **Go CLI** — Parses Claude Code session data from your machine and pushes it to the server. Installs hooks so this happens automatically.
+- **Rails API** — Ingests session data and GitHub webhooks, computes all 16 metrics server-side, manages orgs and auth.
+- **Next.js Dashboard** — Web UI at `https://ax-metrics.vercel.app` for viewing metrics, comparing developers, and managing your team.
 
-After this, metrics update automatically when Claude Code sessions end and when PRs are merged or closed.
+Data flows in two ways:
+1. **Claude Code sessions** — CLI parses local session files and pushes to the API
+2. **GitHub PR events** — Webhooks deliver PR, review, and CI data directly to the API
 
----
-
-## Dashboard
-
-```bash
-ax dashboard
-# Open http://localhost:3333
-```
-
-Dark-mode, Linear-inspired. Overview with aggregate metrics and sparklines, PR table with inline metrics, per-PR detail with all 15 metrics, and a compare page for team-wide developer leaderboards.
+Metrics are computed server-side when PRs reach a terminal state (merged or closed).
 
 ---
 
-## Export
+## Quick Start
 
-Machine-readable output for BI tools, spreadsheets, or custom integrations:
-
-```bash
-ax export --format csv --repo . --output metrics.csv
-ax export --format jsonl --all-repos | jq '.metrics.token_cost_usd'
-ax export --aggregate --format json
-```
-
-Formats: `json` (default), `jsonl` (streaming), `csv` (flat).
-
----
-
-## Team Mode
-
-AX has two modes:
-
-- **Local mode** — Go CLI + SQLite. Everything runs on your machine.
-- **Managed mode** — Your team's metrics flow to a shared Rails API at `app.ax.dev`, with a Next.js dashboard, GitHub OAuth, and org-based multi-tenancy.
-
-### Getting started with managed mode
+### 1. Install the CLI
 
 ```bash
-# Sign up at app.ax.dev (GitHub OAuth)
-# Copy your API key from the onboarding page
-
-ax init --team https://api.ax.dev --api-key ax_k1_... --user "Your Name"
-ax sync --repo .   # Syncs locally + pushes to managed server
+brew install acroos/tap/ax
 ```
 
-GitHub webhooks provide real-time metric finalization — no polling required.
+Or build from source:
 
-See the [Team Setup Guide](docs/team-setup.md) for details.
+```bash
+git clone https://github.com/acroos/ax.git
+cd ax && make build
+# Binary at ./bin/ax
+```
+
+### 2. Sign in to the dashboard
+
+Open `https://ax-metrics.vercel.app` and sign in with GitHub. You'll get an API key on the onboarding page.
+
+### 3. Connect the CLI
+
+```bash
+ax init --server https://ax.up.railway.app \
+        --api-key <your-key> \
+        --user "Your Name"
+```
+
+This writes your config to `~/.ax/config.json` and installs a Claude Code `SessionEnd` hook that automatically pushes session data after each coding session.
+
+### 4. Push your first data
+
+```bash
+ax push --repo .
+```
+
+After this, the hook handles it automatically. View results at `https://ax-metrics.vercel.app/{your-org-slug}`.
+
+See the [Setup Guide](docs/setup.md) for the full walkthrough including team invites.
 
 ---
 
@@ -175,14 +90,14 @@ AX is purpose-built for [Claude Code](https://docs.anthropic.com/en/docs/agents-
 ## Docs
 
 - [Metric Reference](docs/metrics/index.md) — All 16 metrics, explained
-- [Team Setup Guide](docs/team-setup.md) — Connect to the managed service
+- [Setup Guide](docs/setup.md) — Full setup walkthrough
 - [Architecture Decision Records](docs/decisions/) — Why things are the way they are
 
 ---
 
 ## Contributing
 
-Start with [CLAUDE.md](CLAUDE.md) — it covers project conventions, build commands, data flow, and the decision record process. Metric calculators live in `internal/metrics/` with corresponding test files. The `docs/` directory is treated as a first-class deliverable.
+Start with [CLAUDE.md](CLAUDE.md) — it covers project conventions, build commands, and the decision record process.
 
 ```bash
 make build    # Build to bin/ax
