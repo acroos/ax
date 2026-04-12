@@ -107,6 +107,92 @@ func TestParseSession(t *testing.T) {
 	}
 }
 
+func TestFindSessionFilesIncludesWorktrees(t *testing.T) {
+	// Set up a fake ~/.claude directory structure
+	claudeDir := t.TempDir()
+	projectsDir := filepath.Join(claudeDir, "projects")
+
+	repoPath := "/Users/dev/myrepo"
+	encodedRepo := "-Users-dev-myrepo"
+
+	// Create main repo session directory with a session file
+	mainDir := filepath.Join(projectsDir, encodedRepo)
+	if err := os.MkdirAll(mainDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mainDir, "session1.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a worktree session directory with a session file
+	wtDir := filepath.Join(projectsDir, encodedRepo+"-.claude-worktrees-feature-branch")
+	if err := os.MkdirAll(wtDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "session2.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create an unrelated project directory that should NOT be included
+	unrelatedDir := filepath.Join(projectsDir, encodedRepo+"-subdir")
+	if err := os.MkdirAll(unrelatedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(unrelatedDir, "session3.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := FindSessionFiles(claudeDir, repoPath)
+	if err != nil {
+		t.Fatalf("FindSessionFiles failed: %v", err)
+	}
+
+	if len(files) != 2 {
+		t.Fatalf("expected 2 session files (main + worktree), got %d: %v", len(files), files)
+	}
+
+	// Verify we got the right files
+	basenames := map[string]bool{}
+	for _, f := range files {
+		basenames[filepath.Base(f)] = true
+	}
+	if !basenames["session1.jsonl"] {
+		t.Error("missing main repo session file")
+	}
+	if !basenames["session2.jsonl"] {
+		t.Error("missing worktree session file")
+	}
+	if basenames["session3.jsonl"] {
+		t.Error("unrelated session file should not be included")
+	}
+}
+
+func TestFindSessionFilesWorktreeOnly(t *testing.T) {
+	// Test case where main repo has no sessions but worktree does
+	claudeDir := t.TempDir()
+	projectsDir := filepath.Join(claudeDir, "projects")
+
+	repoPath := "/Users/dev/myrepo"
+	encodedRepo := "-Users-dev-myrepo"
+
+	wtDir := filepath.Join(projectsDir, encodedRepo+"-.claude-worktrees-bugfix")
+	if err := os.MkdirAll(wtDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "session1.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := FindSessionFiles(claudeDir, repoPath)
+	if err != nil {
+		t.Fatalf("FindSessionFiles failed: %v", err)
+	}
+
+	if len(files) != 1 {
+		t.Fatalf("expected 1 worktree session file, got %d", len(files))
+	}
+}
+
 func TestIsHumanMessage(t *testing.T) {
 	tests := []struct {
 		content string

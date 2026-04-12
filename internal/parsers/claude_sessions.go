@@ -145,20 +145,41 @@ func LoadHistory(claudeDir string) (map[string][]HistoryEntry, error) {
 }
 
 // FindSessionFiles returns all session JSONL files for a given project path.
+// It also discovers sessions from Claude Code worktrees belonging to the same repo
+// (stored under <repo>/.claude/worktrees/<name>/).
 func FindSessionFiles(claudeDir, projectPath string) ([]string, error) {
 	// Claude Code stores project sessions in ~/.claude/projects/<encoded-path>/
 	encodedPath := strings.ReplaceAll(projectPath, "/", "-")
 	projectDir := filepath.Join(claudeDir, "projects", encodedPath)
 
-	if _, err := os.Stat(projectDir); os.IsNotExist(err) {
-		return nil, nil
+	var allMatches []string
+
+	if _, err := os.Stat(projectDir); err == nil {
+		matches, err := filepath.Glob(filepath.Join(projectDir, "*.jsonl"))
+		if err != nil {
+			return nil, fmt.Errorf("failed to glob session files: %w", err)
+		}
+		allMatches = append(allMatches, matches...)
 	}
 
-	matches, err := filepath.Glob(filepath.Join(projectDir, "*.jsonl"))
+	// Also find sessions from Claude Code worktrees for this repo.
+	// Worktrees are created at <repo>/.claude/worktrees/<name>/, and their
+	// sessions are stored under a separate encoded path. We glob for any
+	// project directory that matches the worktree naming pattern.
+	worktreePattern := filepath.Join(claudeDir, "projects", encodedPath+"-.claude-worktrees-*")
+	worktreeDirs, err := filepath.Glob(worktreePattern)
 	if err != nil {
-		return nil, fmt.Errorf("failed to glob session files: %w", err)
+		return nil, fmt.Errorf("failed to glob worktree directories: %w", err)
 	}
-	return matches, nil
+	for _, wtDir := range worktreeDirs {
+		matches, err := filepath.Glob(filepath.Join(wtDir, "*.jsonl"))
+		if err != nil {
+			return nil, fmt.Errorf("failed to glob worktree session files: %w", err)
+		}
+		allMatches = append(allMatches, matches...)
+	}
+
+	return allMatches, nil
 }
 
 // ParseSession reads a session JSONL file and extracts aggregated data.
