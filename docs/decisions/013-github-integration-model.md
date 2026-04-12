@@ -112,7 +112,7 @@ Rejected because:
 - Two env var sets in deployment (`GITHUB_CLIENT_ID/SECRET` for the OAuth App; `GITHUB_APP_ID/PRIVATE_KEY/WEBHOOK_SECRET` for the GitHub App).
 - Onboarding has two distinct steps: log in (personal) and install the GitHub App on the org (admin action). These are deliberately separated, but the second step must be clearly surfaced in the dashboard for first-time orgs.
 - Need to implement the installation lifecycle: install callback handling, `GithubInstallation` model, installation token minting with JWT signing, and the handler for the `installation` / `installation_repositories` webhook events. None of this exists yet.
-- `docs/team-setup.md` needs a section explaining the two-step setup to self-service customers.
+- `docs/setup.md` needs a section explaining the two-step setup to self-service customers.
 
 ### Scope for follow-up work
 
@@ -121,4 +121,4 @@ This ADR captures the architectural decision. Implementation is staged:
 1. **Immediate** (unblocks login): create the OAuth App, point env vars at it, verify sign-in works end-to-end.
 2. **Next** (separate PR): add `GithubInstallation` model, install-flow controller, installation webhook handler, and installation token client.
 3. **Then**: migrate existing repo sync code paths to use installation tokens instead of the placeholder user-token path.
-4. **Finally**: update `docs/team-setup.md` and the onboarding page in the dashboard to walk admins through both steps.
+4. **Finally**: update `docs/setup.md` and the onboarding page in the dashboard to walk admins through both steps.
