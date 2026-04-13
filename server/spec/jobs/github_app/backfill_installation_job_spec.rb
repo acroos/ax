@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe GithubApp::BackfillInstallationJob do
+  include ActiveJob::TestHelper
+
   let(:organization) { create(:organization) }
   let(:installation) do
     create(:github_installation,
@@ -120,6 +122,22 @@ RSpec.describe GithubApp::BackfillInstallationJob do
         body: [].to_json,
         headers: { "Content-Type" => "application/json" }
       )
+  end
+
+  # Stub review fetches used by BackfillRepoJob
+  before do
+    stub_request(:get, %r{api\.github\.com/repos/acme/.+/pulls/\d+/reviews})
+      .to_return(
+        status: 200,
+        body: [].to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    # BackfillInstallationJob now delegates to BackfillRepoJob —
+    # execute inline so assertions see the results.
+    allow(BackfillRepoJob).to receive(:perform_later) do |repo_id|
+      BackfillRepoJob.perform_now(repo_id)
+    end
   end
 
   describe "#perform" do

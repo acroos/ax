@@ -18,6 +18,9 @@ module WebhookHandlers
 
       metrics = ensure_pr_metrics(pr)
       metrics.update!(post_open_commits: 0) unless metrics.finalized?
+
+      # Correlate this PR's branch with existing sessions
+      SessionPrCorrelationService.new(repo).call
     end
   end
 end

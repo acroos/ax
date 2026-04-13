@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_13_002548) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_13_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -208,12 +208,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_002548) do
     t.string "github_repo"
     t.datetime "last_synced_at"
     t.bigint "organization_id"
-    t.string "path", null: false
+    t.string "path"
     t.string "remote_url"
     t.datetime "updated_at", null: false
     t.index ["github_installation_id"], name: "index_repos_on_github_installation_id"
+    t.index ["organization_id", "github_owner", "github_repo"], name: "index_repos_on_org_github_identity", unique: true
     t.index ["organization_id"], name: "index_repos_on_organization_id"
-    t.index ["path"], name: "index_repos_on_path", unique: true
+    t.index ["path"], name: "index_repos_on_path"
   end
 
   create_table "session_prs", force: :cascade do |t|

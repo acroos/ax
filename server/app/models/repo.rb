@@ -7,5 +7,5 @@ class Repo < ApplicationRecord
   belongs_to :organization, optional: true
   belongs_to :github_installation, optional: true
 
-  validates :path, presence: true, uniqueness: true
+  validates :github_owner, uniqueness: { scope: [ :organization_id, :github_repo ] }, allow_nil: true
 end
