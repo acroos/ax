@@ -10,13 +10,15 @@ Entry point: `cmd/ax/main.go` (Cobra-based).
 |---------|---------|
 | `ax init --api-key <key>` | Set up AX: validate server, save config, install Claude Code hooks |
 | `ax init --uninstall` | Remove all AX hooks |
-| `ax push --repo .` | Parse and push session data to the server |
+| `ax push --repo .` | Parse and push session data for a single repo |
+| `ax push --all` | Discover all repos and push sessions for each (bulk backfill/retry) |
 
 ## Package Structure
 
 ```
 internal/
   api/           Push payload types (PushPayload, PushResponse)
+  bulk/          Repo discovery (from history.jsonl) and bulk push orchestration
   config/        Config management (~/.ax/config.json)
   hooks/         Claude Code hook installation in ~/.claude/settings.json
   metrics/       Metric calculator library (pure functions, used by Rails port)
@@ -45,6 +47,25 @@ Returns `ParsedSession` structs. Also discovers sessions from Claude Code worktr
 - `Uninstall()` / `IsInstalled()` — Remove or check hook presence across all AX-managed events (`SessionEnd`, `Stop`)
 - Handles worktree resolution — if the CWD is a worktree path (`<repo>/.claude/worktrees/<name>/`), resolves back to the main repo
 - Preserves existing settings — reads the full JSON, modifies only hook entries
+
+## Bulk Push (`internal/bulk/`)
+
+`ax push --all` discovers all repos from `~/.claude/history.jsonl` and pushes sessions for each.
+
+**Discovery** (`discovery.go`):
+1. Reads `~/.claude/history.jsonl` to get unique project paths
+2. Resolves worktree paths (`/.claude/worktrees/<name>`) to parent repo roots
+3. Runs `git remote get-url origin` to identify owner/repo
+4. Groups project paths by owner/repo, deduplicates session files by basename
+5. Filters out paths that don't exist or lack a git remote (logged as skipped)
+
+**Push** (`push.go`):
+- Sessions are chunked into batches of 100 to stay under the 10MB payload limit
+- Repos are pushed in parallel (default 3 workers)
+- ANSI-based progress display updates in place (falls back to simple output for non-TTY)
+- Failed chunks (after the push client's built-in retry) are collected and written to `~/.ax/logs/bulk-push-<timestamp>.log`
+
+The server upserts sessions by ID, so re-pushing is safe — no data duplication.
 
 ## Push Client (`internal/push/client.go`)
 - `Push(payload)` → `POST /api/v1/push` with Bearer token
@@ -77,7 +98,9 @@ Pure function metric calculators, kept as a Go library. These are being ported t
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `cmd/ax/main.go` | ~250 | CLI commands: init and push |
+| `cmd/ax/main.go` | ~370 | CLI commands: init, push, push --all |
+| `internal/bulk/discovery.go` | ~170 | Repo discovery from history.jsonl |
+| `internal/bulk/push.go` | ~280 | Bulk push orchestration, progress, error logging |
 | `internal/parsers/claude_sessions.go` | ~350 | Session JSONL parsing |
 | `internal/hooks/hooks.go` | ~200 | Claude Code hook management |
 | `internal/push/client.go` | ~140 | HTTP client for server API |

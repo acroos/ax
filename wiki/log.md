@@ -4,6 +4,14 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-13 — Add `ax push --all` bulk push command
+
+**Pages updated:** go-cli, CLAUDE.md
+
+**Summary:** Added `ax push --all` to discover all repos from `~/.claude/history.jsonl` and bulk push sessions. New `internal/bulk/` package handles repo discovery (with worktree resolution and deduplication), session chunking (batches of 100), parallel push (3 workers), ANSI progress display, and error logging to `~/.ax/logs/`. Includes confirmation prompt before push and polished completion summary.
+
+---
+
 ## 2026-04-13 — Dashboard bug fixes and backfill improvements
 
 **Pages updated:** dashboard, rails-server, data-flow
