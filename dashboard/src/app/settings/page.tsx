@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function SettingsPage() {
   const [rotatingKey, setRotatingKey] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/v1/api_key/reveal")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.key) setNewKey(data.key);
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleRotateKey() {
     setRotatingKey(true);

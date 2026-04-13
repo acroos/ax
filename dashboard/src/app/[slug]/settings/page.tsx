@@ -1,5 +1,16 @@
 import { getCurrentUser } from "@/lib/auth";
+import { fetchAPI, orgApiPath } from "@/lib/db";
 import { redirect } from "next/navigation";
+import { MembersSection, type Member } from "./members-section";
+import { InvitesSection, type Invite } from "./invites-section";
+
+async function fetchSafe<T>(path: string): Promise<T | null> {
+  try {
+    return await fetchAPI<T>(path);
+  } catch {
+    return null;
+  }
+}
 
 export default async function OrgSettingsPage({
   params,
@@ -10,6 +21,17 @@ export default async function OrgSettingsPage({
   if (!user) redirect("/login");
 
   const { slug } = await params;
+
+  const [membersData, invites] = await Promise.all([
+    fetchSafe<{ members: Member[]; current_user_role: string }>(
+      orgApiPath(slug, "/members")
+    ),
+    fetchSafe<Invite[]>(orgApiPath(slug, "/invites")),
+  ]);
+
+  const members = membersData?.members ?? [];
+  const currentUserRole = membersData?.current_user_role ?? "member";
+  const isAdmin = currentUserRole === "admin" || currentUserRole === "owner";
 
   return (
     <div className="space-y-8">
@@ -23,19 +45,18 @@ export default async function OrgSettingsPage({
         </p>
       </div>
 
-      <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-4">
-        <h2 className="text-sm font-medium text-text-primary">Members</h2>
-        <p className="text-xs text-text-tertiary">
-          Member management UI coming in a follow-up update.
-        </p>
-      </div>
+      <MembersSection
+        members={members}
+        currentUserId={user.id}
+        isAdmin={isAdmin}
+        slug={slug}
+      />
 
-      <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-4">
-        <h2 className="text-sm font-medium text-text-primary">Invites</h2>
-        <p className="text-xs text-text-tertiary">
-          Invite management UI coming in a follow-up update.
-        </p>
-      </div>
+      <InvitesSection
+        invites={invites ?? []}
+        isAdmin={isAdmin}
+        slug={slug}
+      />
     </div>
   );
 }

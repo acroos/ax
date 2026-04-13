@@ -19,10 +19,17 @@ Authorization: Bearer ax_k1_<hex>
 
 **Lifecycle**:
 1. Generated automatically when a user first signs in via GitHub OAuth
-2. Displayed during onboarding so the user can copy it
-3. Used in `ax init --server <url> --api-key <key>` to configure the CLI
-4. Can be rotated via `POST /api/v1/api_key/rotate` (revokes old, generates new)
-5. `last_used_at` updated on each authenticated request
+2. Raw key cached in `Rails.cache` for 1 hour (key: `api_key_reveal:{user_id}`)
+3. Displayed during onboarding via `GET /api/v1/api_key/reveal` (one-time read — cache entry deleted after first read)
+4. Used in `ax init --api-key <key>` to configure the CLI
+5. Can be rotated via `POST /api/v1/api_key/rotate` (revokes old, generates new, caches new key for reveal)
+6. `last_used_at` updated on each authenticated request
+
+**Reveal endpoint** (`GET /api/v1/api_key/reveal`):
+- Session-authenticated
+- Reads raw key from `Rails.cache`, deletes cache entry, returns `{ key: raw_key }`
+- Returns `{ key: null }` if cache is empty (already revealed or expired)
+- Used by the onboarding page and settings page to display the key exactly once
 
 **Validation** (`ApiKey.authenticate`):
 1. Check prefix matches `ax_k1_`
@@ -93,16 +100,18 @@ When a user signs in for the first time:
 All data access is scoped to organizations. The user must be a member of the org to access its data.
 
 ### Roles
-| Role | Can read data | Can manage members/invites | Can delete org |
-|------|--------------|---------------------------|----------------|
-| member | Yes | No | No |
-| admin | Yes | Yes | No |
-| owner | Yes | Yes | Yes |
+| Role | Can read data | Can view members/invites | Can manage members/invites | Can delete org |
+|------|--------------|------------------------|---------------------------|----------------|
+| member | Yes | Yes | No | No |
+| admin | Yes | Yes | Yes | No |
+| owner | Yes | Yes | Yes | Yes |
 
 ### Enforcement
 - `find_org!` — Loads org by slug, returns 403 if user is not a member
 - `find_org_as_admin!` — Same, but requires admin or owner role
 - Implemented in `Api::V1::BaseController`
+- Members index and invites index use `find_org!` (any member can read)
+- Members update/destroy and invites create/destroy use `find_org_as_admin!`
 
 ## Middleware (Dashboard)
 

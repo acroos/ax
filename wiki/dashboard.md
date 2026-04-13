@@ -12,11 +12,11 @@ Location: `dashboard/`
 |-------|------|---------------|
 | `/` | Root | Redirects to default org or login |
 | `/login` | Login | GitHub OAuth sign-in |
-| `/onboarding` | Onboarding | First-time setup with API key display |
+| `/onboarding` | Onboarding | Multi-step guided setup: welcome, API key reveal, CLI install, done |
 | `/prs/[id]` | PR Detail | All metrics for one PR, grouped by category |
 | `/docs` | Docs Index | Grid of all metric documentation pages |
 | `/docs/[slug]` | Metric Doc | Individual metric explanation (rendered from `docs/metrics/*.md`) |
-| `/settings` | User Settings | API key view and rotation |
+| `/settings` | User Settings | API key reveal-on-mount and rotation |
 
 ### Org-Scoped Routes
 
@@ -25,7 +25,7 @@ Location: `dashboard/`
 | `/{slug}` | Org Overview | Redirects to `/{slug}/prs` |
 | `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics |
 | `/{slug}/compare` | Compare | Org-scoped developer leaderboard, individual vs team averages, time filtering |
-| `/{slug}/settings` | Org Settings | Members and invite management |
+| `/{slug}/settings` | Org Settings | Members list (role management, removal) and invites (create, list, revoke) |
 
 ### Auth Routes
 
@@ -107,6 +107,15 @@ Metric documentation lives in `docs/metrics/*.md` and is rendered at `/docs` and
 - Filenames map to slugs: `post-open-commits.md` → `/docs/post-open-commits`
 - The docs index reads all `.md` files, extracts the h1 title, and displays a clickable grid
 
+## API Proxy
+
+Client-side `fetch("/api/v1/...")` calls are proxied through a Next.js catch-all route handler at `src/app/api/v1/[...path]/route.ts`. This route:
+- Reads the `_ax_session` cookie
+- Forwards the request to `${AX_API_URL}/api/v1/${path}` with the session token as `X-Ax-Session` header
+- Returns the Rails response transparently
+
+This avoids CORS issues and keeps the API URL server-side only.
+
 ## Authentication
 
 See [Authentication](authentication.md) for the full flow.
@@ -114,6 +123,7 @@ See [Authentication](authentication.md) for the full flow.
 Key files:
 - `src/lib/auth.ts` — `getCurrentUser()`
 - `src/app/auth/accept/route.ts` — Cross-origin cookie handoff
+- `src/app/api/v1/[...path]/route.ts` — API proxy for client components
 - `src/middleware.ts` — Auth enforcement (redirects unauthenticated users to `/login`)
 
 The middleware enforces auth on all routes. Public paths are excluded: `/login`, `/invite`, `/auth`, `/docs`, `/_next`.
@@ -138,5 +148,9 @@ The middleware enforces auth on all routes. Public paths are excluded: `/login`,
 | `src/app/[slug]/compare/page.tsx` | Org-scoped developer comparison |
 | `src/app/prs/[id]/page.tsx` | PR detail |
 | `src/app/globals.css` | Theme, tokens, animations |
+| `src/app/api/v1/[...path]/route.ts` | API proxy for client components |
+| `src/app/onboarding/onboarding-steps.tsx` | Multi-step onboarding client component |
+| `src/app/[slug]/settings/members-section.tsx` | Member management client component |
+| `src/app/[slug]/settings/invites-section.tsx` | Invite management client component |
 | `src/middleware.ts` | Auth enforcement |
 | `next.config.ts` | Build config |

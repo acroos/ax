@@ -2,7 +2,8 @@ module Api
   module V1
     class OrgInvitesController < BaseController
       before_action :require_session_auth!
-      before_action :find_org_as_admin!
+      before_action :find_org!
+      before_action :find_org_as_admin!, only: [ :create, :destroy ]
 
       def index
         render json: @org.invites.pending.map { |i|

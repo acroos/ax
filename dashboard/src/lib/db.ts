@@ -3,7 +3,7 @@
 const API_URL = process.env.AX_API_URL;
 const API_KEY = process.env.AX_API_KEY || "";
 
-async function fetchAPI<T>(urlPath: string): Promise<T> {
+export async function fetchAPI<T>(urlPath: string): Promise<T> {
   const url = `${API_URL}${urlPath}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -32,7 +32,7 @@ async function fetchAPI<T>(urlPath: string): Promise<T> {
 }
 
 // Org-scoped API helper
-function orgApiPath(orgSlug: string, path: string): string {
+export function orgApiPath(orgSlug: string, path: string): string {
   return `/api/v1/orgs/${orgSlug}${path}`;
 }
 
