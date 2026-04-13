@@ -33,7 +33,7 @@ class MetricsComputer
     net_added = @pr.additions || 0
 
     churn = total_added - net_added
-    [churn, 0].max
+    [ churn, 0 ].max
   end
 
   def compute_has_tests

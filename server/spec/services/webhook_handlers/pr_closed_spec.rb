@@ -34,14 +34,14 @@ RSpec.describe WebhookHandlers::PrClosed do
     stub_request(:get, %r{api\.github\.com/repos/octocat/hello-world/pulls/1/files})
       .to_return(
         status: 200,
-        body: [{ filename: "src/app.rb", additions: 10, deletions: 2, changes: 12, status: "modified" }].to_json,
+        body: [ { filename: "src/app.rb", additions: 10, deletions: 2, changes: 12, status: "modified" } ].to_json,
         headers: { "Content-Type" => "application/json" }
       )
 
     stub_request(:get, %r{api\.github\.com/repos/octocat/hello-world/pulls/1/commits})
       .to_return(
         status: 200,
-        body: [{ sha: "bbb222", commit: { author: { name: "octocat" }, message: "wip" }, stats: { additions: 10, deletions: 2 } }].to_json,
+        body: [ { sha: "bbb222", commit: { author: { name: "octocat" }, message: "wip" }, stats: { additions: 10, deletions: 2 } } ].to_json,
         headers: { "Content-Type" => "application/json" }
       )
   end
