@@ -2,6 +2,7 @@ class Organization < ApplicationRecord
   has_many :org_memberships, dependent: :destroy
   has_many :users, through: :org_memberships
   has_many :repos, dependent: :destroy
+  has_many :github_installations, dependent: :destroy
   has_many :invites, dependent: :destroy
   belongs_to :created_by, class_name: "User"
 
