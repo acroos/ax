@@ -16,7 +16,7 @@ Location: `dashboard/`
 | `/prs/[id]` | PR Detail | All metrics for one PR, grouped by category |
 | `/docs` | Docs Index | Grid of all metric documentation pages |
 | `/docs/[slug]` | Metric Doc | Individual metric explanation (rendered from `docs/metrics/*.md`) |
-| `/settings` | User Settings | API key reveal-on-mount and rotation |
+| `/settings` | Account | Profile (GitHub identity), API key rotation, logout |
 
 ### Org-Scoped Routes
 
@@ -32,6 +32,7 @@ Location: `dashboard/`
 | Route | Purpose |
 |-------|---------|
 | `/auth/accept` | Cross-origin session handoff from Rails OAuth callback |
+| `/auth/logout` | Destroy session (Rails + cookie) and redirect to login |
 | `/invite/[token]` | Invite acceptance flow |
 
 ## Data Layer
@@ -153,6 +154,9 @@ The middleware enforces auth on all routes. Public paths are excluded: `/login`,
 | `src/app/prs/[id]/page.tsx` | PR detail |
 | `src/app/globals.css` | Theme, tokens, animations |
 | `src/app/api/v1/[...path]/route.ts` | API proxy for client components |
+| `src/app/settings/api-key-section.tsx` | API key reveal + rotate client component |
+| `src/app/settings/logout-button.tsx` | Logout button client component |
+| `src/app/auth/logout/route.ts` | Logout route handler (destroys session, clears cookie) |
 | `src/app/onboarding/onboarding-steps.tsx` | Multi-step onboarding client component |
 | `src/app/[slug]/settings/github-app-card.tsx` | GitHub App installation card (3-state: missing/active/suspended, connected repos list, syncing indicator, reinstall flow) |
 | `src/app/[slug]/settings/members-section.tsx` | Member management client component |
