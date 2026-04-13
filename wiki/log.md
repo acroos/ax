@@ -4,6 +4,15 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-13 — Add /api/v1/ping endpoint for CLI API key validation
+
+**Pages updated:** go-cli, authentication
+
+- Added `GET /api/v1/ping` endpoint with API key auth — used by `ax init` to validate keys
+- Fixed CLI `Ping()` which was hitting `/api/v1/repos` (session-auth only), causing all API key validations to fail with 401
+
+---
+
 ## 2026-04-12 — Dashboard performance improvements
 
 **Pages updated:** dashboard, rails-server

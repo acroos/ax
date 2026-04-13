@@ -37,7 +37,7 @@ Authorization: Bearer ax_k1_<hex>
 3. bcrypt compare against each `key_hash`
 4. Return the associated user
 
-**Used by**: `POST /api/v1/push`, `GET /api/v1/watch-status`
+**Used by**: `POST /api/v1/push`, `GET /api/v1/ping`, `GET /api/v1/watch-status`
 
 ## Dashboard → Rails API: Session Token
 
