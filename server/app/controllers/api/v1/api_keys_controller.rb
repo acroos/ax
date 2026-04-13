@@ -17,6 +17,13 @@ module Api
         raw_key = ApiKey.generate_for(current_user)
         render json: { key: raw_key }
       end
+
+      def reveal
+        cache_key = "api_key_reveal:#{current_user.id}"
+        raw_key = Rails.cache.read(cache_key)
+        Rails.cache.delete(cache_key) if raw_key
+        render json: { key: raw_key }
+      end
     end
   end
 end

@@ -8,6 +8,7 @@ class ApiKey < ApplicationRecord
   def self.generate_for(user)
     raw_key = "#{PREFIX}#{SecureRandom.hex(32)}"
     create!(user: user, key_hash: BCrypt::Password.create(raw_key))
+    Rails.cache.write("api_key_reveal:#{user.id}", raw_key, expires_in: 1.hour)
     raw_key
   end
 

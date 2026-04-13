@@ -55,6 +55,7 @@ Rails.application.routes.draw do
       # User settings
       resource :api_key, only: [ :show ] do
         post :rotate
+        get :reveal
       end
     end
   end

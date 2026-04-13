@@ -4,6 +4,22 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-12 — API key reveal, invite management UI, and onboarding flow
+
+**Pages updated:** authentication, dashboard
+
+**Summary:** Added three features for the new-user onboarding journey:
+
+1. **API key reveal endpoint** — `GET /api/v1/api_key/reveal` returns the raw API key via a cache-based one-time-read mechanism. Raw key is cached for 1 hour on creation/rotation, deleted after first read. Enables the onboarding page and settings page to display the key.
+
+2. **Onboarding flow redesign** — `/onboarding` is now a 4-step guided experience: welcome, API key display (with copy button), CLI install instructions (pre-filled with actual key), and completion CTA. Implemented as server component wrapper + client stepper component.
+
+3. **Invite & member management UI** — `/{slug}/settings` now has full member list (with role change dropdowns and remove buttons for admins) and invite management (create form, pending list, revoke, copyable invite links). Added Settings nav link to sidebar. Relaxed Rails permissions: members and invites index endpoints now require org membership (not admin), while mutations still require admin.
+
+4. **API proxy route** — Added `dashboard/src/app/api/v1/[...path]/route.ts` catch-all proxy that forwards client-side fetch calls to Rails API with `_ax_session` cookie → `X-Ax-Session` header translation.
+
+---
+
 ## 2026-04-12 — GitHub App webhook routing for installation events (Phase 4)
 
 **Pages updated:** rails-server
@@ -19,7 +35,6 @@ Append-only record of wiki changes. Newest entries first.
 **Summary:** Added the GitHub App install flow — Phase 3 of the github-app-installation plan. New Rails endpoints: `POST /api/v1/orgs/:slug/github_installation/install_url` (admin-only, returns signed install URL), `GET /api/v1/orgs/:slug/github_installation` (returns installation state + user role), and `GET /github/installations/callback` (handles redirect back from GitHub after install). Uses Rails' `MessageVerifier` for short-lived signed state tokens. Dashboard settings page (`/{slug}/settings`) now shows a GitHub App integration card with install button (admin), connected status, or suspended warning. Non-admins see a read-only view.
 
 ---
-
 ## 2026-04-12 — Fix session end hook and simplify ax init
 
 **Pages updated:** go-cli

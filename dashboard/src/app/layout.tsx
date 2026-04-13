@@ -111,6 +111,19 @@ const DocsIcon = (
   </svg>
 );
 
+const SettingsIcon = (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="opacity-60">
+    <path
+      d="M7.5 9.5a2 2 0 100-4 2 2 0 000 4z"
+      stroke="currentColor" strokeWidth="1.2"
+    />
+    <path
+      d="M12.3 9.2l-.7-.4a4.5 4.5 0 000-2.6l.7-.4a.5.5 0 00.2-.7l-.8-1.3a.5.5 0 00-.7-.2l-.7.4a4.5 4.5 0 00-2.2-1.3V2a.5.5 0 00-.5-.5H6.1a.5.5 0 00-.5.5v.7A4.5 4.5 0 003.4 4L2.7 3.6a.5.5 0 00-.7.2l-.7 1.3a.5.5 0 00.2.7l.7.4a4.5 4.5 0 000 2.6l-.7.4a.5.5 0 00-.2.7l.8 1.3a.5.5 0 00.7.2l.7-.4a4.5 4.5 0 002.2 1.3V13a.5.5 0 00.5.5h1.5a.5.5 0 00.5-.5v-.7a4.5 4.5 0 002.2-1.3l.7.4a.5.5 0 00.7-.2l.7-1.3a.5.5 0 00-.1-.7z"
+      stroke="currentColor" strokeWidth="1.2"
+    />
+  </svg>
+);
+
 async function Sidebar() {
   const user = await getCurrentUser();
 
@@ -157,6 +170,7 @@ async function Sidebar() {
         <NavLink href={overviewHref} icon={HomeIcon}>Overview</NavLink>
         <NavLink href={`${base}/prs`} icon={PRIcon}>Pull Requests</NavLink>
         <NavLink href={`${base}/compare`} icon={CompareIcon}>Compare</NavLink>
+        <NavLink href={`${base}/settings`} icon={SettingsIcon}>Settings</NavLink>
         <NavLink href="/docs" icon={DocsIcon}>Docs</NavLink>
       </nav>
 

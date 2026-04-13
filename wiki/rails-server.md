@@ -100,7 +100,9 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `GET` | `/users/auth/github/callback` | OAuth callback → create user, generate session |
 | `GET` | `/auth/me` | Current user info + orgs |
 | `POST` | `/auth/logout` | Destroy session |
-| `GET/POST` | `/api/v1/api_key[/rotate]` | View or rotate CLI API key |
+| `GET` | `/api/v1/api_key` | View API key metadata |
+| `POST` | `/api/v1/api_key/rotate` | Rotate CLI API key (returns raw key once) |
+| `GET` | `/api/v1/api_key/reveal` | One-time read of raw API key from cache |
 
 ### Other
 

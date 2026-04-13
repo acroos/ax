@@ -10,6 +10,18 @@ RSpec.describe ApiKey, type: :model do
       expect(raw_key.length).to eq(70) # "ax_k1_" + 64 hex chars
       expect(user.reload.api_key).to be_present
     end
+
+    it "caches the raw key for one-time reveal" do
+      original_cache = Rails.cache
+      Rails.cache = ActiveSupport::Cache::MemoryStore.new
+
+      user = create(:user)
+      raw_key = ApiKey.generate_for(user)
+
+      expect(Rails.cache.read("api_key_reveal:#{user.id}")).to eq(raw_key)
+    ensure
+      Rails.cache = original_cache
+    end
   end
 
   describe ".authenticate" do
