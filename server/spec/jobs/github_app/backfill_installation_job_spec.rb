@@ -141,7 +141,6 @@ RSpec.describe GithubApp::BackfillInstallationJob do
   end
 
   describe "#perform" do
-
     it "creates repos for all repositories in the installation" do
       expect { described_class.new.perform(installation.id) }
         .to change(Repo, :count).by(2)
