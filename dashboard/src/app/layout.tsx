@@ -183,7 +183,7 @@ async function Sidebar() {
         <NavLink href={overviewHref} icon={HomeIcon}>Overview</NavLink>
         <NavLink href={`${base}/prs`} icon={PRIcon}>Pull Requests</NavLink>
         <NavLink href={`${base}/compare`} icon={CompareIcon}>Compare</NavLink>
-        <NavLink href={`${base}/settings`} icon={SettingsIcon}>Settings</NavLink>
+        <NavLink href={`${base}/settings`} icon={SettingsIcon}>Org Settings</NavLink>
         <NavLink href="/docs" icon={DocsIcon}>Docs</NavLink>
       </nav>
 
@@ -227,7 +227,7 @@ async function Sidebar() {
               {user.display_name || user.github_username}
             </span>
             <Link href="/settings" className="text-[10px] text-text-tertiary hover:text-text-primary">
-              Settings
+              Account
             </Link>
           </div>
         </div>

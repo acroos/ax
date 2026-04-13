@@ -4,6 +4,18 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-13 — Improve user settings page
+
+**Pages updated:** dashboard
+
+- `/settings` page renamed from "Settings" to "Account" with clearer user-scoped framing
+- Added profile section showing GitHub identity (avatar, display name, username, email)
+- Added logout button with new `/auth/logout` route handler
+- API key section extracted to `api-key-section.tsx` client component
+- Sidebar nav label updated: org settings link says "Org Settings", user menu link says "Account"
+
+---
+
 ## 2026-04-13 — Redesign data ingestion pipeline for immediate PR visibility
 
 **Pages updated:** data-flow (rewritten), rails-server
