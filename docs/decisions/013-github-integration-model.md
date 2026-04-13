@@ -114,11 +114,11 @@ Rejected because:
 - Need to implement the installation lifecycle: install callback handling, `GithubInstallation` model, installation token minting with JWT signing, and the handler for the `installation` / `installation_repositories` webhook events. None of this exists yet.
 - `docs/setup.md` needs a section explaining the two-step setup to self-service customers.
 
-### Scope for follow-up work
+### Implementation status
 
-This ADR captures the architectural decision. Implementation is staged:
+All staged items from this ADR are complete:
 
-1. **Immediate** (unblocks login): create the OAuth App, point env vars at it, verify sign-in works end-to-end.
-2. **Next** (separate PR): add `GithubInstallation` model, install-flow controller, installation webhook handler, and installation token client.
-3. **Then**: migrate existing repo sync code paths to use installation tokens instead of the placeholder user-token path.
-4. **Finally**: update `docs/setup.md` and the onboarding page in the dashboard to walk admins through both steps.
+1. ~~**Immediate** (unblocks login): create the OAuth App, point env vars at it, verify sign-in works end-to-end.~~ **Done.**
+2. ~~**Next** (separate PR): add `GithubInstallation` model, install-flow controller, installation webhook handler, and installation token client.~~ **Done.** See `server/app/models/github_installation.rb`, `server/app/controllers/github_app/installations_controller.rb`, `server/app/services/webhook_handlers/installation_*.rb`, and `server/app/services/github_app/`.
+3. ~~**Then**: migrate existing repo sync code paths to use installation tokens instead of the placeholder user-token path.~~ **Done.** Backfill job and webhook handlers use installation tokens via `GithubApp::Client`.
+4. ~~**Finally**: update `docs/setup.md` and the onboarding page in the dashboard to walk admins through both steps.~~ **Done.** Setup guide includes Step 5 for GitHub App installation; dashboard settings page shows the GitHub App card with install, status, and management UI.
