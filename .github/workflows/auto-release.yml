@@ -29,6 +29,8 @@ jobs:
   auto-tag:
     needs: wait-for-ci
     runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.bump.outputs.new_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -58,3 +60,29 @@ jobs:
         run: |
           git tag "${{ steps.bump.outputs.new_tag }}"
           git push origin "${{ steps.bump.outputs.new_tag }}"
+
+  # Run GoReleaser directly — tags pushed by GITHUB_TOKEN don't trigger
+  # other workflows, so we can't rely on release.yml being triggered.
+  goreleaser:
+    needs: auto-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.auto-tag.outputs.new_tag }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
