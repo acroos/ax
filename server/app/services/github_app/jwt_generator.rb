@@ -16,7 +16,8 @@ module GithubApp
     end
 
     def self.private_key
-      OpenSSL::PKey::RSA.new(ENV.fetch("GITHUB_APP_PRIVATE_KEY"))
+      pem = ENV.fetch("GITHUB_APP_PRIVATE_KEY").gsub("\\n", "\n")
+      OpenSSL::PKey::RSA.new(pem)
     end
   end
 end
