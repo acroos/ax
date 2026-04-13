@@ -61,7 +61,7 @@ export default async function OrgPRsPage({
           Pull Requests
         </h1>
         <p className="text-[13px] text-text-secondary mt-1">
-          {prs.length} finalized pull request{prs.length !== 1 && "s"}
+          {prs.length} pull request{prs.length !== 1 && "s"}
         </p>
       </div>
 
@@ -155,7 +155,12 @@ export default async function OrgPRsPage({
                   })()}
                 </td>
                 <td className="px-3 py-3 text-center">
-                  <StateBadge state={pr.state} />
+                  <div className="flex items-center justify-center gap-1.5">
+                    <StateBadge state={pr.state} />
+                    {pr.metrics && !pr.metrics.metrics_finalized && (
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber animate-pulse" title="Metrics pending" />
+                    )}
+                  </div>
                 </td>
                 <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
                   {pr.metrics?.post_open_commits ?? "\u2014"}

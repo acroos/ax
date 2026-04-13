@@ -4,6 +4,22 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-13 — Redesign data ingestion pipeline for immediate PR visibility
+
+**Pages updated:** data-flow (rewritten), rails-server
+
+**Summary:** Complete overhaul of data ingestion to fix the empty pull requests tab. Core changes:
+- **Repo identity**: canonical lookup by `(org_id, github_owner, github_repo)` instead of local filesystem path. Prevents duplicates across developers and backfill/push ordering.
+- **BackfillRepoJob**: new single-repo backfill job extracted from BackfillInstallationJob. Triggered by: push, GitHub App install, repo addition, daily reconciliation.
+- **SessionPrCorrelationService**: new server-side session-to-PR correlation by branch match. Computes session-derived metrics (cost, messages, depth) on matched PRs.
+- **Scoped write protection**: PrMetrics GitHub-derived fields lock after settlement; session-derived fields remain updatable via `update_session_metrics!` for late-arriving session data.
+- **Progressive visibility**: dashboard shows all PRs (not just finalized). Aggregates still use settled PRs only.
+- **ReconcileReposJob**: daily scheduled job that re-syncs all repos from GitHub API as a self-healing safety net.
+- **Backfill on push**: PushService triggers BackfillRepoJob after each push if the repo has a GitHub App linked.
+- **Backfill on repo addition**: InstallationRepositories webhook triggers BackfillRepoJob for newly added repos.
+
+---
+
 ## 2026-04-13 — Add `ax push --all` bulk push command
 
 **Pages updated:** go-cli, CLAUDE.md

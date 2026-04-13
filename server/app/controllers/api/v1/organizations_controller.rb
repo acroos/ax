@@ -36,9 +36,9 @@ module Api
 
       def prs
         prs = Pr
-          .joins(:pr_metrics, :repo)
+          .joins(:repo)
           .where(repos: { organization_id: @org.id })
-          .where(pr_metrics: { metrics_finalized: true })
+          .left_joins(:pr_metrics)
           .includes(:pr_metrics, :repo)
           .order(created_at: :desc)
 

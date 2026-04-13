@@ -17,6 +17,8 @@ class PushService
       repo_metrics: 0
     }
 
+    repo = nil
+
     ActiveRecord::Base.transaction do
       repo = upsert_repo!
       counts[:repos] = 1
@@ -32,28 +34,40 @@ class PushService
       counts[:repo_metrics] = upsert_repo_metrics(repo)
     end
 
+    # After transaction commits, trigger async backfill or correlation
+    trigger_post_push(repo) if repo
+
     counts
   end
 
   private
 
   def upsert_repo!
-    repo = Repo.find_or_initialize_by(path: @params[:repo_path])
+    owner = @params[:owner]
+    repo_name = @params[:repo]
+    user_org_ids = @user.organization_ids
+
+    # Canonical lookup: github identity within user's orgs
+    repo = Repo.find_by(github_owner: owner, github_repo: repo_name, organization_id: user_org_ids) if owner.present? && repo_name.present?
+
+    # Fallback: path-based lookup (legacy)
+    repo ||= Repo.find_by(path: @params[:repo_path]) if @params[:repo_path].present?
+
+    repo ||= Repo.new
 
     if repo.organization_id.present?
-      # Existing repo — validate user is a member of its org
       unless @user.member_of?(repo.organization)
         raise Error, "You are not a member of the organization that owns this repository"
       end
     else
-      # New repo (or repo without an org) — assign to user's personal org
       repo.organization = @user.personal_org
     end
 
     repo.update!(
+      path: @params[:repo_path] || "#{owner}/#{repo_name}",
       remote_url: @params[:remote_url],
-      github_owner: @params[:owner],
-      github_repo: @params[:repo],
+      github_owner: owner,
+      github_repo: repo_name,
       last_synced_at: Time.current
     )
     repo
@@ -194,6 +208,14 @@ class PushService
       unmerged_rate: rm[:unmerged_rate]
     )
     1
+  end
+
+  def trigger_post_push(repo)
+    if repo.github_installation_id.present?
+      BackfillRepoJob.perform_later(repo.id)
+    else
+      SessionPrCorrelationService.new(repo).call
+    end
   end
 
   def to_bool(value)

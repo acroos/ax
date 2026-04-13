@@ -48,11 +48,11 @@ See [Authentication](authentication.md) for how these are used across modes.
 
 **PrFile** stores file paths fetched from the GitHub API at PR finalization. Used by server-side metric computation (has_tests, line_revisit_rate).
 
-**PrMetrics** has a `before_update` callback (`prevent_finalized_update`) that blocks changes once `metrics_finalized = true`. This ensures metric immutability after PR closure.
+**PrMetrics** has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`. Session-derived fields (messages_per_pr, token_cost_usd, iteration_depth, etc.) remain updatable via `update_session_metrics!` to support late-arriving session data.
 
 **User** automatically processes pending invites on creation — if someone was invited by GitHub username before they signed up, the invite is accepted on first login.
 
-**Repo** is auto-assigned to the pushing user's personal org on first push. Once assigned, org ownership is validated on subsequent pushes.
+**Repo** is identified canonically by `(organization_id, github_owner, github_repo)`. The `path` field is informational and non-unique. PushService looks up repos by `github_owner/github_repo` within the user's orgs, falling back to `path` for legacy compatibility. On first push, repos are auto-assigned to the user's personal org.
 
 ## API Endpoints
 
@@ -72,9 +72,9 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `GET` | `/api/v1/orgs/:slug` | Org details |
 | `GET` | `/api/v1/orgs/:slug/repos` | List org repos |
 | `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership) |
-| `GET` | `/api/v1/orgs/:slug/prs` | All finalized PRs across all org repos |
+| `GET` | `/api/v1/orgs/:slug/prs` | All PRs across all org repos (settled + open) |
 | `GET` | `/api/v1/orgs/:slug/metrics` | Aggregated metrics across all org repos |
-| `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | Finalized PRs with all metrics |
+| `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | All PRs with available metrics |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/metrics` | Aggregated metrics (averages, sums) |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/timeline` | PR timeline for trend charts |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/repo-metrics` | Repo-level metrics (unmerged spend) |
@@ -120,11 +120,21 @@ See [Authentication](authentication.md) for how these are used across modes.
 ### PushService (`app/services/push_service.rb`)
 Main ingestion orchestrator. Called by the push controller.
 
-1. Upserts repo (auto-assigns to user's personal org if new)
+1. Upserts repo by `github_owner/github_repo` (canonical lookup, falls back to path)
 2. Validates user is member of repo's org
 3. Upserts PRs, sessions, commits, correlations, metrics — all in a transaction
 4. Skips updates to already-finalized PR metrics
 5. Returns entity count hash
+6. Post-transaction: triggers `BackfillRepoJob` if repo has GitHub App, otherwise runs `SessionPrCorrelationService`
+
+### SessionPrCorrelationService (`app/services/session_pr_correlation_service.rb`)
+Matches sessions to PRs within a repo by branch name, then computes session-derived metrics.
+
+1. Finds all sessions and PRs for the repo with non-null branches
+2. Matches by branch name → creates `SessionPr` records (confidence: `"branch_match"`)
+3. For each PR with linked sessions: aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth`
+4. Uses `update_session_metrics!` to enrich even settled PRs
+5. Idempotent — safe to run repeatedly
 
 ### AuthService (`app/services/auth_service.rb`)
 Handles OAuth and onboarding:
@@ -169,7 +179,7 @@ The `resolve_webhook_secret` method in `WebhooksController`:
 
 | Handler | Trigger | Action |
 |---------|---------|--------|
-| `PrOpened` | PR opened | Create PR record, initialize empty PrMetrics |
+| `PrOpened` | PR opened | Create PR record, initialize empty PrMetrics, correlate with existing sessions |
 | `PrSynchronized` | Commits pushed | Recalculate `post_open_commits` |
 | `PrMerged` | PR merged | Fetch file/commit data from GitHub API, compute diff_churn/has_tests/line_revisit_rate, finalize all metrics (immutable) |
 | `PrClosed` | PR closed (not merged) | Fetch file/commit data from GitHub API, compute diff_churn/has_tests/line_revisit_rate, finalize as abandoned |
@@ -184,7 +194,7 @@ The `resolve_webhook_secret` method in `WebhooksController`:
 | `InstallationDeleted` | App uninstalled | Mark status `deleted`, detach repos |
 | `InstallationSuspend` | App suspended | Mark status `suspended` |
 | `InstallationUnsuspend` | App unsuspended | Mark status `active` |
-| `InstallationRepositories` | Repos added/removed | Upsert repos on add, detach `github_installation_id` on remove |
+| `InstallationRepositories` | Repos added/removed | Upsert repos on add + enqueue `BackfillRepoJob`, detach `github_installation_id` on remove |
 
 The setup-URL callback (Phase 3) and `InstallationCreated` webhook can arrive in either order. Both are idempotent — the callback sets the org association, the webhook fills in installation details. `GithubInstallation.organization_id` is nullable to support the webhook-first case.
 
@@ -217,12 +227,23 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 **GithubApp::BackfillInstallationJob** (queue: `:default`)
 - Triggered after a GitHub App installation is saved (from both the setup callback and the `installation.created` webhook, whichever links the org first)
 - Lists all repositories accessible to the installation via the GitHub API
-- Upserts `Repo` records and backfills PRs from the last N days (default 90, configurable via `GITHUB_APP_BACKFILL_DAYS`)
-- Reuses existing webhook handlers (`PrOpened`, `PrMerged`, `PrClosed`, `ReviewSubmitted`) so metric computation stays on one code path
-- Backfills PR reviews from GitHub API before finalization so `first_pass_accepted` is populated
-- Per-PR errors are caught and logged without aborting the entire backfill
-- Retries on `Octokit::TooManyRequests` (8 attempts, polynomial backoff) and `Octokit::ServerError` (3 attempts)
+- Upserts `Repo` records and enqueues `BackfillRepoJob` for each
 - Updates `GithubInstallation#last_synced_at` on completion
+
+**BackfillRepoJob** (queue: `:default`)
+- Single-repo backfill. Triggered by: BackfillInstallationJob, PushService (post-push), InstallationRepositories webhook, ReconcileReposJob
+- Fetches PRs from the GitHub API for the last N days (default 90, configurable via `GITHUB_APP_BACKFILL_DAYS`)
+- Reuses existing webhook handlers (`PrOpened`, `PrMerged`, `PrClosed`, `ReviewSubmitted`) via `Backfillable` concern
+- Backfills PR reviews from GitHub API before finalization so `first_pass_accepted` is populated
+- Per-PR errors are caught and logged without aborting the backfill
+- Runs `SessionPrCorrelationService` after backfill to link existing sessions to newly created PRs
+- Retries on `Octokit::TooManyRequests` (8 attempts, polynomial backoff) and `Octokit::ServerError` (3 attempts)
+- Idempotent — safe to run repeatedly; skips already-settled PRs for GitHub metrics
+
+**ReconcileReposJob** (queue: `:default`)
+- Scheduled daily at 3am (via `config/recurring.yml`)
+- Self-healing: enqueues `BackfillRepoJob` for every repo with an active GitHub App
+- Catches missed webhooks, state drift, and ensures the system converges to GitHub's truth
 
 ## Key Files
 
@@ -241,7 +262,11 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 | `app/services/github_app/jwt_generator.rb` | GitHub App JWT signing |
 | `app/services/github_app/installation_token.rb` | Installation access token minting + caching |
 | `app/services/github_app/client.rb` | Octokit wrapper for installation-scoped API calls |
-| `app/models/pr_metrics.rb` | Finalization lock callback |
+| `app/models/pr_metrics.rb` | Scoped write protection (GitHub fields locked, session fields open) |
+| `app/services/session_pr_correlation_service.rb` | Branch-match session-to-PR correlation |
 | `app/jobs/process_git_hub_webhook_job.rb` | Webhook dispatcher |
-| `app/jobs/github_app/backfill_installation_job.rb` | Post-install PR backfill |
+| `app/jobs/github_app/backfill_installation_job.rb` | Post-install coordinator (enqueues per-repo backfill) |
+| `app/jobs/backfill_repo_job.rb` | Single-repo backfill from GitHub API + session correlation |
+| `app/jobs/reconcile_repos_job.rb` | Daily reconciliation (self-healing) |
+| `app/jobs/concerns/backfillable.rb` | Shared PR backfill logic (used by BackfillRepoJob) |
 | `db/schema.rb` | Generated schema (20 tables) |

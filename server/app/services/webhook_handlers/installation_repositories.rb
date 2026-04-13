@@ -27,6 +27,8 @@ module WebhookHandlers
         repo.github_installation = installation
         repo.path ||= full_name
         repo.save!
+
+        BackfillRepoJob.perform_later(repo.id)
       end
     end
 
