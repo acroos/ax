@@ -4,14 +4,6 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
-## 2026-04-12 — Documentation update (GitHub App Phase 8)
-
-**Pages updated:** (no wiki pages updated — changes are in `docs/`)
-
-**Summary:** Final phase of the GitHub App installation plan. Updated `docs/setup.md` to add Step 5 covering GitHub App installation (how to install, what happens behind the scenes, managing the installation). Updated the "Current limitations" table to mark GitHub App installation flow, real-time webhooks, and automatic repo ingestion as "Working". Added troubleshooting entries for install-flow error codes (`missing_installation_id`, `api_error`, `invalid_state`, `forbidden`) and suspended installations. Updated ADR-013 to mark all four staged implementation items as complete.
-
----
-
 ## 2026-04-12 — Dashboard settings page polish (GitHub App Phase 7)
 
 **Pages updated:** dashboard
