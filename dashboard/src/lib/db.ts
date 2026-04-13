@@ -3,7 +3,7 @@
 const API_URL = process.env.AX_API_URL;
 const API_KEY = process.env.AX_API_KEY || "";
 
-export async function fetchAPI<T>(urlPath: string): Promise<T> {
+export async function fetchAPI<T>(urlPath: string, init?: { method?: string }): Promise<T> {
   const url = `${API_URL}${urlPath}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -24,7 +24,7 @@ export async function fetchAPI<T>(urlPath: string): Promise<T> {
   } catch {
     // Not in a request context (e.g., build time)
   }
-  const res = await fetch(url, { headers, cache: "no-store" });
+  const res = await fetch(url, { headers, method: init?.method, cache: "no-store" });
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
@@ -126,6 +126,36 @@ export interface TimelinePoint {
   messagesPerPR: number | null;
   tokenCostUSD: number | null;
   selfCorrectionRate: number | null;
+}
+
+// --- GitHub Installation ---
+
+export type GithubInstallationStatus = "active" | "suspended" | "deleted";
+export type OrgRole = "owner" | "admin" | "member";
+
+export interface GithubInstallation {
+  id: number;
+  github_installation_id: number;
+  account_login: string;
+  account_type: string;
+  repository_selection: "all" | "selected";
+  status: GithubInstallationStatus;
+  installed_at: string | null;
+  last_synced_at: string | null;
+  repos_count: number;
+}
+
+export interface GithubInstallationResponse {
+  installation: GithubInstallation | null;
+  user_role: OrgRole;
+}
+
+export async function getGithubInstallation(orgSlug: string): Promise<GithubInstallationResponse> {
+  return fetchAPI<GithubInstallationResponse>(orgApiPath(orgSlug, "/github_installation"));
+}
+
+export async function requestGithubInstallUrl(orgSlug: string): Promise<{ install_url: string }> {
+  return fetchAPI<{ install_url: string }>(orgApiPath(orgSlug, "/github_installation/install_url"), { method: "POST" });
 }
 
 // --- Data functions ---

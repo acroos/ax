@@ -84,6 +84,14 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `GET/POST/DELETE` | `/api/v1/orgs/:slug/invites[/:id]` | List, create, revoke invites |
 | `POST` | `/api/v1/invites/:token/accept` | Accept an invite |
 
+### GitHub App Installation (Session Token, Admin Required for Install)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/orgs/:slug/github_installation` | Current installation state + user role |
+| `POST` | `/api/v1/orgs/:slug/github_installation/install_url` | Generate signed GitHub App install URL (admin-only) |
+| `GET` | `/github/installations/callback` | GitHub App setup callback (state-token auth, not session) |
+
 ### Auth
 
 | Method | Path | Purpose |
@@ -179,6 +187,12 @@ Handlers silently skip unknown repos (repos not yet pushed to the server).
 | `app/controllers/api/v1/base_controller.rb` | Auth helpers (API key + session) |
 | `app/controllers/api/v1/push_controller.rb` | Push endpoint |
 | `app/controllers/api/v1/repos_controller.rb` | Data read endpoints |
+| `app/controllers/api/v1/github_installations_controller.rb` | Install URL + installation state API |
+| `app/controllers/github_app/installations_controller.rb` | GitHub App setup callback handler |
+| `app/services/github_app/state_token.rb` | Signed state token for install flow |
+| `app/services/github_app/jwt_generator.rb` | GitHub App JWT signing |
+| `app/services/github_app/installation_token.rb` | Installation access token minting + caching |
+| `app/services/github_app/client.rb` | Octokit wrapper for installation-scoped API calls |
 | `app/models/pr_metrics.rb` | Finalization lock callback |
 | `app/jobs/process_git_hub_webhook_job.rb` | Webhook dispatcher |
 | `db/schema.rb` | Generated schema (20 tables) |

@@ -13,6 +13,9 @@ Rails.application.routes.draw do
   # Webhooks (signature-validated, not session/key auth)
   post "/webhooks/github", to: "webhooks#github"
 
+  # GitHub App install callback (browser redirect from GitHub, state token is auth)
+  get "/github/installations/callback", to: "github_app/installations#callback"
+
   namespace :api do
     namespace :v1 do
       # Health
@@ -32,6 +35,9 @@ Rails.application.routes.draw do
         end
         resources :members, only: [ :index, :update, :destroy ]
         resources :invites, controller: "org_invites", only: [ :index, :create, :destroy ]
+        resource :github_installation, only: [ :show ], controller: "github_installations" do
+          post :install_url
+        end
         resources :repos, only: [ :index ] do
           member do
             get :prs
