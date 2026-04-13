@@ -77,10 +77,10 @@ export interface PRMetrics {
   messages_per_pr: number | null;
   iteration_depth: number | null;
   post_open_commits: number | null;
-  first_pass_accepted: number | null;
+  first_pass_accepted: boolean | null;
   ci_success_rate: number | null;
   diff_churn_lines: number | null;
-  has_tests: number | null;
+  has_tests: boolean | null;
   line_revisit_rate: number | null;
   self_correction_rate: number | null;
   context_efficiency: number | null;
@@ -88,8 +88,8 @@ export interface PRMetrics {
   token_cost_usd: number | null;
   plan_coverage_score: number | null;
   plan_deviation_score: number | null;
-  scope_creep_detected: number | null;
-  metrics_finalized: number;
+  scope_creep_detected: boolean | null;
+  metrics_finalized: boolean;
   finalized_at: string | null;
 }
 
@@ -199,6 +199,9 @@ export async function listPRsWithMetricsAsync(repoId?: number, orgSlug?: string)
       : `/api/v1/repos/${repoId}/prs`;
     return fetchAPI<PRWithMetrics[]>(apiPath);
   }
+  if (orgSlug) {
+    return fetchAPI<PRWithMetrics[]>(orgApiPath(orgSlug, "/prs"));
+  }
   return [];
 }
 
@@ -208,6 +211,9 @@ export async function getAggregateMetricsAsync(repoId?: number, orgSlug?: string
       ? orgApiPath(orgSlug, `/repos/${repoId}/metrics`)
       : `/api/v1/repos/${repoId}/metrics`;
     return fetchAPI<AggregateMetrics>(apiPath);
+  }
+  if (orgSlug) {
+    return fetchAPI<AggregateMetrics>(orgApiPath(orgSlug, "/metrics"));
   }
   const prs = await listPRsWithMetricsAsync(repoId, orgSlug);
   return computeAggregatesFromPRs(prs);
@@ -246,7 +252,7 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
 
   const accepted = withMetrics.filter((p) => p.metrics!.first_pass_accepted !== null);
   const firstPassAcceptanceRate = accepted.length
-    ? accepted.filter((p) => p.metrics!.first_pass_accepted === 1).length / accepted.length
+    ? accepted.filter((p) => p.metrics!.first_pass_accepted === true).length / accepted.length
     : 0;
 
   const ci = withMetrics.filter((p) => p.metrics!.ci_success_rate !== null);
@@ -256,7 +262,7 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
 
   const tests = withMetrics.filter((p) => p.metrics!.has_tests !== null);
   const testCoverageRate = tests.length
-    ? tests.filter((p) => p.metrics!.has_tests === 1).length / tests.length
+    ? tests.filter((p) => p.metrics!.has_tests === true).length / tests.length
     : 0;
 
   const msgs = withMetrics.filter((p) => p.metrics!.messages_per_pr !== null);
@@ -314,7 +320,7 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
 
   const scopeCreepPRs = withMetrics.filter((p) => p.metrics!.scope_creep_detected !== null);
   const scopeCreepRate = scopeCreepPRs.length
-    ? scopeCreepPRs.filter((p) => p.metrics!.scope_creep_detected === 1).length / scopeCreepPRs.length
+    ? scopeCreepPRs.filter((p) => p.metrics!.scope_creep_detected === true).length / scopeCreepPRs.length
     : null;
 
   const planDataCount = withMetrics.filter(

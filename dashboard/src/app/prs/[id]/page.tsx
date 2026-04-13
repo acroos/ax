@@ -44,7 +44,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
   if (m.first_pass_accepted !== null) {
     metrics.push({
       label: "First-Pass Accepted",
-      value: m.first_pass_accepted === 1 ? "Yes" : "No",
+      value: m.first_pass_accepted === true ? "Yes" : "No",
       description:
         "Whether the PR was merged without any reviewer requesting changes.",
       category: "Output Quality",
@@ -64,7 +64,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
   if (m.has_tests !== null) {
     metrics.push({
       label: "Includes Tests",
-      value: m.has_tests === 1 ? "Yes" : "No",
+      value: m.has_tests === true ? "Yes" : "No",
       description:
         "Whether this PR includes changes to test files (*.test.*, *.spec.*, etc).",
       category: "Output Quality",
@@ -174,7 +174,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
   if (m.scope_creep_detected !== null) {
     metrics.push({
       label: "Scope Creep",
-      value: m.scope_creep_detected === 1 ? "Yes" : "No",
+      value: m.scope_creep_detected === true ? "Yes" : "No",
       description:
         "Whether more than half the changes came from outside the plan. Scope creep isn't always bad — it can mean the agent was thorough.",
       category: "Planning Effectiveness",
@@ -278,7 +278,7 @@ export default async function PRDetailPage({
           </span>
           {pr.metrics?.finalized_at && (
             <span className="text-text-tertiary">
-              Finalized {pr.metrics.finalized_at}
+              Finalized {new Date(pr.metrics.finalized_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
             </span>
           )}
         </div>

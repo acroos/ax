@@ -158,14 +158,14 @@ export default async function OrgPRsPage({
                   <StateBadge state={pr.state} />
                 </td>
                 <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-                  {pr.metrics?.post_open_commits ?? "&#8212;"}
+                  {pr.metrics?.post_open_commits ?? "\u2014"}
                 </td>
                 <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-                  {pr.metrics?.diff_churn_lines ?? "&#8212;"}
+                  {pr.metrics?.diff_churn_lines ?? "\u2014"}
                 </td>
                 <td className="px-3 py-3 text-center">
                   {pr.metrics?.first_pass_accepted !== null ? (
-                    <CheckMark value={pr.metrics!.first_pass_accepted === 1} />
+                    <CheckMark value={pr.metrics!.first_pass_accepted === true} />
                   ) : (
                     <span className="text-text-tertiary text-[13px]">&#8212;</span>
                   )}
@@ -173,25 +173,25 @@ export default async function OrgPRsPage({
                 <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
                   {pr.metrics?.ci_success_rate !== null
                     ? `${Math.round(pr.metrics!.ci_success_rate * 100)}%`
-                    : "&#8212;"}
+                    : "\u2014"}
                 </td>
                 <td className="px-3 py-3 text-center">
                   {pr.metrics?.has_tests !== null ? (
-                    <CheckMark value={pr.metrics!.has_tests === 1} />
+                    <CheckMark value={pr.metrics!.has_tests === true} />
                   ) : (
                     <span className="text-text-tertiary text-[13px]">&#8212;</span>
                   )}
                 </td>
                 <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-                  {pr.metrics?.messages_per_pr ?? "&#8212;"}
+                  {pr.metrics?.messages_per_pr ?? "\u2014"}
                 </td>
                 <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-                  {pr.metrics?.iteration_depth ?? "&#8212;"}
+                  {pr.metrics?.iteration_depth ?? "\u2014"}
                 </td>
                 <td className="px-4 py-3 text-right font-mono text-[13px] text-text-secondary">
                   {pr.metrics?.token_cost_usd !== null
                     ? `$${pr.metrics!.token_cost_usd.toFixed(2)}`
-                    : "&#8212;"}
+                    : "\u2014"}
                 </td>
               </tr>
             ))}

@@ -39,6 +39,10 @@ Rails.application.routes.draw do
         resource :github_installation, only: [ :show ], controller: "github_installations" do
           post :install_url
         end
+        # Org-level PRs (all repos)
+        get :prs, to: "orgs#prs"
+        get :metrics, to: "orgs#metrics"
+
         resources :repos, only: [ :index ] do
           member do
             get :prs
