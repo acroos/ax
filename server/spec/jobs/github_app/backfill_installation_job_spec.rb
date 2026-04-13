@@ -95,14 +95,14 @@ RSpec.describe GithubApp::BackfillInstallationJob do
     stub_request(:get, %r{api\.github\.com/repos/acme/widget/pulls\b})
       .to_return(
         status: 200,
-        body: [merged_pr, open_pr].to_json,
+        body: [ merged_pr, open_pr ].to_json,
         headers: { "Content-Type" => "application/json" }
       )
 
     stub_request(:get, %r{api\.github\.com/repos/acme/gadget/pulls\b})
       .to_return(
         status: 200,
-        body: [closed_pr].to_json,
+        body: [ closed_pr ].to_json,
         headers: { "Content-Type" => "application/json" }
       )
 
