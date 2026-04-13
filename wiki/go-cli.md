@@ -48,7 +48,7 @@ Returns `ParsedSession` structs. Also discovers sessions from Claude Code worktr
 
 ## Push Client (`internal/push/client.go`)
 - `Push(payload)` → `POST /api/v1/push` with Bearer token
-- `Ping()` → validates API key against server
+- `Ping()` → validates API key via `GET /api/v1/ping`
 - `HealthCheck()` → checks server reachability (no auth required)
 - Retry logic: up to 2 attempts on 5xx errors
 

@@ -21,8 +21,9 @@ Rails.application.routes.draw do
       # Health
       get "/health", to: "health#show"
 
-      # CLI push (API key auth)
+      # CLI (API key auth)
       post "/push", to: "push#create"
+      get "/ping", to: "ping#show"
 
       # Watch status
       get "/watch-status", to: "watch_status#index"
