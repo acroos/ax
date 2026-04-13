@@ -58,5 +58,12 @@ RSpec.describe GithubApp::JwtGenerator do
     it "returns an RSA key" do
       expect(described_class.private_key).to be_a(OpenSSL::PKey::RSA)
     end
+
+    it "handles PEM with escaped newlines" do
+      escaped_pem = private_key.to_pem.gsub("\n", "\\n")
+      allow(ENV).to receive(:fetch).with("GITHUB_APP_PRIVATE_KEY").and_return(escaped_pem)
+
+      expect(described_class.private_key).to be_a(OpenSSL::PKey::RSA)
+    end
   end
 end
