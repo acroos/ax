@@ -21,8 +21,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       headers: {
         "X-Ax-Session": sessionToken,
       },
-      cache: "no-store",
-    });
+      next: { revalidate: 60 },
+    } as RequestInit);
 
     if (!res.ok) return null;
     return (await res.json()) as CurrentUser;

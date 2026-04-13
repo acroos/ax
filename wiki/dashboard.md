@@ -43,6 +43,8 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 | Function | Returns |
 |----------|---------|
 | `listPRsWithMetricsAsync(repoId?, orgSlug?)` | Finalized PRs with all computed metrics |
+| `getPRWithMetricsAsync(id)` | Single PR with metrics (hits `/api/v1/prs/:id`) |
+| `computeAggregatesFromPRs(prs)` | Compute aggregate metrics from a PR array (no API call) |
 | `getAggregateMetricsAsync(repoId?, orgSlug?)` | Averages and sums across all metrics |
 | `getTimelineAsync(repoId?, orgSlug?)` | Time-series data for trend charts |
 | `getDeveloperComparisonAsync(opts)` | Per-developer metric aggregates |
@@ -61,7 +63,7 @@ headers["X-Ax-Session"] = cookieStore.get("_ax_session")?.value
 
 Data endpoints are org-scoped: `/api/v1/orgs/{slug}/repos/{id}/prs`
 
-All fetches use `cache: "no-store"` for fresh data.
+GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidate). Mutations (`POST`/`PUT`/`DELETE`) use `cache: "no-store"`. Pass `revalidate: false` to `fetchAPI` to bypass caching for a specific GET.
 
 ## Components
 

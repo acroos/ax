@@ -1,0 +1,65 @@
+module Api
+  module V1
+    class PrsController < BaseController
+      before_action :require_session_auth!
+
+      def show
+        pr = Pr
+          .joins(repo: :organization)
+          .joins(:pr_metrics)
+          .includes(:pr_metrics, repo: :organization)
+          .where(pr_metrics: { metrics_finalized: true })
+          .find(params[:id])
+
+        # Verify the current user has access to this PR's org
+        org = pr.repo.organization
+        head(:forbidden) and return unless current_user&.member_of?(org)
+
+        render json: pr_with_metrics(pr)
+      end
+
+      private
+
+      def pr_with_metrics(pr)
+        m = pr.pr_metrics
+        {
+          id: pr.id,
+          number: pr.number,
+          title: pr.title,
+          branch: pr.branch,
+          state: pr.state,
+          created_at: pr.created_at_source,
+          merged_at: pr.merged_at,
+          closed_at: pr.closed_at,
+          url: pr.url,
+          additions: pr.additions,
+          deletions: pr.deletions,
+          changed_files: pr.changed_files,
+          author: pr.author,
+          github_owner: pr.repo.github_owner,
+          github_repo: pr.repo.github_repo,
+          metrics: m ? {
+            pr_number: pr.number,
+            messages_per_pr: m.messages_per_pr,
+            iteration_depth: m.iteration_depth,
+            post_open_commits: m.post_open_commits,
+            first_pass_accepted: m.first_pass_accepted,
+            ci_success_rate: m.ci_success_rate,
+            diff_churn_lines: m.diff_churn_lines,
+            has_tests: m.has_tests,
+            line_revisit_rate: m.line_revisit_rate,
+            self_correction_rate: m.self_correction_rate,
+            context_efficiency: m.context_efficiency,
+            error_recovery_attempts: m.error_recovery_attempts,
+            token_cost_usd: m.token_cost_usd,
+            plan_coverage_score: m.plan_coverage_score,
+            plan_deviation_score: m.plan_deviation_score,
+            scope_creep_detected: m.scope_creep_detected,
+            metrics_finalized: m.metrics_finalized,
+            finalized_at: m.finalized_at
+          } : nil
+        }
+      end
+    end
+  end
+end

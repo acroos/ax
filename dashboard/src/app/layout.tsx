@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { headers } from "next/headers";
 import "./globals.css";
 import { listReposAsync } from "@/lib/db";
@@ -124,15 +125,37 @@ const SettingsIcon = (
   </svg>
 );
 
-async function Sidebar() {
-  const user = await getCurrentUser();
+function SidebarSkeleton() {
+  return (
+    <aside className="w-[220px] h-screen flex flex-col border-r border-border-subtle bg-surface-0 flex-shrink-0">
+      <div className="px-4 pt-5 pb-4">
+        <Logo />
+      </div>
+      <nav className="flex-1 px-2.5 space-y-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-8 rounded-md bg-surface-2/50 animate-pulse" />
+        ))}
+      </nav>
+    </aside>
+  );
+}
 
+async function Sidebar() {
   // Resolve the current org slug from the request path.
   // Middleware injects x-pathname on every request; the root layout has no
   // direct access to route params, so we read it here.
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname");
   const pathOrgSlug = parseOrgSlug(pathname);
+
+  // Fetch user and repos in parallel. The org slug for repos comes from the
+  // URL path; we don't need the user result to start fetching repos.
+  const reposPromise = pathOrgSlug
+    ? listReposAsync(pathOrgSlug).catch(() => [] as { id: number; github_owner: string | null; github_repo: string | null }[])
+    : Promise.resolve([] as { id: number; github_owner: string | null; github_repo: string | null }[]);
+
+  const [user, repos] = await Promise.all([getCurrentUser(), reposPromise]);
+
   // Fall back to the user's first org when the current path has no slug
   // (e.g. /onboarding, /settings) — the sidebar still shows something useful.
   const orgSlug = pathOrgSlug ?? (user?.organizations[0]?.slug ?? null);
@@ -140,16 +163,6 @@ async function Sidebar() {
   // Nav link prefix: /{slug}
   const base = orgSlug ? `/${orgSlug}` : "";
   const overviewHref = base || "/";
-
-  let repos: { id: number; github_owner: string | null; github_repo: string | null }[] = [];
-
-  if (orgSlug) {
-    try {
-      repos = await listReposAsync(orgSlug);
-    } catch {
-      // API unreachable or org not found — leave empty
-    }
-  }
 
   const filteredRepos = repos.filter((r) => r.github_owner && r.github_repo);
 
@@ -232,7 +245,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="flex h-screen overflow-hidden">
-          <Sidebar />
+          <Suspense fallback={<SidebarSkeleton />}>
+            <Sidebar />
+          </Suspense>
           <main className="flex-1 overflow-y-auto">
             <div className="max-w-[1200px] mx-auto px-8 py-8">{children}</div>
           </main>

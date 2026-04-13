@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listPRsWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
+import { getPRWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
 
 function StateBadge({ state }: { state: string | null }) {
@@ -194,10 +194,9 @@ export default async function PRDetailPage({
 
   let pr: PRWithMetrics | undefined;
   try {
-    const allPRs = await listPRsWithMetricsAsync();
-    pr = allPRs.find((p) => p.id === prId);
+    pr = await getPRWithMetricsAsync(prId);
   } catch {
-    // DB error
+    // API error — PR not found or not authorized
   }
 
   if (!pr) {

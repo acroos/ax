@@ -1,12 +1,34 @@
 import { Suspense } from "react";
 import {
-  listDevelopersAsync,
-  getDeveloperComparisonAsync,
-  getFilteredMetricsAsync,
+  listPRsWithMetricsAsync,
+  computeAggregatesFromPRs,
 } from "@/lib/db";
-import type { DeveloperMetrics, AggregateMetrics } from "@/lib/db";
+import type { DeveloperMetrics, AggregateMetrics, PRWithMetrics } from "@/lib/db";
 import { TimeWindowPicker } from "@/components/time-window-picker";
 import { DeveloperSelector } from "@/components/developer-selector";
+
+function filterPRsLocal(prs: PRWithMetrics[], opts: { author?: string; since?: string; until?: string }): PRWithMetrics[] {
+  return prs.filter((p) => {
+    if (opts.author && p.author !== opts.author) return false;
+    if (opts.since && p.created_at && p.created_at < opts.since) return false;
+    if (opts.until && p.created_at && p.created_at > opts.until) return false;
+    return true;
+  });
+}
+
+function buildDeveloperComparison(prs: PRWithMetrics[]): DeveloperMetrics[] {
+  const byAuthor = new Map<string, PRWithMetrics[]>();
+  for (const pr of prs) {
+    const author = pr.author || "unknown";
+    if (!byAuthor.has(author)) byAuthor.set(author, []);
+    byAuthor.get(author)!.push(pr);
+  }
+  const result: DeveloperMetrics[] = [];
+  for (const [author, authorPRs] of byAuthor) {
+    result.push({ author, prCount: authorPRs.length, metrics: computeAggregatesFromPRs(authorPRs) });
+  }
+  return result.sort((a, b) => b.prCount - a.prCount);
+}
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -27,11 +49,24 @@ export default async function OrgComparePage({ params, searchParams }: Props) {
   let individualMetrics: AggregateMetrics | null = null;
 
   try {
-    developers = await listDevelopersAsync(repoId, slug);
-    devComparison = await getDeveloperComparisonAsync({ repoId, orgSlug: slug, since, until });
-    teamMetrics = await getFilteredMetricsAsync({ repoId, orgSlug: slug, since, until });
+    // Single API call — derive everything locally instead of 4 sequential fetches
+    const allPRs = await listPRsWithMetricsAsync(repoId, slug);
+
+    // Extract unique authors
+    const authorSet = new Set<string>();
+    for (const pr of allPRs) {
+      if (pr.author) authorSet.add(pr.author);
+    }
+    developers = Array.from(authorSet).sort();
+
+    // Filter by time window, then compute comparison and team metrics
+    const timeFiltered = filterPRsLocal(allPRs, { since, until });
+    devComparison = buildDeveloperComparison(timeFiltered);
+    teamMetrics = computeAggregatesFromPRs(timeFiltered);
+
     if (author) {
-      individualMetrics = await getFilteredMetricsAsync({ repoId, orgSlug: slug, author, since, until });
+      const authorFiltered = filterPRsLocal(allPRs, { author, since, until });
+      individualMetrics = computeAggregatesFromPRs(authorFiltered);
     }
   } catch {
     // API error

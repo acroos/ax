@@ -3,7 +3,7 @@
 const API_URL = process.env.AX_API_URL;
 const API_KEY = process.env.AX_API_KEY || "";
 
-export async function fetchAPI<T>(urlPath: string, init?: { method?: string }): Promise<T> {
+export async function fetchAPI<T>(urlPath: string, init?: { method?: string; revalidate?: number | false }): Promise<T> {
   const url = `${API_URL}${urlPath}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -24,7 +24,16 @@ export async function fetchAPI<T>(urlPath: string, init?: { method?: string }): 
   } catch {
     // Not in a request context (e.g., build time)
   }
-  const res = await fetch(url, { headers, method: init?.method, cache: "no-store" });
+
+  // Default to 60s revalidation for GET requests. Mutations (POST/PUT/DELETE)
+  // and explicit revalidate: false bypass the cache entirely.
+  const isMutation = init?.method && init.method !== "GET";
+  const noCache = isMutation || init?.revalidate === false;
+  const cacheOpts = noCache
+    ? { cache: "no-store" as const }
+    : { next: { revalidate: init?.revalidate ?? 60 } };
+
+  const res = await fetch(url, { headers, method: init?.method, ...cacheOpts } as RequestInit);
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
@@ -162,7 +171,7 @@ export async function getGithubInstallation(orgSlug: string): Promise<GithubInst
 }
 
 export async function requestGithubInstallUrl(orgSlug: string): Promise<{ install_url: string }> {
-  return fetchAPI<{ install_url: string }>(orgApiPath(orgSlug, "/github_installation/install_url"), { method: "POST" });
+  return fetchAPI<{ install_url: string }>(orgApiPath(orgSlug, "/github_installation/install_url"), { method: "POST", revalidate: false });
 }
 
 // --- Data functions ---
@@ -177,6 +186,10 @@ export async function listReposAsync(orgSlug?: string): Promise<Repo[]> {
 export async function getRepoAsync(id: number): Promise<Repo | undefined> {
   const repos = await fetchAPI<Repo[]>("/api/v1/repos");
   return repos.find((r) => r.id === id);
+}
+
+export async function getPRWithMetricsAsync(id: number): Promise<PRWithMetrics> {
+  return fetchAPI<PRWithMetrics>(`/api/v1/prs/${id}`);
 }
 
 export async function listPRsWithMetricsAsync(repoId?: number, orgSlug?: string): Promise<PRWithMetrics[]> {
@@ -197,7 +210,7 @@ export async function getAggregateMetricsAsync(repoId?: number, orgSlug?: string
     return fetchAPI<AggregateMetrics>(apiPath);
   }
   const prs = await listPRsWithMetricsAsync(repoId, orgSlug);
-  return computeAggregates(prs);
+  return computeAggregatesFromPRs(prs);
 }
 
 export async function getRepoLevelMetricsAsync(repoId?: number, orgSlug?: string): Promise<RepoLevelMetrics> {
@@ -210,7 +223,7 @@ export async function getRepoLevelMetricsAsync(repoId?: number, orgSlug?: string
   return { unmergedCostUSD: null, totalCostUSD: null, unmergedRate: null };
 }
 
-function computeAggregates(prs: PRWithMetrics[]): AggregateMetrics {
+export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics {
   const withMetrics = prs.filter((p) => p.metrics);
   const totalPRs = prs.length;
 
@@ -405,7 +418,7 @@ export async function listDevelopersAsync(repoId?: number, orgSlug?: string): Pr
 export async function getFilteredMetricsAsync(opts: FilterOpts): Promise<AggregateMetrics> {
   const allPRs = await listPRsWithMetricsAsync(opts.repoId, opts.orgSlug);
   const filtered = filterPRs(allPRs, opts);
-  return computeAggregates(filtered);
+  return computeAggregatesFromPRs(filtered);
 }
 
 export async function getDeveloperComparisonAsync(opts: FilterOpts): Promise<DeveloperMetrics[]> {
@@ -425,7 +438,7 @@ export async function getDeveloperComparisonAsync(opts: FilterOpts): Promise<Dev
     result.push({
       author,
       prCount: prs.length,
-      metrics: computeAggregates(prs),
+      metrics: computeAggregatesFromPRs(prs),
     });
   }
 

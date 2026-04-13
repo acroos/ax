@@ -71,6 +71,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `POST` | `/api/v1/orgs` | Create organization (requires approved waitlist) |
 | `GET` | `/api/v1/orgs/:slug` | Org details |
 | `GET` | `/api/v1/orgs/:slug/repos` | List org repos |
+| `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership) |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | Finalized PRs with all metrics |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/metrics` | Aggregated metrics (averages, sums) |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/timeline` | PR timeline for trend charts |
