@@ -27,6 +27,10 @@ coverage.html
 *.swp
 *.swo
 
+# Claude Code local data
+.claude/worktrees/
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db
