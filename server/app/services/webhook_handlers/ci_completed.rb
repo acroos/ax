@@ -1,8 +1,9 @@
 module WebhookHandlers
   class CiCompleted < Base
-    def initialize(check_suite_data, repo_data)
+    def initialize(check_suite_data, repo_data, installation: nil)
       @check_suite_data = check_suite_data
       @repo_data = repo_data
+      @installation = installation
     end
 
     def call

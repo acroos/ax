@@ -184,15 +184,27 @@ The `resolve_webhook_secret` method in `WebhooksController`:
 The setup-URL callback (Phase 3) and `InstallationCreated` webhook can arrive in either order. Both are idempotent — the callback sets the org association, the webhook fills in installation details. `GithubInstallation.organization_id` is nullable to support the webhook-first case.
 
 All handlers inherit from `Base`, which provides:
-- `find_repo` / `find_pr` / `find_or_create_pr` — Record lookup
+- `find_repo` — Installation-scoped repo lookup: prefers repos belonging to the installation's org, falls back to unscoped owner/name match for CLI-pushed repos
+- `find_pr` / `find_or_create_pr` — PR record lookup/upsert
 - `ensure_pr_metrics` — Create PrMetrics if missing
 - `pr_finalized?` — Guard against updating finalized records
 
-PR handlers silently skip unknown repos (repos not yet pushed to the server). Installation handlers silently skip unknown installations.
+All PR/review/CI handlers accept an optional `installation:` keyword argument, set by the job dispatcher.
+
+### Installation Scoping
+
+`ProcessGitHubWebhookJob` extracts `installation.id` from every webhook payload and resolves it to a `GithubInstallation` record before dispatching to PR/review/CI handlers:
+- **Active installation** → passed to the handler for org-scoped repo lookup
+- **Unknown installation** → event dropped with a warning log
+- **Suspended/deleted installation** → event dropped with a warning log
+- **No installation field** (legacy or non-app webhooks) → `nil` passed, handler uses unscoped lookup (backward compatible with CLI-pushed repos)
+
+Installation lifecycle events (`installation.*`, `installation_repositories`) bypass this check — they manage the installation state itself.
 
 ## Background Jobs
 
 **ProcessGitHubWebhookJob** (queue: `:webhooks`)
+- Resolves `installation.id` from payload and validates installation is active before dispatching PR/review/CI events
 - Dispatches to the appropriate handler based on event type and action
 - Development: Sidekiq adapter
 - Production: SolidQueue (in-database job queue)
