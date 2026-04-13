@@ -79,7 +79,7 @@ RSpec.describe WebhookHandlers::InstallationRepositories do
     end
 
     it "is a no-op for unknown repos" do
-      payload[:repositories_removed] = [{ id: 999, full_name: "my-org/unknown" }]
+      payload[:repositories_removed] = [ { id: 999, full_name: "my-org/unknown" } ]
 
       expect { described_class.new(payload).call }
         .not_to change { repo.reload.github_installation_id }
@@ -90,7 +90,7 @@ RSpec.describe WebhookHandlers::InstallationRepositories do
     payload = {
       action: "added",
       installation: { id: 99999 },
-      repositories_added: [{ id: 1, full_name: "my-org/repo-a" }],
+      repositories_added: [ { id: 1, full_name: "my-org/repo-a" } ],
       repositories_removed: []
     }
 
