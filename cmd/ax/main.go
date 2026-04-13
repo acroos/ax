@@ -3,14 +3,17 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/austinroos/ax/internal/api"
+	"github.com/austinroos/ax/internal/bulk"
 	"github.com/austinroos/ax/internal/config"
 	"github.com/austinroos/ax/internal/hooks"
 	"github.com/austinroos/ax/internal/parsers"
@@ -60,27 +63,7 @@ func gitRemoteOwnerRepo(repoPath string) (owner, repo string, err error) {
 
 // parseGitRemote extracts owner/repo from a GitHub remote URL.
 func parseGitRemote(remoteURL string) (owner, repo string, err error) {
-	// Handle SSH URLs: git@github.com:owner/repo.git
-	if strings.HasPrefix(remoteURL, "git@") {
-		parts := strings.SplitN(remoteURL, ":", 2)
-		if len(parts) != 2 {
-			return "", "", fmt.Errorf("cannot parse SSH remote: %s", remoteURL)
-		}
-		path := strings.TrimSuffix(parts[1], ".git")
-		segments := strings.Split(path, "/")
-		if len(segments) >= 2 {
-			return segments[len(segments)-2], segments[len(segments)-1], nil
-		}
-	}
-
-	// Handle HTTPS URLs: https://github.com/owner/repo.git
-	remoteURL = strings.TrimSuffix(remoteURL, ".git")
-	parts := strings.Split(remoteURL, "/")
-	if len(parts) >= 2 {
-		return parts[len(parts)-2], parts[len(parts)-1], nil
-	}
-
-	return "", "", fmt.Errorf("cannot parse remote URL: %s", remoteURL)
+	return bulk.ParseGitRemote(remoteURL)
 }
 
 func newInitCmd() *cobra.Command {
@@ -200,6 +183,7 @@ func initManagedMode(apiKey, settingsPath string) error {
 func newPushCmd() *cobra.Command {
 	var repoPath string
 	var apiKey string
+	var all bool
 
 	cmd := &cobra.Command{
 		Use:   "push",
@@ -210,9 +194,22 @@ Parses session data from ~/.claude/ for the current repo and sends it
 to the server. This happens automatically via hooks installed by 'ax init',
 but can also be triggered manually for backfilling or debugging.
 
+Use --all to discover and push sessions for all repos at once.
+This is useful for onboarding (backfilling historical sessions) or
+retrying failed pushes. The server deduplicates by session ID, so
+re-pushing is safe.
+
 Reads API key from ~/.ax/config.json (set up by 'ax init').
 You can override with --api-key.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if all && repoPath != "" {
+				return fmt.Errorf("--all and --repo are mutually exclusive")
+			}
+
+			if all {
+				return runBulkPush(apiKey)
+			}
+
 			path, err := resolveRepoPath(repoPath)
 			if err != nil {
 				return err
@@ -296,8 +293,142 @@ You can override with --api-key.`,
 
 	cmd.Flags().StringVar(&repoPath, "repo", "", "Path to the git repository (defaults to current directory)")
 	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key (overrides config)")
+	cmd.Flags().BoolVar(&all, "all", false, "Push sessions for all discovered repos")
 
 	return cmd
+}
+
+func runBulkPush(apiKeyOverride string) error {
+	// Load config for defaults.
+	cfg, _ := config.LoadConfig()
+	serverURL := config.DefaultServerURL
+	key := apiKeyOverride
+	if key == "" {
+		key = cfg.APIKey
+	}
+	if key == "" {
+		return fmt.Errorf("no API key configured — use --api-key or run 'ax init'")
+	}
+
+	// Health check.
+	client := push.NewClient(serverURL, key)
+	if err := client.HealthCheck(); err != nil {
+		return fmt.Errorf("server unreachable at %s: %w", serverURL, err)
+	}
+
+	// Discover repos.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("could not find home directory: %w", err)
+	}
+	claudeDir := filepath.Join(home, ".claude")
+
+	ui.SectionHeader("Discovering repos...")
+	summary, err := bulk.DiscoverRepos(claudeDir, gitRemoteOwnerRepo)
+	if err != nil {
+		return fmt.Errorf("discovery failed: %w", err)
+	}
+
+	if len(summary.Repos) == 0 {
+		ui.CompleteBanner("No pushable repos found")
+		if len(summary.SkippedPaths) > 0 {
+			fmt.Printf("\n  %s %d project paths skipped (no git remote or missing directory)\n",
+				ui.WarningIcon(), len(summary.SkippedPaths))
+		}
+		return nil
+	}
+
+	// Sort repos by name for consistent display.
+	sort.Slice(summary.Repos, func(i, j int) bool {
+		return summary.Repos[i].OwnerRepo < summary.Repos[j].OwnerRepo
+	})
+
+	// Display discovery summary.
+	fmt.Println()
+	fmt.Printf("  %s\n", ui.Bold.Render(fmt.Sprintf(
+		"Bulk Push — %d %s, %d sessions",
+		len(summary.Repos), pluralize(len(summary.Repos), "repo", "repos"),
+		summary.TotalSessions)))
+	fmt.Println()
+
+	for _, r := range summary.Repos {
+		fmt.Printf("  %s %-35s %s\n",
+			ui.InfoIcon(),
+			r.OwnerRepo,
+			ui.Faint.Render(fmt.Sprintf("%d sessions", len(r.SessionFiles))))
+	}
+
+	if len(summary.SkippedPaths) > 0 {
+		fmt.Printf("\n  %s %d %s skipped (no git remote or missing directory)\n",
+			ui.WarningIcon(),
+			len(summary.SkippedPaths),
+			pluralize(len(summary.SkippedPaths), "path", "paths"))
+	}
+
+	// Confirmation prompt.
+	fmt.Printf("\n  Continue? [Y/n] ")
+	reader := bufio.NewReader(os.Stdin)
+	answer, _ := reader.ReadString('\n')
+	answer = strings.TrimSpace(answer)
+	if answer != "" && answer != "y" && answer != "Y" {
+		fmt.Println("  Aborted.")
+		return nil
+	}
+
+	fmt.Println()
+
+	// Execute bulk push.
+	result := bulk.BulkPush(&bulk.BulkPushConfig{
+		Client:      client,
+		Repos:       summary.Repos,
+		Concurrency: bulk.DefaultConcurrency,
+		Writer:      os.Stdout,
+	})
+
+	// Summary.
+	if result.ReposFailed == 0 {
+		ui.CompleteBanner("Bulk Push Complete")
+	} else {
+		ui.FailBanner("Bulk Push Complete (with errors)")
+	}
+	fmt.Println()
+
+	if result.ReposFailed == 0 {
+		ui.MetricRow("Repos", fmt.Sprintf("%d pushed", result.ReposPushed))
+	} else {
+		ui.MetricRow("Repos", fmt.Sprintf("%d pushed, %s",
+			result.ReposPushed,
+			ui.Error.Render(fmt.Sprintf("%d failed", result.ReposFailed))))
+	}
+
+	if result.TotalFailed == 0 {
+		ui.MetricRow("Sessions", fmt.Sprintf("%d sent", result.TotalSent))
+	} else {
+		ui.MetricRow("Sessions", fmt.Sprintf("%d sent, %s",
+			result.TotalSent,
+			ui.Error.Render(fmt.Sprintf("%d failed", result.TotalFailed))))
+	}
+
+	// Write error log if there were failures.
+	if result.ReposFailed > 0 {
+		logPath, err := bulk.WriteErrorLog(result)
+		if err != nil {
+			fmt.Printf("\n  %s Could not write error log: %v\n", ui.WarningIcon(), err)
+		} else {
+			fmt.Println()
+			fmt.Printf("  %s Errors written to %s\n", ui.ErrorIcon(), ui.Code.Render(logPath))
+			fmt.Printf("    Review the log and retry individual repos with: %s\n", ui.Code.Render("ax push --repo <path>"))
+		}
+	}
+
+	return nil
+}
+
+func pluralize(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
 }
 
 func init() {

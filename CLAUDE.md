@@ -61,7 +61,8 @@ ax init --api-key <key>             # Validate API key, save config, install hoo
 ax init --uninstall                 # Remove all AX hooks
 
 # Data ingestion
-ax push --repo .                    # Push session data to the AX server
+ax push --repo .                    # Push session data for current repo
+ax push --all                       # Discover all repos and bulk push sessions
 ```
 
 ## Decisions

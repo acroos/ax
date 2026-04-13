@@ -124,6 +124,11 @@ func CompleteBanner(msg string) {
 	fmt.Printf("\n  %s %s\n", SuccessIcon(), Bold.Render(msg))
 }
 
+// FailBanner prints a failure banner for failed operations.
+func FailBanner(msg string) {
+	fmt.Printf("\n  %s %s\n", ErrorIcon(), Bold.Render(msg))
+}
+
 // FormatCost formats a dollar amount.
 func FormatCost(n float64) string {
 	if n < 0.01 {
