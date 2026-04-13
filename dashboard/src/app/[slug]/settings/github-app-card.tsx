@@ -10,6 +10,25 @@ const ExternalLinkIcon = () => (
   </svg>
 );
 
+const ChevronIcon = ({ open }: { open: boolean }) => (
+  <svg
+    className={`w-3 h-3 transition-transform ${open ? "rotate-90" : ""}`}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+  </svg>
+);
+
+const ERROR_MESSAGES: Record<string, string> = {
+  missing_installation_id: "GitHub did not return an installation ID. Please try installing again.",
+  api_error: "Could not verify the installation with GitHub. Please try again.",
+  invalid_state: "The install link expired or was invalid. Please start over from settings.",
+  forbidden: "You do not have permission to install the GitHub App for this organization.",
+};
+
 export function GitHubAppCard({
   slug,
   installation,
@@ -28,6 +47,7 @@ export function GitHubAppCard({
   const [showBanner, setShowBanner] = useState(
     installedParam === "true" || installedParam === "false"
   );
+  const [showRepos, setShowRepos] = useState(false);
 
   // Strip query params from URL after showing the banner
   useEffect(() => {
@@ -35,6 +55,14 @@ export function GitHubAppCard({
       window.history.replaceState({}, "", `/${slug}/settings`);
     }
   }, [installedParam, slug]);
+
+  // Auto-dismiss success banner after 8 seconds
+  useEffect(() => {
+    if (showBanner && installedParam === "true") {
+      const timer = setTimeout(() => setShowBanner(false), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [showBanner, installedParam]);
 
   async function handleInstall() {
     setLoading(true);
@@ -57,8 +85,13 @@ export function GitHubAppCard({
 
   const isActive = installation?.status === "active";
   const isSuspended = installation?.status === "suspended";
+  const isSyncing = isActive && !installation?.last_synced_at;
   const installationSettingsUrl = installation
     ? `https://github.com/settings/installations/${installation.github_installation_id}`
+    : null;
+
+  const errorMessage = errorParam
+    ? ERROR_MESSAGES[errorParam] || `${errorParam.replace(/_/g, " ")}. Please try again.`
     : null;
 
   return (
@@ -86,9 +119,12 @@ export function GitHubAppCard({
 
       {/* Success banner */}
       {showBanner && installedParam === "true" && (
-        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-green-muted text-green text-xs">
-          <span>GitHub App installed successfully. Webhook events will now flow into AX.</span>
-          <button onClick={() => setShowBanner(false)} className="ml-2 hover:opacity-70">
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-green-muted text-green text-xs transition-opacity duration-300">
+          <span>
+            GitHub App installed successfully. Webhook events will now flow into AX.
+            {isSyncing && " Syncing recent PR history in the background..."}
+          </span>
+          <button onClick={() => setShowBanner(false)} className="ml-2 hover:opacity-70 shrink-0">
             &times;
           </button>
         </div>
@@ -97,10 +133,8 @@ export function GitHubAppCard({
       {/* Error banner */}
       {showBanner && installedParam === "false" && (
         <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-red-muted text-red text-xs">
-          <span>
-            Installation failed{errorParam ? `: ${errorParam.replace(/_/g, " ")}` : ""}. Please try again.
-          </span>
-          <button onClick={() => setShowBanner(false)} className="ml-2 hover:opacity-70">
+          <span>{errorMessage || "Installation failed. Please try again."}</span>
+          <button onClick={() => setShowBanner(false)} className="ml-2 hover:opacity-70 shrink-0">
             &times;
           </button>
         </div>
@@ -164,12 +198,42 @@ export function GitHubAppCard({
             <div>
               <span className="text-text-tertiary">Last synced</span>
               <p className="text-text-primary mt-0.5">
-                {installation.last_synced_at
-                  ? formatRelativeTime(installation.last_synced_at)
-                  : "Never"}
+                {isSyncing ? (
+                  <span className="inline-flex items-center gap-1.5 text-accent">
+                    <span className="inline-block w-2 h-2 rounded-full bg-accent animate-pulse" />
+                    Syncing...
+                  </span>
+                ) : installation.last_synced_at ? (
+                  formatRelativeTime(installation.last_synced_at)
+                ) : (
+                  "Never"
+                )}
               </p>
             </div>
           </div>
+
+          {/* Connected repos list */}
+          {installation.repos.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowRepos(!showRepos)}
+                className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors"
+              >
+                <ChevronIcon open={showRepos} />
+                {installation.repos.length} connected {installation.repos.length === 1 ? "repo" : "repos"}
+              </button>
+              {showRepos && (
+                <ul className="mt-2 space-y-1 pl-4">
+                  {installation.repos.map((repo) => (
+                    <li key={repo.id} className="text-xs font-mono text-text-secondary">
+                      {repo.github_owner}/{repo.github_repo}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           {isAdmin && installationSettingsUrl && (
             <a
               href={installationSettingsUrl}
@@ -192,16 +256,27 @@ export function GitHubAppCard({
             <span className="font-mono text-amber">{installation.account_login}</span>{" "}
             is suspended. Webhook events are paused.
           </p>
-          {isAdmin && installationSettingsUrl ? (
-            <a
-              href={installationSettingsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 text-text-primary text-xs font-medium transition-colors"
-            >
-              Resume on GitHub
-              <ExternalLinkIcon />
-            </a>
+          {isAdmin ? (
+            <div className="flex items-center gap-2">
+              {installationSettingsUrl && (
+                <a
+                  href={installationSettingsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 text-text-primary text-xs font-medium transition-colors"
+                >
+                  Resume on GitHub
+                  <ExternalLinkIcon />
+                </a>
+              )}
+              <button
+                onClick={handleInstall}
+                disabled={loading}
+                className="px-3 py-1.5 rounded-md border border-border-subtle hover:bg-surface-2 text-text-secondary text-xs font-medium transition-colors disabled:opacity-50"
+              >
+                {loading ? "Redirecting..." : "Reinstall"}
+              </button>
+            </div>
           ) : (
             <p className="text-xs text-text-tertiary">
               Ask an org admin to resume the installation on GitHub.

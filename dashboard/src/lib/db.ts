@@ -133,6 +133,12 @@ export interface TimelinePoint {
 export type GithubInstallationStatus = "active" | "suspended" | "deleted";
 export type OrgRole = "owner" | "admin" | "member";
 
+export interface GithubInstallationRepo {
+  id: number;
+  github_owner: string | null;
+  github_repo: string | null;
+}
+
 export interface GithubInstallation {
   id: number;
   github_installation_id: number;
@@ -143,6 +149,7 @@ export interface GithubInstallation {
   installed_at: string | null;
   last_synced_at: string | null;
   repos_count: number;
+  repos: GithubInstallationRepo[];
 }
 
 export interface GithubInstallationResponse {
