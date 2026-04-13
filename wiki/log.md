@@ -4,6 +4,22 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-13 — Dashboard bug fixes and backfill improvements
+
+**Pages updated:** dashboard, rails-server, data-flow
+
+**Summary:** Fixed 7 bugs found after connecting a GitHub App:
+
+1. **Overview page**: Replaced the redirect-to-PRs stub at `/{slug}` with a real overview page showing aggregate metrics across all PRs, grouped by category (Output Quality, Prompt Efficiency, Agent Behavior, Planning Effectiveness).
+2. **Org-level PR listing**: Added `GET /api/v1/orgs/:slug/prs` and `GET /api/v1/orgs/:slug/metrics` endpoints so the PR list and overview work without selecting a specific repo. Updated `listPRsWithMetricsAsync` and `getAggregateMetricsAsync` to use these.
+3. **Em-dash rendering**: Fixed `?? "&#8212;"` patterns (rendered literally in JSX) → `?? "\u2014"`.
+4. **PR size and lines changed**: `GithubDataFetcher` now computes `additions`/`deletions`/`changed_files` from fetched `PrFile` records. Previously 0 for backfilled PRs because the GitHub list endpoint doesn't include diff stats.
+5. **Boolean type mismatch**: Fixed `PRMetrics` TypeScript interface — `first_pass_accepted`, `has_tests`, `scope_creep_detected` are `boolean | null` (not `number | null`). Fixed `=== 1` comparisons → `=== true`.
+6. **Review backfill**: `BackfillInstallationJob` now fetches PR reviews from GitHub API before finalization, so `first_pass_accepted` is populated for backfilled PRs.
+7. **Date formatting**: `finalized_at` on PR detail page now formatted as "Mon DD, YYYY" instead of raw ISO string.
+
+---
+
 ## 2026-04-12 — Dashboard performance improvements
 
 **Pages updated:** dashboard, rails-server

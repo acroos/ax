@@ -72,6 +72,8 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `GET` | `/api/v1/orgs/:slug` | Org details |
 | `GET` | `/api/v1/orgs/:slug/repos` | List org repos |
 | `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership) |
+| `GET` | `/api/v1/orgs/:slug/prs` | All finalized PRs across all org repos |
+| `GET` | `/api/v1/orgs/:slug/metrics` | Aggregated metrics across all org repos |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | Finalized PRs with all metrics |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/metrics` | Aggregated metrics (averages, sums) |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/timeline` | PR timeline for trend charts |
@@ -134,6 +136,8 @@ Handles OAuth and onboarding:
 Fetches file-level and commit data from the GitHub API at PR finalization:
 - `GET /repos/{owner}/{repo}/pulls/{number}/files` → PrFile records (for test detection + line revisit tracking)
 - `GET /repos/{owner}/{repo}/pulls/{number}/commits` → Commit records with per-commit additions (for diff churn)
+
+Also computes and updates the PR's `additions`, `deletions`, and `changed_files` from the fetched file data (the GitHub list endpoint doesn't include diff stats).
 
 Only runs if the repo has a GitHub App installation. Skips gracefully otherwise.
 
@@ -214,7 +218,8 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 - Triggered after a GitHub App installation is saved (from both the setup callback and the `installation.created` webhook, whichever links the org first)
 - Lists all repositories accessible to the installation via the GitHub API
 - Upserts `Repo` records and backfills PRs from the last N days (default 90, configurable via `GITHUB_APP_BACKFILL_DAYS`)
-- Reuses existing webhook handlers (`PrOpened`, `PrMerged`, `PrClosed`) so metric computation stays on one code path
+- Reuses existing webhook handlers (`PrOpened`, `PrMerged`, `PrClosed`, `ReviewSubmitted`) so metric computation stays on one code path
+- Backfills PR reviews from GitHub API before finalization so `first_pass_accepted` is populated
 - Per-PR errors are caught and logged without aborting the entire backfill
 - Retries on `Octokit::TooManyRequests` (8 attempts, polynomial backoff) and `Octokit::ServerError` (3 attempts)
 - Updates `GithubInstallation#last_synced_at` on completion

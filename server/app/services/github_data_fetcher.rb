@@ -8,6 +8,7 @@ class GithubDataFetcher
     return unless github_client
 
     fetch_pr_files
+    update_pr_stats
     fetch_commit_stats
   end
 
@@ -35,6 +36,18 @@ class GithubDataFetcher
         status: file[:status]
       )
     end
+  end
+
+  def update_pr_stats
+    total_additions = @pr.pr_files.sum(:additions)
+    total_deletions = @pr.pr_files.sum(:deletions)
+    total_files = @pr.pr_files.count
+
+    @pr.update!(
+      additions: total_additions,
+      deletions: total_deletions,
+      changed_files: total_files
+    )
   end
 
   def fetch_commit_stats

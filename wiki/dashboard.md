@@ -22,7 +22,7 @@ Location: `dashboard/`
 
 | Route | Page | What it shows |
 |-------|------|---------------|
-| `/{slug}` | Org Overview | Redirects to `/{slug}/prs` |
+| `/{slug}` | Org Overview | Aggregate metrics across all PRs, grouped by category |
 | `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics |
 | `/{slug}/compare` | Compare | Org-scoped developer leaderboard, individual vs team averages, time filtering |
 | `/{slug}/settings` | Org Settings | GitHub App installation card (status, connected repos, install/reinstall), members list (role management, removal), and invites (create, list, revoke) |
