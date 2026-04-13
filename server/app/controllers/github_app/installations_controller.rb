@@ -34,6 +34,8 @@ module GithubApp
       )
       installation.save!
 
+      GithubApp::BackfillInstallationJob.perform_later(installation.id)
+
       redirect_to dashboard_url("/#{org.slug}/settings?installed=true"), allow_other_host: true
     rescue ActiveSupport::MessageVerifier::InvalidSignature, ActiveRecord::RecordNotFound
       redirect_to dashboard_url("/login?error=invalid_state"), allow_other_host: true
