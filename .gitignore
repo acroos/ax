@@ -1,4 +1,5 @@
 # Binaries
+/ax
 /bin/
 *.exe
 *.exe~
@@ -8,7 +9,6 @@
 
 # Build output
 /dist/
-/bin/
 
 # Test binary
 *.test
@@ -26,6 +26,10 @@ coverage.html
 .vscode/
 *.swp
 *.swo
+
+# Claude Code local data
+.claude/worktrees/
+.claude/settings.local.json
 
 # OS
 .DS_Store

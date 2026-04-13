@@ -73,18 +73,23 @@ type repoProgress struct {
 	sessionsTotal int
 }
 
+var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
 // progressState tracks the display state for the bulk push UI.
 type progressState struct {
 	mu    sync.Mutex
 	repos []repoProgress
 	isTTY bool
 	w     io.Writer
+	frame int
+	stop  chan struct{}
 }
 
 func newProgressState(repos []DiscoveredRepo, w io.Writer) *progressState {
 	ps := &progressState{
 		repos: make([]repoProgress, len(repos)),
 		w:     w,
+		stop:  make(chan struct{}),
 	}
 
 	// Detect if output is a TTY.
@@ -99,6 +104,42 @@ func newProgressState(repos []DiscoveredRepo, w io.Writer) *progressState {
 		}
 	}
 	return ps
+}
+
+// startSpinner starts a background goroutine that animates spinner frames
+// for any repos currently in the pushing state.
+func (ps *progressState) startSpinner() {
+	if !ps.isTTY {
+		return
+	}
+	go func() {
+		ticker := time.NewTicker(80 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ps.stop:
+				return
+			case <-ticker.C:
+				ps.mu.Lock()
+				ps.frame++
+				for i, r := range ps.repos {
+					if r.status == statusPushing {
+						ps.redrawLine(i)
+					}
+				}
+				ps.mu.Unlock()
+			}
+		}
+	}()
+}
+
+// stopSpinner stops the background spinner goroutine.
+func (ps *progressState) stopSpinner() {
+	select {
+	case <-ps.stop:
+	default:
+		close(ps.stop)
+	}
 }
 
 // printInitial prints the initial progress display.
@@ -120,20 +161,24 @@ func (ps *progressState) update(idx int, status repoStatus, sent int) {
 	ps.repos[idx].sessionsSent = sent
 
 	if ps.isTTY {
-		// Move cursor up to the repo's line and redraw.
-		linesUp := len(ps.repos) - idx
-		fmt.Fprintf(ps.w, "\033[%dA", linesUp)
-		ps.printLine(idx)
-		// Move cursor back down.
-		linesDown := linesUp - 1
-		if linesDown > 0 {
-			fmt.Fprintf(ps.w, "\033[%dB", linesDown)
-		}
+		ps.redrawLine(idx)
 	} else {
 		// Non-TTY: only print on completion/failure.
 		if status == statusDone || status == statusFailed {
 			ps.printLine(idx)
 		}
+	}
+}
+
+// redrawLine moves the cursor to a repo's line, redraws it, and restores cursor position.
+// Must be called with ps.mu held.
+func (ps *progressState) redrawLine(idx int) {
+	linesUp := len(ps.repos) - idx
+	fmt.Fprintf(ps.w, "\033[%dA", linesUp)
+	ps.printLine(idx)
+	linesDown := linesUp - 1
+	if linesDown > 0 {
+		fmt.Fprintf(ps.w, "\033[%dB", linesDown)
 	}
 }
 
@@ -157,8 +202,9 @@ func (ps *progressState) printLine(idx int) {
 				ui.Faint.Render("pending"))
 		}
 	case statusPushing:
+		frame := spinnerFrames[ps.frame%len(spinnerFrames)]
 		fmt.Fprintf(ps.w, "\r\033[K  %s %s %s\n",
-			ui.Highlight.Render("⠹"),
+			ui.Highlight.Render(frame),
 			padded,
 			ui.Faint.Render(fmt.Sprintf("pushing (%d/%d)...", r.sessionsSent, r.sessionsTotal)))
 	case statusDone:
@@ -180,6 +226,7 @@ func (ps *progressState) printLine(idx int) {
 func BulkPush(cfg *BulkPushConfig) *BulkPushResult {
 	progress := newProgressState(cfg.Repos, cfg.Writer)
 	progress.printInitial()
+	progress.startSpinner()
 
 	results := make([]RepoResult, len(cfg.Repos))
 
@@ -208,6 +255,7 @@ func BulkPush(cfg *BulkPushConfig) *BulkPushResult {
 		}()
 	}
 	wg.Wait()
+	progress.stopSpinner()
 
 	// Compute aggregates.
 	result := &BulkPushResult{Results: results}
