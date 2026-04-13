@@ -40,8 +40,8 @@ Rails.application.routes.draw do
           post :install_url
         end
         # Org-level PRs (all repos)
-        get :prs, to: "orgs#prs"
-        get :metrics, to: "orgs#metrics"
+        get :prs, to: "organizations#prs"
+        get :metrics, to: "organizations#metrics"
 
         resources :repos, only: [ :index ] do
           member do
