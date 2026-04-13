@@ -85,8 +85,8 @@ func (c *Client) Ping() error {
 		return fmt.Errorf("server health check failed (status %d)", resp.StatusCode)
 	}
 
-	// Now check auth by hitting an authenticated endpoint
-	resp, err = c.doRequest("GET", "/api/v1/repos", nil)
+	// Now check auth by hitting the ping endpoint (API key auth)
+	resp, err = c.doRequest("GET", "/api/v1/ping", nil)
 	if err != nil {
 		return fmt.Errorf("auth check failed: %w", err)
 	}
