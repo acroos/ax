@@ -20,10 +20,10 @@ module WebhookHandlers
         owner, name = full_name.split("/", 2)
 
         repo = Repo.find_or_initialize_by(
+          organization_id: installation.organization_id,
           github_owner: owner,
           github_repo: name
         )
-        repo.organization = installation.organization
         repo.github_installation = installation
         repo.path ||= full_name
         repo.save!
@@ -39,7 +39,7 @@ module WebhookHandlers
         full_name = repo_data[:full_name]
         owner, name = full_name.split("/", 2)
 
-        repo = Repo.find_by(github_owner: owner, github_repo: name)
+        repo = Repo.find_by(organization_id: installation.organization_id, github_owner: owner, github_repo: name)
         next unless repo
 
         repo.update!(github_installation_id: nil)

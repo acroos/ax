@@ -27,8 +27,11 @@ module GithubApp
       owner = gh_repo[:owner][:login]
       name = gh_repo[:name]
 
-      repo = Repo.find_or_initialize_by(github_owner: owner, github_repo: name)
-      repo.organization = installation.organization
+      repo = Repo.find_or_initialize_by(
+        organization_id: installation.organization_id,
+        github_owner: owner,
+        github_repo: name
+      )
       repo.github_installation = installation
       repo.path ||= "#{owner}/#{name}"
       repo.save!

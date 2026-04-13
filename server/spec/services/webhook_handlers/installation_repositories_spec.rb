@@ -27,12 +27,12 @@ RSpec.describe WebhookHandlers::InstallationRepositories do
       expect(repo.path).to eq("my-org/repo-a")
     end
 
-    it "updates existing repos to attach them to the installation" do
+    it "updates existing org-scoped repos to attach them to the installation" do
       existing = create(:repo,
         github_owner: "my-org",
         github_repo: "repo-a",
         path: "my-org/repo-a",
-        organization: nil,
+        organization: org,
         github_installation: nil
       )
 
