@@ -1,9 +1,10 @@
 module WebhookHandlers
   class ReviewSubmitted < Base
-    def initialize(review_data, pr_data, repo_data)
+    def initialize(review_data, pr_data, repo_data, installation: nil)
       @review_data = review_data
       @pr_data = pr_data
       @repo_data = repo_data
+      @installation = installation
     end
 
     def call

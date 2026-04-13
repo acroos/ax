@@ -4,6 +4,14 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-12 — Installation-scoped webhook processing (GitHub App Phase 5)
+
+**Pages updated:** rails-server
+
+**Summary:** PR/review/CI webhook events are now scoped to GitHub App installations. `ProcessGitHubWebhookJob` resolves the `installation.id` from each payload and only dispatches to handlers when the installation is active (or absent for legacy/CLI-pushed repos). Unknown or suspended/deleted installations are dropped with a warning log. `find_repo` in `WebhookHandlers::Base` now prefers repos belonging to the installation's org before falling back to unscoped lookup.
+
+---
+
 ## 2026-04-12 — API key reveal, invite management UI, and onboarding flow
 
 **Pages updated:** authentication, dashboard

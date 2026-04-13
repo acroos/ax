@@ -20,21 +20,43 @@ class ProcessGitHubWebhookJob < ApplicationJob
 
   private
 
+  def resolve_installation(payload)
+    github_id = payload.dig(:installation, :id)
+    return nil unless github_id
+
+    installation = GithubInstallation.find_by(github_installation_id: github_id)
+
+    unless installation
+      Rails.logger.warn("Webhook from unknown installation #{github_id} — skipping")
+      return :unknown
+    end
+
+    unless installation.active?
+      Rails.logger.warn("Webhook from #{installation.status} installation #{github_id} — skipping")
+      return :inactive
+    end
+
+    installation
+  end
+
   def handle_pull_request(payload)
+    installation = resolve_installation(payload)
+    return if installation == :unknown || installation == :inactive
+
     action = payload[:action]
     pr_data = payload[:pull_request]
     repo_data = payload[:repository]
 
     case action
     when "opened"
-      WebhookHandlers::PrOpened.new(pr_data, repo_data).call
+      WebhookHandlers::PrOpened.new(pr_data, repo_data, installation: installation).call
     when "synchronize"
-      WebhookHandlers::PrSynchronized.new(pr_data, repo_data).call
+      WebhookHandlers::PrSynchronized.new(pr_data, repo_data, installation: installation).call
     when "closed"
       if pr_data[:merged]
-        WebhookHandlers::PrMerged.new(pr_data, repo_data).call
+        WebhookHandlers::PrMerged.new(pr_data, repo_data, installation: installation).call
       else
-        WebhookHandlers::PrClosed.new(pr_data, repo_data).call
+        WebhookHandlers::PrClosed.new(pr_data, repo_data, installation: installation).call
       end
     end
   end
@@ -42,19 +64,27 @@ class ProcessGitHubWebhookJob < ApplicationJob
   def handle_review(payload)
     return unless payload[:action] == "submitted"
 
+    installation = resolve_installation(payload)
+    return if installation == :unknown || installation == :inactive
+
     WebhookHandlers::ReviewSubmitted.new(
       payload[:review],
       payload[:pull_request],
-      payload[:repository]
+      payload[:repository],
+      installation: installation
     ).call
   end
 
   def handle_check_suite(payload)
     return unless payload[:action] == "completed"
 
+    installation = resolve_installation(payload)
+    return if installation == :unknown || installation == :inactive
+
     WebhookHandlers::CiCompleted.new(
       payload[:check_suite],
-      payload[:repository]
+      payload[:repository],
+      installation: installation
     ).call
   end
 

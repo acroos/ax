@@ -1,8 +1,9 @@
 module WebhookHandlers
   class PrOpened < Base
-    def initialize(pr_data, repo_data)
+    def initialize(pr_data, repo_data, installation: nil)
       @pr_data = pr_data
       @repo_data = repo_data
+      @installation = installation
     end
 
     def call

@@ -5,6 +5,13 @@ module WebhookHandlers
     def find_repo(repo_data)
       owner = repo_data[:owner][:login]
       name = repo_data[:name]
+
+      if @installation
+        # Prefer repos scoped to this installation's org
+        repo = Repo.find_by(github_owner: owner, github_repo: name, organization: @installation.organization)
+        return repo if repo
+      end
+
       Repo.find_by(github_owner: owner, github_repo: name)
     end
 
