@@ -209,6 +209,15 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 - Development: Sidekiq adapter
 - Production: SolidQueue (in-database job queue)
 
+**GithubApp::BackfillInstallationJob** (queue: `:default`)
+- Triggered after a GitHub App installation is saved (from both the setup callback and the `installation.created` webhook, whichever links the org first)
+- Lists all repositories accessible to the installation via the GitHub API
+- Upserts `Repo` records and backfills PRs from the last N days (default 90, configurable via `GITHUB_APP_BACKFILL_DAYS`)
+- Reuses existing webhook handlers (`PrOpened`, `PrMerged`, `PrClosed`) so metric computation stays on one code path
+- Per-PR errors are caught and logged without aborting the entire backfill
+- Retries on `Octokit::TooManyRequests` (8 attempts, polynomial backoff) and `Octokit::ServerError` (3 attempts)
+- Updates `GithubInstallation#last_synced_at` on completion
+
 ## Key Files
 
 | File | Purpose |
@@ -228,4 +237,5 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 | `app/services/github_app/client.rb` | Octokit wrapper for installation-scoped API calls |
 | `app/models/pr_metrics.rb` | Finalization lock callback |
 | `app/jobs/process_git_hub_webhook_job.rb` | Webhook dispatcher |
+| `app/jobs/github_app/backfill_installation_job.rb` | Post-install PR backfill |
 | `db/schema.rb` | Generated schema (20 tables) |

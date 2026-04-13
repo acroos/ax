@@ -4,6 +4,14 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-12 — Backfill job for new installations (GitHub App Phase 6)
+
+**Pages updated:** rails-server
+
+**Summary:** Added `GithubApp::BackfillInstallationJob` which runs after a GitHub App installation is saved. It fetches all repos accessible to the installation, upserts `Repo` records, and backfills PRs from the last 90 days (configurable) by reusing existing webhook handlers (`PrOpened`, `PrMerged`, `PrClosed`). This means a new org sees finalized metrics on the dashboard immediately after installing the GitHub App, without waiting for `ax push`. The job retries on rate limits and server errors with polynomial backoff. Both the setup callback controller and the `InstallationCreated` webhook handler trigger the job (whichever completes with an org link first), and the handlers are idempotent so duplicate runs are safe.
+
+---
+
 ## 2026-04-12 — Installation-scoped webhook processing (GitHub App Phase 5)
 
 **Pages updated:** rails-server
