@@ -31,6 +31,9 @@ gem "thruster", require: false
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors"
 
+# Structured single-line logging for production
+gem "lograge"
+
 # Background job processing
 gem "sidekiq"
 
