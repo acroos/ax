@@ -15,7 +15,7 @@ class WebhooksController < ApplicationController
   private
 
   def valid_github_signature?
-    secret = ENV["AX_WEBHOOK_GITHUB_SECRET"]
+    secret = resolve_webhook_secret
     return true if secret.blank? # Allow unvalidated in development
 
     signature = request.headers["X-Hub-Signature-256"]
@@ -28,5 +28,17 @@ class WebhooksController < ApplicationController
     )
 
     ActiveSupport::SecurityUtils.secure_compare(expected, signature)
+  end
+
+  def resolve_webhook_secret
+    payload = JSON.parse(request.raw_post, symbolize_names: true) rescue {}
+    installation_id = payload.dig(:installation, :id)
+
+    if installation_id
+      installation = GithubInstallation.find_by(github_installation_id: installation_id)
+      return installation.webhook_secret if installation&.webhook_secret.present?
+    end
+
+    ENV["GITHUB_APP_WEBHOOK_SECRET"] || ENV["AX_WEBHOOK_GITHUB_SECRET"]
   end
 end

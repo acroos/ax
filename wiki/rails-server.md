@@ -149,9 +149,18 @@ Creates orgs, assigns owner membership, marks waitlist entry as "joined".
 
 ## Webhook Handling
 
-GitHub webhooks arrive at `POST /webhooks/github`. The controller validates the `X-Hub-Signature-256` header against `AX_WEBHOOK_GITHUB_SECRET`, then enqueues `ProcessGitHubWebhookJob` for async processing.
+GitHub webhooks arrive at `POST /webhooks/github`. The controller validates the `X-Hub-Signature-256` header using per-installation webhook secrets (falling back to `GITHUB_APP_WEBHOOK_SECRET` or `AX_WEBHOOK_GITHUB_SECRET`), then enqueues `ProcessGitHubWebhookJob` for async processing.
+
+### Signature Validation
+
+The `resolve_webhook_secret` method in `WebhooksController`:
+1. Parses the payload to extract `installation.id`
+2. Looks up the `GithubInstallation` and uses its `webhook_secret` if present
+3. Falls back to `GITHUB_APP_WEBHOOK_SECRET` env var, then `AX_WEBHOOK_GITHUB_SECRET`
 
 ### Handlers (`app/services/webhook_handlers/`)
+
+#### PR Lifecycle
 
 | Handler | Trigger | Action |
 |---------|---------|--------|
@@ -162,12 +171,24 @@ GitHub webhooks arrive at `POST /webhooks/github`. The controller validates the 
 | `ReviewSubmitted` | Review posted | Update `first_pass_accepted` |
 | `CiCompleted` | Check suite finished | Update `ci_success_rate` |
 
+#### Installation Lifecycle
+
+| Handler | Trigger | Action |
+|---------|---------|--------|
+| `InstallationCreated` | App installed | Upsert `GithubInstallation` (idempotent with setup callback) |
+| `InstallationDeleted` | App uninstalled | Mark status `deleted`, detach repos |
+| `InstallationSuspend` | App suspended | Mark status `suspended` |
+| `InstallationUnsuspend` | App unsuspended | Mark status `active` |
+| `InstallationRepositories` | Repos added/removed | Upsert repos on add, detach `github_installation_id` on remove |
+
+The setup-URL callback (Phase 3) and `InstallationCreated` webhook can arrive in either order. Both are idempotent — the callback sets the org association, the webhook fills in installation details. `GithubInstallation.organization_id` is nullable to support the webhook-first case.
+
 All handlers inherit from `Base`, which provides:
 - `find_repo` / `find_pr` / `find_or_create_pr` — Record lookup
 - `ensure_pr_metrics` — Create PrMetrics if missing
 - `pr_finalized?` — Guard against updating finalized records
 
-Handlers silently skip unknown repos (repos not yet pushed to the server).
+PR handlers silently skip unknown repos (repos not yet pushed to the server). Installation handlers silently skip unknown installations.
 
 ## Background Jobs
 
@@ -183,7 +204,7 @@ Handlers silently skip unknown repos (repos not yet pushed to the server).
 | `config/routes.rb` | All endpoint definitions |
 | `app/services/push_service.rb` | Push ingestion logic |
 | `app/services/auth_service.rb` | OAuth + onboarding |
-| `app/services/webhook_handlers/*.rb` | Event processing (6 handlers + base) |
+| `app/services/webhook_handlers/*.rb` | Event processing (11 handlers + base: 6 PR lifecycle + 5 installation lifecycle) |
 | `app/controllers/api/v1/base_controller.rb` | Auth helpers (API key + session) |
 | `app/controllers/api/v1/push_controller.rb` | Push endpoint |
 | `app/controllers/api/v1/repos_controller.rb` | Data read endpoints |
