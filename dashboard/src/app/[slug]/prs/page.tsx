@@ -120,7 +120,7 @@ export default async function OrgPRsPage({
               <tr
                 key={pr.id}
                 className="border-t border-border-subtle hover:bg-surface-1/50 transition-colors animate-in"
-                style={{ animationDelay: `${80 + i * 20}ms` }}
+                style={{ animationDelay: `${Math.min(80 + i * 20, 500)}ms` }}
               >
                 <td className="px-4 py-3">
                   <Link

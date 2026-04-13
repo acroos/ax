@@ -48,6 +48,9 @@ Rails.application.routes.draw do
         end
       end
 
+      # Single PR detail (session-authed, access checked against user's orgs)
+      resources :prs, only: [ :show ], controller: "prs"
+
       # Invite acceptance (session-authed, not org-scoped — the accepting
       # user's session identifies them, and the invite token identifies the org)
       post "/invites/:token/accept", to: "invites#create"

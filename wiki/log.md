@@ -4,6 +4,19 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-12 — Dashboard performance improvements
+
+**Pages updated:** dashboard, rails-server
+
+**Summary:** Fixed multiple performance issues causing >2s page loads on Vercel:
+1. **Sidebar Suspense**: Wrapped the root layout Sidebar in `<Suspense>` with a skeleton fallback so page content streams immediately instead of waiting for sidebar API calls. Parallelized `getCurrentUser()` and `listReposAsync()` with `Promise.all`.
+2. **Fetch revalidation**: Replaced `cache: "no-store"` with `next: { revalidate: 60 }` on all GET fetches in `db.ts` and `auth.ts`. Mutations still use `no-store`. This eliminates redundant cross-cloud round trips on repeated loads.
+3. **Compare page waterfall**: Refactored `compare/page.tsx` from 4 sequential API calls (each fetching the full PR list) to a single fetch with local computation. Exported `computeAggregatesFromPRs` from `db.ts`.
+4. **Single-PR endpoint**: Added `GET /api/v1/prs/:id` (Rails `PrsController#show`) so the PR detail page fetches one PR instead of all PRs. Access is checked against the user's org membership. Updated dashboard `getPRWithMetricsAsync(id)`.
+5. **Animation delay cap**: Capped staggered row animation delays in the PR list at 500ms so large lists don't feel artificially slow.
+
+---
+
 ## 2026-04-12 — Dashboard settings page polish (GitHub App Phase 7)
 
 **Pages updated:** dashboard
