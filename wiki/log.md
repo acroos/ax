@@ -4,6 +4,14 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-12 — Dashboard settings page polish (GitHub App Phase 7)
+
+**Pages updated:** dashboard
+
+**Summary:** Polished the GitHub App installation card on the org settings page. Added: connected repos list (collapsible, shows `owner/repo` for each repo tied to the installation), syncing indicator (pulsing dot when `last_synced_at` is null, indicating backfill in progress), reinstall button for suspended installations alongside the existing "Resume on GitHub" link, auto-dismissing success banner (8s timeout), human-readable error messages for known failure codes. Rails API now includes a `repos` array in the `GET /github_installation` response. Added spec coverage for repos inclusion.
+
+---
+
 ## 2026-04-12 — Backfill job for new installations (GitHub App Phase 6)
 
 **Pages updated:** rails-server

@@ -12,6 +12,10 @@ module Api
         user_role = current_user.role_in(@org)
 
         if installation
+          repos = installation.repos.order(:github_owner, :github_repo).map do |repo|
+            { id: repo.id, github_owner: repo.github_owner, github_repo: repo.github_repo }
+          end
+
           render json: {
             installation: {
               id: installation.id,
@@ -22,7 +26,8 @@ module Api
               status: installation.status,
               installed_at: installation.installed_at,
               last_synced_at: installation.last_synced_at,
-              repos_count: installation.repos.count
+              repos_count: installation.repos.count,
+              repos: repos
             },
             user_role: user_role
           }

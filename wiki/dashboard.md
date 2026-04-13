@@ -25,7 +25,7 @@ Location: `dashboard/`
 | `/{slug}` | Org Overview | Redirects to `/{slug}/prs` |
 | `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics |
 | `/{slug}/compare` | Compare | Org-scoped developer leaderboard, individual vs team averages, time filtering |
-| `/{slug}/settings` | Org Settings | Members list (role management, removal) and invites (create, list, revoke) |
+| `/{slug}/settings` | Org Settings | GitHub App installation card (status, connected repos, install/reinstall), members list (role management, removal), and invites (create, list, revoke) |
 
 ### Auth Routes
 
@@ -49,6 +49,8 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 | `getFilteredMetricsAsync(opts)` | Metrics filtered by time range and/or author |
 | `listReposAsync(orgSlug?)` | Tracked repositories |
 | `listDevelopersAsync(repoId?, orgSlug?)` | Unique PR author logins |
+| `getGithubInstallation(orgSlug)` | Installation state + user role + connected repos |
+| `requestGithubInstallUrl(orgSlug)` | Signed GitHub App install URL |
 
 ### API Communication
 
@@ -150,6 +152,7 @@ The middleware enforces auth on all routes. Public paths are excluded: `/login`,
 | `src/app/globals.css` | Theme, tokens, animations |
 | `src/app/api/v1/[...path]/route.ts` | API proxy for client components |
 | `src/app/onboarding/onboarding-steps.tsx` | Multi-step onboarding client component |
+| `src/app/[slug]/settings/github-app-card.tsx` | GitHub App installation card (3-state: missing/active/suspended, connected repos list, syncing indicator, reinstall flow) |
 | `src/app/[slug]/settings/members-section.tsx` | Member management client component |
 | `src/app/[slug]/settings/invites-section.tsx` | Invite management client component |
 | `src/middleware.ts` | Auth enforcement |
