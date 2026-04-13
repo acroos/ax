@@ -4,6 +4,14 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-12 — GitHub App webhook routing for installation events (Phase 4)
+
+**Pages updated:** rails-server
+
+**Summary:** Added webhook routing for GitHub App installation lifecycle events — Phase 4 of the github-app-installation plan. `ProcessGitHubWebhookJob` now handles `installation` (created/deleted/suspend/unsuspend) and `installation_repositories` (added/removed) events, dispatching to 5 new handlers in `app/services/webhook_handlers/`. `WebhooksController#valid_github_signature?` now resolves per-installation webhook secrets before falling back to the global env var. `GithubInstallation.organization_id` is now nullable to support the webhook-arriving-before-callback race condition. Both the callback and webhook are idempotent and converge to the same state.
+
+---
+
 ## 2026-04-12 — GitHub App installation flow (Phase 3)
 
 **Pages updated:** rails-server

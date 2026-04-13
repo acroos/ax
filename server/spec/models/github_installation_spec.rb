@@ -8,7 +8,7 @@ RSpec.describe GithubInstallation, type: :model do
     end
 
     it "rejects unknown status values" do
-      expect(build(:github_installation, status: "bogus")).not_to be_valid
+      expect { build(:github_installation, status: "bogus") }.to raise_error(ArgumentError)
     end
   end
 

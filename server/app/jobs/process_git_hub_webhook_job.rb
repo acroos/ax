@@ -11,6 +11,10 @@ class ProcessGitHubWebhookJob < ApplicationJob
       handle_review(payload)
     when "check_suite"
       handle_check_suite(payload)
+    when "installation"
+      handle_installation(payload)
+    when "installation_repositories"
+      handle_installation_repositories(payload)
     end
   end
 
@@ -52,5 +56,22 @@ class ProcessGitHubWebhookJob < ApplicationJob
       payload[:check_suite],
       payload[:repository]
     ).call
+  end
+
+  def handle_installation(payload)
+    case payload[:action]
+    when "created"
+      WebhookHandlers::InstallationCreated.new(payload).call
+    when "deleted"
+      WebhookHandlers::InstallationDeleted.new(payload).call
+    when "suspend"
+      WebhookHandlers::InstallationSuspend.new(payload).call
+    when "unsuspend"
+      WebhookHandlers::InstallationUnsuspend.new(payload).call
+    end
+  end
+
+  def handle_installation_repositories(payload)
+    WebhookHandlers::InstallationRepositories.new(payload).call
   end
 end
