@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"github.com/austinroos/ax/internal/parsers"
 	"github.com/austinroos/ax/internal/push"
 	"github.com/austinroos/ax/internal/ui"
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
 
@@ -344,21 +344,6 @@ func runBulkPush(apiKeyOverride string) error {
 		return summary.Repos[i].OwnerRepo < summary.Repos[j].OwnerRepo
 	})
 
-	// Display discovery summary.
-	fmt.Println()
-	fmt.Printf("  %s\n", ui.Bold.Render(fmt.Sprintf(
-		"Bulk Push — %d %s, %d sessions",
-		len(summary.Repos), pluralize(len(summary.Repos), "repo", "repos"),
-		summary.TotalSessions)))
-	fmt.Println()
-
-	for _, r := range summary.Repos {
-		fmt.Printf("  %s %-35s %s\n",
-			ui.InfoIcon(),
-			r.OwnerRepo,
-			ui.Faint.Render(fmt.Sprintf("%d sessions", len(r.SessionFiles))))
-	}
-
 	if len(summary.SkippedPaths) > 0 {
 		fmt.Printf("\n  %s %d %s skipped (no git remote or missing directory)\n",
 			ui.WarningIcon(),
@@ -366,15 +351,44 @@ func runBulkPush(apiKeyOverride string) error {
 			pluralize(len(summary.SkippedPaths), "path", "paths"))
 	}
 
-	// Confirmation prompt.
-	fmt.Printf("\n  Continue? [Y/n] ")
-	reader := bufio.NewReader(os.Stdin)
-	answer, _ := reader.ReadString('\n')
-	answer = strings.TrimSpace(answer)
-	if answer != "" && answer != "y" && answer != "Y" {
+	// Interactive repo selection via multi-select.
+	options := make([]huh.Option[int], len(summary.Repos))
+	for i, r := range summary.Repos {
+		label := fmt.Sprintf("%-35s %s",
+			r.OwnerRepo,
+			ui.Faint.Render(fmt.Sprintf("%d sessions", len(r.SessionFiles))))
+		options[i] = huh.NewOption(label, i).Selected(true)
+	}
+
+	var selectedIndices []int
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewMultiSelect[int]().
+				Title(fmt.Sprintf("Bulk Push — %d %s, %d sessions",
+					len(summary.Repos),
+					pluralize(len(summary.Repos), "repo", "repos"),
+					summary.TotalSessions)).
+				Description("Space to toggle, Enter to confirm").
+				Options(options...).
+				Value(&selectedIndices),
+		),
+	)
+
+	if err := form.Run(); err != nil {
 		fmt.Println("  Aborted.")
 		return nil
 	}
+
+	if len(selectedIndices) == 0 {
+		fmt.Println("  No repos selected. Aborted.")
+		return nil
+	}
+
+	selectedRepos := make([]bulk.DiscoveredRepo, len(selectedIndices))
+	for i, idx := range selectedIndices {
+		selectedRepos[i] = summary.Repos[idx]
+	}
+	summary.Repos = selectedRepos
 
 	fmt.Println()
 
