@@ -120,7 +120,64 @@ this automatically — `ax push` runs after each Claude Code session ends.
 
 ---
 
-## Step 5 — View results on the dashboard
+## Step 5 — Install the GitHub App on your organization
+
+> **Who needs to do this?** An org admin. This is a one-time step per
+> GitHub organization.
+
+Installing the AX GitHub App on your GitHub org enables:
+
+- **Automatic webhook delivery** — PR, review, and CI events flow into AX
+  in real time with no per-repo setup.
+- **Installation-token-based repo access** — AX reads repo data through
+  server-to-server tokens scoped to the installation, not individual user
+  tokens.
+- **Historical backfill** — on install, AX fetches recent PR history
+  (default: 90 days) so your dashboard isn't empty on day one.
+
+### How to install
+
+1. Navigate to `https://ax-metrics.vercel.app/{your-org-slug}/settings`.
+2. In the **GitHub App** card, click **Install GitHub App**. Only org
+   admins see this button.
+3. You'll be redirected to GitHub's app installation consent screen. Choose
+   the organization you want to connect and select which repositories AX
+   can access ("All repositories" or a subset).
+4. After granting access, GitHub redirects you back to the AX settings
+   page. A success banner confirms the installation, and background
+   backfill begins automatically.
+
+Once installed, new repositories added to the GitHub org are automatically
+covered — no additional configuration needed.
+
+### What happens behind the scenes
+
+- The Rails server receives a callback with the `installation_id` and
+  creates a `GithubInstallation` record linked to your AX org.
+- A backfill job enqueues to fetch PRs from the last 90 days across all
+  accessible repos and run them through the standard webhook handlers
+  (`PrOpened`, `PrMerged`, `PrClosed`).
+- Going forward, GitHub delivers webhook events (pull request, review,
+  check suite) directly to the AX server — no CLI push required for
+  GitHub-sourced metrics.
+
+### Managing the installation
+
+From `/{slug}/settings` you can see:
+
+- **Status** — Connected (active) or Suspended.
+- **Connected repos** — list of repositories linked to the installation.
+- **Last synced** — when the most recent backfill or sync completed.
+- **Manage on GitHub** — link to the installation settings page on GitHub,
+  where you can change repo access or uninstall.
+
+To uninstall, visit the GitHub installation settings page directly
+(linked from the AX settings card). Uninstalling detaches the installation
+but preserves all historical PR data and metrics.
+
+---
+
+## Step 6 — View results on the dashboard
 
 Open `https://ax-metrics.vercel.app/{your-org-slug}`. On first sign-in your
 org slug is your GitHub username.
@@ -174,14 +231,15 @@ Each teammate has their own API key. Keys are scoped per user, not per org.
 | Org-scoped Compare UI | Working | — |
 | Member / invite management UI | Placeholder route | `plans/managed-service-identity.md` |
 | Invite acceptance API + cookie flow | Working | — |
-| GitHub App installation flow | **Not built** | [ADR-013](decisions/013-github-integration-model.md) |
-| Real-time webhooks for PR / review / CI events | **Not built** | [ADR-013](decisions/013-github-integration-model.md) |
-| Automatic repo ingestion (no CLI push required) | **Not built** | [ADR-013](decisions/013-github-integration-model.md) |
+| GitHub App installation flow | Working | [ADR-013](decisions/013-github-integration-model.md) |
+| Real-time webhooks for PR / review / CI events | Working | [ADR-013](decisions/013-github-integration-model.md) |
+| Automatic repo ingestion (no CLI push required) | Working | [ADR-013](decisions/013-github-integration-model.md) |
 
-Concretely: **today, session data enters via CLI push and PR data enters via
-GitHub webhooks.** The GitHub App installation flow described in ADR-013 —
-one-click install on an org, automatic webhook delivery, installation-token-based
-repo reads — is the target end state for fully automatic ingestion.
+Concretely: **session data enters via CLI push and GitHub-sourced PR data
+enters via webhook delivery from the GitHub App.** Once an org admin installs
+the AX GitHub App (Step 5), webhook events flow automatically and a backfill
+job seeds historical PR data. The CLI push path remains available for session
+metrics and for repos not covered by the GitHub App installation.
 
 ---
 
@@ -232,6 +290,31 @@ Two possible causes:
 2. **Session data hasn't been pushed.** If the `SessionEnd` hook hasn't
    fired yet (e.g. you haven't ended a Claude Code session since setup),
    run `ax push --repo .` manually.
+
+### GitHub App installation failed
+
+After clicking **Install GitHub App**, the settings page shows an error
+banner instead of a success message. The error query parameter tells you
+what went wrong:
+
+| Error code | Meaning | Fix |
+|---|---|---|
+| `missing_installation_id` | GitHub did not return an installation ID in the callback. | Try installing again from the settings page. |
+| `api_error` | The AX server could not verify the installation with GitHub's API. | Wait a moment and retry. If it persists, check GitHub's [status page](https://www.githubstatus.com/). |
+| `invalid_state` | The install link expired or the state token was invalid. | Go back to `/{slug}/settings` and click **Install GitHub App** again to generate a fresh link. |
+| `forbidden` | You do not have permission to install the GitHub App for this organization. | Only org admins can install. Ask an admin to perform the installation. |
+
+If the installation succeeds but **no data appears**, the backfill job may
+still be running. Check the "Last synced" timestamp on the GitHub App card
+in settings — it updates when the backfill completes. For large orgs with
+many repos, this can take several minutes.
+
+### GitHub App shows "Suspended"
+
+A GitHub org admin suspended the AX app installation from GitHub's settings.
+While suspended, no webhook events are delivered and no new data flows in.
+Existing data is preserved. To resume, visit the GitHub installation
+settings page (linked from the AX settings card) and unsuspend the app.
 
 ### `ax init` says "server unreachable"
 
