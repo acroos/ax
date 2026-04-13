@@ -1,4 +1,5 @@
 # Binaries
+/ax
 /bin/
 *.exe
 *.exe~
@@ -8,7 +9,6 @@
 
 # Build output
 /dist/
-/bin/
 
 # Test binary
 *.test
