@@ -1,6 +1,6 @@
 # Metrics
 
-AX computes 16 metrics across 4 categories. Metrics are only computed for finalized (merged or closed) PRs. Open PRs are excluded from reports and the dashboard entirely.
+AX computes 16 metrics across 4 categories. Full metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but aggregate statistics (averages, trend lines) use settled PRs only.
 
 Each metric has detailed documentation in `docs/metrics/` and is viewable in the dashboard at `/docs/[slug]`.
 
@@ -35,9 +35,9 @@ Measures how the agent performed during the coding session.
 
 | Metric | Type | Source | What it measures |
 |--------|------|--------|------------------|
-| Self-Correction Rate | float | Sessions | Ratio of tool calls that fixed errors from prior tool calls. |
-| Context Efficiency | float | Sessions | Ratio of tokens actively used vs tokens loaded into context. |
-| Error Recovery Attempts | int | Sessions | Number of times the agent retried after a failed tool call. |
+| Self-Correction Rate | float | Sessions | `bash_successes / (bash_successes + bash_errors)` — higher = more commands succeed without human help. |
+| Context Efficiency | float | Sessions | `files_modified / files_read` — higher = more focused, lower = more exploration. |
+| Error Recovery Attempts | int | Sessions | Total Bash errors across correlated sessions. Lower = fewer recovery cycles needed. |
 
 ### Planning Effectiveness
 
@@ -63,9 +63,12 @@ All metric computation happens server-side in the Rails application.
 - **Session-dependent metrics** (prompt efficiency, agent behavior) are computed after session data is pushed from the CLI and correlated to PRs
 - **Plan analysis metrics** (planning effectiveness) are computed from plan files referenced in session data
 
-The Go `internal/metrics/` package contains the original metric calculator implementations as pure functions. These are being ported to Ruby for server-side use.
+Server-side computation is split between two services:
 
-Code: `internal/metrics/output_quality.go`, `agent_behavior.go`, `prompt_efficiency.go`, `planning.go`
+- **`MetricsComputer`** — Computes `diff_churn_lines`, `has_tests`, and `line_revisit_rate` from GitHub file/commit data
+- **`SessionPrCorrelationService`** — Aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth`, `self_correction_rate`, `context_efficiency`, and `error_recovery_attempts` from correlated session data
+
+The Go `internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
 
 ## Finalization
 
@@ -76,18 +79,22 @@ PR opened
   → metrics initialized (all null)
   → individual metrics updated as data arrives
   → PR reaches terminal state (merged or closed)
-  → ALL metrics finalized: metrics_finalized = true, finalized_at = timestamp
-  → Record becomes immutable
+  → metrics_finalized = true, finalized_at = timestamp
+  → GitHub-derived fields locked; session-derived fields remain updatable
 ```
 
 ### Why finalize?
-- Prevents partial metrics from appearing in reports
+- Prevents partial GitHub metrics from appearing in aggregate reports
 - Ensures comparisons are apples-to-apples (all PRs measured at the same lifecycle stage)
-- Immutability means historical data never changes retroactively
+- Late-arriving session data can still enrich already-settled PRs (the normal case — developers push after PRs merge)
+
+### Scoped write protection
+- **GitHub-derived** (locked after finalization): `post_open_commits`, `first_pass_accepted`, `ci_success_rate`, `diff_churn_lines`, `has_tests`, `line_revisit_rate`
+- **Session-derived** (always updatable via `update_session_metrics!`): `messages_per_pr`, `iteration_depth`, `token_cost_usd`, `self_correction_rate`, `context_efficiency`, `error_recovery_attempts`, `plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`
 
 ### Where is finalization enforced?
-- **Rails**: `PrMetrics` model has a `before_update` callback that raises if already finalized
-- **Webhooks**: All handlers check `pr_finalized?` before updating
+- **Rails**: `PrMetrics` model has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`
+- **Webhooks**: All handlers check `pr_finalized?` before updating GitHub fields
 
 ### Webhook-triggered finalization
 `PrMerged` and `PrClosed` webhook handlers set `metrics_finalized = true`. This happens in real time as GitHub sends events.

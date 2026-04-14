@@ -12,29 +12,26 @@ Self-correction rate is a measure of agent autonomy and reliability. High self-c
 
 ## How It's Calculated
 
-1. Parse the session transcript to identify correction sequences — places where the agent modifies code it previously wrote.
-2. Classify each correction:
-   - **Self-correction:** The agent ran a tool (test, build, lint), observed a failure, and made changes to fix the issue — all without an intervening human message. The pattern is: agent writes code, agent runs a check, check fails, agent fixes the code.
-   - **Human-requested correction:** The human sends a message indicating something is wrong (e.g., "that's not right," "fix the test," "there's a bug in..."), and the agent then makes changes.
-3. Calculate the rate.
+### Current implementation
+
+AX approximates self-correction using the ratio of successful to failed Bash commands across all sessions correlated to a PR:
 
 ```
-corrections = []
-for i, message in enumerate(session.messages):
-    if is_correction(message):  # agent modifying previously-written code
-        # Look backward: was there a human message requesting this fix?
-        preceding_messages = session.messages[last_agent_action:i]
-        if any(m.role == "user" for m in preceding_messages):
-            corrections.append("human_requested")
-        else:
-            corrections.append("self_correction")
-
-self_correction_rate = (
-    corrections.count("self_correction") / len(corrections) * 100
-)
+self_correction_rate = bash_successes / (bash_successes + bash_errors)
 ```
 
-Detecting corrections requires identifying when the agent modifies files it previously edited in the same session, particularly after running a tool that returned an error or failure output.
+The intuition: if the agent encounters errors but ultimately gets most commands to succeed, it's self-correcting along the way. A rate of 0.85 means 85% of Bash commands succeeded — the agent recovered from the other 15% without human help.
+
+Returns a value between 0.0 and 1.0. If there are no errors at all, the metric is omitted (nothing to self-correct).
+
+### Future refinement
+
+A more granular approach would parse the session transcript to classify each correction as agent-initiated vs human-requested:
+
+- **Self-correction:** The agent ran a tool, observed a failure, and fixed it — all without an intervening human message.
+- **Human-requested correction:** A human message prompted the fix (e.g., "that's not right", "fix the test").
+
+This would give a truer measure of autonomy but requires fine-grained message ordering data that isn't yet available in the aggregated session format.
 
 ## Interpreting Values
 
