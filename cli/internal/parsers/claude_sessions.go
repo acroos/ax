@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/austinroos/ax/internal/pricing"
@@ -511,6 +512,54 @@ func parseTimestamp(ts string) int64 {
 func isPlanFile(path string) bool {
 	lower := strings.ToLower(path)
 	return strings.Contains(lower, "/plans/") || strings.Contains(lower, "/.claude/plans/")
+}
+
+// planFilePathRegex matches backtick-wrapped strings that look like file paths.
+// e.g. `internal/db/db.go`, `src/components/App.tsx`
+var planFilePathRegex = regexp.MustCompile("`([a-zA-Z0-9_./-]+\\.[a-zA-Z0-9]+)`")
+
+// ExtractPlannedFiles reads plan files from disk and extracts file path references.
+// Returns a deduplicated list of file paths found in the plan content.
+func ExtractPlannedFiles(planFiles []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+
+	for _, planPath := range planFiles {
+		content, err := os.ReadFile(planPath)
+		if err != nil {
+			continue
+		}
+
+		matches := planFilePathRegex.FindAllStringSubmatch(string(content), -1)
+		for _, match := range matches {
+			path := match[1]
+			// Skip obvious non-file references
+			if strings.Contains(path, "://") {
+				continue
+			}
+			// Skip dotfiles without directory component (e.g. ".env")
+			if strings.HasPrefix(path, ".") && !strings.Contains(path, "/") {
+				continue
+			}
+			// Skip version-like strings (e.g. "1.2.3", "0.10")
+			if looksLikeVersion(path) {
+				continue
+			}
+			if !seen[path] {
+				seen[path] = true
+				result = append(result, path)
+			}
+		}
+	}
+
+	return result
+}
+
+// looksLikeVersion returns true for strings like "1.2.3", "0.10", "v2.0"
+var versionRegex = regexp.MustCompile(`^v?\d+(\.\d+)+$`)
+
+func looksLikeVersion(s string) bool {
+	return versionRegex.MatchString(s)
 }
 
 func atoi(s string) int {

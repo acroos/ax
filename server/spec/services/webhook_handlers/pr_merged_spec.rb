@@ -46,8 +46,15 @@ RSpec.describe WebhookHandlers::PrMerged do
       .to_return(
         status: 200,
         body: [
-          { sha: "aaa111", commit: { author: { name: "octocat" }, message: "feat" }, stats: { additions: 12, deletions: 2 } }
+          { sha: "aaa111", commit: { author: { name: "octocat" }, message: "feat" } }
         ].to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    stub_request(:get, %r{api\.github\.com/repos/octocat/hello-world/commits/aaa111\b})
+      .to_return(
+        status: 200,
+        body: { sha: "aaa111", stats: { additions: 12, deletions: 2 } }.to_json,
         headers: { "Content-Type" => "application/json" }
       )
   end
@@ -68,6 +75,22 @@ RSpec.describe WebhookHandlers::PrMerged do
     expect(PrFile.where(pr: pr).count).to eq(2)
     expect(metrics.reload.has_tests).to be true
     expect(metrics.diff_churn_lines).to eq(2) # 12 commit additions - 10 PR additions
+  end
+
+  it "defaults first_pass_accepted to true when no reviews exist" do
+    handler = described_class.new(pr_data, repo_data)
+    handler.call
+
+    expect(metrics.reload.first_pass_accepted).to be true
+  end
+
+  it "preserves first_pass_accepted false from a changes_requested review" do
+    metrics.update!(first_pass_accepted: false)
+
+    handler = described_class.new(pr_data, repo_data)
+    handler.call
+
+    expect(metrics.reload.first_pass_accepted).to be false
   end
 
   it "skips already finalized PRs" do

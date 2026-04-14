@@ -33,6 +33,10 @@ module GithubApp
       client.pull_request_commits("#{owner}/#{repo}", number)
     end
 
+    def get_commit(owner:, repo:, sha:)
+      client.commit("#{owner}/#{repo}", sha)
+    end
+
     private
 
     def client

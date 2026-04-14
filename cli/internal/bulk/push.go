@@ -286,7 +286,7 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 		if err != nil {
 			continue
 		}
-		sessions = append(sessions, api.SessionData{
+		sd := api.SessionData{
 			ID:                       session.ID,
 			Branch:                   session.Branch,
 			StartedAt:                session.StartedAt,
@@ -303,7 +303,13 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 			BashSuccesses:            session.BashSuccesses,
 			FilesReadCount:           len(session.FilesRead),
 			FilesModifiedCount:       len(session.FilesModified),
-		})
+		}
+
+		if len(session.PlanFiles) > 0 {
+			sd.PlannedFiles = parsers.ExtractPlannedFiles(session.PlanFiles)
+		}
+
+		sessions = append(sessions, sd)
 	}
 
 	result.TotalSessions = len(sessions)

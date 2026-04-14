@@ -15,9 +15,9 @@ Measures the quality of code produced by the agent-human collaboration.
 | Post-Open Commits | int | GitHub | Commits pushed after PR was opened. Lower = cleaner first draft. |
 | First-Pass Acceptance | bool | GitHub | No CHANGES_REQUESTED reviews. True = reviewer approved without requesting changes. |
 | CI Success Rate | float | GitHub | Passing CI checks / total checks. 1.0 = all green. |
-| Test Coverage | bool | GitHub | Whether the PR includes test files (pattern-matched by filename). |
-| Diff Churn | int | GitHub | Lines added across all commits minus lines in the final diff. Higher = more rework. |
-| Line Revisit Rate | float | GitHub | Files in this PR that were also changed in other recent PRs. Higher = unstable areas. |
+| Test Coverage | bool/nil | GitHub | Whether the PR includes test files (pattern-matched by filename). Nil when PR only touches non-testable files (docs, CI, config). |
+| Diff Churn | int | GitHub | Lines added across all commits minus lines in the final diff. Higher = more rework. Per-commit stats fetched individually via GitHub API. |
+| Line Revisit Rate | float | GitHub | Files in this PR that were also changed in other PRs finalized within the last 7 days. Higher = unstable areas. |
 
 ### Prompt Efficiency
 
@@ -45,9 +45,9 @@ Measures how well plans translated into implementation.
 
 | Metric | Type | Source | What it measures |
 |--------|------|--------|------------------|
-| Plan Coverage | float | Sessions + Git | Fraction of planned files that were actually changed. |
-| Plan Deviation | float | Sessions + Git | Fraction of changed files that were not in the plan. |
-| Scope Creep | bool | Sessions + Git | Whether significant unplanned work was detected. |
+| Plan Coverage | float | Sessions + GitHub | Fraction of actual changed files that were in the plan. Planned files extracted from plan documents by CLI and compared against PR files from GitHub API. |
+| Plan Deviation | float | Sessions + GitHub | Fraction of planned files that were actually changed. 1.0 = every planned file was touched. |
+| Scope Creep | bool | Sessions + GitHub | True when >50% of changed files were not in the plan. |
 
 ### Repo-Level
 
@@ -59,14 +59,14 @@ Measures how well plans translated into implementation.
 
 All metric computation happens server-side in the Rails application.
 
-- **GitHub-sourced metrics** (output quality) are computed from webhook data as PR events arrive
+- **GitHub-sourced metrics** (output quality) are computed from webhook data and GitHub API at PR finalization (merge/close)
 - **Session-dependent metrics** (prompt efficiency, agent behavior) are computed after session data is pushed from the CLI and correlated to PRs
-- **Plan analysis metrics** (planning effectiveness) are computed from plan files referenced in session data
+- **Plan analysis metrics** (planning effectiveness) are computed after session-PR correlation, comparing planned files (from CLI push) against PR files (from GitHub API)
 
 Server-side computation is split between two services:
 
-- **`MetricsComputer`** — Computes `diff_churn_lines`, `has_tests`, and `line_revisit_rate` from GitHub file/commit data
-- **`SessionPrCorrelationService`** — Aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth`, `self_correction_rate`, `context_efficiency`, and `error_recovery_attempts` from correlated session data
+- **`MetricsComputer`** — Computes `diff_churn_lines` (per-commit stats via individual commit API), `has_tests` (with non-testable file filtering), `line_revisit_rate` (7-day lookback), session-derived metrics (`self_correction_rate`, `context_efficiency`, `error_recovery_attempts`), and plan metrics (`plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`)
+- **`SessionPrCorrelationService`** — Aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth` from correlated session data, and triggers plan metrics computation
 
 The Go `cli/internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
 

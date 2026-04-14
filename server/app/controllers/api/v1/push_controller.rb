@@ -30,7 +30,8 @@ module Api
             :id, :branch, :started_at, :ended_at, :message_count, :turn_count,
             :input_tokens, :output_tokens, :cache_creation_input_tokens,
             :cache_read_input_tokens, :total_cost_usd, :primary_model,
-            :bash_errors, :bash_successes, :files_read_count, :files_modified_count
+            :bash_errors, :bash_successes, :files_read_count, :files_modified_count,
+            planned_files: []
           ],
           commits: [
             :sha, :pr_number, :session_id, :message, :author, :committed_at,

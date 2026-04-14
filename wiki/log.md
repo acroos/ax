@@ -11,6 +11,33 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-14 — Metrics audit: fix broken metrics and implement planning metrics
+
+**Pages updated:** metrics
+
+**Bug fixes:**
+- **Diff Churn**: Fixed always-0 bug. GitHub's list-commits API doesn't return per-commit stats — now fetches each commit individually via `GET /commits/{sha}` to get real additions/deletions
+- **First-Pass Acceptance**: Fixed always-false bug. PRs with no reviews now default to `first_pass_accepted: true` at finalization (no reviews = accepted)
+- **Test Coverage**: `has_tests` returns nil when PR only touches non-testable files (docs, CI, config, lock files), excluding them from aggregate rate calculations
+- **Line Revisit Rate**: Added 7-day lookback window. Previously checked ALL finalized PRs ever, now only counts files changed in PRs merged/closed within last 7 days
+
+**New features:**
+- **Planning Metrics**: Implemented full pipeline — CLI extracts file path references from plan documents in `/plans/` directories, pushes them as `planned_files` in session data. Server compares against PR files from GitHub API after session-PR correlation. Computes `plan_coverage_score`, `plan_deviation_score`, and `scope_creep_detected`. Results stored in both `pr_metrics` and `plan_analyses` tables.
+
+**Files changed:**
+- `server/app/services/github_app/client.rb` — added `get_commit` method
+- `server/app/services/github_data_fetcher.rb` — fetches individual commits for stats
+- `server/app/services/metrics_computer.rb` — non-testable file filtering, 7-day revisit window, plan metrics computation
+- `server/app/services/webhook_handlers/pr_merged.rb`, `pr_closed.rb` — default first_pass_accepted at finalization
+- `server/app/services/session_pr_correlation_service.rb` — triggers plan metrics after correlation
+- `server/app/controllers/api/v1/push_controller.rb` — permits `planned_files` array
+- `server/app/services/push_service.rb` — stores planned_files
+- `server/db/migrate/20260414000002_add_planned_files_to_coding_sessions.rb` — new column
+- `cli/internal/api/types.go` — added PlannedFiles to SessionData
+- `cli/internal/parsers/claude_sessions.go` — added ExtractPlannedFiles function
+- `cli/internal/bulk/push.go` — sends planned files in push payload
+
+---
 ## 2026-04-13 — Data collection disclosure page and README section
 
 **Pages updated:** dashboard

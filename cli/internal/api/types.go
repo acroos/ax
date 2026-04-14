@@ -67,8 +67,9 @@ type SessionData struct {
 	PrimaryModel             string  `json:"primary_model,omitempty"`
 	BashErrors               int     `json:"bash_errors"`
 	BashSuccesses            int     `json:"bash_successes"`
-	FilesReadCount           int     `json:"files_read_count"`
-	FilesModifiedCount       int     `json:"files_modified_count"`
+	FilesReadCount           int      `json:"files_read_count"`
+	FilesModifiedCount       int      `json:"files_modified_count"`
+	PlannedFiles             []string `json:"planned_files,omitempty"`
 }
 
 // SessionPRData represents a session-to-PR correlation.
