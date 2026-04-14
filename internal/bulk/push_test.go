@@ -23,11 +23,11 @@ func TestChunkSessions(t *testing.T) {
 		wantLast   int // size of last chunk
 	}{
 		{"zero sessions", 0, 0, 0},
-		{"under chunk size", 50, 1, 50},
-		{"exact chunk size", 100, 1, 100},
-		{"over chunk size", 250, 3, 50},
+		{"under chunk size", 5, 1, 5},
+		{"exact chunk size", 10, 1, 10},
+		{"over chunk size", 25, 3, 5},
 		{"single session", 1, 1, 1},
-		{"just over", 101, 2, 1},
+		{"just over", 11, 2, 1},
 	}
 
 	for _, tt := range tests {
@@ -117,7 +117,7 @@ func TestBulkPush_AllSucceed(t *testing.T) {
 	if result.TotalFailed != 0 {
 		t.Errorf("TotalFailed = %d, want 0", result.TotalFailed)
 	}
-	// Each repo should be 1 chunk (< 100 sessions).
+	// Each repo should be 1 chunk (< 10 sessions).
 	if requestCount.Load() != 2 {
 		t.Errorf("server received %d requests, want 2", requestCount.Load())
 	}
@@ -135,9 +135,9 @@ func TestBulkPush_ChunkedRequests(t *testing.T) {
 
 	client := push.NewClient(server.URL, "test-key")
 
-	// Create 250 session files — should result in 3 chunks.
+	// Create 25 session files — should result in 3 chunks.
 	tmpDir := t.TempDir()
-	sessFiles := createTempSessions(t, tmpDir, 250)
+	sessFiles := createTempSessions(t, tmpDir, 25)
 
 	repos := []DiscoveredRepo{
 		{
@@ -158,7 +158,7 @@ func TestBulkPush_ChunkedRequests(t *testing.T) {
 		t.Errorf("ReposPushed = %d, want 1", result.ReposPushed)
 	}
 	if requestCount.Load() != 3 {
-		t.Errorf("server received %d requests, want 3 (chunks of 100+100+50)", requestCount.Load())
+		t.Errorf("server received %d requests, want 3 (chunks of 10+10+5)", requestCount.Load())
 	}
 }
 

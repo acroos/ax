@@ -17,7 +17,7 @@ import (
 )
 
 // ChunkSize is the maximum number of sessions per push payload.
-const ChunkSize = 100
+const ChunkSize = 10
 
 // DefaultConcurrency is the default number of parallel repo workers.
 const DefaultConcurrency = 3
