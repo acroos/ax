@@ -223,7 +223,7 @@ func TestDiscoverRepos_WorktreeDedup(t *testing.T) {
 
 	// Create session files for both paths.
 	createEncodedSession := func(projectPath, sessionID string) {
-		encoded := strings.ReplaceAll(projectPath, "/", "-")
+		encoded := strings.ReplaceAll(strings.ReplaceAll(projectPath, "/", "-"), ".", "-")
 		dir := filepath.Join(claudeDir, "projects", encoded)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)

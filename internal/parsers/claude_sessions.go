@@ -149,7 +149,8 @@ func LoadHistory(claudeDir string) (map[string][]HistoryEntry, error) {
 // (stored under <repo>/.claude/worktrees/<name>/).
 func FindSessionFiles(claudeDir, projectPath string) ([]string, error) {
 	// Claude Code stores project sessions in ~/.claude/projects/<encoded-path>/
-	encodedPath := strings.ReplaceAll(projectPath, "/", "-")
+	// Claude Code replaces both "/" and "." with "-" when encoding paths.
+	encodedPath := strings.ReplaceAll(strings.ReplaceAll(projectPath, "/", "-"), ".", "-")
 	projectDir := filepath.Join(claudeDir, "projects", encodedPath)
 
 	var allMatches []string
@@ -166,7 +167,7 @@ func FindSessionFiles(claudeDir, projectPath string) ([]string, error) {
 	// Worktrees are created at <repo>/.claude/worktrees/<name>/, and their
 	// sessions are stored under a separate encoded path. We glob for any
 	// project directory that matches the worktree naming pattern.
-	worktreePattern := filepath.Join(claudeDir, "projects", encodedPath+"-.claude-worktrees-*")
+	worktreePattern := filepath.Join(claudeDir, "projects", encodedPath+"--claude-worktrees-*")
 	worktreeDirs, err := filepath.Glob(worktreePattern)
 	if err != nil {
 		return nil, fmt.Errorf("failed to glob worktree directories: %w", err)
