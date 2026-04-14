@@ -22,7 +22,10 @@ class MetricsComputer
     {
       diff_churn_lines: compute_diff_churn,
       has_tests: compute_has_tests,
-      line_revisit_rate: compute_line_revisit_rate
+      line_revisit_rate: compute_line_revisit_rate,
+      self_correction_rate: compute_self_correction_rate,
+      context_efficiency: compute_context_efficiency,
+      error_recovery_attempts: compute_error_recovery_attempts
     }
   end
 
@@ -60,6 +63,44 @@ class MetricsComputer
       .count(:filename)
 
     revisited_count.to_f / filenames.size
+  end
+
+  def correlated_sessions
+    @correlated_sessions ||= CodingSession.joins(:session_prs).where(session_prs: { pr_id: @pr.id })
+  end
+
+  # Ratio of successful error recoveries to total errors across correlated sessions.
+  # Higher means the agent fixes its own mistakes more often.
+  def compute_self_correction_rate
+    sessions = correlated_sessions
+    return nil if sessions.empty?
+
+    total_errors = sessions.sum(:bash_errors)
+    total_successes = sessions.sum(:bash_successes)
+    return nil if total_errors == 0 && total_successes == 0
+
+    total_successes.to_f / (total_errors + total_successes)
+  end
+
+  # Ratio of files modified to files read across correlated sessions.
+  # Higher means the agent stayed focused on relevant files.
+  def compute_context_efficiency
+    sessions = correlated_sessions
+    return nil if sessions.empty?
+
+    total_read = sessions.sum(:files_read_count)
+    return nil if total_read == 0
+
+    total_modified = sessions.sum(:files_modified_count)
+    total_modified.to_f / total_read
+  end
+
+  # Total bash errors across correlated sessions.
+  def compute_error_recovery_attempts
+    sessions = correlated_sessions
+    return nil if sessions.empty?
+
+    sessions.sum(:bash_errors)
   end
 
   def has_test_files?(files)

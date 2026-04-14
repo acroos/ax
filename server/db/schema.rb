@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_13_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_14_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -228,12 +228,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_13_100000) do
   end
 
   create_table "sessions", id: :string, force: :cascade do |t|
+    t.integer "bash_errors", default: 0
+    t.integer "bash_successes", default: 0
     t.string "branch"
     t.integer "cache_creation_input_tokens", default: 0
     t.integer "cache_read_input_tokens", default: 0
     t.datetime "created_at", null: false
     t.string "cwd"
     t.bigint "ended_at"
+    t.integer "files_modified_count", default: 0
+    t.integer "files_read_count", default: 0
     t.integer "input_tokens", default: 0
     t.integer "message_count", default: 0
     t.integer "output_tokens", default: 0

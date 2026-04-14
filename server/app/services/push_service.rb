@@ -108,7 +108,11 @@ class PushService
         cache_creation_input_tokens: session_data[:cache_creation_input_tokens] || 0,
         cache_read_input_tokens: session_data[:cache_read_input_tokens] || 0,
         total_cost_usd: session_data[:total_cost_usd],
-        primary_model: session_data[:primary_model]
+        primary_model: session_data[:primary_model],
+        bash_errors: session_data[:bash_errors] || 0,
+        bash_successes: session_data[:bash_successes] || 0,
+        files_read_count: session_data[:files_read_count] || 0,
+        files_modified_count: session_data[:files_modified_count] || 0
       )
       count += 1
     end

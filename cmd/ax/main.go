@@ -275,6 +275,10 @@ You can override with --api-key.`,
 					CacheReadInputTokens:     session.CacheReadInputTokens,
 					TotalCostUSD:             session.TotalCostUSD,
 					PrimaryModel:             session.PrimaryModel,
+					BashErrors:               session.BashErrors,
+					BashSuccesses:            session.BashSuccesses,
+					FilesReadCount:           len(session.FilesRead),
+					FilesModifiedCount:       len(session.FilesModified),
 				})
 			}
 
