@@ -14,6 +14,10 @@ export function middleware(request: NextRequest) {
   // without having direct access to route params at the root level.
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
+  const repoParam = request.nextUrl.searchParams.get("repo");
+  if (repoParam) {
+    requestHeaders.set("x-repo-filter", repoParam);
+  }
 
   // Allow public paths
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {

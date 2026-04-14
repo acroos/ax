@@ -45,7 +45,9 @@ module Api
           Arel.sql("AVG(plan_coverage_score)"),
           Arel.sql("AVG(plan_deviation_score)"),
           Arel.sql("AVG(CASE WHEN scope_creep_detected THEN 1.0 ELSE 0.0 END)"),
-          Arel.sql("COUNT(CASE WHEN plan_coverage_score IS NOT NULL THEN 1 END)")
+          Arel.sql("COUNT(CASE WHEN plan_coverage_score IS NOT NULL THEN 1 END)"),
+          Arel.sql("COUNT(CASE WHEN token_cost_usd IS NOT NULL THEN 1 END)"),
+          Arel.sql("COUNT(CASE WHEN messages_per_pr IS NOT NULL THEN 1 END)")
         )
 
         repo_met = ::RepoMetrics.where(repo: @repo).order(computed_at: :desc).first
@@ -69,6 +71,8 @@ module Api
           avgPlanDeviation: aggregated[14]&.to_f,
           scopeCreepRate: aggregated[15]&.to_f,
           planDataCount: aggregated[16].to_i,
+          sessionDataCount: aggregated[17].to_i,
+          sessionMetricsCount: aggregated[18].to_i,
           unmergedCostUSD: repo_met&.unmerged_cost_usd,
           totalCostUSD: repo_met&.total_cost_usd,
           unmergedRate: repo_met&.unmerged_rate
@@ -129,6 +133,7 @@ module Api
           changed_files: pr.changed_files,
           github_owner: pr.repo.github_owner,
           github_repo: pr.repo.github_repo,
+          session_count: pr.session_prs.size,
           metrics: m ? {
             pr_number: pr.number,
             messages_per_pr: m.messages_per_pr,

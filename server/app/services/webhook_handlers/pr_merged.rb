@@ -11,9 +11,9 @@ module WebhookHandlers
       return unless repo
 
       pr = find_or_create_pr(repo, @pr_data)
+      pr.update!(state: "merged", merged_at: @pr_data[:merged_at])
       return if pr_finalized?(pr)
 
-      pr.update!(state: "merged", merged_at: @pr_data[:merged_at])
       fetch_and_compute(pr)
       finalize_metrics(pr)
     end

@@ -18,7 +18,6 @@ const NON_ORG_SEGMENTS = new Set([
   "docs",
   "prs",
   "compare",
-  "metrics",
   "invite",
   "auth",
   "api",
@@ -146,6 +145,7 @@ async function Sidebar() {
   // direct access to route params, so we read it here.
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname");
+  const activeRepoFilter = hdrs.get("x-repo-filter");
   const pathOrgSlug = parseOrgSlug(pathname);
 
   // Fetch user and repos in parallel. The org slug for repos comes from the
@@ -195,23 +195,34 @@ async function Sidebar() {
           <div className="space-y-0.5 max-h-[200px] overflow-y-auto">
             <Link
               href={overviewHref}
-              className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] text-text-secondary hover:text-text-primary hover:bg-surface-2 transition-colors"
+              className={`flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:text-text-primary hover:bg-surface-2 transition-colors ${
+                !activeRepoFilter ? "text-text-secondary" : "text-text-tertiary"
+              }`}
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+              <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                !activeRepoFilter ? "bg-accent" : "bg-text-tertiary/30"
+              }`} />
               All repositories
             </Link>
-            {filteredRepos.map((r) => (
-              <Link
-                key={r.id}
-                href={`${overviewHref}?repo=${r.id}`}
-                className="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] text-text-tertiary hover:text-text-primary hover:bg-surface-2 transition-colors"
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-text-tertiary/30 flex-shrink-0" />
-                <span className="truncate">
-                  {r.github_owner}/{r.github_repo}
-                </span>
-              </Link>
-            ))}
+            {filteredRepos.map((r) => {
+              const isActive = activeRepoFilter === String(r.id);
+              return (
+                <Link
+                  key={r.id}
+                  href={`${overviewHref}?repo=${r.id}`}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:text-text-primary hover:bg-surface-2 transition-colors ${
+                    isActive ? "text-text-secondary bg-surface-2/50" : "text-text-tertiary"
+                  }`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    isActive ? "bg-accent" : "bg-text-tertiary/30"
+                  }`} />
+                  <span className="truncate">
+                    {r.github_owner}/{r.github_repo}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}

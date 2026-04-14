@@ -70,7 +70,9 @@ module Api
           Arel.sql("AVG(plan_coverage_score)"),
           Arel.sql("AVG(plan_deviation_score)"),
           Arel.sql("AVG(CASE WHEN scope_creep_detected THEN 1.0 ELSE 0.0 END)"),
-          Arel.sql("COUNT(CASE WHEN plan_coverage_score IS NOT NULL THEN 1 END)")
+          Arel.sql("COUNT(CASE WHEN plan_coverage_score IS NOT NULL THEN 1 END)"),
+          Arel.sql("COUNT(CASE WHEN token_cost_usd IS NOT NULL THEN 1 END)"),
+          Arel.sql("COUNT(CASE WHEN messages_per_pr IS NOT NULL THEN 1 END)")
         )
 
         render json: {
@@ -91,7 +93,9 @@ module Api
           avgPlanCoverage: aggregated[13]&.to_f,
           avgPlanDeviation: aggregated[14]&.to_f,
           scopeCreepRate: aggregated[15]&.to_f,
-          planDataCount: aggregated[16].to_i
+          planDataCount: aggregated[16].to_i,
+          sessionDataCount: aggregated[17].to_i,
+          sessionMetricsCount: aggregated[18].to_i
         }
       end
 
@@ -119,6 +123,7 @@ module Api
           author: pr.author,
           github_owner: pr.repo.github_owner,
           github_repo: pr.repo.github_repo,
+          session_count: pr.session_prs.size,
           metrics: m ? {
             pr_number: pr.number,
             messages_per_pr: m.messages_per_pr,

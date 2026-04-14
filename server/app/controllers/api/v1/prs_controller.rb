@@ -38,6 +38,7 @@ module Api
           author: pr.author,
           github_owner: pr.repo.github_owner,
           github_repo: pr.repo.github_repo,
+          session_count: pr.session_prs.size,
           metrics: m ? {
             pr_number: pr.number,
             messages_per_pr: m.messages_per_pr,

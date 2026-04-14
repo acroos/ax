@@ -113,6 +113,10 @@ export default async function OrgPRsPage({
                 Cost
                 <span className="tooltip-content">Token cost in dollars</span>
               </th>
+              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
+                Sessions
+                <span className="tooltip-content">Agent sessions linked to this PR</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -197,6 +201,15 @@ export default async function OrgPRsPage({
                   {pr.metrics?.token_cost_usd !== null
                     ? `$${pr.metrics!.token_cost_usd.toFixed(2)}`
                     : "\u2014"}
+                </td>
+                <td className="px-3 py-3 text-center">
+                  {pr.session_count > 0 ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-accent-muted text-accent">
+                      {pr.session_count}
+                    </span>
+                  ) : (
+                    <span className="text-text-tertiary text-[13px]">&#8212;</span>
+                  )}
                 </td>
               </tr>
             ))}

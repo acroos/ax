@@ -11,6 +11,8 @@ export interface MetricDefEntry {
   valueType: MetricValueType;
   unit?: string;
   lowerIsBetter: boolean;
+  tooltip: string;
+  goodRange: string;
 }
 
 export const METRIC_DEFS: MetricDefEntry[] = [
@@ -23,6 +25,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Output Quality",
     valueType: "int",
     lowerIsBetter: true,
+    tooltip: "Commits pushed after the PR was opened. Lower means the initial output was closer to final.",
+    goodRange: "Good: < 2",
   },
   {
     slug: "first-pass-acceptance",
@@ -32,6 +36,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Output Quality",
     valueType: "boolean",
     lowerIsBetter: false,
+    tooltip: "PRs merged without any changes-requested reviews. Higher means reviewers approve on first look.",
+    goodRange: "Good: > 80%",
   },
   {
     slug: "ci-success-rate",
@@ -41,6 +47,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Output Quality",
     valueType: "ratio",
     lowerIsBetter: false,
+    tooltip: "Fraction of CI checks that pass. 1.0 means all green on every PR.",
+    goodRange: "Good: > 90%",
   },
   {
     slug: "test-coverage",
@@ -50,6 +58,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Output Quality",
     valueType: "boolean",
     lowerIsBetter: false,
+    tooltip: "Whether the PR includes changes to test files. Detected by filename patterns.",
+    goodRange: "Good: > 70%",
   },
   {
     slug: "diff-churn",
@@ -60,6 +70,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "int",
     unit: "lines",
     lowerIsBetter: true,
+    tooltip: "Lines added across all commits minus lines in the final diff. Higher means more rework happened.",
+    goodRange: "Good: < 50 lines",
   },
   {
     slug: "line-revisit-rate",
@@ -69,6 +81,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Output Quality",
     valueType: "float",
     lowerIsBetter: true,
+    tooltip: "Files in this PR that were also changed in other recent PRs. Higher means unstable areas are being touched.",
+    goodRange: "Good: < 0.2",
   },
 
   // Prompt Efficiency
@@ -80,6 +94,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Prompt Efficiency",
     valueType: "int",
     lowerIsBetter: true,
+    tooltip: "Total human + assistant messages across all sessions correlated with this PR.",
+    goodRange: "Good: < 30",
   },
   {
     slug: "iteration-depth",
@@ -89,6 +105,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Prompt Efficiency",
     valueType: "int",
     lowerIsBetter: true,
+    tooltip: "Number of human turns (back-and-forth cycles). Fewer turns means clearer prompting.",
+    goodRange: "Good: < 15",
   },
   {
     slug: "token-cost-per-pr",
@@ -99,6 +117,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "currency",
     unit: "$",
     lowerIsBetter: true,
+    tooltip: "Dollar cost of all tokens used across correlated sessions, using model-specific pricing.",
+    goodRange: "Good: < $5",
   },
 
   // Agent Behavior
@@ -110,6 +130,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Agent Behavior",
     valueType: "ratio",
     lowerIsBetter: false,
+    tooltip: "Ratio of agent-initiated error recoveries to total errors. Higher means the agent fixes its own mistakes.",
+    goodRange: "Good: > 60%",
   },
   {
     slug: "context-efficiency",
@@ -119,6 +141,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Agent Behavior",
     valueType: "float",
     lowerIsBetter: false,
+    tooltip: "Ratio of files modified to files read. Higher means the agent stays focused on relevant files.",
+    goodRange: "Good: > 0.3",
   },
   {
     slug: "error-recovery",
@@ -128,6 +152,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Agent Behavior",
     valueType: "int",
     lowerIsBetter: true,
+    tooltip: "Number of times the agent encountered errors during tool execution. Fewer errors means smoother execution.",
+    goodRange: "Good: < 5",
   },
 
   // Planning Effectiveness
@@ -139,6 +165,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Planning Effectiveness",
     valueType: "ratio",
     lowerIsBetter: false,
+    tooltip: "Fraction of planned files that were actually changed. Higher means the plan was followed through.",
+    goodRange: "Good: > 80%",
   },
   {
     slug: "plan-deviation",
@@ -148,6 +176,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Planning Effectiveness",
     valueType: "ratio",
     lowerIsBetter: true,
+    tooltip: "Fraction of changed files that were not in the plan. Lower means work stayed on track.",
+    goodRange: "Good: < 20%",
   },
   {
     slug: "scope-creep",
@@ -157,6 +187,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Planning Effectiveness",
     valueType: "boolean",
     lowerIsBetter: true,
+    tooltip: "Whether significant unplanned work was detected. Less scope creep means better planning.",
+    goodRange: "Good: < 20%",
   },
 ];
 

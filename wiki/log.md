@@ -4,6 +4,24 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-13 — UX improvements batch
+
+**Pages updated:** dashboard, metrics, data-flow
+
+- Metric drill-down page moved from `/metrics/[slug]` to `/{slug}/metrics/[metric]` (org-scoped)
+- Overview metric cards are now clickable links to drill-down pages
+- Overview metric cards have tooltips with descriptions and "good" ranges
+- Overview page shows selected repo name or "All Repositories"
+- Sidebar repo selector highlights active repo filter
+- PR list table has "Sessions" column showing linked agent session count
+- Aggregate metrics API returns `sessionDataCount` and `sessionMetricsCount`
+- Fixed merged PRs showing as "closed" — state update moved before finalization guard in PrMerged/PrClosed handlers
+- Fixed GitHub App installation stale cache — `getGithubInstallation()` no longer caches
+- Added `data:fix_merged_pr_states` rake task to repair existing data
+- `metric-defs.ts` now includes `tooltip` and `goodRange` fields per metric
+
+---
+
 ## 2026-04-13 — Improve user settings page
 
 **Pages updated:** dashboard
