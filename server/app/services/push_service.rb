@@ -112,7 +112,8 @@ class PushService
         bash_errors: session_data[:bash_errors] || 0,
         bash_successes: session_data[:bash_successes] || 0,
         files_read_count: session_data[:files_read_count] || 0,
-        files_modified_count: session_data[:files_modified_count] || 0
+        files_modified_count: session_data[:files_modified_count] || 0,
+        planned_files: Array(session_data[:planned_files]).to_json.then { |j| j == "[]" ? nil : j }
       )
       count += 1
     end

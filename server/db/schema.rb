@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_14_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_14_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -241,6 +241,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_14_000001) do
     t.integer "input_tokens", default: 0
     t.integer "message_count", default: 0
     t.integer "output_tokens", default: 0
+    t.text "planned_files"
     t.string "primary_model"
     t.string "pushed_by"
     t.bigint "repo_id"

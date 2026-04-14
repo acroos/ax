@@ -59,7 +59,15 @@ class GithubDataFetcher
 
     commits.each do |commit_data|
       sha = commit_data[:sha]
-      stats = commit_data[:stats] || {}
+
+      # The list-commits endpoint does NOT return per-commit stats.
+      # Fetch each commit individually to get additions/deletions.
+      full_commit = github_client.get_commit(
+        owner: @repo.github_owner,
+        repo: @repo.github_repo,
+        sha: sha
+      )
+      stats = full_commit[:stats] || {}
 
       existing = Commit.find_by(sha: sha)
       if existing

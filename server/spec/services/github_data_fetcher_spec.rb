@@ -16,13 +16,11 @@ RSpec.describe GithubDataFetcher do
     [
       {
         sha: "abc123",
-        commit: { author: { name: "dev" }, message: "first commit" },
-        stats: { additions: 12, deletions: 1 }
+        commit: { author: { name: "dev" }, message: "first commit" }
       },
       {
         sha: "def456",
-        commit: { author: { name: "dev" }, message: "second commit" },
-        stats: { additions: 13, deletions: 4 }
+        commit: { author: { name: "dev" }, message: "second commit" }
       }
     ]
   end
@@ -37,6 +35,13 @@ RSpec.describe GithubDataFetcher do
 
     stub_request(:get, %r{api\.github\.com/repos/acme/widget/pulls/42/commits})
       .to_return(status: 200, body: commits_response.to_json, headers: { "Content-Type" => "application/json" })
+
+    # Individual commit endpoints return stats
+    stub_request(:get, %r{api\.github\.com/repos/acme/widget/commits/abc123\b})
+      .to_return(status: 200, body: { sha: "abc123", stats: { additions: 12, deletions: 1 } }.to_json, headers: { "Content-Type" => "application/json" })
+
+    stub_request(:get, %r{api\.github\.com/repos/acme/widget/commits/def456\b})
+      .to_return(status: 200, body: { sha: "def456", stats: { additions: 13, deletions: 4 } }.to_json, headers: { "Content-Type" => "application/json" })
   end
 
   describe "#call" do

@@ -80,7 +80,32 @@ RSpec.describe MetricsComputer do
       expect(result[:has_tests]).to be false
     end
 
-    it "returns false when there are no files" do
+    it "returns nil when there are no files" do
+      result = described_class.new(pr).call
+      expect(result[:has_tests]).to be_nil
+    end
+
+    it "returns nil when PR only touches non-testable files" do
+      create(:pr_file, pr: pr, filename: "README.md")
+      create(:pr_file, pr: pr, filename: ".github/workflows/ci.yml")
+      create(:pr_file, pr: pr, filename: "Makefile")
+
+      result = described_class.new(pr).call
+      expect(result[:has_tests]).to be_nil
+    end
+
+    it "returns nil for config-only PRs" do
+      create(:pr_file, pr: pr, filename: "package-lock.json")
+      create(:pr_file, pr: pr, filename: ".editorconfig")
+
+      result = described_class.new(pr).call
+      expect(result[:has_tests]).to be_nil
+    end
+
+    it "evaluates test coverage when PR has a mix of testable and non-testable files" do
+      create(:pr_file, pr: pr, filename: "README.md")
+      create(:pr_file, pr: pr, filename: "src/app.rb")
+
       result = described_class.new(pr).call
       expect(result[:has_tests]).to be false
     end
@@ -99,10 +124,10 @@ RSpec.describe MetricsComputer do
       expect(result[:line_revisit_rate]).to eq(0.0)
     end
 
-    it "computes revisit rate based on files shared with other finalized PRs" do
-      # Create an older finalized PR that touched src/app.rb
-      older_pr = create(:pr, repo: repo)
-      create(:pr_metrics, pr: older_pr, metrics_finalized: true, finalized_at: 1.day.ago)
+    it "computes revisit rate based on files shared with recently finalized PRs" do
+      # Create a recently merged PR that touched src/app.rb
+      older_pr = create(:pr, repo: repo, merged_at: 2.days.ago.iso8601)
+      create(:pr_metrics, pr: older_pr, metrics_finalized: true, finalized_at: 2.days.ago)
       create(:pr_file, pr: older_pr, filename: "src/app.rb")
       create(:pr_file, pr: older_pr, filename: "src/old.rb")
 
@@ -116,8 +141,8 @@ RSpec.describe MetricsComputer do
     end
 
     it "counts multiple revisited files correctly" do
-      older_pr = create(:pr, repo: repo)
-      create(:pr_metrics, pr: older_pr, metrics_finalized: true, finalized_at: 1.day.ago)
+      older_pr = create(:pr, repo: repo, merged_at: 3.days.ago.iso8601)
+      create(:pr_metrics, pr: older_pr, metrics_finalized: true, finalized_at: 3.days.ago)
       create(:pr_file, pr: older_pr, filename: "src/app.rb")
       create(:pr_file, pr: older_pr, filename: "src/utils.rb")
 
@@ -130,6 +155,28 @@ RSpec.describe MetricsComputer do
       expect(result[:line_revisit_rate]).to be_within(0.01).of(0.667)
     end
 
+    it "excludes PRs outside the 7-day lookback window" do
+      old_pr = create(:pr, repo: repo, merged_at: 10.days.ago.iso8601)
+      create(:pr_metrics, pr: old_pr, metrics_finalized: true, finalized_at: 10.days.ago)
+      create(:pr_file, pr: old_pr, filename: "src/app.rb")
+
+      create(:pr_file, pr: pr, filename: "src/app.rb")
+
+      result = described_class.new(pr).call
+      expect(result[:line_revisit_rate]).to eq(0.0)
+    end
+
+    it "includes closed (not merged) PRs within the lookback window" do
+      closed_pr = create(:pr, repo: repo, state: "closed", closed_at: 3.days.ago.iso8601)
+      create(:pr_metrics, pr: closed_pr, metrics_finalized: true, finalized_at: 3.days.ago)
+      create(:pr_file, pr: closed_pr, filename: "src/app.rb")
+
+      create(:pr_file, pr: pr, filename: "src/app.rb")
+
+      result = described_class.new(pr).call
+      expect(result[:line_revisit_rate]).to eq(1.0)
+    end
+
     it "ignores non-finalized PRs" do
       # Create an open PR (not finalized)
       open_pr = create(:pr, repo: repo, state: "open")
@@ -140,6 +187,99 @@ RSpec.describe MetricsComputer do
 
       result = described_class.new(pr).call
       expect(result[:line_revisit_rate]).to eq(0.0)
+    end
+  end
+
+  describe "compute_plan_metrics" do
+    it "returns nil when no correlated sessions exist" do
+      result = described_class.new(pr).compute_plan_metrics
+      expect(result).to be_nil
+    end
+
+    it "returns nil when sessions have no planned files" do
+      session = create(:coding_session, repo: repo, branch: "feature")
+      create(:session_pr, coding_session: session, pr: pr)
+
+      result = described_class.new(pr).compute_plan_metrics
+      expect(result).to be_nil
+    end
+
+    it "computes plan metrics with exact path matches" do
+      session = create(:coding_session, repo: repo, branch: "feature",
+        planned_files: '["src/app.rb", "src/utils.rb", "src/new.rb"]')
+      create(:session_pr, coding_session: session, pr: pr)
+
+      create(:pr_file, pr: pr, filename: "src/app.rb")
+      create(:pr_file, pr: pr, filename: "src/utils.rb")
+
+      result = described_class.new(pr).compute_plan_metrics
+
+      # 2 out of 2 actual files were planned = 1.0 coverage
+      expect(result[:plan_coverage_score]).to eq(1.0)
+      # 2 out of 3 planned files were changed = 0.667 deviation
+      expect(result[:plan_deviation_score]).to be_within(0.01).of(0.667)
+      # No unplanned files — no scope creep
+      expect(result[:scope_creep_detected]).to be false
+    end
+
+    it "detects scope creep when most changes are unplanned" do
+      session = create(:coding_session, repo: repo, branch: "feature",
+        planned_files: '["src/app.rb"]')
+      create(:session_pr, coding_session: session, pr: pr)
+
+      create(:pr_file, pr: pr, filename: "src/app.rb")
+      create(:pr_file, pr: pr, filename: "src/extra1.rb")
+      create(:pr_file, pr: pr, filename: "src/extra2.rb")
+
+      result = described_class.new(pr).compute_plan_metrics
+
+      # 1 out of 3 actual files were planned
+      expect(result[:plan_coverage_score]).to be_within(0.01).of(0.333)
+      # 1 out of 1 planned files were changed = 1.0
+      expect(result[:plan_deviation_score]).to eq(1.0)
+      # 2/3 unplanned > 0.5 → scope creep
+      expect(result[:scope_creep_detected]).to be true
+    end
+
+    it "handles fuzzy path matching (partial paths)" do
+      session = create(:coding_session, repo: repo, branch: "feature",
+        planned_files: '["db.go"]')
+      create(:session_pr, coding_session: session, pr: pr)
+
+      create(:pr_file, pr: pr, filename: "internal/db/db.go")
+
+      result = described_class.new(pr).compute_plan_metrics
+
+      expect(result[:plan_coverage_score]).to eq(1.0)
+      expect(result[:plan_deviation_score]).to eq(1.0)
+    end
+
+    it "ignores lock files in actual files" do
+      session = create(:coding_session, repo: repo, branch: "feature",
+        planned_files: '["src/app.rb"]')
+      create(:session_pr, coding_session: session, pr: pr)
+
+      create(:pr_file, pr: pr, filename: "src/app.rb")
+      create(:pr_file, pr: pr, filename: "package-lock.json")
+
+      result = described_class.new(pr).compute_plan_metrics
+
+      # package-lock.json is ignored, so 1/1 actual = 1.0
+      expect(result[:plan_coverage_score]).to eq(1.0)
+    end
+
+    it "creates a PlanAnalysis record" do
+      session = create(:coding_session, repo: repo, branch: "feature",
+        planned_files: '["src/app.rb"]')
+      create(:session_pr, coding_session: session, pr: pr)
+      create(:pr_file, pr: pr, filename: "src/app.rb")
+
+      expect {
+        described_class.new(pr).compute_plan_metrics
+      }.to change { PlanAnalysis.count }.by(1)
+
+      analysis = PlanAnalysis.find_by(pr: pr)
+      expect(analysis.coverage_score).to eq(1.0)
     end
   end
 end

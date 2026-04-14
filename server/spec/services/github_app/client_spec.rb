@@ -106,7 +106,7 @@ RSpec.describe GithubApp::Client do
         .to_return(
           status: 200,
           body: [
-            { sha: "abc123", commit: { message: "feat: add feature" }, stats: { additions: 10 } }
+            { sha: "abc123", commit: { message: "feat: add feature" } }
           ].to_json,
           headers: { "Content-Type" => "application/json" }
         )
@@ -116,6 +116,28 @@ RSpec.describe GithubApp::Client do
       commits = client.list_pull_commits(owner: "acme", repo: "widget", number: 42)
       expect(commits.length).to eq(1)
       expect(commits.first[:sha]).to eq("abc123")
+    end
+  end
+
+  describe "#get_commit" do
+    before do
+      stub_request(:get, %r{api\.github\.com/repos/acme/widget/commits/abc123})
+        .to_return(
+          status: 200,
+          body: {
+            sha: "abc123",
+            commit: { message: "feat: add feature" },
+            stats: { additions: 10, deletions: 2, total: 12 }
+          }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+    end
+
+    it "returns a single commit with stats" do
+      commit = client.get_commit(owner: "acme", repo: "widget", sha: "abc123")
+      expect(commit[:sha]).to eq("abc123")
+      expect(commit[:stats][:additions]).to eq(10)
+      expect(commit[:stats][:deletions]).to eq(2)
     end
   end
 
