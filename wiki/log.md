@@ -4,6 +4,17 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-14 — Agent behavior metrics pipeline
+
+**Pages updated:** metrics, data-model, go-cli
+
+- CLI now sends `bash_errors`, `bash_successes`, `files_read_count`, `files_modified_count` per session
+- Sessions table has 4 new columns for agent behavior data
+- MetricsComputer computes `self_correction_rate`, `context_efficiency`, `error_recovery_attempts` from correlated sessions at PR finalization
+- These 3 metrics are no longer always null in the dashboard
+
+---
+
 ## 2026-04-13 — UX improvements batch
 
 **Pages updated:** dashboard, metrics, data-flow

@@ -65,6 +65,10 @@ type SessionData struct {
 	CacheReadInputTokens     int     `json:"cache_read_input_tokens"`
 	TotalCostUSD             float64 `json:"total_cost_usd"`
 	PrimaryModel             string  `json:"primary_model,omitempty"`
+	BashErrors               int     `json:"bash_errors"`
+	BashSuccesses            int     `json:"bash_successes"`
+	FilesReadCount           int     `json:"files_read_count"`
+	FilesModifiedCount       int     `json:"files_modified_count"`
 }
 
 // SessionPRData represents a session-to-PR correlation.

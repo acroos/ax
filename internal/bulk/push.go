@@ -299,6 +299,10 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 			CacheReadInputTokens:     session.CacheReadInputTokens,
 			TotalCostUSD:             session.TotalCostUSD,
 			PrimaryModel:             session.PrimaryModel,
+			BashErrors:               session.BashErrors,
+			BashSuccesses:            session.BashSuccesses,
+			FilesReadCount:           len(session.FilesRead),
+			FilesModifiedCount:       len(session.FilesModified),
 		})
 	}
 
