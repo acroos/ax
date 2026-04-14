@@ -32,10 +32,13 @@ type Settings map[string]interface{}
 // It handles both regular repos and Claude Code worktrees. If the CWD no longer
 // exists (e.g., worktree removed at session end), it resolves the main repo from
 // the worktree path pattern (<repo>/.claude/worktrees/<name>/).
+//
+// Every line written to ~/.ax/push.log is timestamped, and a summary line
+// (ok/error/skip) is always emitted so the log has an entry per invocation.
 func pushCommand(axBinary string) string {
 	return fmt.Sprintf(
-		`bash -c 'LOG="$HOME/.ax/push.log"; mkdir -p "$(dirname "$LOG")"; INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\": *\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then echo "[$(date +%%Y-%%m-%%dT%%H:%%M:%%S)] skip: no cwd in hook input" >> "$LOG"; exit 0; fi; if [ -e "$CWD/.git" ]; then %s push --repo "$CWD" >> "$LOG" 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s push --repo "$REPO" >> "$LOG" 2>&1; else echo "[$(date +%%Y-%%m-%%dT%%H:%%M:%%S)] skip: no git repo found for $CWD" >> "$LOG"; fi; fi'`,
-		axBinary, axBinary,
+		`bash -c 'LOG="$HOME/.ax/push.log"; mkdir -p "$(dirname "$LOG")"; TS() { date +%%Y-%%m-%%dT%%H:%%M:%%S; }; INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\": *\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then echo "[$(TS)] skip: no cwd in hook input" >> "$LOG"; exit 0; fi; PUSH_REPO=""; if [ -e "$CWD/.git" ]; then PUSH_REPO="$CWD"; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then PUSH_REPO="$REPO"; fi; fi; if [ -z "$PUSH_REPO" ]; then echo "[$(TS)] skip: no git repo at $CWD" >> "$LOG"; exit 0; fi; OUTPUT=$(%s push --repo "$PUSH_REPO" 2>&1); RC=$?; if [ -n "$OUTPUT" ]; then echo "$OUTPUT" | while IFS= read -r line; do [ -n "$line" ] && echo "[$(TS)] $line" >> "$LOG"; done; fi; if [ $RC -eq 0 ]; then echo "[$(TS)] ok: push completed for $PUSH_REPO" >> "$LOG"; else echo "[$(TS)] error: push failed for $PUSH_REPO (exit $RC)" >> "$LOG"; fi'`,
+		axBinary,
 	)
 }
 
