@@ -32,6 +32,8 @@ module WebhookHandlers
 
     def finalize_metrics(pr)
       metrics = ensure_pr_metrics(pr)
+      # No reviews = accepted on first pass
+      metrics.update!(first_pass_accepted: true) if metrics.first_pass_accepted.nil?
       metrics.update!(
         metrics_finalized: true,
         finalized_at: Time.current
