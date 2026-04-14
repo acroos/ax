@@ -32,11 +32,11 @@ type BulkPushConfig struct {
 
 // RepoResult holds the outcome of pushing one repo.
 type RepoResult struct {
-	OwnerRepo    string
-	RepoPath     string // first project path (for retry hint)
-	SessionsSent int
+	OwnerRepo     string
+	RepoPath      string // first project path (for retry hint)
+	SessionsSent  int
 	TotalSessions int
-	FailedChunks []ChunkFailure
+	FailedChunks  []ChunkFailure
 }
 
 // ChunkFailure records a failed chunk push.
@@ -303,6 +303,9 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 			BashSuccesses:            session.BashSuccesses,
 			FilesReadCount:           len(session.FilesRead),
 			FilesModifiedCount:       len(session.FilesModified),
+			AssistantMessageCount:    session.AssistantMessages,
+			SidechainMessages:        session.SidechainMessages,
+			TotalFileReads:           session.TotalFileReads,
 		}
 
 		if len(session.PlanFiles) > 0 {

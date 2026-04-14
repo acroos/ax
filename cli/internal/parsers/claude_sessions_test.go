@@ -261,10 +261,10 @@ Version ` + "`1.2.3`" + ` is required.
 	files := ExtractPlannedFiles([]string{planPath})
 
 	expected := map[string]bool{
-		"internal/db/db.go":                    true,
-		"internal/api/types.go":                true,
-		"server/app/services/push_service.rb":  true,
-		"internal/db/db_test.go":               true,
+		"internal/db/db.go":                   true,
+		"internal/api/types.go":               true,
+		"server/app/services/push_service.rb": true,
+		"internal/db/db_test.go":              true,
 	}
 
 	if len(files) != len(expected) {

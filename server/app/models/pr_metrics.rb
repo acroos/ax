@@ -14,6 +14,7 @@ class PrMetrics < ApplicationRecord
     messages_per_pr iteration_depth token_cost_usd
     self_correction_rate context_efficiency error_recovery_attempts
     plan_coverage_score plan_deviation_score scope_creep_detected
+    cache_hit_rate sidechain_rate re_read_rate autonomy_score
   ].freeze
 
   def finalized?

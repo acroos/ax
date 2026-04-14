@@ -279,6 +279,9 @@ You can override with --api-key.`,
 					BashSuccesses:            session.BashSuccesses,
 					FilesReadCount:           len(session.FilesRead),
 					FilesModifiedCount:       len(session.FilesModified),
+					AssistantMessageCount:    session.AssistantMessages,
+					SidechainMessages:        session.SidechainMessages,
+					TotalFileReads:           session.TotalFileReads,
 				})
 			}
 

@@ -87,6 +87,17 @@ export const METRIC_DEFS: MetricDefEntry[] = [
 
   // Prompt Efficiency
   {
+    slug: "cache-hit-rate",
+    docSlug: "cache-hit-rate",
+    field: "cache_hit_rate",
+    label: "Cache Hit Rate",
+    category: "Prompt Efficiency",
+    valueType: "ratio",
+    lowerIsBetter: false,
+    tooltip: "Ratio of cache-read tokens to total input tokens. Higher means better prompt cache utilization and lower effective cost.",
+    goodRange: "Good: > 70%",
+  },
+  {
     slug: "messages-per-pr",
     docSlug: "messages-per-pr",
     field: "messages_per_pr",
@@ -154,6 +165,40 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     lowerIsBetter: true,
     tooltip: "Number of times the agent encountered errors during tool execution. Fewer errors means smoother execution.",
     goodRange: "Good: < 5",
+  },
+
+  {
+    slug: "sidechain-rate",
+    docSlug: "sidechain-rate",
+    field: "sidechain_rate",
+    label: "Sidechain Rate",
+    category: "Agent Behavior",
+    valueType: "ratio",
+    lowerIsBetter: true,
+    tooltip: "Fraction of messages on sidechain branches (backtracking). Lower means fewer dead-end reasoning paths.",
+    goodRange: "Good: < 10%",
+  },
+  {
+    slug: "re-read-rate",
+    docSlug: "re-read-rate",
+    field: "re_read_rate",
+    label: "Re-Read Rate",
+    category: "Agent Behavior",
+    valueType: "float",
+    lowerIsBetter: true,
+    tooltip: "Total file reads divided by unique files read. 1.0 means no re-reads; higher means files are being read redundantly.",
+    goodRange: "Good: < 1.5",
+  },
+  {
+    slug: "autonomy-score",
+    docSlug: "autonomy-score",
+    field: "autonomy_score",
+    label: "Autonomy Score",
+    category: "Agent Behavior",
+    valueType: "float",
+    lowerIsBetter: false,
+    tooltip: "Ratio of assistant messages to human messages. Higher means the agent works more independently with fewer interventions.",
+    goodRange: "Good: > 3.0",
   },
 
   // Planning Effectiveness
