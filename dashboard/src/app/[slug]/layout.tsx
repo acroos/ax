@@ -18,7 +18,7 @@ export default async function OrgLayout({
     // Redirect to their first org
     const defaultOrg = user.organizations[0]?.slug;
     if (defaultOrg) redirect(`/${defaultOrg}`);
-    redirect("/login");
+    redirect("/");
   }
 
   return <>{children}</>;

@@ -16,8 +16,8 @@ namespace :org do
     puts "This will delete ALL data for '#{org.name}' (#{slug}):"
     puts "  - Repos, PRs, commits, sessions, metrics, PR files, plan analyses"
     puts "  - GitHub installations and watched repos"
-    puts "  - Org memberships and invites"
-    puts "  - The organization record itself will be KEPT"
+    puts "  - Invites"
+    puts "  - The organization, its memberships, and the record itself will be KEPT"
     puts ""
     print "Type the org slug to confirm: "
     confirmation = $stdin.gets&.strip
@@ -67,9 +67,6 @@ namespace :org do
 
       deleted = org.invites.delete_all
       puts "  Deleted #{deleted} invites"
-
-      deleted = org.org_memberships.delete_all
-      puts "  Deleted #{deleted} org memberships"
     end
 
     puts "\nDone. Organization '#{slug}' is now empty. Re-install the GitHub App to start fresh."
