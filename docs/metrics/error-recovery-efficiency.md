@@ -12,43 +12,27 @@ Tracking this metric helps identify whether the agent is an effective debugger o
 
 ## How It's Calculated
 
-1. Parse the session transcript for tool calls that run checks (test commands, build commands, lint commands).
-2. Identify check results as pass or fail based on tool output (exit codes, error messages, test result summaries).
-3. Detect retry sequences: a failure followed by code changes followed by the same type of check.
-4. Count the number of attempts (runs of the same check type) before either success or the sequence ending.
+### Current implementation
+
+AX counts the total number of **Bash command errors** across all sessions correlated to a PR:
 
 ```
-check_tool_patterns = ["npm test", "npm run build", "npm run lint", "cargo test", "pytest", ...]
-
-sequences = []
-current_sequence = None
-
-for tool_call in session.tool_calls:
-    if is_check_command(tool_call):
-        if tool_call.exit_code != 0:  # failure
-            if current_sequence is None:
-                current_sequence = {"type": tool_call.check_type, "attempts": 1}
-            else:
-                current_sequence["attempts"] += 1
-        else:  # success
-            if current_sequence is not None:
-                current_sequence["resolved"] = True
-                current_sequence["attempts"] += 1  # the successful attempt
-                sequences.append(current_sequence)
-                current_sequence = None
-
-# Average attempts to resolve
-resolved = [s for s in sequences if s["resolved"]]
-avg_attempts = mean(s["attempts"] for s in resolved)
-
-# Resolution rate
-resolution_rate = len(resolved) / len(sequences) * 100
+error_recovery_attempts = SUM(session.bash_errors) for each correlated session
 ```
 
-Key sub-metrics:
-- **Average attempts to resolve:** Mean number of check runs before success.
-- **Resolution rate:** Percentage of failure sequences the agent eventually resolves (vs. giving up or the human taking over).
-- **First-retry success rate:** Percentage of failures fixed on the very first retry.
+A value of **3** means the agent hit 3 Bash errors across all sessions for this PR. Lower is better — it means the agent got things right without trial-and-error cycles.
+
+This is a simple but effective proxy: more Bash errors = more time spent recovering from mistakes, regardless of whether the agent ultimately succeeded.
+
+### Future refinement
+
+A more granular approach would detect retry *sequences* — a failure followed by code changes followed by the same check — and compute:
+
+- **Average attempts to resolve:** Mean number of check runs before success
+- **Resolution rate:** Percentage of failure sequences the agent resolves on its own
+- **First-retry success rate:** Percentage of failures fixed on the very first retry
+
+This would distinguish between "hit one error and moved on" and "thrashed for five attempts on the same test."
 
 ## Interpreting Values
 

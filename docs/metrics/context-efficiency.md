@@ -12,26 +12,27 @@ Context efficiency helps teams understand the agent's exploration behavior and i
 
 ## How It's Calculated
 
-1. Parse the session transcript for tool calls.
-2. Categorize file interactions:
-   - **Read operations:** Files appearing in `Read`, `Glob`, `Grep`, and similar context-gathering tool calls.
-   - **Write operations:** Files appearing in `Edit`, `Write`, and similar file-modification tool calls.
-3. Compute the ratio.
+### Current implementation
+
+AX computes context efficiency as the ratio of files modified to files read across all sessions correlated to a PR:
 
 ```
-read_files = set()
-write_files = set()
-
-for tool_call in session.tool_calls:
-    if tool_call.name in ["Read", "Glob", "Grep", "mcp__cclsp__find_definition", ...]:
-        read_files.update(extract_file_paths(tool_call))
-    elif tool_call.name in ["Edit", "Write"]:
-        write_files.update(extract_file_paths(tool_call))
-
-context_ratio = len(read_files) / len(write_files) if write_files else float('inf')
+context_efficiency = unique_files_modified / unique_files_read
 ```
 
-A ratio of 3:1 means the agent read three files for every file it modified.
+A value of **0.25** means the agent modified 1 file for every 4 it read — it needed to explore broadly to make focused changes. A value of **1.0** means it modified exactly as many files as it read — highly targeted.
+
+Returns a value between 0.0 and 1.0+ (values above 1.0 are possible if the agent creates new files without reading existing ones). If no files were read, the metric is omitted.
+
+> 💡 **Reading the number:** Lower values = more exploration. Higher values = more focused. Neither is inherently good or bad — it depends on the task.
+
+### How file counts are gathered
+
+The CLI session parser counts unique file paths from tool calls:
+- **Files read:** Paths from `Read`, `Glob`, `Grep` tool calls
+- **Files modified:** Paths from `Edit`, `Write` tool calls
+
+These counts are sent to the server as `files_read_count` and `files_modified_count` per session.
 
 ## Interpreting Values
 

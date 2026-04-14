@@ -4,6 +4,30 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-13 — Documentation accuracy audit and polish
+
+**Pages updated:** metrics, rails-server
+**Docs updated:** README.md, docs/setup.md, docs/metrics/index.md, docs/metrics/self-correction-rate.md, docs/metrics/context-efficiency.md, docs/metrics/error-recovery-efficiency.md
+
+**Accuracy fixes:**
+- README and setup guide: removed `--server` and `--user` flags from `ax init` — only `--api-key` is required (server URL defaults to `config.DefaultServerURL`)
+- README: split "Interaction efficiency" into "Prompt Efficiency" and "Agent Behavior" to match the dashboard categories
+- Setup guide: updated "Current limitations" table → "What's working today" — member/invite management UI is fully working, not a placeholder
+- Setup guide: added `ax push --all` mention and dashboard page table (overview, drill-down, compare, org settings)
+- wiki/metrics.md: fixed "Open PRs are excluded from the dashboard entirely" → progressive visibility (open PRs shown with pending indicator, aggregates use settled PRs only)
+- wiki/metrics.md: fixed finalization section — records are not fully immutable; scoped write protection allows session-derived fields to update after settlement
+- wiki/metrics.md: fixed Agent Behavior descriptions to match actual implementations (bash_successes/errors ratio, files_modified/read ratio, total bash_errors)
+- wiki/metrics.md: replaced "being ported to Ruby" with the actual server-side services (MetricsComputer, SessionPrCorrelationService)
+- wiki/rails-server.md: fixed `app.ax.dev` → `ax.up.railway.app` (actual deployed URL)
+- 3 metric docs (self-correction-rate, context-efficiency, error-recovery-efficiency): added "Current implementation" sections with actual formulas, moved aspirational algorithms to "Future refinement" sections
+
+**Polish:**
+- Added emojis and visual warmth throughout README, setup guide, and metrics index
+- Made setup guide feel like a friendly 5-minute walkthrough with numbered emoji steps
+- Improved setup guide structure: checklist prerequisites, callout boxes for important notes, table-based dashboard overview
+
+---
+
 ## 2026-04-14 — Agent behavior metrics pipeline
 
 **Pages updated:** metrics, data-model, go-cli

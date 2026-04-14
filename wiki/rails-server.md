@@ -1,6 +1,6 @@
 # Rails Server
 
-The Rails API powers the managed service at `app.ax.dev`. It stores data from multiple developer CLIs, processes GitHub webhooks in real time, and serves data to the dashboard via org-scoped endpoints.
+The Rails API powers the managed service at `ax.up.railway.app`. It stores data from multiple developer CLIs, processes GitHub webhooks in real time, and serves data to the dashboard via org-scoped endpoints.
 
 Location: `server/`
 

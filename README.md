@@ -1,45 +1,48 @@
-# AX — Agentic Coding DX Metrics
+# AX — Agentic Coding DX Metrics ✨
 
 **You're shipping PRs with Claude Code. But are they getting better?**
+
 AX measures what matters: cost per PR, first-pass acceptance, self-correction rate, and 13 other metrics that tell you whether your AI coding workflow is actually working.
 
 ---
 
-## What You Can Measure
+## 📊 What You Can Measure
 
-**Output quality** — Is the agent producing clean, mergeable work?
-- Post-open commits, first-pass acceptance rate, CI success rate, PRs with tests, diff churn, line revisit rate
+**🏗️ Output Quality** — Is the agent producing clean, mergeable work?
+> Post-open commits · first-pass acceptance rate · CI success rate · PRs with tests · diff churn · line revisit rate
 
-**Interaction efficiency** — How much hand-holding does the agent need?
-- Messages per PR, iteration depth, self-correction rate, context efficiency, error recovery
+**💬 Prompt Efficiency** — How efficiently are you directing the agent?
+> Messages per PR · iteration depth · token cost per PR · unmerged token spend
 
-**Cost** — Is this actually saving you money?
-- Token cost per PR, total token cost, unmerged token spend
+**🤖 Agent Behavior** — How well does the agent operate on its own?
+> Self-correction rate · context efficiency · error recovery attempts
 
-**Planning fidelity** — Does the agent build what you asked for?
-- Plan-to-implementation coverage, plan deviation score, scope creep detection
+**🗺️ Planning Effectiveness** — Does the agent build what you asked for?
+> Plan-to-implementation coverage · plan deviation score · scope creep detection
 
-Every metric has a dedicated doc explaining what it measures, why it matters, and how to interpret values. See the [full metric reference](docs/metrics/index.md).
+Every metric has a dedicated doc explaining what it measures, why it matters, and how to interpret values → [full metric reference](docs/metrics/index.md)
 
 ---
 
-## How It Works
+## ⚙️ How It Works
 
 AX is a managed service with three components:
 
-- **Go CLI** — Parses Claude Code session data from your machine and pushes it to the server. Installs hooks so this happens automatically.
-- **Rails API** — Ingests session data and GitHub webhooks, computes all 16 metrics server-side, manages orgs and auth.
-- **Next.js Dashboard** — Web UI at `https://ax-metrics.vercel.app` for viewing metrics, comparing developers, and managing your team.
+| Component | What it does |
+|-----------|-------------|
+| 🔧 **Go CLI** | Parses Claude Code session data from your machine and pushes it to the server. Installs hooks so this happens automatically. |
+| 🚂 **Rails API** | Ingests session data and GitHub webhooks, computes all 16 metrics server-side, manages orgs and auth. |
+| 📈 **Next.js Dashboard** | Web UI at `https://ax-metrics.vercel.app` for viewing metrics, comparing developers, and managing your team. |
 
 Data flows in two ways:
-1. **Claude Code sessions** — CLI parses local session files and pushes to the API
-2. **GitHub PR events** — Webhooks deliver PR, review, and CI data directly to the API
+1. **Claude Code sessions** → CLI parses local session files and pushes to the API
+2. **GitHub PR events** → Webhooks deliver PR, review, and CI data directly to the API
 
 Metrics are computed server-side when PRs reach a terminal state (merged or closed).
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### 1. Install the CLI
 
@@ -57,17 +60,15 @@ cd ax && make build
 
 ### 2. Sign in to the dashboard
 
-Open `https://ax-metrics.vercel.app` and sign in with GitHub. You'll get an API key on the onboarding page.
+Open [`ax-metrics.vercel.app`](https://ax-metrics.vercel.app) and sign in with GitHub. You'll get an API key on the onboarding page.
 
 ### 3. Connect the CLI
 
 ```bash
-ax init --server https://ax.up.railway.app \
-        --api-key <your-key> \
-        --user "Your Name"
+ax init --api-key <your-key>
 ```
 
-This writes your config to `~/.ax/config.json` and installs a Claude Code `SessionEnd` hook that automatically pushes session data after each coding session.
+That's it! This validates your key, saves config to `~/.ax/config.json`, and installs a Claude Code `SessionEnd` hook that automatically pushes session data after each coding session. 🎉
 
 ### 4. Push your first data
 
@@ -75,19 +76,19 @@ This writes your config to `~/.ax/config.json` and installs a Claude Code `Sessi
 ax push --repo .
 ```
 
-After this, the hook handles it automatically. View results at `https://ax-metrics.vercel.app/{your-org-slug}`.
+After this, the hook handles it automatically. View your results at `https://ax-metrics.vercel.app/{your-org-slug}`.
 
-See the [Setup Guide](docs/setup.md) for the full walkthrough including team invites.
+👉 See the [Setup Guide](docs/setup.md) for the full walkthrough including GitHub App installation and team invites.
 
 ---
 
-## Claude Code Integration
+## 🔗 Claude Code Integration
 
 AX is purpose-built for [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) workflows. It correlates Claude Code session data — messages, token usage, self-corrections — with your GitHub PRs to give you the full picture of each agent-assisted PR.
 
 ---
 
-## Docs
+## 📚 Docs
 
 - [Metric Reference](docs/metrics/index.md) — All 16 metrics, explained
 - [Setup Guide](docs/setup.md) — Full setup walkthrough
@@ -95,7 +96,7 @@ AX is purpose-built for [Claude Code](https://docs.anthropic.com/en/docs/agents-
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 Start with [CLAUDE.md](CLAUDE.md) — it covers project conventions, build commands, and the decision record process.
 

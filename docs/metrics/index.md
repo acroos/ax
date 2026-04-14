@@ -1,24 +1,16 @@
-# AX Metrics Reference
+# AX Metrics Reference 📊
 
-This document provides an overview of all metrics tracked by AX to measure agentic coding effectiveness. Metrics are organized into four categories and implemented across three build phases.
+AX tracks 16 metrics across four categories to give you the full picture of how well your agentic coding workflow is performing. Each metric has its own detailed doc — click through for the full story.
 
 ## Metric Categories
 
-### Prompt Efficiency
+**🏗️ Output Quality** — Is the agent producing clean, mergeable work on the first try?
 
-Metrics that measure how effectively prompts translate into completed work with minimal back-and-forth.
+**💬 Prompt Efficiency** — How efficiently are prompts translating into completed work?
 
-### Output Quality
+**🤖 Agent Behavior** — How well does the agent operate autonomously — reading, writing, recovering from errors?
 
-Metrics that measure whether agent-generated code meets quality standards on the first attempt.
-
-### Planning Effectiveness
-
-Metrics that measure how well upfront planning translates into predictable implementation.
-
-### Agent Behavior
-
-Metrics that measure how efficiently the agent operates — how it reads, writes, recovers from errors, and self-corrects.
+**🗺️ Planning Effectiveness** — Does the plan match the implementation?
 
 ---
 
@@ -47,21 +39,21 @@ Metrics that measure how efficiently the agent operates — how it reads, writes
 
 ## Build Phases
 
-### Phase 1 — Git and GitHub Data
+### Phase 1 — Git and GitHub Data 🟢
 
-Metrics that can be calculated from git history and the GitHub API alone. These require no session data or plan files and are the first to be implemented.
+Metrics calculated from git history and the GitHub API alone. No session data needed — these work the moment you install the GitHub App.
 
 **Metrics:** Post-Open Commits, First-Pass Acceptance Rate, CI Success Rate, Diff Churn, Test Coverage of Generated Code, Line Revisit Rate
 
-### Phase 2 — Session Data
+### Phase 2 — Session Data 🟢
 
-Metrics that require access to Claude Code session logs (message transcripts, tool call records). These depend on a session data ingestion pipeline.
+Metrics that use Claude Code session logs (messages, tool calls, token usage). These light up once you connect the CLI with `ax init`.
 
 **Metrics:** Messages per PR, Iteration Depth, Self-Correction Rate, Context Efficiency, Error Recovery Efficiency, Token Cost per PR, Unmerged Token Spend
 
-### Phase 3 — Plan Files
+### Phase 3 — Plan Files 🔜
 
-Metrics that compare plan documents against actual implementation. These require a structured planning workflow and plan file format.
+Metrics that compare plan documents against actual implementation. Requires a structured planning workflow.
 
 **Metrics:** Plan-to-Implementation Coverage, Plan Deviation Score, Scope Creep Detection
 
@@ -69,9 +61,9 @@ Metrics that compare plan documents against actual implementation. These require
 
 ## Deferred Metrics
 
-The following metrics were considered but deferred from the initial metric set. They may be revisited in future iterations:
+These were considered but deferred. They may return in future iterations:
 
-- **Time-to-Merge** — Wall-clock time from PR open to merge. Deferred because it conflates human review latency with agent quality, making it unreliable as an agent effectiveness signal without normalization.
-- **~~Token Usage per PR~~** — Originally deferred because raw token counts are noisy without context about task complexity. Evolved into [Token Cost per PR](./token-cost-per-pr.md) (Metric #15), which uses dollar cost with model-specific pricing as a more actionable unit.
-- **Human Edit Rate** — Percentage of agent-generated lines that humans subsequently modify. Deferred due to difficulty distinguishing style preference edits from correctness fixes without manual classification.
-- **PR Size Distribution** — Lines of code changed per PR. Useful as a normalizing dimension but not independently actionable as a quality signal. May be added as a supporting dimension rather than a standalone metric.
+- **Time-to-Merge** — Conflates human review latency with agent quality; unreliable without normalization.
+- **~~Token Usage per PR~~** — Raw token counts are noisy. Evolved into [Token Cost per PR](./token-cost-per-pr.md), which uses dollar cost with model-specific pricing.
+- **Human Edit Rate** — Hard to distinguish style preference edits from correctness fixes without manual classification.
+- **PR Size Distribution** — Useful as a normalizing dimension but not independently actionable. May be added as a supporting dimension.
