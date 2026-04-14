@@ -97,6 +97,7 @@ export interface PRWithMetrics extends PR {
   metrics: PRMetrics | null;
   github_owner: string | null;
   github_repo: string | null;
+  session_count: number;
 }
 
 export interface AggregateMetrics {
@@ -118,6 +119,8 @@ export interface AggregateMetrics {
   avgPlanDeviation: number | null;
   scopeCreepRate: number | null;
   planDataCount: number;
+  sessionDataCount: number;
+  sessionMetricsCount: number;
 }
 
 export interface RepoLevelMetrics {
@@ -167,7 +170,7 @@ export interface GithubInstallationResponse {
 }
 
 export async function getGithubInstallation(orgSlug: string): Promise<GithubInstallationResponse> {
-  return fetchAPI<GithubInstallationResponse>(orgApiPath(orgSlug, "/github_installation"));
+  return fetchAPI<GithubInstallationResponse>(orgApiPath(orgSlug, "/github_installation"), { revalidate: false });
 }
 
 export async function requestGithubInstallUrl(orgSlug: string): Promise<{ install_url: string }> {
@@ -242,6 +245,7 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
       avgDiffChurnLines: null, avgLineRevisitRate: null,
       avgErrorRecoveryAttempts: null, avgPlanCoverage: null,
       avgPlanDeviation: null, scopeCreepRate: null, planDataCount: 0,
+      sessionDataCount: 0, sessionMetricsCount: 0,
     };
   }
 
@@ -334,6 +338,7 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
     avgSelfCorrectionRate, avgContextEfficiency,
     avgDiffChurnLines, avgLineRevisitRate, avgErrorRecoveryAttempts,
     avgPlanCoverage, avgPlanDeviation, scopeCreepRate, planDataCount,
+    sessionDataCount: cost.length, sessionMetricsCount: msgs.length,
   };
 }
 

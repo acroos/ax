@@ -11,7 +11,7 @@ import { BooleanMetricSummary } from "@/components/boolean-metric-summary";
 const metricsDir = path.join(process.cwd(), "..", "docs", "metrics");
 
 export function generateStaticParams() {
-  return METRIC_DEFS.map((d) => ({ slug: d.slug }));
+  return METRIC_DEFS.map((d) => ({ metric: d.slug }));
 }
 
 function median(values: number[]): number {
@@ -41,13 +41,13 @@ export default async function MetricDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string; metric: string }>;
   searchParams: Promise<{ repo?: string }>;
 }) {
-  const { slug } = await params;
+  const { slug, metric } = await params;
   const { repo } = await searchParams;
   const repoId = repo ? parseInt(repo, 10) : undefined;
-  const def = getMetricDef(slug);
+  const def = getMetricDef(metric);
 
   if (!def) {
     return (
@@ -55,7 +55,7 @@ export default async function MetricDetailPage({
         <div className="text-center space-y-3">
           <h2 className="text-text-primary text-lg font-medium">Metric not found</h2>
           <p className="text-text-secondary text-sm">
-            No metric with slug <code className="text-accent">{slug}</code>
+            No metric with slug <code className="text-accent">{metric}</code>
           </p>
         </div>
       </div>
@@ -65,9 +65,9 @@ export default async function MetricDetailPage({
   // Fetch PR data
   let prs: PRWithMetrics[] = [];
   try {
-    prs = await listPRsWithMetricsAsync(repoId);
+    prs = await listPRsWithMetricsAsync(repoId, slug);
   } catch {
-    // DB not available
+    // API not available
   }
 
   // Extract per-PR values for this metric
@@ -119,7 +119,7 @@ export default async function MetricDetailPage({
   const chartColor = CHART_COLORS[def.category] || "#6366F1";
   const badgeColor = CATEGORY_BADGE_COLORS[def.category] || "bg-surface-3 text-text-tertiary";
 
-  const backHref = repoId ? `/?repo=${repoId}` : "/";
+  const backHref = repoId ? `/${slug}?repo=${repoId}` : `/${slug}`;
 
   return (
     <div>

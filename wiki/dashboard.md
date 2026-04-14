@@ -22,8 +22,9 @@ Location: `dashboard/`
 
 | Route | Page | What it shows |
 |-------|------|---------------|
-| `/{slug}` | Org Overview | Aggregate metrics across all PRs, grouped by category |
-| `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics |
+| `/{slug}` | Org Overview | Aggregate metrics across all PRs, grouped by category. Clickable metric cards link to drill-down pages. Shows selected repo name. |
+| `/{slug}/metrics/[metric]` | Metric Detail | Per-PR breakdown for a single metric: bar chart, summary stats, sortable table, and documentation |
+| `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics and session count column |
 | `/{slug}/compare` | Compare | Org-scoped developer leaderboard, individual vs team averages, time filtering |
 | `/{slug}/settings` | Org Settings | GitHub App installation card (status, connected repos, install/reinstall), members list (role management, removal), and invites (create, list, revoke) |
 

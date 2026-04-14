@@ -11,9 +11,9 @@ module WebhookHandlers
       return unless repo
 
       pr = find_or_create_pr(repo, @pr_data)
+      pr.update!(state: "closed", closed_at: @pr_data[:closed_at])
       return if pr_finalized?(pr)
 
-      pr.update!(state: "closed", closed_at: @pr_data[:closed_at])
       fetch_and_compute(pr)
       finalize_metrics(pr)
     end
