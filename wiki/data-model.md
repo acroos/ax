@@ -77,6 +77,13 @@ Claude Code sessions. PK is `id` (UUID string from session file).
 | primary_model | text | Majority model used |
 | cwd | text | Working directory |
 | pushed_by | text | Who pushed this data |
+| bash_errors | integer | Bash commands that failed |
+| bash_successes | integer | Bash commands that succeeded |
+| files_read_count | integer | Unique files read |
+| files_modified_count | integer | Unique files modified |
+| assistant_message_count | integer | Assistant messages in session |
+| sidechain_messages | integer | Messages on sidechain branches |
+| total_file_reads | integer | Total Read tool invocations |
 
 ### session_prs
 Many-to-many join: sessions to PRs, with correlation confidence.
@@ -105,7 +112,7 @@ File paths changed in a PR. Fetched from the GitHub API at PR finalization (merg
 Unique on (pr_id, filename).
 
 ### pr_metrics
-All 16 computed metrics per PR. One row per PR.
+All 20 computed metrics per PR. One row per PR.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -125,6 +132,10 @@ All 16 computed metrics per PR. One row per PR.
 | plan_coverage_score | real | |
 | plan_deviation_score | real | |
 | scope_creep_detected | boolean | |
+| cache_hit_rate | real | Cache-read tokens / total input tokens |
+| sidechain_rate | real | Sidechain messages / total messages |
+| re_read_rate | real | Total file reads / unique files read |
+| autonomy_score | real | Assistant messages / human messages |
 | metrics_finalized | boolean | Write-lock flag |
 | finalized_at | timestamp | When metrics were locked |
 

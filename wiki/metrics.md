@@ -28,6 +28,7 @@ Measures how efficiently the human directed the agent.
 | Messages per PR | int | Sessions | Total human+assistant messages across correlated sessions. |
 | Iteration Depth | int | Sessions | Number of human turns (back-and-forth cycles). |
 | Token Cost per PR | float | Sessions | Dollar cost of all tokens used, computed with model-specific pricing. |
+| Cache Hit Rate | float | Sessions | Ratio of cache-read tokens to total input tokens. Higher = better cache utilization. |
 
 ### Agent Behavior
 
@@ -38,6 +39,9 @@ Measures how the agent performed during the coding session.
 | Self-Correction Rate | float | Sessions | `bash_successes / (bash_successes + bash_errors)` — higher = more commands succeed without human help. |
 | Context Efficiency | float | Sessions | `files_modified / files_read` — higher = more focused, lower = more exploration. |
 | Error Recovery Attempts | int | Sessions | Total Bash errors across correlated sessions. Lower = fewer recovery cycles needed. |
+| Sidechain Rate | float | Sessions | Fraction of messages on sidechain branches (backtracking). Lower = fewer dead-end paths. |
+| Re-Read Rate | float | Sessions | `total_file_reads / unique_files_read` — 1.0 = no re-reads, higher = redundant reading. |
+| Autonomy Score | float | Sessions | `assistant_messages / human_messages` — higher = agent works more independently. |
 
 ### Planning Effectiveness
 
@@ -65,8 +69,8 @@ All metric computation happens server-side in the Rails application.
 
 Server-side computation is split between two services:
 
-- **`MetricsComputer`** — Computes `diff_churn_lines` (per-commit stats via individual commit API), `has_tests` (with non-testable file filtering), `line_revisit_rate` (7-day lookback), session-derived metrics (`self_correction_rate`, `context_efficiency`, `error_recovery_attempts`), and plan metrics (`plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`)
-- **`SessionPrCorrelationService`** — Aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth` from correlated session data, and triggers plan metrics computation
+- **`MetricsComputer`** — Computes `diff_churn_lines` (per-commit stats via individual commit API), `has_tests` (with non-testable file filtering), `line_revisit_rate` (7-day lookback), session-derived metrics (`self_correction_rate`, `context_efficiency`, `error_recovery_attempts`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`), and plan metrics (`plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`)
+- **`SessionPrCorrelationService`** — Aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth` from correlated session data, calls MetricsComputer to compute all derived metrics, and triggers plan metrics computation
 
 The Go `cli/internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
 

@@ -34,6 +34,12 @@ We need to define what to measure for agentic coding developer experience. The m
 13. **Context window utilization** — how much of the available context window is used
 14. **Error recovery rate** — how often the agent self-corrects after a failed action
 
+**Added post-ADR-001 (session-derived)**
+17. **Cache Hit Rate** — ratio of cache-read tokens to total input tokens (prompt cache utilization)
+18. **Sidechain Rate** — fraction of messages on sidechain branches (backtracking/waste)
+19. **Re-Read Rate** — total file reads divided by unique files read (redundant reading)
+20. **Autonomy Score** — assistant messages divided by human messages (agent independence)
+
 **Prompt Efficiency (added via [ADR-009](./009-token-cost-metrics.md))**
 15. **Token Cost per PR** — dollar cost of tokens consumed across sessions correlated to a PR, using model-specific pricing
 16. **Unmerged Token Spend** — repo-level aggregate of dollar cost on unmerged or uncorrelated work

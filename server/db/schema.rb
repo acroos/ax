@@ -136,6 +136,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_14_000002) do
   end
 
   create_table "pr_metrics", force: :cascade do |t|
+    t.float "autonomy_score"
+    t.float "cache_hit_rate"
     t.float "ci_success_rate"
     t.datetime "computed_at", default: -> { "now()" }, null: false
     t.float "context_efficiency"
@@ -153,8 +155,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_14_000002) do
     t.float "plan_deviation_score"
     t.integer "post_open_commits"
     t.bigint "pr_id", null: false
+    t.float "re_read_rate"
     t.boolean "scope_creep_detected"
     t.float "self_correction_rate"
+    t.float "sidechain_rate"
     t.float "token_cost_usd"
     t.datetime "updated_at", null: false
     t.index ["pr_id"], name: "index_pr_metrics_on_pr_id", unique: true
@@ -228,6 +232,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_14_000002) do
   end
 
   create_table "sessions", id: :string, force: :cascade do |t|
+    t.integer "assistant_message_count", default: 0, null: false
     t.integer "bash_errors", default: 0
     t.integer "bash_successes", default: 0
     t.string "branch"
@@ -245,8 +250,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_14_000002) do
     t.string "primary_model"
     t.string "pushed_by"
     t.bigint "repo_id"
+    t.integer "sidechain_messages", default: 0, null: false
     t.bigint "started_at"
     t.float "total_cost_usd"
+    t.integer "total_file_reads", default: 0, null: false
     t.integer "turn_count", default: 0
     t.datetime "updated_at", null: false
     t.index ["repo_id"], name: "index_sessions_on_repo_id"

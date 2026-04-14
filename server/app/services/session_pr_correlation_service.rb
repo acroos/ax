@@ -38,11 +38,16 @@ class SessionPrCorrelationService
       next if linked_sessions.empty?
 
       metrics = PrMetrics.find_or_create_by!(pr: pr)
+      computed = MetricsComputer.new(pr).call
 
       session_attrs = {
         messages_per_pr: linked_sessions.sum(:message_count),
         token_cost_usd: linked_sessions.sum(:total_cost_usd),
-        iteration_depth: linked_sessions.maximum(:turn_count)
+        iteration_depth: linked_sessions.maximum(:turn_count),
+        cache_hit_rate: computed[:cache_hit_rate],
+        sidechain_rate: computed[:sidechain_rate],
+        re_read_rate: computed[:re_read_rate],
+        autonomy_score: computed[:autonomy_score]
       }
 
       # Compute plan metrics if any session has planned files

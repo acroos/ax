@@ -31,6 +31,7 @@ module Api
             :input_tokens, :output_tokens, :cache_creation_input_tokens,
             :cache_read_input_tokens, :total_cost_usd, :primary_model,
             :bash_errors, :bash_successes, :files_read_count, :files_modified_count,
+            :assistant_message_count, :sidechain_messages, :total_file_reads,
             planned_files: []
           ],
           commits: [

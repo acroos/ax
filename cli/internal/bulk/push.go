@@ -303,6 +303,9 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 			BashSuccesses:            session.BashSuccesses,
 			FilesReadCount:           len(session.FilesRead),
 			FilesModifiedCount:       len(session.FilesModified),
+			AssistantMessageCount:    session.AssistantMessages,
+			SidechainMessages:        session.SidechainMessages,
+			TotalFileReads:           session.TotalFileReads,
 		}
 
 		if len(session.PlanFiles) > 0 {

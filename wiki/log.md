@@ -4,6 +4,16 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-14 — Add 4 new session-derived metrics
+
+**Pages updated:** metrics, data-model
+**Docs updated:** docs/decisions/001-metrics-selection.md
+**Docs added:** docs/metrics/cache-hit-rate.md, docs/metrics/sidechain-rate.md, docs/metrics/re-read-rate.md, docs/metrics/autonomy-score.md
+
+Added Cache Hit Rate, Sidechain Rate, Re-Read Rate, and Autonomy Score. These are computed from session data already collected (or with minimal new parser fields). Changes span Go CLI parser, push payload, Rails migration/ingestion, MetricsComputer, API endpoints, and dashboard metric definitions. Total metrics now 20.
+
+---
+
 ## 2026-04-14 — Move Go CLI into cli/ subdirectory, switch to Justfile
 
 **Pages updated:** architecture, conventions, go-cli, metrics
@@ -38,6 +48,7 @@ Append-only record of wiki changes. Newest entries first.
 - `cli/internal/bulk/push.go` — sends planned files in push payload
 
 ---
+
 ## 2026-04-13 — Data collection disclosure page and README section
 
 **Pages updated:** dashboard
@@ -49,7 +60,6 @@ Added a transparent data collection disclosure covering exactly what the CLI col
 - README "Data Collection" section with link to the full doc
 
 ---
-
 ## 2026-04-13 — Documentation accuracy audit and polish
 
 **Pages updated:** metrics, rails-server

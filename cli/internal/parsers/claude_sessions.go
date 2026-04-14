@@ -53,6 +53,10 @@ type ParsedSession struct {
 	PlanFiles     []string // plan files written/edited during session
 	BashErrors    int      // Bash commands that failed (non-zero exit)
 	BashSuccesses int      // Bash commands that succeeded
+
+	// New metrics
+	SidechainMessages int // messages on sidechain branches
+	TotalFileReads    int // total Read tool calls (including re-reads)
 }
 
 // sessionMessage represents a single line in a session JSONL file.
@@ -63,8 +67,9 @@ type sessionMessage struct {
 	SessionID  string          `json:"sessionId"`
 	GitBranch  string          `json:"gitBranch"`
 	Timestamp  string          `json:"timestamp"`
-	IsMeta     bool            `json:"isMeta"`
-	Message    json.RawMessage `json:"message"`
+	IsMeta      bool            `json:"isMeta"`
+	IsSidechain bool            `json:"isSidechain"`
+	Message     json.RawMessage `json:"message"`
 	// For tool_result type messages
 	ToolResultUUID string `json:"toolResultUuid"`
 }
@@ -237,6 +242,10 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 			}
 		}
 
+		if msg.IsSidechain {
+			session.SidechainMessages++
+		}
+
 		switch msg.Type {
 		case "user":
 			if msg.IsMeta {
@@ -377,6 +386,7 @@ func parseToolUseBlocks(content json.RawMessage, session *ParsedSession,
 			var inp readInput
 			if json.Unmarshal(block.Input, &inp) == nil && inp.FilePath != "" {
 				filesReadSet[inp.FilePath] = true
+				session.TotalFileReads++
 			}
 		case "Glob":
 			// Glob reads files but we don't track individual results

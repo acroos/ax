@@ -89,6 +89,10 @@ export interface PRMetrics {
   plan_coverage_score: number | null;
   plan_deviation_score: number | null;
   scope_creep_detected: boolean | null;
+  cache_hit_rate: number | null;
+  sidechain_rate: number | null;
+  re_read_rate: number | null;
+  autonomy_score: number | null;
   metrics_finalized: boolean;
   finalized_at: string | null;
 }
@@ -121,6 +125,10 @@ export interface AggregateMetrics {
   planDataCount: number;
   sessionDataCount: number;
   sessionMetricsCount: number;
+  avgCacheHitRate: number | null;
+  avgSidechainRate: number | null;
+  avgReReadRate: number | null;
+  avgAutonomyScore: number | null;
 }
 
 export interface RepoLevelMetrics {
@@ -246,6 +254,8 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
       avgErrorRecoveryAttempts: null, avgPlanCoverage: null,
       avgPlanDeviation: null, scopeCreepRate: null, planDataCount: 0,
       sessionDataCount: 0, sessionMetricsCount: 0,
+      avgCacheHitRate: null, avgSidechainRate: null,
+      avgReReadRate: null, avgAutonomyScore: null,
     };
   }
 
@@ -331,6 +341,26 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
     (p) => p.metrics!.plan_coverage_score !== null || p.metrics!.plan_deviation_score !== null
   ).length;
 
+  const cacheHit = withMetrics.filter((p) => p.metrics!.cache_hit_rate !== null);
+  const avgCacheHitRate = cacheHit.length
+    ? cacheHit.reduce((s, p) => s + p.metrics!.cache_hit_rate!, 0) / cacheHit.length
+    : null;
+
+  const sidechain = withMetrics.filter((p) => p.metrics!.sidechain_rate !== null);
+  const avgSidechainRate = sidechain.length
+    ? sidechain.reduce((s, p) => s + p.metrics!.sidechain_rate!, 0) / sidechain.length
+    : null;
+
+  const reRead = withMetrics.filter((p) => p.metrics!.re_read_rate !== null);
+  const avgReReadRate = reRead.length
+    ? reRead.reduce((s, p) => s + p.metrics!.re_read_rate!, 0) / reRead.length
+    : null;
+
+  const autonomy = withMetrics.filter((p) => p.metrics!.autonomy_score !== null);
+  const avgAutonomyScore = autonomy.length
+    ? autonomy.reduce((s, p) => s + p.metrics!.autonomy_score!, 0) / autonomy.length
+    : null;
+
   return {
     totalPRs, avgPostOpenCommits, firstPassAcceptanceRate,
     ciSuccessRate, testCoverageRate, avgMessagesPerPR,
@@ -339,6 +369,7 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
     avgDiffChurnLines, avgLineRevisitRate, avgErrorRecoveryAttempts,
     avgPlanCoverage, avgPlanDeviation, scopeCreepRate, planDataCount,
     sessionDataCount: cost.length, sessionMetricsCount: msgs.length,
+    avgCacheHitRate, avgSidechainRate, avgReReadRate, avgAutonomyScore,
   };
 }
 

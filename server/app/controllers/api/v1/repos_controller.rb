@@ -47,7 +47,11 @@ module Api
           Arel.sql("AVG(CASE WHEN scope_creep_detected THEN 1.0 ELSE 0.0 END)"),
           Arel.sql("COUNT(CASE WHEN plan_coverage_score IS NOT NULL THEN 1 END)"),
           Arel.sql("COUNT(CASE WHEN token_cost_usd IS NOT NULL THEN 1 END)"),
-          Arel.sql("COUNT(CASE WHEN messages_per_pr IS NOT NULL THEN 1 END)")
+          Arel.sql("COUNT(CASE WHEN messages_per_pr IS NOT NULL THEN 1 END)"),
+          Arel.sql("AVG(cache_hit_rate)"),
+          Arel.sql("AVG(sidechain_rate)"),
+          Arel.sql("AVG(re_read_rate)"),
+          Arel.sql("AVG(autonomy_score)")
         )
 
         repo_met = ::RepoMetrics.where(repo: @repo).order(computed_at: :desc).first
@@ -73,6 +77,10 @@ module Api
           planDataCount: aggregated[16].to_i,
           sessionDataCount: aggregated[17].to_i,
           sessionMetricsCount: aggregated[18].to_i,
+          avgCacheHitRate: aggregated[19]&.to_f,
+          avgSidechainRate: aggregated[20]&.to_f,
+          avgReReadRate: aggregated[21]&.to_f,
+          avgAutonomyScore: aggregated[22]&.to_f,
           unmergedCostUSD: repo_met&.unmerged_cost_usd,
           totalCostUSD: repo_met&.total_cost_usd,
           unmergedRate: repo_met&.unmerged_rate
@@ -151,6 +159,10 @@ module Api
             plan_coverage_score: m.plan_coverage_score,
             plan_deviation_score: m.plan_deviation_score,
             scope_creep_detected: m.scope_creep_detected,
+            cache_hit_rate: m.cache_hit_rate,
+            sidechain_rate: m.sidechain_rate,
+            re_read_rate: m.re_read_rate,
+            autonomy_score: m.autonomy_score,
             metrics_finalized: m.metrics_finalized,
             finalized_at: m.finalized_at
           } : nil
