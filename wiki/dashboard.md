@@ -14,7 +14,8 @@ Location: `dashboard/`
 | `/login` | Login | GitHub OAuth sign-in |
 | `/onboarding` | Onboarding | Multi-step guided setup: welcome, API key reveal, CLI install, done |
 | `/prs/[id]` | PR Detail | All metrics for one PR, grouped by category |
-| `/docs` | Docs Index | Grid of all metric documentation pages |
+| `/docs` | Docs Index | Grid of all metric documentation pages, plus link to data collection disclosure |
+| `/docs/data-collection` | Data Collection | What data AX collects, sends, and stores (rendered from `docs/data-collection.md`) |
 | `/docs/[slug]` | Metric Doc | Individual metric explanation (rendered from `docs/metrics/*.md`) |
 | `/settings` | Account | Profile (GitHub identity), API key rotation, logout |
 

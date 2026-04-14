@@ -229,7 +229,7 @@ async function Sidebar() {
 
       {/* User menu */}
       {user && (
-        <div className="px-3 pb-4 pt-2 border-t border-border-subtle">
+        <div className="px-3 pb-2 pt-2 border-t border-border-subtle">
           <div className="flex items-center gap-2 px-2 py-1.5">
             {user.avatar_url && (
               <img src={user.avatar_url} alt="" className="w-5 h-5 rounded-full" />
@@ -243,6 +243,15 @@ async function Sidebar() {
           </div>
         </div>
       )}
+
+      <div className="px-3 pb-3">
+        <Link
+          href="/docs/data-collection"
+          className="block px-2.5 py-1 text-[11px] text-text-tertiary hover:text-text-secondary transition-colors"
+        >
+          Data &amp; Privacy
+        </Link>
+      </div>
     </aside>
   );
 }

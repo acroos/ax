@@ -88,10 +88,19 @@ AX is purpose-built for [Claude Code](https://docs.anthropic.com/en/docs/agents-
 
 ---
 
+## 🔒 Data Collection
+
+AX collects **aggregated session metadata** — token counts, cost, timestamps, tool usage counts — never conversation content, source code, or file names. Commit messages and PR metadata (titles, branch names, line-count stats) are also collected to correlate sessions with PRs.
+
+For the full breakdown of what is and isn't collected, see the **[Data Collection & Privacy](docs/data-collection.md)** doc (also available at `/docs/data-collection` on the dashboard).
+
+---
+
 ## 📚 Docs
 
 - [Metric Reference](docs/metrics/index.md) — All 16 metrics, explained
 - [Setup Guide](docs/setup.md) — Full setup walkthrough
+- [Data Collection & Privacy](docs/data-collection.md) — Exactly what data AX collects and stores
 - [Architecture Decision Records](docs/decisions/) — Why things are the way they are
 
 ---
