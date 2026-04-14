@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-14 — Move Go CLI into cli/ subdirectory, switch to Justfile
+
+**Pages updated:** architecture, conventions, go-cli, metrics
+**What changed:** All Go CLI code (`cmd/`, `internal/`, `go.mod`, `go.sum`, `.goreleaser.yml`) moved into `cli/` to match `server/` and `dashboard/` layout. Replaced `Makefile` with `Justfile` (`cli/Justfile`) and added a root `Justfile` for cross-project commands. Updated all wiki path references from `cmd/ax/`, `internal/` to `cli/cmd/ax/`, `cli/internal/`. CI workflows updated to use `working-directory: cli`.
+
+---
+
 ## 2026-04-13 — Data collection disclosure page and README section
 
 **Pages updated:** dashboard

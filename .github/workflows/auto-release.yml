@@ -4,11 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "cmd/**"
-      - "internal/**"
-      - "go.mod"
-      - "go.sum"
-      - ".goreleaser.yml"
+      - "cli/**"
 
 permissions:
   contents: write
@@ -76,12 +72,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version-file: cli/go.mod
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
+          workdir: cli
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

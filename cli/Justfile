@@ -1,0 +1,38 @@
+binary_name := "ax"
+build_dir := "bin"
+
+# Build the CLI binary
+build:
+    go build -o {{build_dir}}/{{binary_name}} ./cmd/ax
+
+# Run the CLI
+run *args: build
+    ./{{build_dir}}/{{binary_name}} {{args}}
+
+# Run all tests
+test *args:
+    go test ./... {{args}}
+
+# Remove build artifacts
+clean:
+    rm -rf {{build_dir}}
+    go clean
+
+# Lint (requires golangci-lint)
+lint:
+    golangci-lint run ./...
+
+# Format code
+fmt:
+    go fmt ./...
+    goimports -w .
+
+# Build for all platforms
+build-all:
+    CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o {{build_dir}}/{{binary_name}}-darwin-arm64 ./cmd/ax
+    CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -o {{build_dir}}/{{binary_name}}-darwin-amd64 ./cmd/ax
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o {{build_dir}}/{{binary_name}}-linux-amd64 ./cmd/ax
+
+# Release with GoReleaser
+release *args:
+    goreleaser release {{args}}

@@ -68,7 +68,7 @@ Server-side computation is split between two services:
 - **`MetricsComputer`** — Computes `diff_churn_lines`, `has_tests`, and `line_revisit_rate` from GitHub file/commit data
 - **`SessionPrCorrelationService`** — Aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth`, `self_correction_rate`, `context_efficiency`, and `error_recovery_attempts` from correlated session data
 
-The Go `internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
+The Go `cli/internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
 
 ## Finalization
 
