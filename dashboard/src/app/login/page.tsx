@@ -31,6 +31,10 @@ export default function LoginPage() {
 
         <p className="text-xs text-text-tertiary">
           By signing in, you agree to our terms of service.
+          <br />
+          <a href="/docs/data-collection" className="text-text-tertiary hover:text-text-secondary underline transition-colors">
+            What data does AX collect?
+          </a>
         </p>
       </div>
     </div>

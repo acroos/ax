@@ -32,6 +32,18 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-13 — Data collection disclosure page and README section
+
+**Pages updated:** dashboard
+**Files added:** `docs/data-collection.md`, `dashboard/src/app/docs/data-collection/page.tsx`
+**Files updated:** `README.md`, `dashboard/src/app/layout.tsx`, `dashboard/src/app/login/page.tsx`, `dashboard/src/app/docs/page.tsx`
+
+Added a transparent data collection disclosure covering exactly what the CLI collects, what is sent to the server, what GitHub webhooks provide, and what is explicitly not collected. Accessible from:
+- Dashboard at `/docs/data-collection` (linked from docs index, sidebar footer, and login page)
+- README "Data Collection" section with link to the full doc
+
+---
+
 ## 2026-04-13 — Documentation accuracy audit and polish
 
 **Pages updated:** metrics, rails-server
