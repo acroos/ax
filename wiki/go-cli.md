@@ -2,7 +2,7 @@
 
 The CLI is a thin client that parses Claude Code session data and pushes it to the AX managed service. It also handles initial setup (auth, hook installation).
 
-Entry point: `cmd/ax/main.go` (Cobra-based).
+All CLI code lives under `cli/`. Entry point: `cli/cmd/ax/main.go` (Cobra-based).
 
 ## Commands
 
@@ -16,19 +16,22 @@ Entry point: `cmd/ax/main.go` (Cobra-based).
 ## Package Structure
 
 ```
-internal/
-  api/           Push payload types (PushPayload, PushResponse)
-  bulk/          Repo discovery (from history.jsonl) and bulk push orchestration
-  config/        Config management (~/.ax/config.json)
-  hooks/         Claude Code hook installation in ~/.claude/settings.json
-  metrics/       Metric calculator library (pure functions, used by Rails port)
-  parsers/       Session data parsing + GitHub/git data types
-  pricing/       Model-specific token cost tables
-  push/          HTTP client for AX server
-  ui/            Terminal output: spinners, colors, banners (lipgloss)
+cli/
+  cmd/ax/        CLI entry point (main.go)
+  internal/
+    api/         Push payload types (PushPayload, PushResponse)
+    bulk/        Repo discovery (from history.jsonl) and bulk push orchestration
+    config/      Config management (~/.ax/config.json)
+    hooks/       Claude Code hook installation in ~/.claude/settings.json
+    metrics/     Metric calculator library (pure functions, used by Rails port)
+    parsers/     Session data parsing + GitHub/git data types
+    pricing/     Model-specific token cost tables
+    push/        HTTP client for AX server
+    ui/          Terminal output: spinners, colors, banners (lipgloss)
+  Justfile       Build commands (just build, just test, etc.)
 ```
 
-## Session Parser (`internal/parsers/claude_sessions.go`)
+## Session Parser (`cli/internal/parsers/claude_sessions.go`)
 Reads Claude Code session files from `~/.claude/projects/<encoded-path>/*.jsonl`.
 
 Extracts per session:
@@ -41,14 +44,14 @@ Returns `ParsedSession` structs. Also discovers sessions from Claude Code worktr
 
 ## Hooks System
 
-`internal/hooks/hooks.go` manages Claude Code hooks in `~/.claude/settings.json`.
+`cli/internal/hooks/hooks.go` manages Claude Code hooks in `~/.claude/settings.json`.
 
 - `Install()` — Adds a `SessionEnd` hook that runs `ax push --repo <cwd>` after every Claude Code session. Also removes stale AX hooks from other events (e.g. `Stop`).
 - `Uninstall()` / `IsInstalled()` — Remove or check hook presence across all AX-managed events (`SessionEnd`, `Stop`)
 - Handles worktree resolution — if the CWD is a worktree path (`<repo>/.claude/worktrees/<name>/`), resolves back to the main repo
 - Preserves existing settings — reads the full JSON, modifies only hook entries
 
-## Bulk Push (`internal/bulk/`)
+## Bulk Push (`cli/internal/bulk/`)
 
 `ax push --all` discovers all repos from `~/.claude/history.jsonl` and pushes sessions for each.
 
@@ -67,13 +70,13 @@ Returns `ParsedSession` structs. Also discovers sessions from Claude Code worktr
 
 The server upserts sessions by ID, so re-pushing is safe — no data duplication.
 
-## Push Client (`internal/push/client.go`)
+## Push Client (`cli/internal/push/client.go`)
 - `Push(payload)` → `POST /api/v1/push` with Bearer token
 - `Ping()` → validates API key via `GET /api/v1/ping`
 - `HealthCheck()` → checks server reachability (no auth required)
 - Retry logic: up to 2 attempts on 5xx errors
 
-## Configuration (`internal/config/`)
+## Configuration (`cli/internal/config/`)
 Config lives at `~/.ax/config.json`:
 ```json
 {
@@ -85,7 +88,7 @@ The server URL is hardcoded as `config.DefaultServerURL` (`https://ax.up.railway
 
 Written by `ax init`, read by `ax push`.
 
-## Metrics Library (`internal/metrics/`)
+## Metrics Library (`cli/internal/metrics/`)
 
 Pure function metric calculators, kept as a Go library. These are being ported to Ruby for server-side computation. The Go versions may be removed once the port is complete.
 
@@ -98,11 +101,11 @@ Pure function metric calculators, kept as a Go library. These are being ported t
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `cmd/ax/main.go` | ~370 | CLI commands: init, push, push --all |
-| `internal/bulk/discovery.go` | ~170 | Repo discovery from history.jsonl |
-| `internal/bulk/push.go` | ~280 | Bulk push orchestration, progress, error logging |
-| `internal/parsers/claude_sessions.go` | ~350 | Session JSONL parsing |
-| `internal/hooks/hooks.go` | ~200 | Claude Code hook management |
-| `internal/push/client.go` | ~140 | HTTP client for server API |
-| `internal/metrics/output_quality.go` | ~130 | Output quality metric calculators |
-| `internal/metrics/planning.go` | ~140 | Plan analysis |
+| `cli/cmd/ax/main.go` | ~370 | CLI commands: init, push, push --all |
+| `cli/internal/bulk/discovery.go` | ~170 | Repo discovery from history.jsonl |
+| `cli/internal/bulk/push.go` | ~280 | Bulk push orchestration, progress, error logging |
+| `cli/internal/parsers/claude_sessions.go` | ~350 | Session JSONL parsing |
+| `cli/internal/hooks/hooks.go` | ~200 | Claude Code hook management |
+| `cli/internal/push/client.go` | ~140 | HTTP client for server API |
+| `cli/internal/metrics/output_quality.go` | ~130 | Output quality metric calculators |
+| `cli/internal/metrics/planning.go` | ~140 | Plan analysis |

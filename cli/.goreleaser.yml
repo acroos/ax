@@ -1,7 +1,10 @@
 version: 2
 
+project_name: ax
+
 builds:
-  - main: ./cmd/ax
+  - dir: .
+    main: ./cmd/ax
     binary: ax
     env:
       - CGO_ENABLED=0

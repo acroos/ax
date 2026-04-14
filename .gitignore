@@ -1,6 +1,8 @@
 # Binaries
 /ax
 /bin/
+cli/bin/
+cli/ax
 *.exe
 *.exe~
 *.dll
@@ -9,6 +11,7 @@
 
 # Build output
 /dist/
+cli/dist/
 
 # Test binary
 *.test

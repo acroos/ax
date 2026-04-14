@@ -68,7 +68,7 @@ Server-side computation is split between two services:
 - **`MetricsComputer`** — Computes `diff_churn_lines` (per-commit stats via individual commit API), `has_tests` (with non-testable file filtering), `line_revisit_rate` (7-day lookback), session-derived metrics (`self_correction_rate`, `context_efficiency`, `error_recovery_attempts`), and plan metrics (`plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`)
 - **`SessionPrCorrelationService`** — Aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth` from correlated session data, and triggers plan metrics computation
 
-The Go `internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
+The Go `cli/internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
 
 ## Finalization
 

@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-14 — Move Go CLI into cli/ subdirectory, switch to Justfile
+
+**Pages updated:** architecture, conventions, go-cli, metrics
+**What changed:** All Go CLI code (`cmd/`, `internal/`, `go.mod`, `go.sum`, `.goreleaser.yml`) moved into `cli/` to match `server/` and `dashboard/` layout. Replaced `Makefile` with `Justfile` (`cli/Justfile`) and added a root `Justfile` for cross-project commands. Updated all wiki path references from `cmd/ax/`, `internal/` to `cli/cmd/ax/`, `cli/internal/`. CI workflows updated to use `working-directory: cli`.
+
+---
+
 ## 2026-04-14 — Metrics audit: fix broken metrics and implement planning metrics
 
 **Pages updated:** metrics
@@ -26,12 +33,11 @@ Append-only record of wiki changes. Newest entries first.
 - `server/app/controllers/api/v1/push_controller.rb` — permits `planned_files` array
 - `server/app/services/push_service.rb` — stores planned_files
 - `server/db/migrate/20260414000002_add_planned_files_to_coding_sessions.rb` — new column
-- `internal/api/types.go` — added PlannedFiles to SessionData
-- `internal/parsers/claude_sessions.go` — added ExtractPlannedFiles function
-- `internal/bulk/push.go` — sends planned files in push payload
+- `cli/internal/api/types.go` — added PlannedFiles to SessionData
+- `cli/internal/parsers/claude_sessions.go` — added ExtractPlannedFiles function
+- `cli/internal/bulk/push.go` — sends planned files in push payload
 
 ---
-
 ## 2026-04-13 — Data collection disclosure page and README section
 
 **Pages updated:** dashboard

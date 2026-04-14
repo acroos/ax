@@ -54,8 +54,8 @@ Or build from source:
 
 ```bash
 git clone https://github.com/acroos/ax.git
-cd ax && make build
-# Binary at ./bin/ax
+cd ax/cli && just build
+# Binary at cli/bin/ax
 ```
 
 ### 2. Sign in to the dashboard
@@ -110,10 +110,11 @@ For the full breakdown of what is and isn't collected, see the **[Data Collectio
 Start with [CLAUDE.md](CLAUDE.md) — it covers project conventions, build commands, and the decision record process.
 
 ```bash
-make build    # Build to bin/ax
-make test     # Run all tests
-make fmt      # Format code
-make lint     # Lint (requires golangci-lint)
+just              # List all recipes (from root)
+just cli-build    # Build CLI to cli/bin/ax
+just cli-test     # Run CLI tests
+just test         # Run all tests (CLI + server)
+just lint         # Lint all projects
 ```
 
 ---

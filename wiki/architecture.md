@@ -6,7 +6,7 @@ AX is three components that work together as a managed service.
 
 | Component | Language | Location | Role |
 |-----------|----------|----------|------|
-| **Go CLI** | Go | `cmd/ax/`, `internal/` | Session data parsing, push to server, hook installation |
+| **Go CLI** | Go | `cli/` | Session data parsing, push to server, hook installation |
 | **Rails Server** | Ruby | `server/` | Managed service API: multi-tenant data storage, webhooks, auth, metric computation |
 | **Dashboard** | TypeScript | `dashboard/` | Web UI for viewing metrics, comparing developers, browsing docs |
 
@@ -53,7 +53,7 @@ See: [Rails Server — Webhook Handling](rails-server.md#webhook-handling)
 
 | File | Purpose |
 |------|---------|
-| `cmd/ax/main.go` | CLI entry point — init and push commands |
+| `cli/cmd/ax/main.go` | CLI entry point — init and push commands |
 | `server/config/routes.rb` | All Rails API endpoints |
 | `server/app/services/push_service.rb` | Push data ingestion logic |
 | `dashboard/src/lib/db.ts` | Dashboard data layer |

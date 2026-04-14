@@ -33,24 +33,27 @@ Start at [`wiki/index.md`](wiki/index.md) to find the right page. Key pages:
 
 ## Build & Test
 
+This project uses [Just](https://github.com/casey/just) as a command runner. There's a root `Justfile` that delegates to each sub-project, or you can `cd` into a project and run `just` directly.
+
 ```bash
-# Go CLI
-make build           # Build binary to bin/ax
-make test            # Run all tests
-go test ./... -v     # Verbose test output
-make fmt             # Format code
-make lint            # Lint (requires golangci-lint)
+# From root — cross-project commands
+just              # List all recipes
+just test         # Run all tests (CLI + server)
+just lint         # Lint all projects
 
-# Rails server
-cd server
-bundle install
-bundle exec rails db:create db:migrate
-bundle exec rspec
+# Go CLI (cli/)
+just cli-build    # Build binary to cli/bin/ax
+just cli-test     # Run all tests
+just cli-fmt      # Format code
+just cli-lint     # Lint (requires golangci-lint)
 
-# Dashboard
-cd dashboard
-npm install
-npm run dev          # Development server on :3333
+# Rails server (server/)
+just server-dev   # Start dev server
+just server-test  # Run specs
+
+# Dashboard (dashboard/)
+just dashboard-dev    # Development server on :3333
+just dashboard-build  # Production build
 ```
 
 ## Key Commands

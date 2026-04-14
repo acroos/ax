@@ -5,10 +5,11 @@ Patterns and norms for working in the AX codebase.
 ## Go CLI
 
 ### File Organization
-- One metric area per file in `internal/metrics/` (e.g., `output_quality.go`, `planning.go`), each with a corresponding `_test.go`
-- Session parser in `internal/parsers/claude_sessions.go`
-- GitHub/git data types in `internal/parsers/github.go` (types only, no CLI interaction)
-- Token pricing in `internal/pricing/` with model-specific lookup tables
+- All Go code lives under `cli/`
+- One metric area per file in `cli/internal/metrics/` (e.g., `output_quality.go`, `planning.go`), each with a corresponding `_test.go`
+- Session parser in `cli/internal/parsers/claude_sessions.go`
+- GitHub/git data types in `cli/internal/parsers/github.go` (types only, no CLI interaction)
+- Token pricing in `cli/internal/pricing/` with model-specific lookup tables
 
 ### Testing
 - Metric tests use inline data — no fixtures or factories
@@ -16,7 +17,7 @@ Patterns and norms for working in the AX codebase.
 
 ### External Dependencies
 - Session parser reads JSONL files directly (no external CLIs)
-- Token pricing lives in `internal/pricing/` with model-specific lookup tables
+- Token pricing lives in `cli/internal/pricing/` with model-specific lookup tables
 - CLI shells out to `git` only to resolve remote URLs (for repo identification)
 
 ## Rails Server
@@ -62,15 +63,16 @@ Patterns and norms for working in the AX codebase.
 - Feature plans in `plans/`
 
 ### Build Commands
+
+This project uses [Just](https://github.com/casey/just) as a command runner. A root `Justfile` delegates to each sub-project.
+
 ```bash
-make build        # Go CLI → bin/ax
-make test         # Go tests
-make fmt          # Go format
-make lint         # Go lint (golangci-lint)
-
-cd server
-bundle exec rspec # Rails tests
-
-cd dashboard
-npm run dev       # Dashboard dev server (:3333)
+# From root
+just              # List all recipes
+just test         # Run all tests (CLI + server)
+just lint         # Lint all projects
+just cli-build    # Go CLI → cli/bin/ax
+just cli-test     # Go tests
+just server-test  # Rails tests
+just dashboard-dev # Dashboard dev server (:3333)
 ```
