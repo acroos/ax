@@ -34,7 +34,7 @@ type Settings map[string]interface{}
 // the worktree path pattern (<repo>/.claude/worktrees/<name>/).
 func pushCommand(axBinary string) string {
 	return fmt.Sprintf(
-		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\": *\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then echo "[ax] skip: no cwd in hook input"; exit 0; fi; if [ -e "$CWD/.git" ]; then %s push --repo "$CWD" 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s push --repo "$REPO" 2>&1; else echo "[ax] skip: no git repo found for $CWD"; fi; fi'`,
+		`bash -c 'LOG="$HOME/.ax/push.log"; mkdir -p "$(dirname "$LOG")"; INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\": *\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then echo "[$(date +%%Y-%%m-%%dT%%H:%%M:%%S)] skip: no cwd in hook input" >> "$LOG"; exit 0; fi; if [ -e "$CWD/.git" ]; then %s push --repo "$CWD" >> "$LOG" 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s push --repo "$REPO" >> "$LOG" 2>&1; else echo "[$(date +%%Y-%%m-%%dT%%H:%%M:%%S)] skip: no git repo found for $CWD" >> "$LOG"; fi; fi'`,
 		axBinary, axBinary,
 	)
 }
