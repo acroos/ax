@@ -125,7 +125,7 @@ func TestFindSessionFilesIncludesWorktrees(t *testing.T) {
 	}
 
 	// Create a worktree session directory with a session file
-	wtDir := filepath.Join(projectsDir, encodedRepo+"-.claude-worktrees-feature-branch")
+	wtDir := filepath.Join(projectsDir, encodedRepo+"--claude-worktrees-feature-branch")
 	if err := os.MkdirAll(wtDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestFindSessionFilesWorktreeOnly(t *testing.T) {
 	repoPath := "/Users/dev/myrepo"
 	encodedRepo := "-Users-dev-myrepo"
 
-	wtDir := filepath.Join(projectsDir, encodedRepo+"-.claude-worktrees-bugfix")
+	wtDir := filepath.Join(projectsDir, encodedRepo+"--claude-worktrees-bugfix")
 	if err := os.MkdirAll(wtDir, 0o755); err != nil {
 		t.Fatal(err)
 	}

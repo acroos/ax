@@ -34,7 +34,7 @@ type Settings map[string]interface{}
 // the worktree path pattern (<repo>/.claude/worktrees/<name>/).
 func pushCommand(axBinary string) string {
 	return fmt.Sprintf(
-		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\": *\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then exit 0; fi; if [ -e "$CWD/.git" ]; then %s push --repo "$CWD" > /dev/null 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s push --repo "$REPO" > /dev/null 2>&1; fi; fi'`,
+		`bash -c 'INPUT=$(cat); CWD=$(echo "$INPUT" | grep -o "\"cwd\": *\"[^\"]*\"" | cut -d\" -f4); if [ -z "$CWD" ]; then echo "[ax] skip: no cwd in hook input"; exit 0; fi; if [ -e "$CWD/.git" ]; then %s push --repo "$CWD" 2>&1; else REPO=$(echo "$CWD" | sed -n "s|/\.claude/worktrees/.*||p"); if [ -n "$REPO" ] && [ -d "$REPO/.git" ]; then %s push --repo "$REPO" 2>&1; else echo "[ax] skip: no git repo found for $CWD"; fi; fi'`,
 		axBinary, axBinary,
 	)
 }
