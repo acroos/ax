@@ -33,6 +33,36 @@ export default function DocsPage() {
         <Markdown content={indexContent} />
       </div>
 
+      <div className="mb-8">
+        <Link
+          href="/docs/data-collection"
+          className="flex items-center gap-3 px-4 py-3 bg-surface-1 rounded-lg border border-border-subtle hover:bg-surface-2 transition-colors group"
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 15 15"
+            fill="none"
+            className="opacity-40 group-hover:opacity-70 transition-opacity flex-shrink-0"
+          >
+            <path
+              d="M7.5 1.5V7.5M7.5 7.5L4 5.5M7.5 7.5L11 5.5M7.5 7.5V13.5M2 4.5L7.5 1.5L13 4.5V10.5L7.5 13.5L2 10.5V4.5Z"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <div>
+            <span className="text-text-secondary group-hover:text-text-primary text-[14px] font-medium transition-colors">
+              Data Collection &amp; Privacy
+            </span>
+            <span className="text-text-tertiary text-[12px] ml-2">
+              What data AX collects, sends, and stores
+            </span>
+          </div>
+        </Link>
+      </div>
+
       <h2 className="text-text-primary text-lg font-medium mb-4">
         All Metric Docs
       </h2>
