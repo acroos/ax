@@ -53,18 +53,18 @@ type CommitData struct {
 
 // SessionData represents a Claude Code session in the push payload.
 type SessionData struct {
-	ID                       string  `json:"id"`
-	Branch                   string  `json:"branch,omitempty"`
-	StartedAt                int64   `json:"started_at,omitempty"`
-	EndedAt                  int64   `json:"ended_at,omitempty"`
-	MessageCount             int     `json:"message_count"`
-	TurnCount                int     `json:"turn_count"`
-	InputTokens              int     `json:"input_tokens"`
-	OutputTokens             int     `json:"output_tokens"`
-	CacheCreationInputTokens int     `json:"cache_creation_input_tokens"`
-	CacheReadInputTokens     int     `json:"cache_read_input_tokens"`
-	TotalCostUSD             float64 `json:"total_cost_usd"`
-	PrimaryModel             string  `json:"primary_model,omitempty"`
+	ID                       string   `json:"id"`
+	Branch                   string   `json:"branch,omitempty"`
+	StartedAt                int64    `json:"started_at,omitempty"`
+	EndedAt                  int64    `json:"ended_at,omitempty"`
+	MessageCount             int      `json:"message_count"`
+	TurnCount                int      `json:"turn_count"`
+	InputTokens              int      `json:"input_tokens"`
+	OutputTokens             int      `json:"output_tokens"`
+	CacheCreationInputTokens int      `json:"cache_creation_input_tokens"`
+	CacheReadInputTokens     int      `json:"cache_read_input_tokens"`
+	TotalCostUSD             float64  `json:"total_cost_usd"`
+	PrimaryModel             string   `json:"primary_model,omitempty"`
 	BashErrors               int      `json:"bash_errors"`
 	BashSuccesses            int      `json:"bash_successes"`
 	FilesReadCount           int      `json:"files_read_count"`

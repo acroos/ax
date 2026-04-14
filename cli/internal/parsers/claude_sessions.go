@@ -61,12 +61,12 @@ type ParsedSession struct {
 
 // sessionMessage represents a single line in a session JSONL file.
 type sessionMessage struct {
-	Type       string          `json:"type"`
-	UUID       string          `json:"uuid"`
-	ParentUUID *string         `json:"parentUuid"`
-	SessionID  string          `json:"sessionId"`
-	GitBranch  string          `json:"gitBranch"`
-	Timestamp  string          `json:"timestamp"`
+	Type        string          `json:"type"`
+	UUID        string          `json:"uuid"`
+	ParentUUID  *string         `json:"parentUuid"`
+	SessionID   string          `json:"sessionId"`
+	GitBranch   string          `json:"gitBranch"`
+	Timestamp   string          `json:"timestamp"`
 	IsMeta      bool            `json:"isMeta"`
 	IsSidechain bool            `json:"isSidechain"`
 	Message     json.RawMessage `json:"message"`

@@ -32,11 +32,11 @@ type BulkPushConfig struct {
 
 // RepoResult holds the outcome of pushing one repo.
 type RepoResult struct {
-	OwnerRepo    string
-	RepoPath     string // first project path (for retry hint)
-	SessionsSent int
+	OwnerRepo     string
+	RepoPath      string // first project path (for retry hint)
+	SessionsSent  int
 	TotalSessions int
-	FailedChunks []ChunkFailure
+	FailedChunks  []ChunkFailure
 }
 
 // ChunkFailure records a failed chunk push.
