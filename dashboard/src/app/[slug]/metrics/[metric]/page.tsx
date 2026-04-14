@@ -3,16 +3,12 @@ import path from "path";
 import Link from "next/link";
 import { listPRsWithMetricsAsync } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
-import { METRIC_DEFS, getMetricDef, formatMetricValue } from "@/lib/metric-defs";
+import { getMetricDef, formatMetricValue } from "@/lib/metric-defs";
 import { Markdown } from "@/components/markdown";
 import { MetricBarChart } from "@/components/metric-bar-chart";
 import { BooleanMetricSummary } from "@/components/boolean-metric-summary";
 
 const metricsDir = path.join(process.cwd(), "..", "docs", "metrics");
-
-export function generateStaticParams() {
-  return METRIC_DEFS.map((d) => ({ metric: d.slug }));
-}
 
 function median(values: number[]): number {
   if (values.length === 0) return 0;
