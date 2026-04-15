@@ -60,7 +60,7 @@ export default function PlansPage() {
             href="/login"
             className="block w-full text-center px-4 py-2.5 rounded-lg bg-accent hover:bg-accent-hover text-white font-medium text-[13px] transition-colors"
           >
-            Start Free Trial
+            Get Started
           </Link>
         </div>
       </div>
