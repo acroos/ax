@@ -77,6 +77,54 @@ RSpec.describe GithubDataFetcher do
       expect { described_class.new(pr).call }.not_to change { PrFile.count }
     end
 
+    context "when check suites are incomplete" do
+      before do
+        stub_request(:get, %r{api\.github\.com/repos/acme/widget/commits/.+/check-suites})
+          .to_return(
+            status: 200,
+            body: {
+              total_count: 2,
+              check_suites: [
+                { id: 1, status: "completed", conclusion: "success" },
+                { id: 2, status: "in_progress", conclusion: nil }
+              ]
+            }.to_json,
+            headers: { "Content-Type" => "application/json" }
+          )
+      end
+
+      it "does not set ci_passed when any suite is still in progress" do
+        described_class.new(pr).call
+
+        commit = Commit.find("abc123")
+        expect(commit.ci_passed).to be_nil
+      end
+    end
+
+    context "when all check suites are completed" do
+      before do
+        stub_request(:get, %r{api\.github\.com/repos/acme/widget/commits/.+/check-suites})
+          .to_return(
+            status: 200,
+            body: {
+              total_count: 2,
+              check_suites: [
+                { id: 1, status: "completed", conclusion: "success" },
+                { id: 2, status: "completed", conclusion: "success" }
+              ]
+            }.to_json,
+            headers: { "Content-Type" => "application/json" }
+          )
+      end
+
+      it "sets ci_passed based on all suite conclusions" do
+        described_class.new(pr).call
+
+        commit = Commit.find("abc123")
+        expect(commit.ci_passed).to be true
+      end
+    end
+
     context "when repo has no GitHub installation" do
       let(:repo) { create(:repo, github_owner: "acme", github_repo: "widget", github_installation: nil) }
 
