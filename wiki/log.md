@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-15 — Enforce member limits on invite acceptance
+
+**Pages updated:** authentication, rails-server
+**What changed:** `Invite#accept!` now checks `max_members` plan limit before creating the membership, preventing invite acceptance from bypassing member limits when an org downgrades after the invite was created. Returns 403 from the accept endpoint. `AuthService.process_pending_invites` gracefully skips invites that would exceed the limit (login is not blocked). Uses row-level locking to prevent concurrent accepts from racing past the limit.
+
+---
+
 ## 2026-04-15 — Enforce history_days cutoff on PR detail endpoint
 
 **Pages updated:** rails-server, conventions

@@ -85,7 +85,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 |--------|------|---------|
 | `GET/PUT/DELETE` | `/api/v1/orgs/:slug/members[/:id]` | List, update role, remove members |
 | `GET/POST/DELETE` | `/api/v1/orgs/:slug/invites[/:id]` | List, create, revoke invites |
-| `POST` | `/api/v1/invites/:token/accept` | Accept an invite |
+| `POST` | `/api/v1/invites/:token/accept` | Accept an invite (403 if org at member limit) |
 
 ### GitHub App Installation (Session Token, Admin Required for Install)
 
@@ -153,7 +153,7 @@ Matches sessions to PRs within a repo by branch name, then computes session-deri
 ### AuthService (`app/services/auth_service.rb`)
 Handles OAuth and onboarding:
 - `find_or_create_from_github(auth_hash)` — Creates/updates user, personal org, API key
-- `process_pending_invites(user)` — Auto-accepts invites matching the user's GitHub username
+- `process_pending_invites(user)` — Auto-accepts invites matching the user's GitHub username (silently skips invites where the org has reached its member limit)
 - `ensure_can_create_org!(user)` — Checks waitlist approval
 
 ### GithubDataFetcher (`app/services/github_data_fetcher.rb`)
