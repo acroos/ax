@@ -185,6 +185,23 @@ GitHub OAuth identity (Devise).
 | name | text | Display name |
 | created_by_id | bigint | FK → users |
 | is_personal | boolean | Auto-created personal orgs |
+| plan | text | "free" or "pro" (default: "free") |
+| stripe_customer_id | text | Stripe customer ID (nullable, unique) |
+| plan_overrides | jsonb | Per-org capability overrides (default: {}) |
+
+### subscriptions
+Stripe subscription sync record. One per org (when on a paid plan).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | bigint | PK |
+| organization_id | bigint | FK → organizations |
+| stripe_subscription_id | text | Unique, from Stripe |
+| status | text | active, canceled, past_due, trialing, etc. |
+| current_period_start | timestamp | |
+| current_period_end | timestamp | |
+| cancel_at_period_end | boolean | Cancellation scheduled |
+| canceled_at | timestamp | |
 
 ### org_memberships
 

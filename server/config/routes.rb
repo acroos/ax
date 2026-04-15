@@ -12,6 +12,7 @@ Rails.application.routes.draw do
 
   # Webhooks (signature-validated, not session/key auth)
   post "/webhooks/github", to: "webhooks#github"
+  post "/webhooks/stripe", to: "webhooks#stripe"
 
   # GitHub App install callback (browser redirect from GitHub, state token is auth)
   get "/github/installations/callback", to: "github_app/installations#callback"
@@ -33,6 +34,11 @@ Rails.application.routes.draw do
         member do
           get "/", to: "organizations#show"
           put "/", to: "organizations#update"
+        end
+        resource :billing, only: [], controller: "billing" do
+          get "/", action: :show
+          post :checkout
+          post :portal
         end
         resources :members, only: [ :index, :update, :destroy ]
         resources :invites, controller: "org_invites", only: [ :index, :create, :destroy ]

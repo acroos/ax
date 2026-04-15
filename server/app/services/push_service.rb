@@ -55,6 +55,16 @@ class PushService
 
     repo ||= Repo.new
 
+    if repo.new_record?
+      target_org = repo.organization || @user.personal_org
+      if target_org
+        plan = PlanService.for(target_org)
+        unless plan.within_limit?(:max_repos, target_org.repos.count)
+          raise Error, "Plan limit reached: your #{plan.plan_name} plan allows #{plan.capability(:max_repos)} repos. Upgrade at #{ENV.fetch('DASHBOARD_URL', 'http://localhost:3333')}/#{target_org.slug}/billing"
+        end
+      end
+    end
+
     if repo.organization_id.present?
       unless @user.member_of?(repo.organization)
         raise Error, "You are not a member of the organization that owns this repository"
