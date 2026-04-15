@@ -211,6 +211,13 @@ export default async function OrgOverviewPage({
             href={metricHref("token-cost-per-pr")}
             {...tip("token-cost-per-pr")}
           />
+          <MetricCard
+            label="Avg Cache Hit Rate"
+            value={fmtPct(metrics.avgCacheHitRate)}
+            detail="Prompt cache utilization"
+            href={metricHref("cache-hit-rate")}
+            {...tip("cache-hit-rate")}
+          />
           {metrics.totalTokenCost !== null && (
             <MetricCard
               label="Total Token Cost"
@@ -245,6 +252,27 @@ export default async function OrgOverviewPage({
             detail="Bash errors per PR"
             href={metricHref("error-recovery")}
             {...tip("error-recovery")}
+          />
+          <MetricCard
+            label="Avg Sidechain Rate"
+            value={fmtPct(metrics.avgSidechainRate)}
+            detail="Dead-end reasoning paths"
+            href={metricHref("sidechain-rate")}
+            {...tip("sidechain-rate")}
+          />
+          <MetricCard
+            label="Avg Re-Read Rate"
+            value={fmt(metrics.avgReReadRate, 2)}
+            detail="File read redundancy"
+            href={metricHref("re-read-rate")}
+            {...tip("re-read-rate")}
+          />
+          <MetricCard
+            label="Avg Autonomy Score"
+            value={fmt(metrics.avgAutonomyScore, 1)}
+            detail="Agent independence ratio"
+            href={metricHref("autonomy-score")}
+            {...tip("autonomy-score")}
           />
         </div>
       </div>
