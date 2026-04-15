@@ -26,7 +26,7 @@ Measures how efficiently the human directed the agent.
 
 | Metric | Type | Source | What it measures |
 |--------|------|--------|------------------|
-| Messages per PR | int | Sessions | Total human+assistant messages across correlated sessions. |
+| Messages per PR | int | Sessions | Total human messages across correlated sessions (from `message_count`, which counts human messages only). |
 | Iteration Depth | int | Sessions | Number of human turns (back-and-forth cycles). |
 | Token Cost per PR | float | Sessions | Dollar cost of all tokens used, computed with model-specific pricing. |
 | Cache Hit Rate | float | Sessions | Ratio of cache-read tokens to total input tokens. Higher = better cache utilization. |

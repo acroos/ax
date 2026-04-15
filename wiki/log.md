@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-15 — Fix `message_count` documentation and add JSON parse logging
+
+**Pages updated:** data-model, metrics
+**What changed:** Fixed `message_count` column description in data-model wiki — was documented as "Human + assistant messages" but is actually human messages only (mapped from `session.HumanMessages` in Go CLI at `cli/internal/bulk/push.go:294`). Fixed corresponding "Messages per PR" metric description in metrics wiki. Also added targeted `JSON::ParserError` rescue with logging to `MetricsComputer#compute_plan_metrics` — previously `JSON.parse(json) rescue []` silently swallowed all parse errors.
+
+---
+
 ## 2026-04-15 — Finalization safety: transaction wrapping, pessimistic locking, idempotent timestamps
 
 **Pages updated:** metrics
