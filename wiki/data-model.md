@@ -68,7 +68,7 @@ Claude Code sessions. PK is `id` (UUID string from session file).
 | branch | text | Working branch during session |
 | started_at | timestamp | |
 | ended_at | timestamp | |
-| message_count | integer | Human + assistant messages |
+| message_count | integer | Human messages only (mapped from `session.HumanMessages` in Go CLI) |
 | turn_count | integer | Human turns only |
 | input_tokens | integer | |
 | output_tokens | integer | |
