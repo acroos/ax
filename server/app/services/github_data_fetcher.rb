@@ -76,7 +76,7 @@ class GithubDataFetcher
           deletions: stats[:deletions] || existing.deletions
         )
       else
-        Commit.create!(
+        existing = Commit.create!(
           sha: sha,
           repo: @repo,
           pr: @pr,
@@ -86,6 +86,25 @@ class GithubDataFetcher
           deletions: stats[:deletions] || 0
         )
       end
+
+      fetch_ci_status(existing, sha)
     end
+  end
+
+  def fetch_ci_status(commit, sha)
+    response = github_client.list_check_suites(
+      owner: @repo.github_owner,
+      repo: @repo.github_repo,
+      ref: sha
+    )
+
+    check_suites = response[:check_suites] || []
+    completed = check_suites.select { |cs| cs[:status] == "completed" }
+    return if completed.empty?
+
+    all_passed = completed.all? { |cs| cs[:conclusion] == "success" }
+    commit.update!(ci_passed: all_passed)
+  rescue => e
+    Rails.logger.warn("[ci_status] Failed to fetch check suites for #{sha}: #{e.message}")
   end
 end

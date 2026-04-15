@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-15 — Fix CI Success Rate: per-commit tracking and backfill gap
+
+**Pages updated:** metrics, data-model
+**What changed:** CI Success Rate was missing data for most PRs because the backfill process never fetched check suite data, and a race condition between `PrMerged` and `CiCompleted` webhooks could skip CI data on finalized PRs. Fixed by: (1) adding `ci_passed` boolean to `commits` table, (2) fetching check suites per commit in `GithubDataFetcher`, (3) computing `ci_success_rate` in `MetricsComputer` as fraction of commits that passed CI, (4) rewriting `CiCompleted` handler to update per-commit status and recompute PR rate via `update_column` (bypasses finalization guard), (5) removing `ci_success_rate` from `GITHUB_DERIVED_FIELDS` so late-arriving webhooks can update settled PRs. Existing data can be repaired by running `rails backfill:installations`.
+
+---
+
 ## 2026-04-14 — Add 4 new session-derived metrics
 
 **Pages updated:** metrics, data-model
