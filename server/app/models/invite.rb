@@ -16,6 +16,7 @@ class Invite < ApplicationRecord
 
   def accept!(user)
     transaction do
+      organization.lock!
       plan = PlanService.for(organization)
       current_count = organization.org_memberships.count
       unless plan.within_limit?(:max_members, current_count)
