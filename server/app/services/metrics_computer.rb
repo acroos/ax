@@ -48,6 +48,7 @@ class MetricsComputer
       diff_churn_lines: compute_diff_churn,
       has_tests: compute_has_tests,
       line_revisit_rate: compute_line_revisit_rate,
+      ci_success_rate: compute_ci_success_rate,
       self_correction_rate: compute_self_correction_rate,
       context_efficiency: compute_context_efficiency,
       error_recovery_attempts: compute_error_recovery_attempts,
@@ -128,6 +129,14 @@ class MetricsComputer
   end
 
   private
+
+  # Fraction of commits on this PR that passed all CI check suites.
+  def compute_ci_success_rate
+    commits_with_ci = @pr.commits.where.not(ci_passed: nil)
+    return nil unless commits_with_ci.exists?
+
+    commits_with_ci.where(ci_passed: true).count.to_f / commits_with_ci.count
+  end
 
   def compute_diff_churn
     total_added = @pr.commits.sum(:additions)

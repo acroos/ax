@@ -6,7 +6,7 @@ class PrMetrics < ApplicationRecord
   before_update :prevent_settled_github_update
 
   GITHUB_DERIVED_FIELDS = %w[
-    post_open_commits first_pass_accepted ci_success_rate
+    post_open_commits first_pass_accepted
     diff_churn_lines has_tests line_revisit_rate
   ].freeze
 

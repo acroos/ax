@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_14_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_15_172719) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -28,6 +28,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_14_000003) do
   create_table "commits", primary_key: "sha", id: :string, force: :cascade do |t|
     t.integer "additions", default: 0
     t.string "author"
+    t.boolean "ci_passed"
     t.string "committed_at"
     t.datetime "created_at", null: false
     t.integer "deletions", default: 0
@@ -146,6 +147,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_14_000003) do
     t.integer "error_recovery_attempts"
     t.datetime "finalized_at"
     t.boolean "first_pass_accepted"
+    t.datetime "first_review_at"
     t.boolean "has_tests"
     t.integer "iteration_depth"
     t.float "line_revisit_rate"
@@ -156,6 +158,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_14_000003) do
     t.integer "post_open_commits"
     t.bigint "pr_id", null: false
     t.float "re_read_rate"
+    t.integer "review_cycle_time_minutes"
     t.boolean "scope_creep_detected"
     t.float "self_correction_rate"
     t.float "sidechain_rate"
