@@ -73,7 +73,12 @@ class MetricsComputer
 
     # Collect planned files from all correlated sessions
     planned_files = sessions.filter_map { |s| s.planned_files }.flat_map { |json|
-      JSON.parse(json) rescue []
+      begin
+        JSON.parse(json)
+      rescue JSON::ParserError => e
+        Rails.logger.warn("[plan_metrics] Failed to parse planned_files: #{e.message}")
+        []
+      end
     }.uniq
 
     return nil if planned_files.empty?

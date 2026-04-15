@@ -281,6 +281,33 @@ RSpec.describe MetricsComputer do
       analysis = PlanAnalysis.find_by(pr: pr)
       expect(analysis.coverage_score).to eq(1.0)
     end
+
+    it "logs and skips malformed planned_files JSON" do
+      session = create(:coding_session, repo: repo, branch: "feature",
+        planned_files: "not valid json {{{")
+      create(:session_pr, coding_session: session, pr: pr)
+      create(:pr_file, pr: pr, filename: "src/app.rb")
+
+      expect(Rails.logger).to receive(:warn).with(/\[plan_metrics\] Failed to parse planned_files/)
+
+      result = described_class.new(pr).compute_plan_metrics
+      expect(result).to be_nil
+    end
+
+    it "skips malformed JSON but still uses valid sessions" do
+      bad_session = create(:coding_session, repo: repo, branch: "feature",
+        planned_files: "not valid json")
+      good_session = create(:coding_session, repo: repo, branch: "feature",
+        planned_files: '["src/app.rb"]')
+      create(:session_pr, coding_session: bad_session, pr: pr)
+      create(:session_pr, coding_session: good_session, pr: pr)
+      create(:pr_file, pr: pr, filename: "src/app.rb")
+
+      expect(Rails.logger).to receive(:warn).with(/\[plan_metrics\] Failed to parse planned_files/)
+
+      result = described_class.new(pr).compute_plan_metrics
+      expect(result[:plan_coverage_score]).to eq(1.0)
+    end
   end
 
   describe "cache_hit_rate" do
