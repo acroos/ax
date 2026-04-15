@@ -94,7 +94,7 @@ When a user signs in for the first time:
 1. A `User` record is created from their GitHub profile
 2. A personal `Organization` is created (is_personal = true)
 3. An `ApiKey` is generated
-4. Any pending `Invite` records matching their GitHub username are auto-accepted
+4. Any pending `Invite` records matching their GitHub username are auto-accepted (skipped silently if the org has reached its member limit)
 
 ## Authorization
 

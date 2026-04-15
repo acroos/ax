@@ -11,6 +11,20 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-15 — Enforce member limits on invite acceptance
+
+**Pages updated:** authentication, rails-server
+**What changed:** `Invite#accept!` now checks `max_members` plan limit before creating the membership, preventing invite acceptance from bypassing member limits when an org downgrades after the invite was created. Returns 403 from the accept endpoint. `AuthService.process_pending_invites` gracefully skips invites that would exceed the limit (login is not blocked). Uses row-level locking to prevent concurrent accepts from racing past the limit.
+
+---
+
+## 2026-04-15 — Enforce history_days cutoff on PR detail endpoint
+
+**Pages updated:** rails-server, conventions
+**What changed:** Added `history_days` capability to plan config (free: 30, pro: unlimited) in `config/initializers/plans.rb`. Added `history_cutoff` helper to `BaseController` that converts `history_days` to a cutoff timestamp. `PrsController#show` now returns 403 for PRs with `created_at_source` older than the cutoff. PRs without `created_at_source` are allowed through. Request specs added in `spec/requests/prs_spec.rb`.
+
+---
+
 ## 2026-04-15 — Fix `message_count` documentation and add JSON parse logging
 
 **Pages updated:** data-model, metrics
