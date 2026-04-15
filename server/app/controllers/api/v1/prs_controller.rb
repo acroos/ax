@@ -15,6 +15,12 @@ module Api
         org = pr.repo.organization
         head(:forbidden) and return unless current_user&.member_of?(org)
 
+        @org = org
+        cutoff = history_cutoff
+        if cutoff && pr.created_at_source.present?
+          head(:forbidden) and return if Time.parse(pr.created_at_source) < cutoff
+        end
+
         render json: pr_with_metrics(pr)
       end
 
