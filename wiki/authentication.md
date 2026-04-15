@@ -59,6 +59,8 @@ X-Ax-Session: <token>
 2. Set as a cookie via the `/auth/accept` cross-origin handoff
 3. Expires after 30 days
 4. Destroyed on `POST /auth/logout`
+5. Destroyed when user is removed from their last org (manual removal via members controller)
+6. Destroyed when org downgrades to free plan (`Organization#enforce_free_plan_limits!` invalidates all non-owner sessions)
 
 **Used by**: All dashboard API calls (org reads, member management, settings)
 

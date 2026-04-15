@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-15 — Session invalidation on membership removal and plan downgrade
+
+**Pages updated:** authentication
+**What changed:** Added session invalidation behavior to UserSession lifecycle documentation. Sessions are now destroyed when: (1) a user is removed from their last org via the members controller, and (2) an org downgrades to the free plan via `Organization#enforce_free_plan_limits!` (removes non-owner memberships, invites, and invalidates sessions). Wired into Stripe subscription handlers (`SubscriptionDeleted`, `SubscriptionUpdated`).
+
+---
+
 ## 2026-04-15 — Enforce member limits on invite acceptance
 
 **Pages updated:** authentication, rails-server
