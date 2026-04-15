@@ -56,6 +56,7 @@ Git commits. PK is `sha` (not auto-increment).
 | additions | integer | |
 | deletions | integer | |
 | files_changed | integer | |
+| ci_passed | boolean | Whether all check suites passed for this commit. Set by `GithubDataFetcher` (at finalization) or `CiCompleted` webhook handler (real-time). |
 
 ### sessions
 Claude Code sessions. PK is `id` (UUID string from session file).
@@ -121,7 +122,7 @@ All 20 computed metrics per PR. One row per PR.
 | iteration_depth | integer | |
 | post_open_commits | integer | |
 | first_pass_accepted | boolean | |
-| ci_success_rate | real | 0.0 to 1.0 |
+| ci_success_rate | real | 0.0 to 1.0. Computed from per-commit `ci_passed` values on the `commits` table. Updatable after finalization (not in `GITHUB_DERIVED_FIELDS`). |
 | diff_churn_lines | integer | |
 | has_tests | boolean | |
 | line_revisit_rate | real | |

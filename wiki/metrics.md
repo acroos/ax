@@ -14,7 +14,7 @@ Measures the quality of code produced by the agent-human collaboration and the f
 |--------|------|--------|------------------|
 | Post-Open Commits | int | GitHub | Commits pushed after PR was opened. Lower = cleaner first draft. |
 | First-Pass Acceptance | bool | GitHub | No CHANGES_REQUESTED reviews. True = reviewer approved without requesting changes. |
-| CI Success Rate | float | GitHub | Passing CI checks / total checks. 1.0 = all green. |
+| CI Success Rate | float | GitHub | Fraction of commits on the PR that passed all CI check suites. Per-commit CI status (`ci_passed`) is stored on the `commits` table, fetched via `list_check_suites` per commit SHA. |
 | Test Coverage | bool/nil | GitHub | Whether the PR includes test files (pattern-matched by filename). Nil when PR only touches non-testable files (docs, CI, config). |
 | Diff Churn | int | GitHub | Lines added across all commits minus lines in the final diff. Higher = more rework. Per-commit stats fetched individually via GitHub API. |
 | Line Revisit Rate | float | GitHub | Files in this PR that were also changed in other PRs finalized within the last 7 days. Higher = unstable areas. |
@@ -70,7 +70,7 @@ All metric computation happens server-side in the Rails application.
 
 Server-side computation is split between two services:
 
-- **`MetricsComputer`** — Computes `diff_churn_lines` (per-commit stats via individual commit API), `has_tests` (with non-testable file filtering), `line_revisit_rate` (7-day lookback), session-derived metrics (`self_correction_rate`, `context_efficiency`, `error_recovery_attempts`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`), and plan metrics (`plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`)
+- **`MetricsComputer`** — Computes `ci_success_rate` (from per-commit `ci_passed` values on the `commits` table), `diff_churn_lines` (per-commit stats via individual commit API), `has_tests` (with non-testable file filtering), `line_revisit_rate` (7-day lookback), session-derived metrics (`self_correction_rate`, `context_efficiency`, `error_recovery_attempts`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`), and plan metrics (`plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`)
 - **`SessionPrCorrelationService`** — Aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth` from correlated session data, calls MetricsComputer to compute all derived metrics, and triggers plan metrics computation
 
 The Go `cli/internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
@@ -94,7 +94,8 @@ PR opened
 - Late-arriving session data can still enrich already-settled PRs (the normal case — developers push after PRs merge)
 
 ### Scoped write protection
-- **GitHub-derived** (locked after finalization): `post_open_commits`, `first_pass_accepted`, `ci_success_rate`, `diff_churn_lines`, `has_tests`, `line_revisit_rate`, `first_review_at`, `review_cycle_time_minutes`
+- **CI-derived** (updatable after finalization): `ci_success_rate` — computed from per-commit `ci_passed` values. Updated via `update_column` by `CiCompleted` webhook handler to handle late-arriving check suite results.
+- **GitHub-derived** (locked after finalization): `post_open_commits`, `first_pass_accepted`, `diff_churn_lines`, `has_tests`, `line_revisit_rate`, `first_review_at`, `review_cycle_time_minutes`
 - **Session-derived** (always updatable via `update_session_metrics!`): `messages_per_pr`, `iteration_depth`, `token_cost_usd`, `self_correction_rate`, `context_efficiency`, `error_recovery_attempts`, `plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`
 
 ### Where is finalization enforced?
