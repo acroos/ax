@@ -63,6 +63,36 @@ RSpec.describe "Billing API", type: :request do
       body = JSON.parse(response.body)
       expect(body["url"]).to eq("https://checkout.stripe.com/test")
     end
+
+    it "rejects checkout when org has an active subscription" do
+      create(:subscription, organization: org, status: "active")
+
+      post "/api/v1/orgs/#{org.slug}/billing/checkout", headers: session_headers(owner)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      body = JSON.parse(response.body)
+      expect(body["error"]).to eq("Organization already has an active subscription")
+    end
+
+    it "rejects checkout when org has a trialing subscription" do
+      create(:subscription, organization: org, status: "trialing")
+
+      post "/api/v1/orgs/#{org.slug}/billing/checkout", headers: session_headers(owner)
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      body = JSON.parse(response.body)
+      expect(body["error"]).to eq("Organization already has an active subscription")
+    end
+
+    it "allows checkout when subscription is canceled" do
+      create(:subscription, organization: org, status: "canceled")
+      checkout_session = double("Stripe::Checkout::Session", url: "https://checkout.stripe.com/test")
+      allow(StripeService).to receive(:create_checkout_session).and_return(checkout_session)
+
+      post "/api/v1/orgs/#{org.slug}/billing/checkout", headers: session_headers(owner)
+
+      expect(response).to have_http_status(:ok)
+    end
   end
 
   describe "POST /api/v1/orgs/:slug/billing/portal" do

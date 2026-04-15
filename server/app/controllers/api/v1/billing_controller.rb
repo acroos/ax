@@ -24,6 +24,10 @@ module Api
       end
 
       def checkout
+        if @org.subscription&.status&.in?(%w[active trialing])
+          return render json: { error: "Organization already has an active subscription" }, status: :unprocessable_entity
+        end
+
         session = StripeService.create_checkout_session(
           @org,
           success_url: "#{dashboard_url}/#{@org.slug}/billing?billing=success",
