@@ -18,7 +18,7 @@ module Api
         @org = org
         cutoff = history_cutoff
         if cutoff && pr.created_at_source.present?
-          head(:forbidden) and return if Time.parse(pr.created_at_source) < cutoff
+          head(:forbidden) and return if pr.created_at_source < cutoff.iso8601
         end
 
         render json: pr_with_metrics(pr)
@@ -62,6 +62,10 @@ module Api
             plan_coverage_score: m.plan_coverage_score,
             plan_deviation_score: m.plan_deviation_score,
             scope_creep_detected: m.scope_creep_detected,
+            cache_hit_rate: m.cache_hit_rate,
+            sidechain_rate: m.sidechain_rate,
+            re_read_rate: m.re_read_rate,
+            autonomy_score: m.autonomy_score,
             metrics_finalized: m.metrics_finalized,
             finalized_at: m.finalized_at
           } : nil
