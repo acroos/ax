@@ -86,5 +86,30 @@ RSpec.describe "Members API", type: :request do
 
       expect(response).to have_http_status(:forbidden)
     end
+
+    it "invalidates sessions for removed user with no other org memberships" do
+      membership = OrgMembership.find_by(user: member, organization: org)
+      member_session = UserSession.create!(user: member, expires_at: 30.days.from_now)
+
+      delete "/api/v1/orgs/#{org.slug}/members/#{membership.id}",
+        headers: session_headers(admin)
+
+      expect(response).to have_http_status(:no_content)
+      expect(UserSession.find_by(id: member_session.id)).to be_nil
+    end
+
+    it "preserves sessions for removed user who is still in another org" do
+      other_org = create(:organization)
+      create(:org_membership, organization: other_org, user: member, role: "member")
+
+      membership = OrgMembership.find_by(user: member, organization: org)
+      member_session = UserSession.create!(user: member, expires_at: 30.days.from_now)
+
+      delete "/api/v1/orgs/#{org.slug}/members/#{membership.id}",
+        headers: session_headers(admin)
+
+      expect(response).to have_http_status(:no_content)
+      expect(UserSession.find_by(id: member_session.id)).to be_present
+    end
   end
 end

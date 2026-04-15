@@ -71,7 +71,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `POST` | `/api/v1/orgs` | Create organization (requires approved waitlist) |
 | `GET` | `/api/v1/orgs/:slug` | Org details |
 | `GET` | `/api/v1/orgs/:slug/repos` | List org repos |
-| `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership) |
+| `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership + `history_days` cutoff) |
 | `GET` | `/api/v1/orgs/:slug/prs` | All PRs across all org repos (settled + open) |
 | `GET` | `/api/v1/orgs/:slug/metrics` | Aggregated metrics across all org repos |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | All PRs with available metrics |
@@ -85,7 +85,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 |--------|------|---------|
 | `GET/PUT/DELETE` | `/api/v1/orgs/:slug/members[/:id]` | List, update role, remove members |
 | `GET/POST/DELETE` | `/api/v1/orgs/:slug/invites[/:id]` | List, create, revoke invites |
-| `POST` | `/api/v1/invites/:token/accept` | Accept an invite |
+| `POST` | `/api/v1/invites/:token/accept` | Accept an invite (403 if org at member limit) |
 
 ### GitHub App Installation (Session Token, Admin Required for Install)
 
@@ -153,7 +153,7 @@ Matches sessions to PRs within a repo by branch name, then computes session-deri
 ### AuthService (`app/services/auth_service.rb`)
 Handles OAuth and onboarding:
 - `find_or_create_from_github(auth_hash)` — Creates/updates user, personal org, API key
-- `process_pending_invites(user)` — Auto-accepts invites matching the user's GitHub username
+- `process_pending_invites(user)` — Auto-accepts invites matching the user's GitHub username (silently skips invites where the org has reached its member limit)
 - `ensure_can_create_org!(user)` — Checks waitlist approval
 
 ### GithubDataFetcher (`app/services/github_data_fetcher.rb`)
@@ -186,6 +186,8 @@ Config-driven capability enforcement. Provides a unified API for checking plan c
 - `plan_details` — Serializable hash for API responses
 
 Plan definitions live in `config/initializers/plans.rb` as a frozen `PLANS` constant. Per-org overrides (stored in `organizations.plan_overrides` jsonb column) merge on top of plan defaults.
+
+Capabilities include `history_days` (free: 30, pro: unlimited) — controls how far back users can view PR data. The `history_cutoff` helper in `BaseController` converts this to a cutoff timestamp for date comparisons.
 
 ### StripeService (`app/services/stripe_service.rb`)
 Wraps Stripe API calls for billing operations (class methods):

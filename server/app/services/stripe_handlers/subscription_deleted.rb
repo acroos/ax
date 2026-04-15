@@ -15,6 +15,7 @@ module StripeHandlers
 
       org = subscription.organization
       org.update!(plan: "free")
+      org.enforce_free_plan_limits!
 
       Rails.logger.info("Subscription #{@data[:id]} deleted — org #{org.slug} reverted to free")
     end

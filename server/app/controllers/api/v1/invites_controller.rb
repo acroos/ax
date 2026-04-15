@@ -13,6 +13,8 @@ module Api
 
         invite.accept!(current_user)
         render json: { org_slug: invite.organization.slug }
+      rescue Invite::MemberLimitReached
+        render json: { error: "This organization has reached its member limit." }, status: :forbidden
       end
     end
   end

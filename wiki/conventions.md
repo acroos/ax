@@ -49,6 +49,7 @@ Patterns and norms for working in the AX codebase.
 - Plan definitions in `config/initializers/plans.rb` (frozen `PLANS` constant)
 - Per-org overrides via `organizations.plan_overrides` (jsonb) — overrides merge on top of plan defaults
 - In controllers: `enforce_limit!(:key, count)` returns 403 with `upgrade_required: true`
+- `history_cutoff` returns a Time (or nil for unlimited) — use to restrict access to old data based on `history_days`
 - In services: check `PlanService.for(org).within_limit?` and raise domain error
 - Rake tasks: `ax:set_plan[slug,plan]`, `ax:override[slug,key,value]` for manual management
 

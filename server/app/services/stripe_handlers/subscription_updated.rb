@@ -18,7 +18,10 @@ module StripeHandlers
 
       org = subscription.organization
       new_plan = plan_for_status(@data[:status])
-      org.update!(plan: new_plan) if org.plan != new_plan
+      if org.plan != new_plan
+        org.update!(plan: new_plan)
+        org.enforce_free_plan_limits! if new_plan == "free"
+      end
 
       Rails.logger.info("Subscription #{@data[:id]} updated — status: #{@data[:status]}, org plan: #{new_plan}")
     end
