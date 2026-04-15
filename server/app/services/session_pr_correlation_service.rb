@@ -14,18 +14,55 @@ class SessionPrCorrelationService
     sessions = CodingSession.where(repo_id: @repo.id).where.not(branch: [ nil, "" ])
     prs = Pr.where(repo_id: @repo.id).where.not(branch: [ nil, "" ])
 
-    # Build lookup: branch → most recent PR (last one wins)
-    pr_by_branch = {}
-    prs.order(created_at: :asc).each { |pr| pr_by_branch[pr.branch] = pr }
+    # Group PRs by branch for efficient lookup
+    prs_by_branch = prs.group_by(&:branch)
 
     sessions.find_each do |session|
-      pr = pr_by_branch[session.branch]
+      candidates = prs_by_branch[session.branch]
+      next unless candidates
+
+      # Find PRs whose lifecycle overlaps this session's time range
+      pr = candidates
+        .select { |p| session_overlaps_pr?(session, p) }
+        .max_by { |p| parse_timestamp(p.created_at_source)&.to_f || 0 }
       next unless pr
 
       SessionPr.find_or_create_by!(session_id: session.id, pr_id: pr.id) do |sp|
         sp.confidence = "branch_match"
       end
     end
+  end
+
+  # Returns true if the session's time range overlaps the PR's active period.
+  # Session timestamps are millisecond Unix epochs (bigint).
+  # PR timestamps are ISO8601 strings.
+  def session_overlaps_pr?(session, pr)
+    pr_start = parse_timestamp(pr.created_at_source)
+    pr_end = parse_timestamp(pr.merged_at) || parse_timestamp(pr.closed_at)
+    session_start = epoch_ms_to_time(session.started_at)
+    session_end = epoch_ms_to_time(session.ended_at)
+
+    return false unless pr_start && session_start
+
+    # If PR is still open, any session after PR creation matches
+    if pr_end.nil?
+      return session_end.nil? || session_end >= pr_start
+    end
+
+    # Standard interval overlap: session started before PR closed AND session ended after PR opened
+    (session_start <= pr_end) && (session_end.nil? || session_end >= pr_start)
+  end
+
+  def parse_timestamp(value)
+    return nil if value.blank?
+    Time.parse(value)
+  rescue ArgumentError
+    nil
+  end
+
+  def epoch_ms_to_time(value)
+    return nil if value.nil?
+    Time.at(value / 1000.0)
   end
 
   def recompute_session_metrics
