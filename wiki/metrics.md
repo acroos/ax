@@ -1,6 +1,6 @@
 # Metrics
 
-AX computes 16 metrics across 4 categories. Full metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but aggregate statistics (averages, trend lines) use settled PRs only.
+AX computes 17 metrics across 4 categories. Full metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but aggregate statistics (averages, trend lines) use settled PRs only.
 
 Each metric has detailed documentation in `docs/metrics/` and is viewable in the dashboard at `/docs/[slug]`.
 
@@ -8,7 +8,7 @@ Each metric has detailed documentation in `docs/metrics/` and is viewable in the
 
 ### Output Quality
 
-Measures the quality of code produced by the agent-human collaboration.
+Measures the quality of code produced by the agent-human collaboration and the feedback loop.
 
 | Metric | Type | Source | What it measures |
 |--------|------|--------|------------------|
@@ -18,6 +18,7 @@ Measures the quality of code produced by the agent-human collaboration.
 | Test Coverage | bool/nil | GitHub | Whether the PR includes test files (pattern-matched by filename). Nil when PR only touches non-testable files (docs, CI, config). |
 | Diff Churn | int | GitHub | Lines added across all commits minus lines in the final diff. Higher = more rework. Per-commit stats fetched individually via GitHub API. |
 | Line Revisit Rate | float | GitHub | Files in this PR that were also changed in other PRs finalized within the last 7 days. Higher = unstable areas. |
+| Review Cycle Time | int | GitHub Webhooks | Minutes from PR open to first human review. Lower = faster feedback loop. |
 
 ### Prompt Efficiency
 
@@ -93,7 +94,7 @@ PR opened
 - Late-arriving session data can still enrich already-settled PRs (the normal case — developers push after PRs merge)
 
 ### Scoped write protection
-- **GitHub-derived** (locked after finalization): `post_open_commits`, `first_pass_accepted`, `ci_success_rate`, `diff_churn_lines`, `has_tests`, `line_revisit_rate`
+- **GitHub-derived** (locked after finalization): `post_open_commits`, `first_pass_accepted`, `ci_success_rate`, `diff_churn_lines`, `has_tests`, `line_revisit_rate`, `first_review_at`, `review_cycle_time_minutes`
 - **Session-derived** (always updatable via `update_session_metrics!`): `messages_per_pr`, `iteration_depth`, `token_cost_usd`, `self_correction_rate`, `context_efficiency`, `error_recovery_attempts`, `plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`
 
 ### Where is finalization enforced?

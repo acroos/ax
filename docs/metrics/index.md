@@ -1,6 +1,6 @@
 # AX Metrics Reference 📊
 
-AX tracks 16 metrics across four categories to give you the full picture of how well your agentic coding workflow is performing. Each metric has its own detailed doc — click through for the full story.
+AX tracks 17 metrics across four categories to give you the full picture of how well your agentic coding workflow is performing. Each metric has its own detailed doc — click through for the full story.
 
 ## Metric Categories
 
@@ -34,6 +34,7 @@ AX tracks 16 metrics across four categories to give you the full picture of how 
 | 14 | [Error Recovery Efficiency](./error-recovery-efficiency.md) | Agent Behavior | Attempts needed to resolve build/test/lint failures | Session data | 2 |
 | 15 | [Token Cost per PR](./token-cost-per-pr.md) | Prompt Efficiency | Dollar cost of tokens consumed across sessions correlated to a PR | Session data, Pricing module | 2 |
 | 16 | [Unmerged Token Spend](./unmerged-token-spend.md) | Prompt Efficiency | Total dollar cost of tokens on unmerged or uncorrelated work (repo-level) | Session data, PR merge status | 2 |
+| 17 | [Review Cycle Time](./review-cycle-time.md) | Output Quality | Time from PR open to first human review comment | GitHub Events, Webhooks | 1 |
 
 ---
 
@@ -41,9 +42,9 @@ AX tracks 16 metrics across four categories to give you the full picture of how 
 
 ### Phase 1 — Git and GitHub Data 🟢
 
-Metrics calculated from git history and the GitHub API alone. No session data needed — these work the moment you install the GitHub App.
+Metrics calculated from git history, the GitHub API, and GitHub webhook events. No session data needed — these work the moment you install the GitHub App.
 
-**Metrics:** Post-Open Commits, First-Pass Acceptance Rate, CI Success Rate, Diff Churn, Test Coverage of Generated Code, Line Revisit Rate
+**Metrics:** Post-Open Commits, First-Pass Acceptance Rate, CI Success Rate, Diff Churn, Test Coverage of Generated Code, Line Revisit Rate, Review Cycle Time
 
 ### Phase 2 — Session Data 🟢
 
