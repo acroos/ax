@@ -34,6 +34,19 @@ module Api
         find_org!
         head :forbidden unless current_user&.admin_or_owner_of?(@org)
       end
+
+      def enforce_limit!(key, current_count)
+        plan = PlanService.for(@org)
+        return if plan.within_limit?(key, current_count)
+
+        render json: {
+          error: "Plan limit reached",
+          limit: key.to_s,
+          current: current_count,
+          max: plan.capability(key),
+          upgrade_required: true
+        }, status: :forbidden
+      end
     end
   end
 end

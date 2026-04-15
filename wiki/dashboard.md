@@ -28,6 +28,7 @@ Location: `dashboard/`
 | `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics and session count column |
 | `/{slug}/compare` | Compare | Org-scoped developer leaderboard, individual vs team averages, time filtering |
 | `/{slug}/settings` | Org Settings | GitHub App installation card (status, connected repos, install/reinstall), members list (role management, removal), and invites (create, list, revoke) |
+| `/{slug}/billing` | Billing | Current plan badge, usage bars (members, repos vs limits), upgrade/manage buttons, feature comparison for free plan |
 
 ### Auth Routes
 
@@ -56,6 +57,7 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 | `listDevelopersAsync(repoId?, orgSlug?)` | Unique PR author logins |
 | `getGithubInstallation(orgSlug)` | Installation state + user role + connected repos |
 | `requestGithubInstallUrl(orgSlug)` | Signed GitHub App install URL |
+| `getBilling(orgSlug)` | Plan details, subscription status, usage counts |
 
 ### API Communication
 

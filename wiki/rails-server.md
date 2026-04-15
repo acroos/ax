@@ -107,11 +107,25 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `POST` | `/api/v1/api_key/rotate` | Rotate CLI API key (returns raw key once) |
 | `GET` | `/api/v1/api_key/reveal` | One-time read of raw API key from cache |
 
-### Other
+### Billing (Session Token, Admin Required for Mutations)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/orgs/:slug/billing` | Plan details, subscription status, usage counts (any member) |
+| `POST` | `/api/v1/orgs/:slug/billing/checkout` | Create Stripe Checkout session, return URL (admin only) |
+| `POST` | `/api/v1/orgs/:slug/billing/portal` | Create Stripe Customer Portal session, return URL (admin only) |
+
+### Webhooks
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | `POST` | `/webhooks/github` | GitHub webhook receiver (HMAC validated) |
+| `POST` | `/webhooks/stripe` | Stripe webhook receiver (Stripe signature validated) |
+
+### Other
+
+| Method | Path | Purpose |
+|--------|------|---------|
 | `POST` | `/waitlist` | Add email to waitlist |
 | `GET` | `/up` | Health check |
 
@@ -161,6 +175,34 @@ Called by PrMerged and PrClosed handlers after GithubDataFetcher populates the d
 
 ### OrgService (`app/services/org_service.rb`)
 Creates orgs, assigns owner membership, marks waitlist entry as "joined".
+
+### PlanService (`app/services/plan_service.rb`)
+Config-driven capability enforcement. Provides a unified API for checking plan capabilities.
+
+- `PlanService.for(org)` — Constructor, loads plan config and org overrides
+- `capability(key)` — Returns effective value (plan default merged with org's `plan_overrides`)
+- `can?(key)` — Boolean check (is capability truthy?)
+- `within_limit?(key, count)` — Numeric check (is count under limit?)
+- `plan_details` — Serializable hash for API responses
+
+Plan definitions live in `config/initializers/plans.rb` as a frozen `PLANS` constant. Per-org overrides (stored in `organizations.plan_overrides` jsonb column) merge on top of plan defaults.
+
+### StripeService (`app/services/stripe_service.rb`)
+Wraps Stripe API calls for billing operations (class methods):
+
+- `find_or_create_customer(org)` — Creates Stripe customer or retrieves existing (uses `with_lock` for concurrency safety)
+- `create_checkout_session(org, success_url:, cancel_url:)` — Creates Stripe Checkout session for Pro upgrade
+- `create_portal_session(org, return_url:)` — Creates Stripe Customer Portal session for self-service billing management
+
+### Stripe Webhook Handlers (`app/services/stripe_handlers/`)
+Process Stripe webhook events (same pattern as GitHub handlers):
+
+| Handler | Event | Action |
+|---------|-------|--------|
+| `CheckoutCompleted` | `checkout.session.completed` | Create Subscription, set org plan to "pro" |
+| `SubscriptionUpdated` | `customer.subscription.updated` | Sync status/period, update org plan based on status |
+| `SubscriptionDeleted` | `customer.subscription.deleted` | Mark canceled, revert org plan to "free" |
+| `InvoicePaymentFailed` | `invoice.payment_failed` | Log warning (hook point for notifications) |
 
 ## Webhook Handling
 
@@ -269,4 +311,11 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 | `app/jobs/backfill_repo_job.rb` | Single-repo backfill from GitHub API + session correlation |
 | `app/jobs/reconcile_repos_job.rb` | Daily reconciliation (self-healing) |
 | `app/jobs/concerns/backfillable.rb` | Shared PR backfill logic (used by BackfillRepoJob) |
-| `db/schema.rb` | Generated schema (20 tables) |
+| `config/initializers/plans.rb` | Plan capability definitions (PLANS constant) |
+| `app/services/plan_service.rb` | Capability enforcement layer |
+| `app/services/stripe_service.rb` | Stripe API wrapper |
+| `app/services/stripe_handlers/*.rb` | Stripe webhook event handlers |
+| `app/controllers/api/v1/billing_controller.rb` | Billing API endpoints |
+| `app/jobs/process_stripe_webhook_job.rb` | Stripe webhook dispatcher |
+| `lib/tasks/plans.rake` | Manual plan management (ax:set_plan, ax:override) |
+| `db/schema.rb` | Generated schema |

@@ -111,6 +111,14 @@ const DocsIcon = (
   </svg>
 );
 
+const BillingIcon = (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="opacity-60">
+    <rect x="1.5" y="3" width="12" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M1.5 6.5H13.5" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M4 9.5H7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+  </svg>
+);
+
 const SettingsIcon = (
   <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="opacity-60">
     <path
@@ -184,6 +192,7 @@ async function Sidebar() {
         <NavLink href={`${base}/prs`} icon={PRIcon}>Pull Requests</NavLink>
         <NavLink href={`${base}/compare`} icon={CompareIcon}>Compare</NavLink>
         <NavLink href={`${base}/settings`} icon={SettingsIcon}>Org Settings</NavLink>
+        <NavLink href={`${base}/billing`} icon={BillingIcon}>Billing</NavLink>
         <NavLink href="/docs" icon={DocsIcon}>Docs</NavLink>
       </nav>
 

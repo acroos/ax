@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_15_030004) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_15_173955) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -28,6 +28,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_15_030004) do
   create_table "commits", primary_key: "sha", id: :string, force: :cascade do |t|
     t.integer "additions", default: 0
     t.string "author"
+    t.boolean "ci_passed"
     t.string "committed_at"
     t.datetime "created_at", null: false
     t.integer "deletions", default: 0
@@ -102,10 +103,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_15_030004) do
     t.bigint "created_by_id", null: false
     t.boolean "is_personal", default: false, null: false
     t.string "name", null: false
+    t.string "plan", default: "free", null: false
+    t.jsonb "plan_overrides", default: {}, null: false
     t.string "slug", null: false
+    t.string "stripe_customer_id"
     t.datetime "updated_at", null: false
     t.index ["created_by_id"], name: "index_organizations_on_created_by_id"
     t.index ["slug"], name: "index_organizations_on_slug", unique: true
+    t.index ["stripe_customer_id"], name: "index_organizations_on_stripe_customer_id", unique: true, where: "(stripe_customer_id IS NOT NULL)"
   end
 
   create_table "plan_analyses", force: :cascade do |t|
@@ -393,6 +398,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_15_030004) do
     t.index ["key"], name: "index_solid_queue_semaphores_on_key", unique: true
   end
 
+  create_table "subscriptions", force: :cascade do |t|
+    t.boolean "cancel_at_period_end", default: false, null: false
+    t.datetime "canceled_at"
+    t.datetime "created_at", null: false
+    t.datetime "current_period_end"
+    t.datetime "current_period_start"
+    t.bigint "organization_id", null: false
+    t.string "status", default: "active", null: false
+    t.string "stripe_subscription_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id", "status"], name: "index_subscriptions_on_organization_id_and_status"
+    t.index ["organization_id"], name: "index_subscriptions_on_organization_id"
+    t.index ["stripe_subscription_id"], name: "index_subscriptions_on_stripe_subscription_id", unique: true
+  end
+
   create_table "user_sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "expires_at", null: false
@@ -465,6 +485,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_15_030004) do
   add_foreign_key "solid_queue_ready_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
+  add_foreign_key "subscriptions", "organizations"
   add_foreign_key "user_sessions", "users"
   add_foreign_key "watched_repos", "repos"
 end
