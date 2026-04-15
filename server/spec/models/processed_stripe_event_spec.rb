@@ -8,16 +8,20 @@ RSpec.describe ProcessedStripeEvent do
       expect(event.errors[:event_id]).to include("can't be blank")
     end
 
-    it "enforces uniqueness of event_id" do
-      ProcessedStripeEvent.create!(event_id: "evt_123")
-      duplicate = ProcessedStripeEvent.new(event_id: "evt_123")
-      expect(duplicate).not_to be_valid
-      expect(duplicate.errors[:event_id]).to include("has already been taken")
-    end
-
     it "saves a valid event" do
       event = ProcessedStripeEvent.new(event_id: "evt_abc")
       expect(event).to be_valid
+    end
+  end
+
+  describe "uniqueness" do
+    it "enforces uniqueness at the database level" do
+      ProcessedStripeEvent.create!(event_id: "evt_123")
+      expect {
+        ProcessedStripeEvent.connection.execute(
+          "INSERT INTO processed_stripe_events (event_id, created_at, updated_at) VALUES ('evt_123', NOW(), NOW())"
+        )
+      }.to raise_error(ActiveRecord::StatementInvalid)
     end
   end
 end

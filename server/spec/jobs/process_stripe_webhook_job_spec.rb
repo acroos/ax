@@ -21,14 +21,13 @@ RSpec.describe ProcessStripeWebhookJob do
       described_class.new.perform("checkout.session.completed", object_json, event_id)
     end
 
-    it "handles concurrent duplicate via RecordNotUnique" do
-      # Simulate a race: exists? returns false, but create! hits a unique constraint
-      allow(ProcessedStripeEvent).to receive(:exists?).and_return(false)
-      allow(ProcessedStripeEvent).to receive(:create!).and_raise(ActiveRecord::RecordNotUnique)
+    it "is safe when the same event is performed twice" do
+      expect_any_instance_of(StripeHandlers::CheckoutCompleted).to receive(:call).once
 
-      expect {
-        described_class.new.perform("checkout.session.completed", object_json, event_id)
-      }.not_to raise_error
+      described_class.new.perform("checkout.session.completed", object_json, event_id)
+      described_class.new.perform("checkout.session.completed", object_json, event_id)
+
+      expect(ProcessedStripeEvent.where(event_id: event_id).count).to eq(1)
     end
 
     it "records separate entries for different event IDs" do
@@ -45,10 +44,6 @@ RSpec.describe ProcessStripeWebhookJob do
   end
 
   describe "event routing" do
-    before do
-      # Ensure idempotency check passes (fresh event each test)
-    end
-
     it "routes checkout.session.completed" do
       expect_any_instance_of(StripeHandlers::CheckoutCompleted).to receive(:call)
       described_class.new.perform("checkout.session.completed", object_json, event_id)
