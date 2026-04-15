@@ -47,6 +47,13 @@ module Api
           upgrade_required: true
         }, status: :forbidden
       end
+
+      def history_cutoff
+        plan = PlanService.for(@org)
+        days = plan.capability(:history_days)
+        return nil if days.nil? || days == Float::INFINITY
+        days.days.ago
+      end
     end
   end
 end
