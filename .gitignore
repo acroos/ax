@@ -45,3 +45,5 @@ dashboard/out/
 
 # AX data
 *.db
+
+.env*
