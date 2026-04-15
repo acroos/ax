@@ -71,7 +71,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `POST` | `/api/v1/orgs` | Create organization (requires approved waitlist) |
 | `GET` | `/api/v1/orgs/:slug` | Org details |
 | `GET` | `/api/v1/orgs/:slug/repos` | List org repos |
-| `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership) |
+| `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership + `history_days` cutoff) |
 | `GET` | `/api/v1/orgs/:slug/prs` | All PRs across all org repos (settled + open) |
 | `GET` | `/api/v1/orgs/:slug/metrics` | Aggregated metrics across all org repos |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | All PRs with available metrics |
@@ -186,6 +186,8 @@ Config-driven capability enforcement. Provides a unified API for checking plan c
 - `plan_details` — Serializable hash for API responses
 
 Plan definitions live in `config/initializers/plans.rb` as a frozen `PLANS` constant. Per-org overrides (stored in `organizations.plan_overrides` jsonb column) merge on top of plan defaults.
+
+Capabilities include `history_days` (free: 30, pro: unlimited) — controls how far back users can view PR data. The `history_cutoff` helper in `BaseController` converts this to a cutoff timestamp for date comparisons.
 
 ### StripeService (`app/services/stripe_service.rb`)
 Wraps Stripe API calls for billing operations (class methods):
