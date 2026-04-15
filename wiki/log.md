@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-15 — Finalization safety: transaction wrapping, pessimistic locking, idempotent timestamps
+
+**Pages updated:** metrics
+**What changed:** Fixed three finalization issues in `PrMerged` and `PrClosed` webhook handlers: (1) **P0 data loss** — if `GithubDataFetcher` or `MetricsComputer` raised during finalization, the PR was finalized with nil metrics that could never be updated. Now the fetch-compute-finalize flow is wrapped in a transaction; failures roll back and leave the PR unfinalized for retry by `ReconcileReposJob`. (2) **Race condition** — concurrent finalization from duplicate webhooks could both pass the `pr_finalized?` check. Now `finalize_metrics` uses `with_lock` and re-checks inside the lock. (3) **Timestamp drift** — webhook redelivery overwrote `finalized_at`. Now uses `metrics.finalized_at || Time.current` to preserve the original.
+
+---
+
 ## 2026-04-15 — Fix CI Success Rate: per-commit tracking and backfill gap
 
 **Pages updated:** metrics, data-model

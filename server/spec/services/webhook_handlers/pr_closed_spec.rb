@@ -87,4 +87,27 @@ RSpec.describe WebhookHandlers::PrClosed do
 
     expect(metrics.reload.finalized_at).to be_within(1.second).of(original_time)
   end
+
+  it "preserves original finalized_at on redelivery" do
+    original_time = 1.hour.ago
+    metrics.update_columns(metrics_finalized: false, finalized_at: original_time)
+
+    handler = described_class.new(pr_data, repo_data)
+    handler.call
+
+    expect(metrics.reload.metrics_finalized).to be true
+    expect(metrics.finalized_at).to be_within(1.second).of(original_time)
+  end
+
+  it "does not finalize when GitHub API fetch fails" do
+    stub_request(:get, %r{api\.github\.com/repos/octocat/hello-world/pulls/1/files})
+      .to_return(status: 500, body: "Internal Server Error")
+
+    handler = described_class.new(pr_data, repo_data)
+    handler.call
+
+    expect(pr.reload.state).to eq("closed")
+    expect(metrics.reload.metrics_finalized).to be false
+    expect(metrics.finalized_at).to be_nil
+  end
 end
