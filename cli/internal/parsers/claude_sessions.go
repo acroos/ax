@@ -387,6 +387,9 @@ func parseToolUseBlocks(content json.RawMessage, session *ParsedSession,
 			if json.Unmarshal(block.Input, &inp) == nil && inp.FilePath != "" {
 				filesReadSet[inp.FilePath] = true
 				session.TotalFileReads++
+				if isPlanFile(inp.FilePath) {
+					planFilesSet[inp.FilePath] = true
+				}
 			}
 		case "Glob":
 			// Glob reads files but we don't track individual results
