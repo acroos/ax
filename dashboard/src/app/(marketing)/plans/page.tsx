@@ -49,7 +49,7 @@ export default function PlansPage() {
           <div className="mb-6">
             <h2 className="text-[18px] font-semibold text-text-primary">Pro</h2>
             <div className="mt-2 flex items-baseline gap-1">
-              <span className="text-[32px] font-semibold text-text-primary">$10</span>
+              <span className="text-[32px] font-semibold text-text-primary">$20</span>
               <span className="text-[13px] text-text-tertiary">/ member / month</span>
             </div>
             <p className="mt-2 text-[13px] text-text-secondary">
