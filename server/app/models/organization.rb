@@ -18,6 +18,13 @@ class Organization < ApplicationRecord
     @plan_service ||= PlanService.for(self)
   end
 
+  def enforce_free_plan_limits!
+    removed_user_ids = org_memberships.where.not(role: "owner").pluck(:user_id)
+    org_memberships.where.not(role: "owner").destroy_all
+    invites.destroy_all
+    UserSession.where(user_id: removed_user_ids).destroy_all if removed_user_ids.any?
+  end
+
   RESERVED_SLUGS = %w[
     admin api app auth billing dashboard docs help internal
     login logout new null settings status support system

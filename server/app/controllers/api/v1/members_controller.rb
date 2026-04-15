@@ -34,7 +34,11 @@ module Api
 
       def destroy
         membership = @org.org_memberships.find(params[:id])
+        user_id = membership.user_id
         membership.destroy!
+        unless OrgMembership.exists?(user_id: user_id)
+          UserSession.where(user_id: user_id).destroy_all
+        end
         head :no_content
       end
     end

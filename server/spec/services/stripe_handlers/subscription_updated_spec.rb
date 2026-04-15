@@ -68,6 +68,48 @@ RSpec.describe StripeHandlers::SubscriptionUpdated do
     expect(org.reload.plan).to eq("pro") # still pro until period ends
   end
 
+  it "enforces free plan limits when downgrading to free" do
+    owner = org.created_by
+    create(:org_membership, organization: org, user: owner, role: "owner")
+    member = create(:user)
+    create(:org_membership, organization: org, user: member, role: "member")
+    member_session = UserSession.create!(user: member, expires_at: 30.days.from_now)
+
+    data = {
+      id: "sub_test_123",
+      status: "unpaid",
+      current_period_start: Time.current.to_i,
+      current_period_end: 1.month.from_now.to_i,
+      cancel_at_period_end: false,
+      canceled_at: nil
+    }
+
+    StripeHandlers::SubscriptionUpdated.new(data).call
+
+    expect(org.org_memberships.reload.map(&:role)).to eq([ "owner" ])
+    expect(UserSession.find_by(id: member_session.id)).to be_nil
+  end
+
+  it "does not enforce limits when staying on pro" do
+    owner = org.created_by
+    create(:org_membership, organization: org, user: owner, role: "owner")
+    member = create(:user)
+    create(:org_membership, organization: org, user: member, role: "member")
+
+    data = {
+      id: "sub_test_123",
+      status: "active",
+      current_period_start: Time.current.to_i,
+      current_period_end: 1.month.from_now.to_i,
+      cancel_at_period_end: false,
+      canceled_at: nil
+    }
+
+    StripeHandlers::SubscriptionUpdated.new(data).call
+
+    expect(org.org_memberships.reload.count).to eq(2)
+  end
+
   it "skips when subscription not found" do
     data = { id: "sub_unknown", status: "active" }
 
