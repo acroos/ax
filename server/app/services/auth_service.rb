@@ -46,6 +46,8 @@ class AuthService
   def self.process_pending_invites(user)
     Invite.pending.where(github_username: user.github_username).find_each do |invite|
       invite.accept!(user)
+    rescue Invite::MemberLimitReached
+      Rails.logger.info("Skipping invite #{invite.id} for #{user.github_username}: org member limit reached")
     end
   end
 end

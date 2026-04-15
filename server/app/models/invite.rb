@@ -1,4 +1,6 @@
 class Invite < ApplicationRecord
+  class MemberLimitReached < StandardError; end
+
   belongs_to :organization
   belongs_to :invited_by, class_name: "User"
 
@@ -14,6 +16,12 @@ class Invite < ApplicationRecord
 
   def accept!(user)
     transaction do
+      plan = PlanService.for(organization)
+      current_count = organization.org_memberships.count
+      unless plan.within_limit?(:max_members, current_count)
+        raise MemberLimitReached, "Organization has reached its member limit"
+      end
+
       update!(status: "accepted", accepted_at: Time.current)
       OrgMembership.create!(
         organization: organization,

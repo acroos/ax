@@ -43,7 +43,7 @@ RSpec.describe AuthService do
 
     it "processes pending invites on login" do
       inviter = create(:user)
-      org = create(:organization, created_by: inviter)
+      org = create(:organization, created_by: inviter, plan: "pro")
       create(:org_membership, organization: org, user: inviter, role: "owner")
 
       Invite.create!(
@@ -57,6 +57,25 @@ RSpec.describe AuthService do
 
       user = AuthService.find_or_create_from_github(auth_hash)
       expect(user.member_of?(org)).to be true
+    end
+
+    it "skips invite silently when org is at member limit" do
+      inviter = create(:user)
+      org = create(:organization, created_by: inviter) # free plan, max_members: 1
+      create(:org_membership, organization: org, user: inviter, role: "owner")
+
+      invite = Invite.create!(
+        organization: org,
+        github_username: "octocat",
+        role: "member",
+        invited_by: inviter,
+        token: SecureRandom.hex(32),
+        expires_at: 7.days.from_now
+      )
+
+      user = AuthService.find_or_create_from_github(auth_hash)
+      expect(user.member_of?(org)).to be false
+      expect(invite.reload.status).to eq("pending")
     end
   end
 

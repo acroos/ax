@@ -10,6 +10,7 @@ RSpec.describe Invite, type: :model do
 
   describe "#accept!" do
     it "creates membership and marks invite as accepted" do
+      org.update!(plan: "pro")
       invite = Invite.create!(
         organization: org,
         github_username: "newuser",
@@ -24,6 +25,37 @@ RSpec.describe Invite, type: :model do
       expect(invite.accepted_at).to be_present
       expect(new_user.member_of?(org)).to be true
       expect(new_user.role_in(org)).to eq("member")
+    end
+
+    it "raises MemberLimitReached when org is at its member limit" do
+      # Free plan has max_members: 1, and the owner already counts as 1
+      invite = Invite.create!(
+        organization: org,
+        github_username: "newuser",
+        role: "member",
+        invited_by: inviter
+      )
+
+      new_user = create(:user, github_username: "newuser")
+      expect { invite.accept!(new_user) }.to raise_error(Invite::MemberLimitReached)
+      expect(invite.reload.status).to eq("pending")
+      expect(new_user.member_of?(org)).to be false
+    end
+
+    it "allows acceptance when org is on a pro plan" do
+      org.update!(plan: "pro")
+      invite = Invite.create!(
+        organization: org,
+        github_username: "newuser",
+        role: "member",
+        invited_by: inviter
+      )
+
+      new_user = create(:user, github_username: "newuser")
+      invite.accept!(new_user)
+
+      expect(invite.reload.status).to eq("accepted")
+      expect(new_user.member_of?(org)).to be true
     end
   end
 
