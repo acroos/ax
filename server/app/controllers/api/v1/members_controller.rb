@@ -37,7 +37,7 @@ module Api
         user_id = membership.user_id
         membership.destroy!
         unless OrgMembership.exists?(user_id: user_id)
-          UserSession.where(user_id: user_id).destroy_all
+          UserSession.where(user_id: user_id).delete_all
         end
         head :no_content
       end

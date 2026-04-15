@@ -19,10 +19,13 @@ class Organization < ApplicationRecord
   end
 
   def enforce_free_plan_limits!
-    removed_user_ids = org_memberships.where.not(role: "owner").pluck(:user_id)
-    org_memberships.where.not(role: "owner").destroy_all
-    invites.destroy_all
-    UserSession.where(user_id: removed_user_ids).destroy_all if removed_user_ids.any?
+    transaction do
+      non_owner = org_memberships.where.not(role: "owner")
+      removed_user_ids = non_owner.pluck(:user_id)
+      non_owner.delete_all
+      invites.delete_all
+      UserSession.where(user_id: removed_user_ids).delete_all if removed_user_ids.any?
+    end
   end
 
   RESERVED_SLUGS = %w[
