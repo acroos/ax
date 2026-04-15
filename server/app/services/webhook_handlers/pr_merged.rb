@@ -14,30 +14,28 @@ module WebhookHandlers
       pr.update!(state: "merged", merged_at: @pr_data[:merged_at])
       return if pr_finalized?(pr)
 
-      fetch_and_compute(pr)
-      finalize_metrics(pr)
-    end
-
-    private
-
-    def fetch_and_compute(pr)
+      # Phase 1: Fetch from GitHub (network I/O, no transaction).
+      # PrFile/Commit writes here are idempotent — safe outside a transaction.
       GithubDataFetcher.new(pr).call
+
+      # Phase 2: Compute metrics (reads from DB, no writes).
       computed = MetricsComputer.new(pr).call
 
-      metrics = ensure_pr_metrics(pr)
-      metrics.update!(computed.compact)
-    rescue => e
-      Rails.logger.error("Failed to fetch/compute metrics for PR ##{pr.number}: #{e.message}")
-    end
+      # Phase 3: Write metrics + finalize (DB-only transaction, single update).
+      ActiveRecord::Base.transaction do
+        metrics = ensure_pr_metrics(pr)
+        metrics.with_lock do
+          return if metrics.finalized?
 
-    def finalize_metrics(pr)
-      metrics = ensure_pr_metrics(pr)
-      # No reviews = accepted on first pass
-      metrics.update!(first_pass_accepted: true) if metrics.first_pass_accepted.nil?
-      metrics.update!(
-        metrics_finalized: true,
-        finalized_at: Time.current
-      )
+          attrs = computed.compact
+          attrs[:first_pass_accepted] = true if metrics.first_pass_accepted.nil?
+          attrs[:metrics_finalized] = true
+          attrs[:finalized_at] = metrics.finalized_at || Time.current
+          metrics.update!(attrs)
+        end
+      end
+    rescue => e
+      Rails.logger.error("[finalization] Failed for PR ##{pr.number}: #{e.class}: #{e.message}")
     end
   end
 end
