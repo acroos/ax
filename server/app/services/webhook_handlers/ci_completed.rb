@@ -12,7 +12,10 @@ module WebhookHandlers
       return unless head_sha && conclusion
 
       commit = Commit.find_by(sha: head_sha)
-      return unless commit
+      unless commit
+        Rails.logger.info("[ci_completed] Commit #{head_sha} not found — will be picked up by backfill")
+        return
+      end
 
       # Update per-commit CI status. Failure is sticky: once false,
       # a success from another check suite won't flip it back.
