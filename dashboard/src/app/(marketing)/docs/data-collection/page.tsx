@@ -10,7 +10,7 @@ export default function DataCollectionPage() {
   );
 
   return (
-    <div>
+    <div className="max-w-[760px] mx-auto px-6 py-12">
       <Link
         href="/docs"
         className="text-accent hover:underline text-[13px] mb-6 inline-flex items-center gap-1.5"

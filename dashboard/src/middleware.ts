@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 // Public paths that don't require authentication.
 // /auth covers the cross-origin handoff route /auth/accept which runs *before*
 // the session cookie exists, so it must be reachable without auth.
-const PUBLIC_PATHS = ["/login", "/invite", "/auth", "/api", "/docs", "/_next", "/favicon"];
+const PUBLIC_PATHS = ["/login", "/invite", "/auth", "/api", "/docs", "/plans", "/setup", "/changelog", "/terms", "/_next", "/favicon"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -20,12 +20,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Allow public paths
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
-  }
-
-  // Allow health check
-  if (pathname === "/up") {
+  if (pathname === "/" || pathname === "/up" || PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
