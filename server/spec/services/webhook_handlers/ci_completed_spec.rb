@@ -68,7 +68,7 @@ RSpec.describe WebhookHandlers::CiCompleted do
         check_suite = build_check_suite(
           sha: "abc123",
           conclusion: "success",
-          pull_requests: [{ number: 1 }]
+          pull_requests: [ { number: 1 } ]
         )
 
         described_class.new(check_suite, repo_data, installation: installation).call
@@ -80,7 +80,7 @@ RSpec.describe WebhookHandlers::CiCompleted do
         check_suite = build_check_suite(
           sha: "abc123",
           conclusion: "success",
-          pull_requests: [{ number: 1 }]
+          pull_requests: [ { number: 1 } ]
         )
 
         # ci_passed is nil before the handler runs; after, it's true
