@@ -203,6 +203,15 @@ Stripe subscription sync record. One per org (when on a paid plan).
 | cancel_at_period_end | boolean | Cancellation scheduled |
 | canceled_at | timestamp | |
 
+### processed_stripe_events
+Idempotency guard for Stripe webhook processing. One row per Stripe event ID, inserted via upsert before handling.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | bigint | PK |
+| event_id | text | Stripe event ID (unique index) |
+| created_at | timestamp | |
+
 ### org_memberships
 
 | Column | Type | Notes |

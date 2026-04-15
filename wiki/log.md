@@ -4,6 +4,14 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-15 — Add Stripe webhook idempotency
+
+**Pages updated:** rails-server, data-model
+- rails-server: Documented idempotency mechanism in Stripe webhook handlers section
+- data-model: Added `processed_stripe_events` table documentation
+
+---
+
 ## 2026-04-15 — Fix `message_count` documentation and add JSON parse logging
 
 **Pages updated:** data-model, metrics
