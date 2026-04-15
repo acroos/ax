@@ -40,6 +40,22 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      {/* Dashboard preview */}
+      <section className="border-t border-border-subtle bg-surface-0/30">
+        <div className="max-w-[1100px] mx-auto px-6 py-16">
+          <p className="text-[13px] font-medium text-text-tertiary text-center mb-6">
+            Your dashboard at a glance
+          </p>
+          <div className="rounded-xl border border-border-subtle overflow-hidden shadow-2xl shadow-black/40">
+            <img
+              src="/dashboard-preview.png"
+              alt="AX dashboard showing metric cards across Output Quality, Prompt Efficiency, Agent Behavior, and Planning Effectiveness categories"
+              className="w-full"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* What you get */}
       <section className="border-t border-border-subtle">
         <div className="max-w-[1100px] mx-auto px-6 py-20">
