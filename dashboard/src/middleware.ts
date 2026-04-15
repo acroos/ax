@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { MARKETING_SEGMENTS } from "@/lib/routes";
 
 // Public paths that don't require authentication.
 // /auth covers the cross-origin handoff route /auth/accept which runs *before*
 // the session cookie exists, so it must be reachable without auth.
-const PUBLIC_PATHS = ["/login", "/invite", "/auth", "/api", "/docs", "/_next", "/favicon"];
+const PUBLIC_PATHS = [
+  "/login", "/invite", "/auth", "/api",
+  ...MARKETING_SEGMENTS.map((s) => `/${s}`),
+  "/_next", "/favicon",
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -20,12 +25,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Allow public paths
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next({ request: { headers: requestHeaders } });
-  }
-
-  // Allow health check
-  if (pathname === "/up") {
+  if (pathname === "/" || pathname === "/up" || PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
@@ -41,5 +41,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|svg|ico|webp)$).*)"],
 };

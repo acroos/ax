@@ -30,7 +30,10 @@ export default function LoginPage() {
         </a>
 
         <p className="text-xs text-text-tertiary">
-          By signing in, you agree to our terms of service.
+          By signing in, you agree to our{" "}
+          <a href="/terms" className="text-text-tertiary hover:text-text-secondary underline transition-colors">
+            terms of service
+          </a>.
           <br />
           <a href="/docs/data-collection" className="text-text-tertiary hover:text-text-secondary underline transition-colors">
             What data does AX collect?

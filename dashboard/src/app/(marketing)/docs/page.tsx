@@ -24,7 +24,7 @@ export default function DocsPage() {
   });
 
   return (
-    <div>
+    <div className="max-w-[760px] mx-auto px-6 py-12">
       <h1 className="text-text-primary text-xl font-semibold mb-6">
         Metric Documentation
       </h1>
