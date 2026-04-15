@@ -45,12 +45,7 @@ export default function PlansPage() {
         </div>
 
         {/* Pro */}
-        <div className="bg-surface-1 rounded-xl border border-accent/30 p-6 relative">
-          <div className="absolute -top-2.5 left-5">
-            <span className="text-[11px] font-medium text-accent bg-accent/10 rounded-full px-2.5 py-0.5 border border-accent/20">
-              Most popular
-            </span>
-          </div>
+        <div className="bg-surface-1 rounded-xl border border-accent/30 p-6">
           <div className="mb-6">
             <h2 className="text-[18px] font-semibold text-text-primary">Pro</h2>
             <div className="mt-2 flex items-baseline gap-1">
