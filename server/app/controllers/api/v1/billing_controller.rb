@@ -24,7 +24,7 @@ module Api
       end
 
       def checkout
-        if @org.subscription&.status&.in?(%w[active trialing])
+        if @org.subscription&.active_or_trialing?
           return render json: { error: "Organization already has an active subscription" }, status: :unprocessable_entity
         end
 

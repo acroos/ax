@@ -11,6 +11,10 @@ class Subscription < ApplicationRecord
     status == "active"
   end
 
+  def active_or_trialing?
+    status.in?(%w[active trialing])
+  end
+
   def will_cancel?
     cancel_at_period_end?
   end
