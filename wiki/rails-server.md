@@ -197,7 +197,7 @@ Wraps Stripe API calls for billing operations (class methods):
 - `create_portal_session(org, return_url:)` — Creates Stripe Customer Portal session for self-service billing management
 
 ### Stripe Webhook Handlers (`app/services/stripe_handlers/`)
-Process Stripe webhook events (same pattern as GitHub handlers):
+Process Stripe webhook events (same pattern as GitHub handlers). `ProcessStripeWebhookJob` deduplicates via the `processed_stripe_events` table — a single `INSERT ... ON CONFLICT DO NOTHING` on `event_id` ensures each Stripe event is processed exactly once, even across retries or concurrent jobs.
 
 | Handler | Event | Action |
 |---------|-------|--------|
