@@ -18,6 +18,9 @@ module Api
       end
 
       def create
+        enforce_limit!(:max_members, @org.org_memberships.count + @org.invites.pending.count)
+        return if performed?
+
         invite = @org.invites.create!(
           github_username: params[:github_username],
           role: params[:role],

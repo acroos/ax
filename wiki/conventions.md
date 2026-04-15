@@ -42,6 +42,16 @@ Patterns and norms for working in the AX codebase.
 - `require_session_auth!` for dashboard endpoints
 - `find_org!` / `find_org_as_admin!` for org-scoped authorization
 
+### Plan / Capability Enforcement
+- All plan checks go through `PlanService.for(org)` — never check `org.plan` directly
+- `capability(key)` returns the effective value (boolean or numeric)
+- `can?(key)` for feature gates, `within_limit?(key, count)` for numeric limits
+- Plan definitions in `config/initializers/plans.rb` (frozen `PLANS` constant)
+- Per-org overrides via `organizations.plan_overrides` (jsonb) — overrides merge on top of plan defaults
+- In controllers: `enforce_limit!(:key, count)` returns 403 with `upgrade_required: true`
+- In services: check `PlanService.for(org).within_limit?` and raise domain error
+- Rake tasks: `ax:set_plan[slug,plan]`, `ax:override[slug,key,value]` for manual management
+
 ## Dashboard
 
 ### File Organization

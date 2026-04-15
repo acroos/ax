@@ -3,7 +3,7 @@ require "rails_helper"
 RSpec.describe "Org Invites API", type: :request do
   let(:owner) { create(:user) }
   let(:member) { create(:user) }
-  let(:org) { create(:organization, created_by: owner) }
+  let(:org) { create(:organization, created_by: owner, plan: "pro") }
 
   before do
     create(:org_membership, organization: org, user: owner, role: "owner")

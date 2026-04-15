@@ -10,7 +10,7 @@ module Auth
         email: current_user.email,
         avatar_url: current_user.avatar_url,
         organizations: current_user.organizations.map { |org|
-          { slug: org.slug, name: org.name, is_personal: org.is_personal }
+          { slug: org.slug, name: org.name, is_personal: org.is_personal, plan: org.plan }
         }
       }
     end

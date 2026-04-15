@@ -12,6 +12,22 @@ class WebhooksController < ApplicationController
     render json: { ok: true }
   end
 
+  def stripe
+    payload = request.raw_post
+    sig_header = request.headers["Stripe-Signature"]
+
+    begin
+      event = Stripe::Webhook.construct_event(
+        payload, sig_header, ENV.fetch("STRIPE_WEBHOOK_SECRET")
+      )
+    rescue JSON::ParserError, Stripe::SignatureVerificationError
+      return head :bad_request
+    end
+
+    ProcessStripeWebhookJob.perform_later(event.type, event.data.object.to_json, event.id)
+    render json: { ok: true }
+  end
+
   private
 
   def valid_github_signature?

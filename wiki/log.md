@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-15 — Add Stripe billing and freemium plan system
+
+**Pages updated:** data-model, rails-server, conventions, dashboard
+**What changed:** Added freemium billing infrastructure with Stripe. New tables: `subscriptions`, new columns on `organizations` (`plan`, `stripe_customer_id`, `plan_overrides`). Config-driven capability model via `PlanService` with per-org overrides. Stripe Checkout, Customer Portal, and webhook handling (4 event types). Billing API endpoints (show/checkout/portal). Dashboard billing page at `/{slug}/billing` with plan badge, usage bars, and upgrade/manage buttons. Plan limits enforced on invite creation and repo creation. Rake tasks for manual plan management.
+
+---
+
 ## 2026-04-15 — Finalization safety: transaction wrapping, pessimistic locking, idempotent timestamps
 
 **Pages updated:** metrics

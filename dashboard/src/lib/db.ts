@@ -45,6 +45,30 @@ export function orgApiPath(orgSlug: string, path: string): string {
   return `/api/v1/orgs/${orgSlug}${path}`;
 }
 
+// --- Billing ---
+
+export interface BillingInfo {
+  plan: {
+    name: string;
+    capabilities: Record<string, number | boolean | null>;
+  };
+  subscription: {
+    status: string;
+    current_period_end: string;
+    cancel_at_period_end: boolean;
+  } | null;
+  usage: {
+    members: number;
+    repos: number;
+  };
+}
+
+export async function getBilling(orgSlug: string): Promise<BillingInfo> {
+  return fetchAPI<BillingInfo>(orgApiPath(orgSlug, "/billing"), {
+    revalidate: false,
+  });
+}
+
 // --- Interfaces ---
 
 export interface Repo {
