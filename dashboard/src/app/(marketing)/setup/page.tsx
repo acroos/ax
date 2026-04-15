@@ -15,7 +15,7 @@ export default function SetupPage() {
 
       <div className="space-y-6">
         {/* Step 1 */}
-        <SetupStep number="1" title="Sign in to the dashboard">
+        <SetupStep number={1} title="Sign in to the dashboard">
           <p>
             <Link href="/login" className="text-accent hover:underline">Sign in with GitHub</Link> to
             create your account. AX requests read-only access to your profile and email — no
@@ -24,7 +24,7 @@ export default function SetupPage() {
         </SetupStep>
 
         {/* Step 2 */}
-        <SetupStep number="2" title="Copy your API key">
+        <SetupStep number={2} title="Copy your API key">
           <p>
             After signing in, you&apos;ll be guided through onboarding where your API key is displayed.
             Copy it — it&apos;s only shown once. You can rotate it later from{" "}
@@ -33,7 +33,7 @@ export default function SetupPage() {
         </SetupStep>
 
         {/* Step 3 */}
-        <SetupStep number="3" title="Install and connect the CLI">
+        <SetupStep number={3} title="Install and connect the CLI">
           <p>Install AX via Homebrew:</p>
           <CodeBlock>brew install acroos/tap/ax</CodeBlock>
           <p>Then connect it to your account:</p>
@@ -46,7 +46,7 @@ export default function SetupPage() {
         </SetupStep>
 
         {/* Step 4 */}
-        <SetupStep number="4" title="Push your first data">
+        <SetupStep number={4} title="Push your first data">
           <p>Push session data from any git repository:</p>
           <CodeBlock>ax push --repo .</CodeBlock>
           <p>
@@ -56,7 +56,7 @@ export default function SetupPage() {
         </SetupStep>
 
         {/* Step 5 */}
-        <SetupStep number="5" title="Install the GitHub App">
+        <SetupStep number={5} title="Install the GitHub App">
           <p>
             Navigate to <strong className="text-text-primary font-medium">Org Settings</strong> in
             the dashboard and click <strong className="text-text-primary font-medium">Install GitHub App</strong>.
@@ -69,7 +69,7 @@ export default function SetupPage() {
         </SetupStep>
 
         {/* Step 6 */}
-        <SetupStep number="6" title="View your metrics">
+        <SetupStep number={6} title="View your metrics">
           <p>
             Once data flows in, your dashboard populates automatically. Explore:
           </p>
@@ -82,7 +82,7 @@ export default function SetupPage() {
         </SetupStep>
 
         {/* Inviting teammates */}
-        <SetupStep number="7" title="Invite your team" optional>
+        <SetupStep number={7} title="Invite your team" optional>
           <p>
             From <strong className="text-text-primary font-medium">Org Settings</strong>, generate
             invite links for your team. Each link is single-use. Invited members sign in with GitHub
@@ -129,7 +129,7 @@ function SetupStep({
   children,
   optional,
 }: {
-  number: string;
+  number: number;
   title: string;
   children: React.ReactNode;
   optional?: boolean;

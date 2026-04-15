@@ -57,9 +57,9 @@ export default function ChangelogPage() {
       </div>
 
       <div className="space-y-0">
-        {entries.map((entry, i) => (
+        {entries.map((entry) => (
           <div
-            key={i}
+            key={`${entry.date}-${entry.title}`}
             className="relative pl-6 pb-8 border-l border-border-subtle last:pb-0"
           >
             {/* Timeline dot */}

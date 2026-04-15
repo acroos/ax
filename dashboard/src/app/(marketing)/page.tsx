@@ -87,18 +87,18 @@ export default async function LandingPage() {
 
           <div className="grid grid-cols-3 gap-6">
             <Step
-              number="1"
+              number={1}
               title="Install the CLI"
               description="One command to install, one to connect. AX hooks into Claude Code's session lifecycle automatically."
               code="brew install acroos/tap/ax"
             />
             <Step
-              number="2"
+              number={2}
               title="Connect GitHub"
               description="Install the AX GitHub App on your org. We receive webhook events and backfill up to 90 days of PR history."
             />
             <Step
-              number="3"
+              number={3}
               title="See your metrics"
               description="Push session data from any repo. Your dashboard populates with metrics as PRs are opened, reviewed, and merged."
             />
@@ -181,7 +181,7 @@ function Step({
   description,
   code,
 }: {
-  number: string;
+  number: number;
   title: string;
   description: string;
   code?: string;

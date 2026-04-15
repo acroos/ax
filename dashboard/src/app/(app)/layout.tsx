@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { listReposAsync } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { OrgSwitcher } from "@/components/org-switcher";
+import { MARKETING_SEGMENTS } from "@/lib/routes";
 
 // Extract the first path segment as an org slug, but only if it looks like
 // an org slug (lowercase, alphanumeric with hyphens) and isn't a known
@@ -13,17 +14,13 @@ const NON_ORG_SEGMENTS = new Set([
   "logout",
   "onboarding",
   "settings",
-  "docs",
   "prs",
   "compare",
   "invite",
   "auth",
   "api",
   "up",
-  "plans",
-  "setup",
-  "changelog",
-  "terms",
+  ...MARKETING_SEGMENTS,
 ]);
 
 function parseOrgSlug(pathname: string | null): string | null {
