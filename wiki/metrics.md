@@ -103,7 +103,11 @@ PR opened
 - **Webhooks**: All handlers check `pr_finalized?` before updating GitHub fields
 
 ### Webhook-triggered finalization
-`PrMerged` and `PrClosed` webhook handlers set `metrics_finalized = true`. This happens in real time as GitHub sends events.
+`PrMerged` and `PrClosed` webhook handlers set `metrics_finalized = true`. This happens in real time as GitHub sends events. The fetch-compute-finalize flow is wrapped in a database transaction with pessimistic locking:
+
+- If `GithubDataFetcher` or `MetricsComputer` fails, the transaction rolls back and the PR stays **unfinalized** — the daily `ReconcileReposJob` will retry
+- `finalize_metrics` acquires a row lock (`with_lock`) and re-checks `finalized?` to prevent concurrent finalization races
+- `finalized_at` is set only once (idempotent) — webhook redelivery preserves the original timestamp
 
 ## Metric Storage
 
