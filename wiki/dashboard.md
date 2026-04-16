@@ -77,6 +77,9 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 
 ### Content
 - **Markdown** (`src/components/markdown.tsx`) — Renders metric docs from `docs/metrics/*.md` using `react-markdown` + `remark-gfm`. Custom styled components for headings, tables, code blocks.
+- **StateBadge** (`src/components/state-badge.tsx`) — Shared PR-state pill. Maps `merged → success` (olive), `open → info` (dusk), `closed → attention` (russet), `draft → muted`. Used by the PR list, PR detail header, and metric-detail PR table.
+- **BooleanMetricSummary** (`src/components/boolean-metric-summary.tsx`) — Two-column PR split with proportion bar for boolean metrics (e.g. `has_tests`, `first_pass_accepted`). Honors a `trueIsBetter` orientation; the "healthy" side uses `success` (olive), the other side `muted`, per THEME.md's non-judgmental palette.
+- **MetricBarChart** (`src/components/metric-bar-chart.tsx`) — Wraps shadcn's `chart` primitive over recharts. Takes a `colorSlot` (1..8) that resolves through `chartColor()` to `--color-chart-<n>`, so colors brighten automatically in dark mode. No hex values anywhere in the chart code.
 
 ### Loading states
 - **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonTableBody`, `SkeletonPageHeader`, `SkeletonChartPanel`. Shared building blocks for route-level loading UIs and in-page Suspense fallbacks.
@@ -142,7 +145,7 @@ The authoritative SVG vector sources and the brand contract (color, clear space,
 
 ### Primitive components
 
-Primitive UI (button, dialog, dropdown-menu, input, select, tabs, tooltip, etc.) comes from [shadcn/ui](https://ui.shadcn.com/) under `src/components/ui/`. Install new primitives with `npx shadcn@latest add <name>` from `dashboard/`. See the Components section above for the app-level compositions.
+Primitive UI comes from [shadcn/ui](https://ui.shadcn.com/) under `src/components/ui/`. Currently installed: `alert`, `avatar`, `badge`, `button`, `card`, `chart`, `command`, `dialog`, `dropdown-menu`, `input`, `label`, `navigation-menu`, `popover`, `progress`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `table`, `tooltip`. Install new primitives with `npx shadcn@latest add <name>` from `dashboard/`. See the Components section above for the app-level compositions.
 
 ### Typography
 
