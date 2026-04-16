@@ -183,7 +183,6 @@ org slug is your GitHub username.
 | **Overview** (`/{slug}`) | Aggregate metrics across all PRs, grouped by category |
 | **PR List** (`/{slug}/prs`) | Table of all PRs with inline metrics |
 | **Metric Drill-Down** (`/{slug}/metrics/{metric}`) | Historical trend and per-PR breakdown for any metric |
-| **Compare** (`/{slug}/compare`) | Developer leaderboard with time window filters |
 | **Org Settings** (`/{slug}/settings`) | Members, invites, and GitHub App management |
 | **Account** (`/settings`) | API key management and rotation |
 | **Docs** (`/docs`) | In-app metric reference |
@@ -224,7 +223,6 @@ Each teammate gets their own API key. Keys are scoped per user, not per org.
 | Org-scoped PR list with inline metrics | ✅ Working |
 | Org overview with aggregate metrics | ✅ Working |
 | Metric drill-down pages | ✅ Working |
-| Developer comparison / leaderboard | ✅ Working |
 | Member + invite management UI | ✅ Working |
 | GitHub App installation flow | ✅ Working |
 | Real-time webhooks (PR / review / CI) | ✅ Working |

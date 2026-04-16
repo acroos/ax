@@ -5,7 +5,6 @@ PLANS = {
     history_days: 30,
     core_metrics: true,
     github_integration: true,
-    compare_developers: false,
     export_data: false,
     priority_support: false
   }.freeze,
@@ -15,7 +14,6 @@ PLANS = {
     history_days: Float::INFINITY,
     core_metrics: true,
     github_integration: true,
-    compare_developers: true,
     export_data: true,
     priority_support: true
   }.freeze

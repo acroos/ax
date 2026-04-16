@@ -55,7 +55,6 @@ function PlanBadge({ plan }: { plan: string }) {
 
 const PRO_FEATURES = [
   { key: "seat_pricing", label: "$20 per seat / month" },
-  { key: "compare_developers", label: "Developer comparison" },
   { key: "export_data", label: "Data export" },
   { key: "priority_support", label: "Priority support" },
   { key: "max_repos", label: "Unlimited repositories" },

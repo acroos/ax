@@ -15,7 +15,6 @@ const NON_ORG_SEGMENTS = new Set([
   "onboarding",
   "settings",
   "prs",
-  "compare",
   "invite",
   "auth",
   "api",
@@ -84,13 +83,6 @@ const PRIcon = (
     />
     <circle cx="4.5" cy="2" r="1.2" stroke="currentColor" strokeWidth="1" />
     <circle cx="10.5" cy="13" r="1.2" stroke="currentColor" strokeWidth="1" />
-  </svg>
-);
-
-const CompareIcon = (
-  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="opacity-60">
-    <rect x="2" y="6" width="4" height="7" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-    <rect x="9" y="3" width="4" height="10" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
   </svg>
 );
 
@@ -184,7 +176,6 @@ async function Sidebar() {
       <nav className="flex-1 px-2.5 space-y-0.5">
         <NavLink href={overviewHref} icon={HomeIcon}>Overview</NavLink>
         <NavLink href={`${base}/prs`} icon={PRIcon}>Pull Requests</NavLink>
-        <NavLink href={`${base}/compare`} icon={CompareIcon}>Compare</NavLink>
         <NavLink href={`${base}/settings`} icon={SettingsIcon}>Org Settings</NavLink>
         <NavLink href={`${base}/billing`} icon={BillingIcon}>Billing</NavLink>
         <NavLink href="/docs" icon={DocsIcon}>Docs</NavLink>

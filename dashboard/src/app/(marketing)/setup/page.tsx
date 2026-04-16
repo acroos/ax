@@ -77,7 +77,6 @@ export default function SetupPage() {
             <li><strong className="text-text-primary font-medium">Overview</strong> — Aggregate metrics at a glance</li>
             <li><strong className="text-text-primary font-medium">Pull Requests</strong> — Per-PR metric breakdown</li>
             <li><strong className="text-text-primary font-medium">Metric Drill-Down</strong> — Trends and distributions for each metric</li>
-            <li><strong className="text-text-primary font-medium">Compare</strong> — Developer comparison across your team (Pro)</li>
           </ul>
         </SetupStep>
 
