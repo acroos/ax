@@ -2,23 +2,20 @@
 
 **You're shipping PRs with Claude Code. But are they getting better?**
 
-AX measures what matters: cost per PR, first-pass acceptance, self-correction rate, and 13 other metrics that tell you whether your AI coding workflow is actually working.
+AX measures what matters: cost per PR, iteration depth, CI success, and other metrics that tell you whether your AI coding workflow is actually working.
 
 ---
 
 ## 📊 What You Can Measure
 
 **🏗️ Output Quality** — Is the agent producing clean, mergeable work?
-> Post-open commits · first-pass acceptance rate · CI success rate · PRs with tests · diff churn · line revisit rate
+> Post-open commits · CI success rate · line revisit rate · review cycle time
 
 **💬 Prompt Efficiency** — How efficiently are you directing the agent?
-> Messages per PR · iteration depth · token cost per PR · unmerged token spend
+> Iteration depth · token cost per PR · cache hit rate · unmerged token spend
 
 **🤖 Agent Behavior** — How well does the agent operate on its own?
-> Self-correction rate · context efficiency · error recovery attempts
-
-**🗺️ Planning Effectiveness** — Does the agent build what you asked for?
-> Plan-to-implementation coverage · plan deviation score · scope creep detection
+> Sidechain rate · re-read rate · autonomy score
 
 Every metric has a dedicated doc explaining what it measures, why it matters, and how to interpret values → [full metric reference](docs/metrics/index.md)
 
@@ -31,8 +28,8 @@ AX is a managed service with three components:
 | Component | What it does |
 |-----------|-------------|
 | 🔧 **Go CLI** | Parses Claude Code session data from your machine and pushes it to the server. Installs hooks so this happens automatically. |
-| 🚂 **Rails API** | Ingests session data and GitHub webhooks, computes all 16 metrics server-side, manages orgs and auth. |
-| 📈 **Next.js Dashboard** | Web UI at `https://ax-metrics.vercel.app` for viewing metrics and managing your team. |
+| 🚂 **Rails API** | Ingests session data and GitHub webhooks, computes all metrics server-side, manages orgs and auth. |
+| 📈 **Next.js Dashboard** | Web UI at `https://ax-metrics.vercel.app` for viewing metrics, comparing developers, and managing your team. |
 
 Data flows in two ways:
 1. **Claude Code sessions** → CLI parses local session files and pushes to the API
@@ -98,7 +95,7 @@ For the full breakdown of what is and isn't collected, see the **[Data Collectio
 
 ## 📚 Docs
 
-- [Metric Reference](docs/metrics/index.md) — All 16 metrics, explained
+- [Metric Reference](docs/metrics/index.md) — All metrics, explained
 - [Setup Guide](docs/setup.md) — Full setup walkthrough
 - [Data Collection & Privacy](docs/data-collection.md) — Exactly what data AX collects and stores
 - [Architecture Decision Records](docs/decisions/) — Why things are the way they are

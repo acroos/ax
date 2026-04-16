@@ -2,28 +2,8 @@
 package metrics
 
 import (
-	"strings"
-
 	"github.com/austinroos/ax/internal/parsers"
 )
-
-// testFilePatterns are globs/substrings that indicate a file is a test file.
-// testFileContains are substrings that indicate a test file when found anywhere in the path.
-var testFileContains = []string{
-	".test.",
-	".spec.",
-	"_test.",
-	"_test/",
-	"__tests__/",
-	"/test/",
-	"/tests/",
-}
-
-// testFilePrefixes are prefixes that indicate a test file.
-var testFilePrefixes = []string{
-	"test/",
-	"tests/",
-}
 
 // PostOpenCommits counts how many commits were made after the PR was opened.
 // prCreatedAt should be an ISO 8601 timestamp.
@@ -37,48 +17,10 @@ func PostOpenCommits(commits []parsers.GHCommit, prCreatedAt string) int {
 	return count
 }
 
-// FirstPassAccepted returns true if the PR was never given a CHANGES_REQUESTED review.
-func FirstPassAccepted(reviews []parsers.GHReview) bool {
-	return !parsers.HasChangesRequested(reviews)
-}
-
 // CISuccessRate returns the fraction of CI checks that passed (0.0 to 1.0).
 // Returns -1 if no checks exist.
 func CISuccessRate(checks []parsers.GHCheckRun) float64 {
 	return parsers.CIPassRate(checks)
-}
-
-// HasTestFiles checks whether any of the changed files appear to be test files.
-func HasTestFiles(files []string) bool {
-	for _, f := range files {
-		lower := strings.ToLower(f)
-		for _, pattern := range testFileContains {
-			if strings.Contains(lower, pattern) {
-				return true
-			}
-		}
-		for _, prefix := range testFilePrefixes {
-			if strings.HasPrefix(lower, prefix) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// DiffChurn calculates wasted lines — lines that were added in intermediate
-// commits but don't appear in the final diff.
-//
-// totalAdded is the sum of additions across all individual commits on the branch.
-// netAdded is the additions in the final squashed diff (base...head).
-//
-// Churn = totalAdded - netAdded (clamped to 0).
-func DiffChurn(totalAdded, netAdded int) int {
-	churn := totalAdded - netAdded
-	if churn < 0 {
-		return 0
-	}
-	return churn
 }
 
 // LineRevisitInfo tracks how many times lines in a file have been modified

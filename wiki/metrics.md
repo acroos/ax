@@ -1,8 +1,10 @@
 # Metrics
 
-AX computes 17 metrics across 4 categories. Full metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but aggregate statistics (averages, trend lines) use settled PRs only.
+AX computes 10 PR-level metrics across 3 categories, plus one repo-level aggregate (Unmerged Token Spend). Full metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but aggregate statistics (averages, trend lines) use settled PRs only.
 
 Each metric has detailed documentation in `docs/metrics/` and is viewable in the dashboard at `/docs/[slug]`.
+
+See [ADR-001](../docs/decisions/001-metrics-selection.md) for the original metric selection and [ADR-015](../docs/decisions/015-metric-pruning.md) for the 2026-04-16 pruning.
 
 ## Categories
 
@@ -13,10 +15,7 @@ Measures the quality of code produced by the agent-human collaboration and the f
 | Metric | Type | Source | What it measures |
 |--------|------|--------|------------------|
 | Post-Open Commits | int | GitHub | Commits pushed after PR was opened. Lower = cleaner first draft. |
-| First-Pass Acceptance | bool | GitHub | No CHANGES_REQUESTED reviews. True = reviewer approved without requesting changes. |
 | CI Success Rate | float | GitHub | Fraction of commits on the PR that passed all CI check suites. Per-commit CI status (`ci_passed`) is stored on the `commits` table, fetched via `list_check_suites` per commit SHA. |
-| Test Coverage | bool/nil | GitHub | Whether the PR includes test files (pattern-matched by filename). Nil when PR only touches non-testable files (docs, CI, config). |
-| Diff Churn | int | GitHub | Lines added across all commits minus lines in the final diff. Higher = more rework. Per-commit stats fetched individually via GitHub API. |
 | Line Revisit Rate | float | GitHub | Files in this PR that were also changed in other PRs finalized within the last 7 days. Higher = unstable areas. |
 | Review Cycle Time | int | GitHub Webhooks | Minutes from PR open to first human review. Lower = faster feedback loop. |
 
@@ -26,7 +25,6 @@ Measures how efficiently the human directed the agent.
 
 | Metric | Type | Source | What it measures |
 |--------|------|--------|------------------|
-| Messages per PR | int | Sessions | Total human messages across correlated sessions (from `message_count`, which counts human messages only). |
 | Iteration Depth | int | Sessions | Number of human turns (back-and-forth cycles). |
 | Token Cost per PR | float | Sessions | Dollar cost of all tokens used, computed with model-specific pricing. |
 | Cache Hit Rate | float | Sessions | Ratio of cache-read tokens to total input tokens. Higher = better cache utilization. |
@@ -37,22 +35,9 @@ Measures how the agent performed during the coding session.
 
 | Metric | Type | Source | What it measures |
 |--------|------|--------|------------------|
-| Self-Correction Rate | float | Sessions | `bash_successes / (bash_successes + bash_errors)` — higher = more commands succeed without human help. |
-| Context Efficiency | float | Sessions | `files_modified / files_read` — higher = more focused, lower = more exploration. |
-| Error Recovery Attempts | int | Sessions | Total Bash errors across correlated sessions. Lower = fewer recovery cycles needed. |
 | Sidechain Rate | float | Sessions | Fraction of messages on sidechain branches (backtracking). Lower = fewer dead-end paths. |
 | Re-Read Rate | float | Sessions | `total_file_reads / unique_files_read` — 1.0 = no re-reads, higher = redundant reading. |
 | Autonomy Score | float | Sessions | `assistant_messages / human_messages` — higher = agent works more independently. |
-
-### Planning Effectiveness
-
-Measures how well plans translated into implementation.
-
-| Metric | Type | Source | What it measures |
-|--------|------|--------|------------------|
-| Plan Coverage | float | Sessions + GitHub | Fraction of actual changed files that were in the plan. Planned files extracted from plan documents by CLI and compared against PR files from GitHub API. |
-| Plan Deviation | float | Sessions + GitHub | Fraction of planned files that were actually changed. 1.0 = every planned file was touched. |
-| Scope Creep | bool | Sessions + GitHub | True when >50% of changed files were not in the plan. |
 
 ### Repo-Level
 
@@ -66,12 +51,11 @@ All metric computation happens server-side in the Rails application.
 
 - **GitHub-sourced metrics** (output quality) are computed from webhook data and GitHub API at PR finalization (merge/close)
 - **Session-dependent metrics** (prompt efficiency, agent behavior) are computed after session data is pushed from the CLI and correlated to PRs
-- **Plan analysis metrics** (planning effectiveness) are computed after session-PR correlation, comparing planned files (from CLI push) against PR files (from GitHub API)
 
 Server-side computation is split between two services:
 
-- **`MetricsComputer`** — Computes `ci_success_rate` (from per-commit `ci_passed` values on the `commits` table), `diff_churn_lines` (per-commit stats via individual commit API), `has_tests` (with non-testable file filtering), `line_revisit_rate` (7-day lookback), session-derived metrics (`self_correction_rate`, `context_efficiency`, `error_recovery_attempts`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`), and plan metrics (`plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`)
-- **`SessionPrCorrelationService`** — Aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth` from correlated session data, calls MetricsComputer to compute all derived metrics, and triggers plan metrics computation
+- **`MetricsComputer`** — Computes `ci_success_rate` (from per-commit `ci_passed` values on the `commits` table), `line_revisit_rate` (7-day lookback), and session-derived metrics (`cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`)
+- **`SessionPrCorrelationService`** — Aggregates `token_cost_usd` and `iteration_depth` from correlated session data, and calls MetricsComputer to compute all derived metrics
 
 The Go `cli/internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
 
@@ -95,8 +79,8 @@ PR opened
 
 ### Scoped write protection
 - **CI-derived** (updatable after finalization): `ci_success_rate` — computed from per-commit `ci_passed` values. Updated via `update_column` by `CiCompleted` webhook handler to handle late-arriving check suite results.
-- **GitHub-derived** (locked after finalization): `post_open_commits`, `first_pass_accepted`, `diff_churn_lines`, `has_tests`, `line_revisit_rate`, `first_review_at`, `review_cycle_time_minutes`
-- **Session-derived** (always updatable via `update_session_metrics!`): `messages_per_pr`, `iteration_depth`, `token_cost_usd`, `self_correction_rate`, `context_efficiency`, `error_recovery_attempts`, `plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`
+- **GitHub-derived** (locked after finalization): `post_open_commits`, `line_revisit_rate`, `first_review_at`, `review_cycle_time_minutes`
+- **Session-derived** (always updatable via `update_session_metrics!`): `iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`
 
 ### Where is finalization enforced?
 - **Rails**: `PrMetrics` model has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`
@@ -112,7 +96,7 @@ PR opened
 ## Metric Storage
 
 ### PostgreSQL (`pr_metrics` table)
-One row per PR. All 16 metrics as columns plus `metrics_finalized` (bool) and `finalized_at` (timestamp).
+One row per PR. All 10 PR-level metrics as columns plus `metrics_finalized` (bool) and `finalized_at` (timestamp).
 
 ### Repo-level metrics (`repo_metrics` table)
 Aggregated by period. Contains total_sessions, total_tokens, total_cost_usd, unmerged_tokens, unmerged_cost_usd, unmerged_rate.

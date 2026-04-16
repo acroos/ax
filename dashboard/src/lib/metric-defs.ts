@@ -7,7 +7,7 @@ export interface MetricDefEntry {
   docSlug: string;
   field: keyof PRMetrics;
   label: string;
-  category: "Output Quality" | "Prompt Efficiency" | "Agent Behavior" | "Planning Effectiveness";
+  category: "Output Quality" | "Prompt Efficiency" | "Agent Behavior";
   valueType: MetricValueType;
   unit?: string;
   lowerIsBetter: boolean;
@@ -29,17 +29,6 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     goodRange: "Good: < 2",
   },
   {
-    slug: "first-pass-acceptance",
-    docSlug: "first-pass-acceptance-rate",
-    field: "first_pass_accepted",
-    label: "First-Pass Acceptance",
-    category: "Output Quality",
-    valueType: "boolean",
-    lowerIsBetter: false,
-    tooltip: "PRs merged without any changes-requested reviews. Higher means reviewers approve on first look.",
-    goodRange: "Good: > 80%",
-  },
-  {
     slug: "ci-success-rate",
     docSlug: "ci-success-rate",
     field: "ci_success_rate",
@@ -51,29 +40,6 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     goodRange: "Good: > 90%",
   },
   {
-    slug: "test-coverage",
-    docSlug: "test-coverage-of-generated-code",
-    field: "has_tests",
-    label: "Test Coverage",
-    category: "Output Quality",
-    valueType: "boolean",
-    lowerIsBetter: false,
-    tooltip: "Whether the PR includes changes to test files. Detected by filename patterns.",
-    goodRange: "Good: > 70%",
-  },
-  {
-    slug: "diff-churn",
-    docSlug: "diff-churn",
-    field: "diff_churn_lines",
-    label: "Diff Churn",
-    category: "Output Quality",
-    valueType: "int",
-    unit: "lines",
-    lowerIsBetter: true,
-    tooltip: "Lines added across all commits minus lines in the final diff. Higher means more rework happened.",
-    goodRange: "Good: < 50 lines",
-  },
-  {
     slug: "line-revisit-rate",
     docSlug: "line-revisit-rate",
     field: "line_revisit_rate",
@@ -83,6 +49,18 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     lowerIsBetter: true,
     tooltip: "Files in this PR that were also changed in other recent PRs. Higher means unstable areas are being touched.",
     goodRange: "Good: < 0.2",
+  },
+  {
+    slug: "review-cycle-time",
+    docSlug: "review-cycle-time",
+    field: "review_cycle_time_minutes",
+    label: "Review Cycle Time",
+    category: "Output Quality",
+    valueType: "int",
+    unit: "min",
+    lowerIsBetter: true,
+    tooltip: "Minutes from PR open to first human review. Lower means a faster feedback loop.",
+    goodRange: "Good: < 120 min",
   },
 
   // Prompt Efficiency
@@ -96,17 +74,6 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     lowerIsBetter: false,
     tooltip: "Ratio of cache-read tokens to total input tokens. Higher means better prompt cache utilization and lower effective cost.",
     goodRange: "Good: > 70%",
-  },
-  {
-    slug: "messages-per-pr",
-    docSlug: "messages-per-pr",
-    field: "messages_per_pr",
-    label: "Messages / PR",
-    category: "Prompt Efficiency",
-    valueType: "int",
-    lowerIsBetter: true,
-    tooltip: "Total human + assistant messages across all sessions correlated with this PR.",
-    goodRange: "Good: < 30",
   },
   {
     slug: "iteration-depth",
@@ -133,40 +100,6 @@ export const METRIC_DEFS: MetricDefEntry[] = [
   },
 
   // Agent Behavior
-  {
-    slug: "self-correction-rate",
-    docSlug: "self-correction-rate",
-    field: "self_correction_rate",
-    label: "Self-Correction",
-    category: "Agent Behavior",
-    valueType: "ratio",
-    lowerIsBetter: false,
-    tooltip: "Ratio of agent-initiated error recoveries to total errors. Higher means the agent fixes its own mistakes.",
-    goodRange: "Good: > 60%",
-  },
-  {
-    slug: "context-efficiency",
-    docSlug: "context-efficiency",
-    field: "context_efficiency",
-    label: "Context Efficiency",
-    category: "Agent Behavior",
-    valueType: "float",
-    lowerIsBetter: false,
-    tooltip: "Ratio of files modified to files read. Higher means the agent stays focused on relevant files.",
-    goodRange: "Good: > 0.3",
-  },
-  {
-    slug: "error-recovery",
-    docSlug: "error-recovery-efficiency",
-    field: "error_recovery_attempts",
-    label: "Error Recovery",
-    category: "Agent Behavior",
-    valueType: "int",
-    lowerIsBetter: true,
-    tooltip: "Number of times the agent encountered errors during tool execution. Fewer errors means smoother execution.",
-    goodRange: "Good: < 5",
-  },
-
   {
     slug: "sidechain-rate",
     docSlug: "sidechain-rate",
@@ -199,41 +132,6 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     lowerIsBetter: false,
     tooltip: "Ratio of assistant messages to human messages. Higher means the agent works more independently with fewer interventions.",
     goodRange: "Good: > 3.0",
-  },
-
-  // Planning Effectiveness
-  {
-    slug: "plan-coverage",
-    docSlug: "plan-to-implementation-coverage",
-    field: "plan_coverage_score",
-    label: "Plan Coverage",
-    category: "Planning Effectiveness",
-    valueType: "ratio",
-    lowerIsBetter: false,
-    tooltip: "Fraction of planned files that were actually changed. Higher means the plan was followed through.",
-    goodRange: "Good: > 80%",
-  },
-  {
-    slug: "plan-deviation",
-    docSlug: "plan-deviation-score",
-    field: "plan_deviation_score",
-    label: "Plan Deviation",
-    category: "Planning Effectiveness",
-    valueType: "ratio",
-    lowerIsBetter: true,
-    tooltip: "Fraction of changed files that were not in the plan. Lower means work stayed on track.",
-    goodRange: "Good: < 20%",
-  },
-  {
-    slug: "scope-creep",
-    docSlug: "scope-creep-detection",
-    field: "scope_creep_detected",
-    label: "Scope Creep",
-    category: "Planning Effectiveness",
-    valueType: "boolean",
-    lowerIsBetter: true,
-    tooltip: "Whether significant unplanned work was detected. Less scope creep means better planning.",
-    goodRange: "Good: < 20%",
   },
 ];
 

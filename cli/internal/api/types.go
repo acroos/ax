@@ -53,26 +53,23 @@ type CommitData struct {
 
 // SessionData represents a Claude Code session in the push payload.
 type SessionData struct {
-	ID                       string   `json:"id"`
-	Branch                   string   `json:"branch,omitempty"`
-	StartedAt                int64    `json:"started_at,omitempty"`
-	EndedAt                  int64    `json:"ended_at,omitempty"`
-	MessageCount             int      `json:"message_count"`
-	TurnCount                int      `json:"turn_count"`
-	InputTokens              int      `json:"input_tokens"`
-	OutputTokens             int      `json:"output_tokens"`
-	CacheCreationInputTokens int      `json:"cache_creation_input_tokens"`
-	CacheReadInputTokens     int      `json:"cache_read_input_tokens"`
-	TotalCostUSD             float64  `json:"total_cost_usd"`
-	PrimaryModel             string   `json:"primary_model,omitempty"`
-	BashErrors               int      `json:"bash_errors"`
-	BashSuccesses            int      `json:"bash_successes"`
-	FilesReadCount           int      `json:"files_read_count"`
-	FilesModifiedCount       int      `json:"files_modified_count"`
-	PlannedFiles             []string `json:"planned_files,omitempty"`
-	AssistantMessageCount    int      `json:"assistant_message_count"`
-	SidechainMessages        int      `json:"sidechain_messages"`
-	TotalFileReads           int      `json:"total_file_reads"`
+	ID                       string  `json:"id"`
+	Branch                   string  `json:"branch,omitempty"`
+	StartedAt                int64   `json:"started_at,omitempty"`
+	EndedAt                  int64   `json:"ended_at,omitempty"`
+	MessageCount             int     `json:"message_count"`
+	TurnCount                int     `json:"turn_count"`
+	InputTokens              int     `json:"input_tokens"`
+	OutputTokens             int     `json:"output_tokens"`
+	CacheCreationInputTokens int     `json:"cache_creation_input_tokens"`
+	CacheReadInputTokens     int     `json:"cache_read_input_tokens"`
+	TotalCostUSD             float64 `json:"total_cost_usd"`
+	PrimaryModel             string  `json:"primary_model,omitempty"`
+	FilesReadCount           int     `json:"files_read_count"`
+	FilesModifiedCount       int     `json:"files_modified_count"`
+	AssistantMessageCount    int     `json:"assistant_message_count"`
+	SidechainMessages        int     `json:"sidechain_messages"`
+	TotalFileReads           int     `json:"total_file_reads"`
 }
 
 // SessionPRData represents a session-to-PR correlation.
@@ -84,24 +81,14 @@ type SessionPRData struct {
 
 // PRMetricsData represents computed metrics for a PR.
 type PRMetricsData struct {
-	PRNumber              int      `json:"pr_number"`
-	MessagesPerPR         *int     `json:"messages_per_pr,omitempty"`
-	IterationDepth        *int     `json:"iteration_depth,omitempty"`
-	PostOpenCommits       *int     `json:"post_open_commits,omitempty"`
-	FirstPassAccepted     *int     `json:"first_pass_accepted,omitempty"`
-	CISuccessRate         *float64 `json:"ci_success_rate,omitempty"`
-	DiffChurnLines        *int     `json:"diff_churn_lines,omitempty"`
-	HasTests              *int     `json:"has_tests,omitempty"`
-	LineRevisitRate       *float64 `json:"line_revisit_rate,omitempty"`
-	SelfCorrectionRate    *float64 `json:"self_correction_rate,omitempty"`
-	ContextEfficiency     *float64 `json:"context_efficiency,omitempty"`
-	ErrorRecoveryAttempts *int     `json:"error_recovery_attempts,omitempty"`
-	TokenCostUSD          *float64 `json:"token_cost_usd,omitempty"`
-	PlanCoverageScore     *float64 `json:"plan_coverage_score,omitempty"`
-	PlanDeviationScore    *float64 `json:"plan_deviation_score,omitempty"`
-	ScopeCreepDetected    *int     `json:"scope_creep_detected,omitempty"`
-	MetricsFinalized      int      `json:"metrics_finalized"`
-	FinalizedAt           string   `json:"finalized_at,omitempty"`
+	PRNumber         int      `json:"pr_number"`
+	IterationDepth   *int     `json:"iteration_depth,omitempty"`
+	PostOpenCommits  *int     `json:"post_open_commits,omitempty"`
+	CISuccessRate    *float64 `json:"ci_success_rate,omitempty"`
+	LineRevisitRate  *float64 `json:"line_revisit_rate,omitempty"`
+	TokenCostUSD     *float64 `json:"token_cost_usd,omitempty"`
+	MetricsFinalized int      `json:"metrics_finalized"`
+	FinalizedAt      string   `json:"finalized_at,omitempty"`
 }
 
 // RepoMetricsData represents aggregate metrics for a repo.

@@ -7,7 +7,7 @@ module Backfillable
     # Always run PrOpened to upsert the PR record
     WebhookHandlers::PrOpened.new(pr_data, repo_data).call
 
-    # Backfill reviews BEFORE finalization so first_pass_accepted is set
+    # Backfill reviews so review cycle time is captured before finalization
     backfill_reviews(pr_data, repo_data)
 
     # PrMerged/PrClosed fetch file data, compute metrics, and finalize

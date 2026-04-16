@@ -5,7 +5,7 @@ import type { PRWithMetrics } from "@/lib/db";
 import { Skeleton, SkeletonTableBody } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 
-const COLUMN_COUNT = 13;
+const COLUMN_COUNT = 10;
 
 function StateBadge({ state }: { state: string | null }) {
   const s = state?.toLowerCase() ?? "unknown";
@@ -22,14 +22,6 @@ function StateBadge({ state }: { state: string | null }) {
     >
       {s}
     </span>
-  );
-}
-
-function CheckMark({ value }: { value: boolean }) {
-  return value ? (
-    <span className="text-green text-[13px]">&#10003;</span>
-  ) : (
-    <span className="text-text-tertiary text-[13px]">&#10007;</span>
   );
 }
 
@@ -80,24 +72,8 @@ export default async function OrgPRsPage({
                 <span className="tooltip-content">Commits after PR opened</span>
               </th>
               <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
-                Churn
-                <span className="tooltip-content">Lines written then rewritten</span>
-              </th>
-              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
-                1st Pass
-                <span className="tooltip-content">Merged without change requests</span>
-              </th>
-              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
                 CI
                 <span className="tooltip-content">CI checks passing rate</span>
-              </th>
-              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
-                Tests
-                <span className="tooltip-content">PR includes test file changes</span>
-              </th>
-              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
-                Msgs
-                <span className="tooltip-content">Human messages in session</span>
               </th>
               <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
                 Depth
@@ -215,36 +191,16 @@ async function PRTableBody({ promise }: { promise: Promise<PRWithMetrics[]> }) {
             {pr.metrics?.post_open_commits ?? "\u2014"}
           </td>
           <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-            {pr.metrics?.diff_churn_lines ?? "\u2014"}
-          </td>
-          <td className="px-3 py-3 text-center">
-            {pr.metrics?.first_pass_accepted !== null ? (
-              <CheckMark value={pr.metrics!.first_pass_accepted === true} />
-            ) : (
-              <span className="text-text-tertiary text-[13px]">&#8212;</span>
-            )}
-          </td>
-          <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-            {pr.metrics?.ci_success_rate !== null
-              ? `${Math.round(pr.metrics!.ci_success_rate * 100)}%`
+            {pr.metrics?.ci_success_rate !== null && pr.metrics?.ci_success_rate !== undefined
+              ? `${Math.round(pr.metrics.ci_success_rate * 100)}%`
               : "\u2014"}
-          </td>
-          <td className="px-3 py-3 text-center">
-            {pr.metrics?.has_tests !== null ? (
-              <CheckMark value={pr.metrics!.has_tests === true} />
-            ) : (
-              <span className="text-text-tertiary text-[13px]">&#8212;</span>
-            )}
-          </td>
-          <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-            {pr.metrics?.messages_per_pr ?? "\u2014"}
           </td>
           <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
             {pr.metrics?.iteration_depth ?? "\u2014"}
           </td>
           <td className="px-4 py-3 text-right font-mono text-[13px] text-text-secondary">
-            {pr.metrics?.token_cost_usd !== null
-              ? `$${pr.metrics!.token_cost_usd.toFixed(2)}`
+            {pr.metrics?.token_cost_usd !== null && pr.metrics?.token_cost_usd !== undefined
+              ? `$${pr.metrics.token_cost_usd.toFixed(2)}`
               : "\u2014"}
           </td>
           <td className="px-3 py-3 text-center">

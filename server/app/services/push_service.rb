@@ -119,14 +119,11 @@ class PushService
         cache_read_input_tokens: session_data[:cache_read_input_tokens] || 0,
         total_cost_usd: session_data[:total_cost_usd],
         primary_model: session_data[:primary_model],
-        bash_errors: session_data[:bash_errors] || 0,
-        bash_successes: session_data[:bash_successes] || 0,
         files_read_count: session_data[:files_read_count] || 0,
         files_modified_count: session_data[:files_modified_count] || 0,
         assistant_message_count: session_data[:assistant_message_count] || 0,
         sidechain_messages: session_data[:sidechain_messages] || 0,
-        total_file_reads: session_data[:total_file_reads] || 0,
-        planned_files: Array(session_data[:planned_files]).to_json.then { |j| j == "[]" ? nil : j }
+        total_file_reads: session_data[:total_file_reads] || 0
       )
       count += 1
     end
@@ -184,21 +181,11 @@ class PushService
       end
 
       metrics.update!(
-        messages_per_pr: metrics_data[:messages_per_pr],
         iteration_depth: metrics_data[:iteration_depth],
         post_open_commits: metrics_data[:post_open_commits],
-        first_pass_accepted: to_bool(metrics_data[:first_pass_accepted]),
         ci_success_rate: metrics_data[:ci_success_rate],
-        diff_churn_lines: metrics_data[:diff_churn_lines],
-        has_tests: to_bool(metrics_data[:has_tests]),
         line_revisit_rate: metrics_data[:line_revisit_rate],
-        self_correction_rate: metrics_data[:self_correction_rate],
-        context_efficiency: metrics_data[:context_efficiency],
-        error_recovery_attempts: metrics_data[:error_recovery_attempts],
         token_cost_usd: metrics_data[:token_cost_usd],
-        plan_coverage_score: metrics_data[:plan_coverage_score],
-        plan_deviation_score: metrics_data[:plan_deviation_score],
-        scope_creep_detected: to_bool(metrics_data[:scope_creep_detected]),
         metrics_finalized: to_bool(metrics_data[:metrics_finalized]),
         finalized_at: metrics_data[:finalized_at]
       )

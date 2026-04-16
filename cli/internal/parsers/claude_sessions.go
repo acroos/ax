@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/austinroos/ax/internal/pricing"
@@ -45,14 +44,10 @@ type ParsedSession struct {
 	ToolCalls     map[string]int // tool name → call count
 	FilesRead     []string       // unique files from Read/Glob tool calls
 	FilesModified []string       // unique files from Edit/Write tool calls
-	BashCommands  []string       // all Bash command strings
 
 	// Extracted signals
-	PRURLs        []string // PR URLs found in gh pr create output
-	CommitSHAs    []string // commit SHAs from git commit output
-	PlanFiles     []string // plan files written/edited during session
-	BashErrors    int      // Bash commands that failed (non-zero exit)
-	BashSuccesses int      // Bash commands that succeeded
+	PRURLs     []string // PR URLs found in gh pr create output
+	CommitSHAs []string // commit SHAs from git commit output
 
 	// New metrics
 	SidechainMessages int // messages on sidechain branches
@@ -209,7 +204,6 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 	seenMessageIDs := make(map[string]bool) // deduplicate by message ID
 	filesReadSet := make(map[string]bool)
 	filesModifiedSet := make(map[string]bool)
-	planFilesSet := make(map[string]bool)
 	seenPRURLs := make(map[string]bool)
 	seenCommitSHAs := make(map[string]bool)
 
@@ -308,7 +302,7 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 			}
 
 			// Parse tool_use blocks from content
-			parseToolUseBlocks(mc.Content, session, bashToolIDs, filesReadSet, filesModifiedSet, planFilesSet)
+			parseToolUseBlocks(mc.Content, session, bashToolIDs, filesReadSet, filesModifiedSet)
 		}
 	}
 
@@ -327,9 +321,6 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 	}
 	for f := range filesModifiedSet {
 		session.FilesModified = append(session.FilesModified, f)
-	}
-	for f := range planFilesSet {
-		session.PlanFiles = append(session.PlanFiles, f)
 	}
 	for url := range seenPRURLs {
 		session.PRURLs = append(session.PRURLs, url)
@@ -362,7 +353,7 @@ func isHumanMessage(content string) bool {
 
 // parseToolUseBlocks extracts tool usage data from assistant message content.
 func parseToolUseBlocks(content json.RawMessage, session *ParsedSession,
-	bashToolIDs map[string]string, filesReadSet, filesModifiedSet, planFilesSet map[string]bool) {
+	bashToolIDs map[string]string, filesReadSet, filesModifiedSet map[string]bool) {
 
 	var blocks []toolUseBlock
 	if err := json.Unmarshal(content, &blocks); err != nil {
@@ -379,7 +370,6 @@ func parseToolUseBlocks(content json.RawMessage, session *ParsedSession,
 		case "Bash":
 			var inp bashInput
 			if json.Unmarshal(block.Input, &inp) == nil && inp.Command != "" {
-				session.BashCommands = append(session.BashCommands, inp.Command)
 				bashToolIDs[block.ID] = inp.Command
 			}
 		case "Read":
@@ -387,9 +377,6 @@ func parseToolUseBlocks(content json.RawMessage, session *ParsedSession,
 			if json.Unmarshal(block.Input, &inp) == nil && inp.FilePath != "" {
 				filesReadSet[inp.FilePath] = true
 				session.TotalFileReads++
-				if isPlanFile(inp.FilePath) {
-					planFilesSet[inp.FilePath] = true
-				}
 			}
 		case "Glob":
 			// Glob reads files but we don't track individual results
@@ -398,17 +385,11 @@ func parseToolUseBlocks(content json.RawMessage, session *ParsedSession,
 			var inp editInput
 			if json.Unmarshal(block.Input, &inp) == nil && inp.FilePath != "" {
 				filesModifiedSet[inp.FilePath] = true
-				if isPlanFile(inp.FilePath) {
-					planFilesSet[inp.FilePath] = true
-				}
 			}
 		case "Write":
 			var inp writeInput
 			if json.Unmarshal(block.Input, &inp) == nil && inp.FilePath != "" {
 				filesModifiedSet[inp.FilePath] = true
-				if isPlanFile(inp.FilePath) {
-					planFilesSet[inp.FilePath] = true
-				}
 			}
 		}
 	}
@@ -430,14 +411,8 @@ func parseToolResults(content json.RawMessage, bashToolIDs map[string]string,
 
 		cmd, isBash := bashToolIDs[block.ToolUseID]
 		if isBash {
-			if block.IsError {
-				session.BashErrors++
-			} else {
-				session.BashSuccesses++
-			}
-
 			// Check for PR URL in gh pr create output
-			if strings.Contains(cmd, "gh pr create") || strings.Contains(cmd, "gh pr create") {
+			if strings.Contains(cmd, "gh pr create") {
 				extractPRURLs(block.Content, seenPRURLs)
 			}
 
@@ -518,61 +493,6 @@ func parseTimestamp(ts string) int64 {
 
 	// Rough calculation - doesn't need to be exact
 	return int64(((((year-1970)*365+month*30+day)*24+hour)*60+min)*60+sec)*1000 + int64(ms)
-}
-
-// isPlanFile returns true if a file path looks like a plan file.
-// Plans are typically in plans/ directories or .claude/plans/.
-func isPlanFile(path string) bool {
-	lower := strings.ToLower(path)
-	return strings.Contains(lower, "/plans/") || strings.Contains(lower, "/.claude/plans/")
-}
-
-// planFilePathRegex matches backtick-wrapped strings that look like file paths.
-// e.g. `internal/db/db.go`, `src/components/App.tsx`
-var planFilePathRegex = regexp.MustCompile("`([a-zA-Z0-9_./-]+\\.[a-zA-Z0-9]+)`")
-
-// ExtractPlannedFiles reads plan files from disk and extracts file path references.
-// Returns a deduplicated list of file paths found in the plan content.
-func ExtractPlannedFiles(planFiles []string) []string {
-	seen := make(map[string]bool)
-	var result []string
-
-	for _, planPath := range planFiles {
-		content, err := os.ReadFile(planPath)
-		if err != nil {
-			continue
-		}
-
-		matches := planFilePathRegex.FindAllStringSubmatch(string(content), -1)
-		for _, match := range matches {
-			path := match[1]
-			// Skip obvious non-file references
-			if strings.Contains(path, "://") {
-				continue
-			}
-			// Skip dotfiles without directory component (e.g. ".env")
-			if strings.HasPrefix(path, ".") && !strings.Contains(path, "/") {
-				continue
-			}
-			// Skip version-like strings (e.g. "1.2.3", "0.10")
-			if looksLikeVersion(path) {
-				continue
-			}
-			if !seen[path] {
-				seen[path] = true
-				result = append(result, path)
-			}
-		}
-	}
-
-	return result
-}
-
-// looksLikeVersion returns true for strings like "1.2.3", "0.10", "v2.0"
-var versionRegex = regexp.MustCompile(`^v?\d+(\.\d+)+$`)
-
-func looksLikeVersion(s string) bool {
-	return versionRegex.MatchString(s)
 }
 
 func atoi(s string) int {

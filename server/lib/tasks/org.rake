@@ -14,7 +14,7 @@ namespace :org do
     end
 
     puts "This will delete ALL data for '#{org.name}' (#{slug}):"
-    puts "  - Repos, PRs, commits, sessions, metrics, PR files, plan analyses"
+    puts "  - Repos, PRs, commits, sessions, metrics, PR files"
     puts "  - GitHub installations and watched repos"
     puts "  - Invites"
     puts "  - The organization, its memberships, and the record itself will be KEPT"
@@ -32,9 +32,6 @@ namespace :org do
 
     ActiveRecord::Base.transaction do
       # Leaf tables first
-      deleted = PlanAnalysis.where(pr_id: pr_ids).delete_all
-      puts "  Deleted #{deleted} plan analyses"
-
       deleted = PrFile.where(pr_id: pr_ids).delete_all
       puts "  Deleted #{deleted} PR files"
 

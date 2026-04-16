@@ -1,6 +1,6 @@
 # AX Wiki
 
-AX measures developer experience for agentic coding workflows. It analyzes git history, GitHub PR data, and Claude Code session data to produce 16 metrics across 4 categories.
+AX measures developer experience for agentic coding workflows. It analyzes git history, GitHub PR data, and Claude Code session data to produce 10 PR-level metrics across 3 categories, plus one repo-level metric.
 
 AX operates as a managed service — the CLI pushes session data to the Rails API, which computes metrics server-side. The dashboard reads from the API.
 
@@ -16,7 +16,7 @@ AX operates as a managed service — the CLI pushes session data to the Rails AP
 - **[Dashboard](dashboard.md)** — Next.js app: routes, data layer, components, and styling
 
 ### Concepts
-- **[Metrics](metrics.md)** — The 16 metrics, how they're computed, and the finalization lifecycle
+- **[Metrics](metrics.md)** — The metrics, how they're computed, and the finalization lifecycle
 - **[Data Model](data-model.md)** — PostgreSQL schema, tables, and key relationships
 - **[Authentication](authentication.md)** — CLI API keys, GitHub OAuth, session tokens, and cross-origin handoff
 - **[Conventions](conventions.md)** — Coding patterns, file organization, testing, and contribution norms

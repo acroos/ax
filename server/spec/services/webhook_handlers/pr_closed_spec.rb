@@ -62,20 +62,11 @@ RSpec.describe WebhookHandlers::PrClosed do
     expect(metrics.finalized_at).to be_present
   end
 
-  it "fetches file data and computes metrics" do
+  it "fetches file data and records PR files" do
     handler = described_class.new(pr_data, repo_data)
     handler.call
 
     expect(PrFile.where(pr: pr).count).to eq(1)
-    expect(metrics.reload.has_tests).to be false
-    expect(metrics.diff_churn_lines).to eq(0) # 10 - 10 = 0
-  end
-
-  it "defaults first_pass_accepted to true when no reviews exist" do
-    handler = described_class.new(pr_data, repo_data)
-    handler.call
-
-    expect(metrics.reload.first_pass_accepted).to be true
   end
 
   it "skips already finalized PRs" do

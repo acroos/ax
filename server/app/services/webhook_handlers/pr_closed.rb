@@ -28,7 +28,6 @@ module WebhookHandlers
           return if metrics.finalized?
 
           attrs = computed.compact
-          attrs[:first_pass_accepted] = true if metrics.first_pass_accepted.nil?
           attrs[:metrics_finalized] = true
           attrs[:finalized_at] = metrics.finalized_at || Time.current
           metrics.update!(attrs)

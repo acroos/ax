@@ -19,8 +19,8 @@ export default async function LandingPage() {
             Are your AI coding workflows actually working?
           </h1>
           <p className="mt-5 text-[17px] text-text-secondary leading-relaxed max-w-[560px]">
-            AX measures what matters — cost per PR, first-pass acceptance,
-            self-correction rate, and 13 more metrics that tell you if your
+            AX measures what matters — cost per PR, iteration depth,
+            CI success, and more metrics that tell you if your
             agentic coding is getting better.
           </p>
           <div className="mt-8 flex items-center gap-4">
@@ -49,7 +49,7 @@ export default async function LandingPage() {
           <div className="rounded-xl border border-border-subtle overflow-hidden shadow-2xl shadow-black/40">
             <img
               src="/dashboard-preview.png"
-              alt="AX dashboard showing metric cards across Output Quality, Prompt Efficiency, Agent Behavior, and Planning Effectiveness categories"
+              alt="AX dashboard showing metric cards across Output Quality, Prompt Efficiency, and Agent Behavior categories"
               className="w-full"
             />
           </div>
@@ -60,32 +60,27 @@ export default async function LandingPage() {
       <section className="border-t border-border-subtle">
         <div className="max-w-[1100px] mx-auto px-6 py-20">
           <h2 className="text-[13px] font-medium text-accent uppercase tracking-wider mb-3">
-            16 metrics across 4 categories
+            10 metrics across 3 categories
           </h2>
           <p className="text-[22px] font-semibold text-text-primary mb-12 max-w-[480px] leading-snug">
             Understand every dimension of your AI coding workflow
           </p>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <MetricCategory
               title="Output Quality"
-              description="Is the code your agent produces actually good? First-pass acceptance rate, CI success, diff churn, and more."
-              metrics={["First-Pass Acceptance Rate", "Post-Open Commits", "CI Success Rate", "Diff Churn"]}
+              description="Is the code your agent produces actually good? CI success, post-open commits, review cycle time, and line revisit rate."
+              metrics={["Post-Open Commits", "CI Success Rate", "Line Revisit Rate", "Review Cycle Time"]}
             />
             <MetricCategory
               title="Prompt Efficiency"
-              description="Are you getting results with fewer interactions and less cost? Token spend, message count, iteration depth."
-              metrics={["Token Cost per PR", "Messages per PR", "Iteration Depth", "Unmerged Token Spend"]}
+              description="Are you getting results with fewer interactions and less cost? Token spend, iteration depth, and cache utilization."
+              metrics={["Iteration Depth", "Token Cost per PR", "Cache Hit Rate", "Unmerged Token Spend"]}
             />
             <MetricCategory
               title="Agent Behavior"
-              description="How well is the agent navigating problems? Self-correction patterns, context usage, error recovery."
-              metrics={["Self-Correction Rate", "Context Efficiency", "Error Recovery Efficiency"]}
-            />
-            <MetricCategory
-              title="Planning Effectiveness"
-              description="Does planning up front actually help? Coverage, deviation, and scope creep detection."
-              metrics={["Plan-to-Implementation Coverage", "Plan Deviation Score", "Scope Creep Detection"]}
+              description="How well is the agent navigating problems? Backtracking, redundant reads, and autonomy."
+              metrics={["Sidechain Rate", "Re-Read Rate", "Autonomy Score"]}
             />
           </div>
         </div>

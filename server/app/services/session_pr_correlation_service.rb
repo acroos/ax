@@ -78,7 +78,6 @@ class SessionPrCorrelationService
       computed = MetricsComputer.new(pr).call
 
       session_attrs = {
-        messages_per_pr: linked_sessions.sum(:message_count),
         token_cost_usd: linked_sessions.sum(:total_cost_usd),
         iteration_depth: linked_sessions.maximum(:turn_count),
         cache_hit_rate: computed[:cache_hit_rate],
@@ -86,10 +85,6 @@ class SessionPrCorrelationService
         re_read_rate: computed[:re_read_rate],
         autonomy_score: computed[:autonomy_score]
       }
-
-      # Compute plan metrics if any session has planned files
-      plan_result = MetricsComputer.new(pr).compute_plan_metrics
-      session_attrs.merge!(plan_result) if plan_result
 
       # Use update_session_metrics! which bypasses the GitHub-field lock,
       # allowing session enrichment even on settled PRs.

@@ -78,8 +78,6 @@ Claude Code sessions. PK is `id` (UUID string from session file).
 | primary_model | text | Majority model used |
 | cwd | text | Working directory |
 | pushed_by | text | Who pushed this data |
-| bash_errors | integer | Bash commands that failed |
-| bash_successes | integer | Bash commands that succeeded |
 | files_read_count | integer | Unique files read |
 | files_modified_count | integer | Unique files modified |
 | assistant_message_count | integer | Assistant messages in session |
@@ -113,26 +111,18 @@ File paths changed in a PR. Fetched from the GitHub API at PR finalization (merg
 Unique on (pr_id, filename).
 
 ### pr_metrics
-All 20 computed metrics per PR. One row per PR.
+10 computed PR-level metrics. One row per PR.
 
 | Column | Type | Notes |
 |--------|------|-------|
 | pr_id | bigint | PK / unique FK → prs |
-| messages_per_pr | integer | |
-| iteration_depth | integer | |
+| iteration_depth | integer | Human-agent turn pairs |
 | post_open_commits | integer | |
-| first_pass_accepted | boolean | |
 | ci_success_rate | real | 0.0 to 1.0. Computed from per-commit `ci_passed` values on the `commits` table. Updatable after finalization (not in `GITHUB_DERIVED_FIELDS`). |
-| diff_churn_lines | integer | |
-| has_tests | boolean | |
 | line_revisit_rate | real | |
-| self_correction_rate | real | |
-| context_efficiency | real | |
-| error_recovery_attempts | integer | |
+| first_review_at | timestamp | First human review timestamp |
+| review_cycle_time_minutes | integer | Minutes from PR open to first human review |
 | token_cost_usd | real | |
-| plan_coverage_score | real | |
-| plan_deviation_score | real | |
-| scope_creep_detected | boolean | |
 | cache_hit_rate | real | Cache-read tokens / total input tokens |
 | sidechain_rate | real | Sidechain messages / total messages |
 | re_read_rate | real | Total file reads / unique files read |
@@ -277,7 +267,6 @@ Unique on (organization_id, user_id).
 
 ### Other
 - `waitlist_entries` — Early access management (email, status)
-- `plan_analyses` — Plan-to-implementation comparison data
 - `solid_queue_*`, `solid_cache_entries` — Framework tables (job queue, cache)
 
 ## Schema Management
