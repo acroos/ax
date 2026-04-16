@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { BillingCard } from "./billing-card";
 import { Skeleton } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Member {
   id: number;
@@ -37,20 +38,20 @@ export default async function BillingPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Billing</h1>
-        <p className="text-sm text-text-secondary mt-1">
+        <h1 className="text-xl font-semibold text-foreground">Billing</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Manage your plan for{" "}
-          <span className="font-mono text-accent">{slug}</span>
+          <span className="font-mono text-primary">{slug}</span>
         </p>
       </div>
 
       {query.billing === "success" && (
-        <div className="bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-3 text-sm text-green-400">
+        <div className="rounded-lg border border-success/25 bg-success/10 px-4 py-3 text-sm text-success">
           Your plan has been upgraded successfully.
         </div>
       )}
       {query.billing === "canceled" && (
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-3 text-sm text-yellow-400">
+        <div className="rounded-lg border border-notice/25 bg-notice/10 px-4 py-3 text-sm text-notice">
           Checkout was canceled. No changes were made.
         </div>
       )}
@@ -70,36 +71,40 @@ export default async function BillingPage({
 
 function BillingSkeleton() {
   return (
-    <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-20 rounded-full" />
-          <Skeleton className="h-5 w-40" />
-        </div>
-        <Skeleton className="h-9 w-32 rounded-md" />
-      </div>
-      <div className="space-y-4 pt-2">
-        {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="space-y-2">
-            <div className="flex justify-between">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-3 w-16" />
-            </div>
-            <Skeleton className="h-2 w-full rounded-full" />
+    <Card className="p-6">
+      <CardContent className="space-y-6 p-0">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-5 w-40" />
           </div>
-        ))}
-      </div>
-    </div>
+          <Skeleton className="h-9 w-32 rounded-md" />
+        </div>
+        <div className="space-y-4 pt-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="flex justify-between">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+              <Skeleton className="h-2 w-full rounded-full" />
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
 function BillingError() {
   return (
-    <div className="bg-surface-1 rounded-xl border border-border-subtle p-6">
-      <p className="text-sm text-text-secondary">
-        Unable to load billing information. Please try again.
-      </p>
-    </div>
+    <Card className="p-6">
+      <CardContent className="p-0">
+        <p className="text-sm text-muted-foreground">
+          Unable to load billing information. Please try again.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

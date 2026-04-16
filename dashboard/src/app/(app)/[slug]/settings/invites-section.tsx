@@ -1,7 +1,19 @@
 "use client";
 
 import { useState } from "react";
+
 import { CopyButton } from "@/components/copy-button";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface Invite {
   id: number;
@@ -79,95 +91,103 @@ export function InvitesSection({ invites: initialInvites, isAdmin, slug }: Props
   }
 
   return (
-    <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-4">
-      <h2 className="text-sm font-medium text-text-primary">Invites</h2>
+    <Card className="p-6">
+      <CardContent className="space-y-4 p-0">
+        <h2 className="text-sm font-medium text-foreground">Invites</h2>
 
-      {invites.length > 0 ? (
-        <div className="divide-y divide-border-subtle">
-          {invites.map((inv) => (
-            <div key={inv.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] text-text-primary font-medium">
-                  @{inv.github_username}
+        {invites.length > 0 ? (
+          <div className="divide-y divide-border">
+            {invites.map((inv) => (
+              <div key={inv.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] font-medium text-foreground">
+                    @{inv.github_username}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {inv.role} &middot; expires {timeUntil(inv.expires_at)}
+                  </div>
                 </div>
-                <div className="text-[11px] text-text-tertiary">
-                  {inv.role} &middot; expires {timeUntil(inv.expires_at)}
-                </div>
+
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRevoke(inv.id)}
+                    disabled={revoking === inv.id}
+                    className="text-attention hover:bg-attention/10 hover:text-attention"
+                  >
+                    {revoking === inv.id ? "..." : "Revoke"}
+                  </Button>
+                )}
               </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">No pending invites.</p>
+        )}
 
-              {isAdmin && (
-                <button
-                  onClick={() => handleRevoke(inv.id)}
-                  disabled={revoking === inv.id}
-                  className="px-2 py-1 rounded text-[11px] font-medium text-red hover:bg-red-muted transition-colors disabled:opacity-50"
-                >
-                  {revoking === inv.id ? "..." : "Revoke"}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-xs text-text-tertiary">No pending invites.</p>
-      )}
-
-      {isAdmin && (
-        <div className="border-t border-border-subtle pt-4 space-y-3">
-          <h3 className="text-xs font-medium text-text-secondary">Invite a member</h3>
-          <form onSubmit={handleCreate} className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="block text-[11px] text-text-tertiary mb-1">
-                GitHub username
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="octocat"
-                className="w-full bg-surface-0 border border-border-subtle rounded-md px-3 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-text-tertiary mb-1">
-                Role
-              </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="bg-surface-0 border border-border-subtle rounded-md px-2 py-1.5 text-xs text-text-primary"
+        {isAdmin && (
+          <div className="space-y-3 border-t border-border pt-4">
+            <h3 className="text-xs font-medium text-muted-foreground">
+              Invite a member
+            </h3>
+            <form onSubmit={handleCreate} className="flex items-end gap-2">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="invite-username" className="text-[11px] text-muted-foreground">
+                  GitHub username
+                </Label>
+                <Input
+                  id="invite-username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="octocat"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="invite-role" className="text-[11px] text-muted-foreground">
+                  Role
+                </Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger id="invite-role" size="sm" className="text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member" className="text-xs">member</SelectItem>
+                    <SelectItem value="admin" className="text-xs">admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={creating || !username.trim()}
               >
-                <option value="member">member</option>
-                <option value="admin">admin</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              disabled={creating || !username.trim()}
-              className="px-3 py-1.5 rounded-md bg-accent text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {creating ? "Sending..." : "Send Invite"}
-            </button>
-          </form>
+                {creating ? "Sending..." : "Send Invite"}
+              </Button>
+            </form>
 
-          {error && (
-            <p className="text-xs text-red">{error}</p>
-          )}
+            {error && (
+              <p className="text-xs text-destructive">{error}</p>
+            )}
 
-          {inviteLink && (
-            <div className="bg-surface-0 rounded-lg p-3 space-y-2">
-              <p className="text-xs text-text-secondary">
-                Invite created. Share this link:
-              </p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-xs text-text-primary font-mono break-all select-all">
-                  {inviteLink}
-                </code>
-                <CopyButton text={inviteLink} />
+            {inviteLink && (
+              <div className="space-y-2 rounded-lg bg-muted p-3">
+                <p className="text-xs text-muted-foreground">
+                  Invite created. Share this link:
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 select-all break-all font-mono text-xs text-foreground">
+                    {inviteLink}
+                  </code>
+                  <CopyButton text={inviteLink} />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -2,6 +2,18 @@
 
 import { useState } from "react";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 export interface Member {
   id: number;
   role: string;
@@ -24,15 +36,17 @@ interface Props {
 const ROLES = ["member", "admin", "owner"] as const;
 
 function RoleBadge({ role }: { role: string }) {
-  const colors: Record<string, string> = {
-    owner: "text-amber bg-amber-muted",
-    admin: "text-purple bg-purple-muted",
-    member: "text-text-secondary bg-surface-2",
+  const classes: Record<string, string> = {
+    owner: "bg-notice/15 text-notice border-notice/25",
+    admin: "bg-info/15 text-info border-info/25",
+    member: "bg-muted text-muted-foreground border-border",
   };
+  const variantClass =
+    classes[role] ?? "bg-muted text-muted-foreground border-border";
   return (
-    <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${colors[role] || colors.member}`}>
+    <Badge variant="outline" className={variantClass}>
       {role}
-    </span>
+    </Badge>
   );
 }
 
@@ -76,65 +90,76 @@ export function MembersSection({ members: initialMembers, currentUserId, isAdmin
   }
 
   return (
-    <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-4">
-      <h2 className="text-sm font-medium text-text-primary">Members</h2>
+    <Card className="p-6">
+      <CardContent className="space-y-4 p-0">
+        <h2 className="text-sm font-medium text-foreground">Members</h2>
 
-      <div className="divide-y divide-border-subtle">
-        {members.map((m) => {
-          const isSelf = m.user.id === currentUserId;
-          return (
-            <div key={m.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-              {m.user.avatar_url ? (
-                <img
-                  src={m.user.avatar_url}
-                  alt=""
-                  className="w-7 h-7 rounded-full flex-shrink-0"
-                />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-surface-3 flex-shrink-0" />
-              )}
+        <div className="divide-y divide-border">
+          {members.map((m) => {
+            const isSelf = m.user.id === currentUserId;
+            return (
+              <div key={m.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <Avatar size="sm">
+                  {m.user.avatar_url && (
+                    <AvatarImage src={m.user.avatar_url} alt="" />
+                  )}
+                  <AvatarFallback>
+                    {(m.user.display_name || m.user.github_username)
+                      .charAt(0)
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
 
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] text-text-primary font-medium truncate">
-                  {m.user.display_name || m.user.github_username}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-medium text-foreground">
+                    {m.user.display_name || m.user.github_username}
+                  </div>
+                  <div className="truncate text-[11px] text-muted-foreground">
+                    @{m.user.github_username}
+                  </div>
                 </div>
-                <div className="text-[11px] text-text-tertiary truncate">
-                  @{m.user.github_username}
-                </div>
+
+                {isAdmin && !isSelf ? (
+                  <Select
+                    value={m.role}
+                    onValueChange={(value) => handleRoleChange(m.id, value)}
+                    disabled={updating === m.id}
+                  >
+                    <SelectTrigger size="sm" className="w-[110px] text-[11px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map((r) => (
+                        <SelectItem key={r} value={r} className="text-[11px]">
+                          {r}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <RoleBadge role={m.role} />
+                )}
+
+                {isAdmin && !isSelf && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemove(m.id, m.user.github_username)}
+                    disabled={removing === m.id}
+                    className="text-attention hover:bg-attention/10 hover:text-attention"
+                  >
+                    {removing === m.id ? "..." : "Remove"}
+                  </Button>
+                )}
               </div>
+            );
+          })}
 
-              {isAdmin && !isSelf ? (
-                <select
-                  value={m.role}
-                  onChange={(e) => handleRoleChange(m.id, e.target.value)}
-                  disabled={updating === m.id}
-                  className="bg-surface-2 border border-border-subtle rounded px-2 py-1 text-[11px] text-text-primary disabled:opacity-50"
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-              ) : (
-                <RoleBadge role={m.role} />
-              )}
-
-              {isAdmin && !isSelf && (
-                <button
-                  onClick={() => handleRemove(m.id, m.user.github_username)}
-                  disabled={removing === m.id}
-                  className="px-2 py-1 rounded text-[11px] font-medium text-red hover:bg-red-muted transition-colors disabled:opacity-50"
-                >
-                  {removing === m.id ? "..." : "Remove"}
-                </button>
-              )}
-            </div>
-          );
-        })}
-
-        {members.length === 0 && (
-          <p className="text-xs text-text-tertiary py-3">No members found.</p>
-        )}
-      </div>
-    </div>
+          {members.length === 0 && (
+            <p className="py-3 text-xs text-muted-foreground">No members found.</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

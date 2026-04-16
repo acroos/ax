@@ -7,6 +7,7 @@ import { InvitesSection, type Invite } from "./invites-section";
 import { GitHubAppCard } from "./github-app-card";
 import { Skeleton } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
+import { Card, CardContent } from "@/components/ui/card";
 
 type MembersResponse = { members: Member[]; current_user_role: string };
 type InstallationResponse = Awaited<ReturnType<typeof getGithubInstallation>> | null;
@@ -43,12 +44,12 @@ export default async function OrgSettingsPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">
+        <h1 className="text-xl font-semibold text-foreground">
           Organization Settings
         </h1>
-        <p className="text-sm text-text-secondary mt-1">
+        <p className="mt-1 text-sm text-muted-foreground">
           Manage settings for{" "}
-          <span className="font-mono text-accent">{slug}</span>
+          <span className="font-mono text-primary">{slug}</span>
         </p>
       </div>
 
@@ -89,17 +90,19 @@ export default async function OrgSettingsPage({
 
 function SettingsCardSkeleton({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-4">
-      <div>
-        <Skeleton className="h-4 w-40 mb-2" />
-        <Skeleton className="h-3 w-72" />
-      </div>
-      <div className="space-y-2 pt-2">
-        {Array.from({ length: rows }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full" />
-        ))}
-      </div>
-    </div>
+    <Card className="p-6">
+      <CardContent className="space-y-4 p-0">
+        <div>
+          <Skeleton className="mb-2 h-4 w-40" />
+          <Skeleton className="h-3 w-72" />
+        </div>
+        <div className="space-y-2 pt-2">
+          {Array.from({ length: rows }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
