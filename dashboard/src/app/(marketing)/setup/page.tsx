@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function SetupPage() {
   return (
@@ -159,28 +159,24 @@ function SetupStep({
 }) {
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-accent">
-            <span className="text-[12px] font-semibold text-accent-foreground">
-              {number}
-            </span>
-          </div>
-          <div className="flex-1">
-            <CardTitle className="flex items-center gap-2 text-[15px] font-medium">
-              {title}
-              {optional && (
-                <Badge variant="secondary" className="font-normal">
-                  Optional
-                </Badge>
-              )}
-            </CardTitle>
-          </div>
+      <CardContent className="flex items-start gap-3">
+        <div className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-accent">
+          <span className="text-[12px] font-semibold text-accent-foreground">
+            {number}
+          </span>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2.5 pl-9 text-[14px] leading-relaxed text-muted-foreground">
-          {children}
+        <div className="flex-1 space-y-2.5">
+          <h3 className="flex items-center gap-2 text-[15px] font-medium leading-none text-foreground">
+            {title}
+            {optional && (
+              <Badge variant="secondary" className="font-normal">
+                Optional
+              </Badge>
+            )}
+          </h3>
+          <div className="space-y-2.5 text-[14px] leading-relaxed text-muted-foreground">
+            {children}
+          </div>
         </div>
       </CardContent>
     </Card>

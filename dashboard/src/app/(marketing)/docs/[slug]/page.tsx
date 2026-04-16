@@ -1,10 +1,10 @@
 import fs from "fs";
 import path from "path";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 
 import { Markdown } from "@/components/markdown";
 import { Card, CardContent } from "@/components/ui/card";
+
+import { BackToDocsLink } from "../back-to-docs-link";
 
 const metricsDir = path.join(process.cwd(), "..", "docs", "metrics");
 
@@ -32,7 +32,7 @@ export default async function MetricDocPage({
   } catch {
     return (
       <div className="mx-auto max-w-[760px] px-6 py-12">
-        <BackLink />
+        <BackToDocsLink />
         <div className="mt-8 text-muted-foreground">
           Metric document not found:{" "}
           <code className="text-foreground">{slug}.md</code>
@@ -43,24 +43,14 @@ export default async function MetricDocPage({
 
   return (
     <div className="mx-auto max-w-[760px] px-6 py-12">
-      <BackLink />
-      <Card className="mt-4">
+      <div className="mb-4">
+        <BackToDocsLink />
+      </div>
+      <Card>
         <CardContent>
           <Markdown content={content} />
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function BackLink() {
-  return (
-    <Link
-      href="/docs"
-      className="mb-4 inline-flex items-center gap-1 text-[13px] text-primary hover:underline"
-    >
-      <ChevronLeft className="size-3.5" />
-      Back to Docs
-    </Link>
   );
 }

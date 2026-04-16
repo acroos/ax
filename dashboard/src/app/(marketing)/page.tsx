@@ -63,7 +63,7 @@ export default async function LandingPage() {
       {/* What you get */}
       <section className="border-t border-border">
         <div className="mx-auto max-w-[1100px] px-6 py-20">
-          <p className="mb-3 text-[13px] font-medium uppercase tracking-wider text-primary">
+          <p className="mb-3 text-[13px] font-medium uppercase tracking-wider text-muted-foreground">
             10 metrics across 3 categories
           </p>
           <h2 className="mb-12 max-w-[480px] font-serif text-[26px] font-semibold leading-snug text-foreground">
@@ -93,7 +93,7 @@ export default async function LandingPage() {
       {/* How it works */}
       <section className="border-t border-border">
         <div className="mx-auto max-w-[1100px] px-6 py-20">
-          <p className="mb-3 text-[13px] font-medium uppercase tracking-wider text-primary">
+          <p className="mb-3 text-[13px] font-medium uppercase tracking-wider text-muted-foreground">
             How it works
           </p>
           <h2 className="mb-12 max-w-[480px] font-serif text-[26px] font-semibold leading-snug text-foreground">
