@@ -1,27 +1,39 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { listPRsWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
+
+import { listPRsWithMetricsAsync, getPRSize } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
 import { Skeleton, SkeletonTableBody } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
+import { StateBadge } from "@/components/state-badge";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-const COLUMN_COUNT = 10;
+const COLUMN_COUNT = 9;
 
-function StateBadge({ state }: { state: string | null }) {
-  const s = state?.toLowerCase() ?? "unknown";
-  const styles: Record<string, string> = {
-    merged: "bg-purple-muted text-purple",
-    open: "bg-green-muted text-green",
-    closed: "bg-red-muted text-red",
-  };
-  const style = styles[s] ?? "bg-surface-3 text-text-tertiary";
-
+// Column-header label with a hover tooltip. Alignment is the parent
+// TableHead's job; this component only provides the trigger.
+function HeaderWithTip({ label, tip }: { label: string; tip: string }) {
   return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${style}`}
-    >
-      {s}
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-default">{label}</span>
+      </TooltipTrigger>
+      <TooltipContent>{tip}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -42,60 +54,47 @@ export default async function OrgPRsPage({
 
   return (
     <div>
-      <div className="mb-6 animate-in">
-        <h1 className="text-[22px] font-semibold text-text-primary tracking-[-0.02em]">
+      <div className="mb-6">
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
           Pull Requests
         </h1>
-        <Suspense fallback={<Skeleton className="h-4 w-32 mt-1" />}>
+        <Suspense fallback={<Skeleton className="mt-1 h-4 w-32" />}>
           <PRCount promise={prsPromise} />
         </Suspense>
       </div>
 
-      <div className="rounded-xl border border-border-subtle overflow-hidden animate-in" style={{ animationDelay: "50ms" }}>
-        <table className="w-full">
-          <thead>
-            <tr className="bg-surface-1">
-              <th className="text-left px-4 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
-                PR
-              </th>
-              <th className="text-left px-4 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
-                Title
-              </th>
-              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
-                Size
-              </th>
-              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
-                State
-              </th>
-              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
-                Post-Open
-                <span className="tooltip-content">Commits after PR opened</span>
-              </th>
-              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
-                CI
-                <span className="tooltip-content">CI checks passing rate</span>
-              </th>
-              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
-                Depth
-                <span className="tooltip-content">Human-agent turn pairs</span>
-              </th>
-              <th className="text-right px-4 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
-                Cost
-                <span className="tooltip-content">Token cost in dollars</span>
-              </th>
-              <th className="text-center px-3 py-2.5 text-[11px] font-medium text-text-tertiary uppercase tracking-wider tooltip-trigger">
-                Sessions
-                <span className="tooltip-content">Agent sessions linked to this PR</span>
-              </th>
-            </tr>
-          </thead>
+      <Card className="gap-0 overflow-hidden p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>PR</TableHead>
+              <TableHead>Title</TableHead>
+              <TableHead className="text-center">Size</TableHead>
+              <TableHead className="text-center">State</TableHead>
+              <TableHead className="text-center">
+                <HeaderWithTip label="Post-Open" tip="Commits after PR opened" />
+              </TableHead>
+              <TableHead className="text-center">
+                <HeaderWithTip label="CI" tip="CI checks passing rate" />
+              </TableHead>
+              <TableHead className="text-center">
+                <HeaderWithTip label="Depth" tip="Human-agent turn pairs" />
+              </TableHead>
+              <TableHead className="text-right">
+                <HeaderWithTip label="Cost" tip="Token cost in dollars" />
+              </TableHead>
+              <TableHead className="text-center">
+                <HeaderWithTip label="Sessions" tip="Agent sessions linked to this PR" />
+              </TableHead>
+            </TableRow>
+          </TableHeader>
           <SectionErrorBoundary fallback={<NoDataBody />}>
             <Suspense fallback={<SkeletonTableBody rows={10} columns={COLUMN_COUNT} />}>
               <PRTableBody promise={prsPromise} />
             </Suspense>
           </SectionErrorBoundary>
-        </table>
-      </div>
+        </Table>
+      </Card>
     </div>
   );
 }
@@ -109,7 +108,7 @@ async function PRCount({ promise }: { promise: Promise<PRWithMetrics[]> }) {
     // Error is surfaced by the table body's error boundary below.
   }
   return (
-    <p className="text-[13px] text-text-secondary mt-1">
+    <p className="mt-1 text-[13px] text-muted-foreground">
       {count === null
         ? "Unable to load pull requests"
         : `${count} pull request${count !== 1 ? "s" : ""}`}
@@ -117,103 +116,96 @@ async function PRCount({ promise }: { promise: Promise<PRWithMetrics[]> }) {
   );
 }
 
-// Rendered as a <tbody> so it plugs into the table structure that already
-// has a thead. Keeps the error-state inside the table shell rather than
-// replacing the whole page.
+// Error-state must render as a <TableBody> so it slots into the Table
+// shell rather than replacing the whole page.
 function NoDataBody() {
   return (
-    <tbody>
-      <tr>
-        <td colSpan={COLUMN_COUNT} className="px-4 py-16 text-center">
-          <h2 className="text-text-primary text-sm font-medium mb-1">
+    <TableBody>
+      <TableRow>
+        <TableCell colSpan={COLUMN_COUNT} className="px-4 py-16 text-center">
+          <h2 className="mb-1 text-sm font-medium text-foreground">
             No data yet
           </h2>
-          <p className="text-text-secondary text-[13px]">
+          <p className="text-[13px] text-muted-foreground">
             Connect a repository to start tracking metrics.
           </p>
-        </td>
-      </tr>
-    </tbody>
+        </TableCell>
+      </TableRow>
+    </TableBody>
   );
 }
 
 async function PRTableBody({ promise }: { promise: Promise<PRWithMetrics[]> }) {
   const prs = await promise;
   return (
-    <tbody>
-      {prs.map((pr, i) => (
-        <tr
-          key={pr.id}
-          className="border-t border-border-subtle hover:bg-surface-1/50 transition-colors animate-in"
-          style={{ animationDelay: `${Math.min(80 + i * 20, 500)}ms` }}
-        >
-          <td className="px-4 py-3">
+    <TableBody>
+      {prs.map((pr) => (
+        <TableRow key={pr.id}>
+          <TableCell>
             <Link
               href={`/prs/${pr.id}`}
-              className="font-mono text-[13px] text-accent hover:text-accent-hover transition-colors"
+              className="font-mono text-[13px] text-primary transition-colors hover:underline"
             >
               #{pr.number}
             </Link>
             {pr.github_owner && (
-              <div className="text-[11px] text-text-tertiary mt-0.5">
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
                 {pr.github_owner}/{pr.github_repo}
               </div>
             )}
-          </td>
-          <td className="px-4 py-3">
+          </TableCell>
+          <TableCell>
             <Link
               href={`/prs/${pr.id}`}
-              className="text-[13px] text-text-primary hover:text-accent-hover transition-colors line-clamp-1"
+              className="line-clamp-1 text-[13px] text-foreground transition-colors hover:text-primary"
             >
               {pr.title ?? "Untitled"}
             </Link>
-          </td>
-          <td className="px-3 py-3 text-center">
-            {(() => {
-              const size = getPRSize(pr.additions, pr.deletions);
-              const color = getPRSizeColor(size);
-              return (
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-medium ${color}`}>
-                  {size}
-                </span>
-              );
-            })()}
-          </td>
-          <td className="px-3 py-3 text-center">
+          </TableCell>
+          <TableCell className="text-center">
+            <Badge variant="outline" className="font-mono">
+              {getPRSize(pr.additions, pr.deletions)}
+            </Badge>
+          </TableCell>
+          <TableCell>
             <div className="flex items-center justify-center gap-1.5">
               <StateBadge state={pr.state} />
               {pr.metrics && !pr.metrics.metrics_finalized && (
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber animate-pulse" title="Metrics pending" />
+                <span
+                  className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-notice"
+                  title="Metrics pending"
+                />
               )}
             </div>
-          </td>
-          <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
+          </TableCell>
+          <TableCell className="text-center font-mono text-[13px] text-muted-foreground">
             {pr.metrics?.post_open_commits ?? "\u2014"}
-          </td>
-          <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
+          </TableCell>
+          <TableCell className="text-center font-mono text-[13px] text-muted-foreground">
             {pr.metrics?.ci_success_rate !== null && pr.metrics?.ci_success_rate !== undefined
               ? `${Math.round(pr.metrics.ci_success_rate * 100)}%`
               : "\u2014"}
-          </td>
-          <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
+          </TableCell>
+          <TableCell className="text-center font-mono text-[13px] text-muted-foreground">
             {pr.metrics?.iteration_depth ?? "\u2014"}
-          </td>
-          <td className="px-4 py-3 text-right font-mono text-[13px] text-text-secondary">
+          </TableCell>
+          <TableCell className="text-right font-mono text-[13px] text-muted-foreground">
             {pr.metrics?.token_cost_usd !== null && pr.metrics?.token_cost_usd !== undefined
               ? `$${pr.metrics.token_cost_usd.toFixed(2)}`
               : "\u2014"}
-          </td>
-          <td className="px-3 py-3 text-center">
+          </TableCell>
+          <TableCell className="text-center">
             {pr.session_count > 0 ? (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-accent-muted text-accent">
+              <Badge variant="secondary" className="font-mono">
                 {pr.session_count}
-              </span>
+              </Badge>
             ) : (
-              <span className="text-text-tertiary text-[13px]">&#8212;</span>
+              <span className="text-[13px] text-muted-foreground">&#8212;</span>
             )}
-          </td>
-        </tr>
+          </TableCell>
+        </TableRow>
       ))}
-    </tbody>
+    </TableBody>
   );
 }
+

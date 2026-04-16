@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { Button } from "@/components/ui/button";
+
 export function LogoutButton() {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -18,12 +20,14 @@ export function LogoutButton() {
   }
 
   return (
-    <button
+    <Button
+      variant="outline"
+      size="sm"
       onClick={handleLogout}
       disabled={loggingOut}
-      className="px-3 py-1.5 rounded-md bg-red/10 text-red hover:bg-red/20 text-xs font-medium transition-colors disabled:opacity-50"
+      className="text-attention hover:bg-attention/10 hover:text-attention"
     >
       {loggingOut ? "Logging out..." : "Log out"}
-    </button>
+    </Button>
   );
 }

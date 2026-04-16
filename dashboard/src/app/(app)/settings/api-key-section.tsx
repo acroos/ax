@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+
 export function ApiKeySection() {
   const [rotatingKey, setRotatingKey] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
@@ -29,30 +32,34 @@ export function ApiKeySection() {
   }
 
   return (
-    <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-4">
-      <h2 className="text-sm font-medium text-text-primary">API Key</h2>
-      <p className="text-xs text-text-tertiary">
-        Your API key is used by the CLI to push data. Rotating it will immediately invalidate the old key.
-      </p>
+    <Card className="p-6">
+      <CardContent className="space-y-4 p-0">
+        <h2 className="text-sm font-medium text-foreground">API Key</h2>
+        <p className="text-xs text-muted-foreground">
+          Your API key is used by the CLI to push data. Rotating it will
+          immediately invalidate the old key.
+        </p>
 
-      {newKey && (
-        <div className="bg-surface-0 rounded-lg p-3 space-y-2">
-          <p className="text-xs text-amber font-medium">
-            Copy this key now — you won&apos;t be able to see it again.
-          </p>
-          <code className="block text-xs text-text-primary font-mono break-all select-all">
-            {newKey}
-          </code>
-        </div>
-      )}
+        {newKey && (
+          <div className="space-y-2 rounded-lg bg-muted p-3">
+            <p className="text-xs font-medium text-notice">
+              Copy this key now — you won&apos;t be able to see it again.
+            </p>
+            <code className="block select-all break-all font-mono text-xs text-foreground">
+              {newKey}
+            </code>
+          </div>
+        )}
 
-      <button
-        onClick={handleRotateKey}
-        disabled={rotatingKey}
-        className="px-3 py-1.5 rounded-md bg-surface-2 hover:bg-surface-3 text-text-primary text-xs font-medium transition-colors disabled:opacity-50"
-      >
-        {rotatingKey ? "Rotating..." : "Rotate API Key"}
-      </button>
-    </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRotateKey}
+          disabled={rotatingKey}
+        >
+          {rotatingKey ? "Rotating..." : "Rotate API Key"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,6 +1,6 @@
-// Shared skeleton primitives for route-level loading states.
-// Mirrors the dashboard's surface palette so skeletons sit naturally
-// within existing cards and panels.
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton as ShadcnSkeleton } from "@/components/ui/skeleton";
+import { TableCell, TableRow } from "@/components/ui/table";
 
 export function Skeleton({
   className = "",
@@ -9,23 +9,20 @@ export function Skeleton({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  return (
-    <div
-      className={`bg-surface-2/60 rounded animate-pulse ${className}`}
-      style={style}
-    />
-  );
+  return <ShadcnSkeleton className={className} style={style} />;
 }
 
-// Metric card skeleton — matches the `metric-card` shape used on the org
-// overview and metric-detail summary stats. Label, value, optional detail.
+// Metric card skeleton — matches the `Card` shape used on the org overview
+// and metric-detail summary stats. Label, value, optional detail.
 export function SkeletonMetricCard({ showDetail = true }: { showDetail?: boolean }) {
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-1 p-5">
-      <Skeleton className="h-3 w-24 mb-3" />
-      <Skeleton className="h-7 w-20 mb-2" />
-      {showDetail && <Skeleton className="h-3 w-32" />}
-    </div>
+    <Card className="p-5">
+      <CardContent className="p-0">
+        <Skeleton className="mb-3 h-3 w-24" />
+        <Skeleton className="mb-2 h-7 w-20" />
+        {showDetail && <Skeleton className="h-3 w-32" />}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -33,7 +30,7 @@ export function SkeletonMetricCard({ showDetail = true }: { showDetail?: boolean
 export function SkeletonMetricCategory({ count = 6 }: { count?: number }) {
   return (
     <div className="mb-8">
-      <Skeleton className="h-3 w-32 mb-3 ml-1" />
+      <Skeleton className="mb-3 ml-1 h-3 w-32" />
       <div className="grid grid-cols-3 gap-3">
         {Array.from({ length: count }).map((_, i) => (
           <SkeletonMetricCard key={i} />
@@ -43,21 +40,23 @@ export function SkeletonMetricCategory({ count = 6 }: { count?: number }) {
   );
 }
 
-// Table row skeleton — N cells of pulse bars, used inside a `<tbody>`.
+// Table row skeleton — N cells of pulse bars, used inside a shadcn TableBody.
 export function SkeletonTableRow({ columns }: { columns: number }) {
   return (
-    <tr className="border-t border-border-subtle">
+    <TableRow>
       {Array.from({ length: columns }).map((_, i) => (
-        <td key={i} className="px-4 py-3">
+        <TableCell key={i}>
           <Skeleton className="h-4 w-full max-w-[120px]" />
-        </td>
+        </TableCell>
       ))}
-    </tr>
+    </TableRow>
   );
 }
 
 // Bare `<tbody>` of N skeleton rows — used as a Suspense fallback when the
 // table header is rendered synchronously by the page but the body streams.
+// Emitted as a raw <tbody> so it slots into a Table without nesting a
+// second TableBody (which React would warn about).
 export function SkeletonTableBody({
   rows = 10,
   columns,
@@ -78,13 +77,13 @@ export function SkeletonTableBody({
 export function SkeletonPageHeader({ className = "mb-8" }: { className?: string }) {
   return (
     <div className={className}>
-      <Skeleton className="h-7 w-48 mb-2" />
+      <Skeleton className="mb-2 h-7 w-48" />
       <Skeleton className="h-4 w-64" />
     </div>
   );
 }
 
-// Chart panel skeleton — matches the bordered card used on metric-detail.
+// Chart panel skeleton — matches the bordered Card used on metric-detail.
 // `title` renders real heading text so the panel's shape doesn't shift when
 // the chart resolves; only the chart body itself is a skeleton block.
 export function SkeletonChartPanel({
@@ -95,11 +94,13 @@ export function SkeletonChartPanel({
   height?: number;
 }) {
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-1 p-5">
-      <h2 className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider mb-4">
-        {title}
-      </h2>
-      <Skeleton className="w-full" style={{ height }} />
-    </div>
+    <Card className="p-5">
+      <CardContent className="p-0">
+        <h2 className="mb-4 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+          {title}
+        </h2>
+        <Skeleton className="w-full" style={{ height }} />
+      </CardContent>
+    </Card>
   );
 }

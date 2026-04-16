@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "lucide-react";
+
 import type { BillingInfo } from "@/lib/db";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 function UsageBar({
   label,
@@ -19,38 +25,21 @@ function UsageBar({
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between text-[13px]">
-        <span className="text-text-secondary">{label}</span>
-        <span className={atLimit ? "text-orange-400 font-medium" : "text-text-tertiary"}>
+        <span className="text-muted-foreground">{label}</span>
+        <span className={atLimit ? "font-medium text-attention" : "text-muted-foreground"}>
           {current} / {isUnlimited ? "Unlimited" : max}
         </span>
       </div>
-      {!isUnlimited && (
-        <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${
-              atLimit ? "bg-orange-400" : "bg-accent"
-            }`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-      )}
+      {!isUnlimited && <Progress value={pct} className="h-1.5" />}
     </div>
   );
 }
 
 function PlanBadge({ plan }: { plan: string }) {
   if (plan === "pro") {
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent border border-accent/25">
-        Pro
-      </span>
-    );
+    return <Badge>Pro</Badge>;
   }
-  return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-2 text-text-secondary border border-border-subtle">
-      Free
-    </span>
-  );
+  return <Badge variant="secondary">Free</Badge>;
 }
 
 const PRO_FEATURES = [
@@ -127,108 +116,104 @@ export function BillingCard({
   return (
     <div className="space-y-6">
       {/* Current Plan */}
-      <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-medium text-text-primary">Current Plan</h2>
-            <div className="flex items-center gap-2.5 mt-2">
-              <PlanBadge plan={billing.plan.name} />
-              {willCancel && (
-                <span className="text-xs text-yellow-400">
-                  Cancels at period end
-                </span>
-              )}
-            </div>
-          </div>
-          {isAdmin && (
+      <Card className="gap-5 p-6">
+        <CardContent className="space-y-5 p-0">
+          <div className="flex items-center justify-between">
             <div>
-              {isFree ? (
-                <button
-                  onClick={handleUpgrade}
-                  disabled={loading}
-                  className="px-4 py-2 bg-accent hover:bg-accent/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {loading ? "Loading..." : "Upgrade to Pro"}
-                </button>
-              ) : (
-                <button
-                  onClick={handleManage}
-                  disabled={loading}
-                  className="px-4 py-2 bg-surface-2 hover:bg-surface-2/80 text-text-primary text-sm font-medium rounded-lg border border-border-subtle transition-colors disabled:opacity-50"
-                >
-                  {loading ? "Loading..." : "Manage Billing"}
-                </button>
-              )}
+              <h2 className="text-sm font-medium text-foreground">Current Plan</h2>
+              <div className="mt-2 flex items-center gap-2.5">
+                <PlanBadge plan={billing.plan.name} />
+                {willCancel && (
+                  <span className="text-xs text-notice">
+                    Cancels at period end
+                  </span>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-sm text-red-400">
-            {error}
-          </div>
-        )}
-
-        {sub && (
-          <div className="space-y-1.5">
-            {isPro && (
-              <div className="text-sm text-text-primary">
-                {sub.quantity} {sub.quantity === 1 ? "seat" : "seats"}
-                <span className="text-text-tertiary"> · </span>
-                {formatDollars(sub.quantity * sub.seat_price_cents)}/month
+            {isAdmin && (
+              <div>
+                {isFree ? (
+                  <Button onClick={handleUpgrade} disabled={loading}>
+                    {loading ? "Loading..." : "Upgrade to Pro"}
+                  </Button>
+                ) : (
+                  <Button variant="outline" onClick={handleManage} disabled={loading}>
+                    {loading ? "Loading..." : "Manage Billing"}
+                  </Button>
+                )}
               </div>
             )}
-            <div className="text-xs text-text-tertiary">
-              {sub.status === "active" && !willCancel && (
-                <>Next billing date: {new Date(sub.current_period_end).toLocaleDateString()}</>
-              )}
-              {sub.status === "past_due" && (
-                <span className="text-orange-400">Payment past due — please update your payment method.</span>
-              )}
-              {willCancel && (
-                <span className="text-yellow-400">
-                  Access continues until {new Date(sub.current_period_end).toLocaleDateString()}
-                </span>
-              )}
-            </div>
           </div>
-        )}
-      </div>
+
+          {error && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {sub && (
+            <div className="space-y-1.5">
+              {isPro && (
+                <div className="text-sm text-foreground">
+                  {sub.quantity} {sub.quantity === 1 ? "seat" : "seats"}
+                  <span className="text-muted-foreground"> · </span>
+                  {formatDollars(sub.quantity * sub.seat_price_cents)}/month
+                </div>
+              )}
+              <div className="text-xs text-muted-foreground">
+                {sub.status === "active" && !willCancel && (
+                  <>Next billing date: {new Date(sub.current_period_end).toLocaleDateString()}</>
+                )}
+                {sub.status === "past_due" && (
+                  <span className="text-attention">Payment past due — please update your payment method.</span>
+                )}
+                {willCancel && (
+                  <span className="text-notice">
+                    Access continues until {new Date(sub.current_period_end).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Usage */}
-      <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-4">
-        <h2 className="text-sm font-medium text-text-primary">Usage</h2>
-        <div className="space-y-3">
-          <UsageBar
-            label="Team members"
-            current={billing.usage.members}
-            max={typeof caps.max_members === "number" ? caps.max_members : null}
-          />
-          <UsageBar
-            label="Repositories"
-            current={billing.usage.repos}
-            max={typeof caps.max_repos === "number" ? caps.max_repos : null}
-          />
-        </div>
-      </div>
+      <Card className="p-6">
+        <CardContent className="space-y-4 p-0">
+          <h2 className="text-sm font-medium text-foreground">Usage</h2>
+          <div className="space-y-3">
+            <UsageBar
+              label="Team members"
+              current={billing.usage.members}
+              max={typeof caps.max_members === "number" ? caps.max_members : null}
+            />
+            <UsageBar
+              label="Repositories"
+              current={billing.usage.repos}
+              max={typeof caps.max_repos === "number" ? caps.max_repos : null}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Feature comparison (free plan only) */}
       {isFree && (
-        <div className="bg-surface-1 rounded-xl border border-border-subtle p-6 space-y-4">
-          <h2 className="text-sm font-medium text-text-primary">
-            Included with Pro
-          </h2>
-          <ul className="space-y-2.5">
-            {PRO_FEATURES.map((f) => (
-              <li key={f.key} className="flex items-center gap-2.5 text-[13px]">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-accent flex-shrink-0">
-                  <path d="M3 7.5L5.5 10L11 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className="text-text-secondary">{f.label}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Card className="p-6">
+          <CardContent className="space-y-4 p-0">
+            <h2 className="text-sm font-medium text-foreground">
+              Included with Pro
+            </h2>
+            <ul className="space-y-2.5">
+              {PRO_FEATURES.map((f) => (
+                <li key={f.key} className="flex items-center gap-2.5 text-[13px]">
+                  <Check className="size-3.5 shrink-0 text-success" aria-hidden />
+                  <span className="text-muted-foreground">{f.label}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

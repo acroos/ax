@@ -28,32 +28,34 @@ export function BooleanMetricSummary({
 
   if (total === 0) {
     return (
-      <div className="flex items-center justify-center text-text-tertiary text-[12px] h-[160px]">
+      <div className="flex h-[160px] items-center justify-center text-[12px] text-muted-foreground">
         No data available
       </div>
     );
   }
 
-  const goodColor = "bg-green";
-  const badColor = "bg-surface-3";
+  // Non-judgmental palette (THEME.md §3): success (olive) marks the
+  // "healthy" side, muted marks the other. "Better" doesn't mean "good."
+  const goodColor = "bg-success";
+  const badColor = "bg-muted";
   const barFillClass = trueIsBetter ? goodColor : badColor;
   const barEmptyClass = trueIsBetter ? badColor : goodColor;
 
   return (
     <div>
       {/* Large stat */}
-      <div className="flex items-baseline gap-3 mb-4">
-        <span className="font-mono text-[36px] font-medium text-text-primary tracking-tight">
+      <div className="mb-4 flex items-baseline gap-3">
+        <span className="font-mono text-[36px] font-medium tracking-tight text-foreground">
           {trueCount}
-          <span className="text-text-tertiary text-[20px]"> / {total}</span>
+          <span className="text-[20px] text-muted-foreground"> / {total}</span>
         </span>
-        <span className="text-[14px] text-text-secondary">
+        <span className="text-[14px] text-muted-foreground">
           PRs ({pct}%)
         </span>
       </div>
 
       {/* Proportion bar */}
-      <div className="flex rounded-full overflow-hidden h-3 mb-6">
+      <div className="mb-6 flex h-3 overflow-hidden rounded-full">
         {trueCount > 0 && (
           <div
             className={`${barFillClass} transition-all`}
@@ -71,7 +73,7 @@ export function BooleanMetricSummary({
       {/* Two-column PR list */}
       <div className="grid grid-cols-2 gap-6">
         <div>
-          <h4 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-2">
+          <h4 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             {trueLabel} ({trueCount})
           </h4>
           <div className="space-y-1">
@@ -79,19 +81,19 @@ export function BooleanMetricSummary({
               <Link
                 key={e.prId}
                 href={`/prs/${e.prId}`}
-                className="block text-[13px] text-text-secondary hover:text-text-primary transition-colors truncate"
+                className="block truncate text-[13px] text-muted-foreground transition-colors hover:text-foreground"
               >
-                <span className="font-mono text-accent">#{e.prNumber}</span>{" "}
+                <span className="font-mono text-primary">#{e.prNumber}</span>{" "}
                 {e.title}
               </Link>
             ))}
             {trueEntries.length === 0 && (
-              <span className="text-[12px] text-text-tertiary italic">None</span>
+              <span className="text-[12px] italic text-muted-foreground">None</span>
             )}
           </div>
         </div>
         <div>
-          <h4 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-2">
+          <h4 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             {falseLabel} ({falseEntries.length})
           </h4>
           <div className="space-y-1">
@@ -99,14 +101,14 @@ export function BooleanMetricSummary({
               <Link
                 key={e.prId}
                 href={`/prs/${e.prId}`}
-                className="block text-[13px] text-text-secondary hover:text-text-primary transition-colors truncate"
+                className="block truncate text-[13px] text-muted-foreground transition-colors hover:text-foreground"
               >
-                <span className="font-mono text-accent">#{e.prNumber}</span>{" "}
+                <span className="font-mono text-primary">#{e.prNumber}</span>{" "}
                 {e.title}
               </Link>
             ))}
             {falseEntries.length === 0 && (
-              <span className="text-[12px] text-text-tertiary italic">None</span>
+              <span className="text-[12px] italic text-muted-foreground">None</span>
             )}
           </div>
         </div>

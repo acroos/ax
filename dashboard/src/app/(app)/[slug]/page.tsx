@@ -8,6 +8,12 @@ import {
   SkeletonMetricCategory,
 } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const METRIC_INFO = Object.fromEntries(METRIC_DEFS.map((d) => [d.slug, d]));
 
@@ -26,32 +32,47 @@ function MetricCard({
   goodRange?: string;
   href?: string;
 }) {
-  const inner = (
-    <div className={`metric-card rounded-xl border border-border-subtle bg-surface-1 p-5 tooltip-trigger ${href ? "cursor-pointer" : ""}`}>
-      <div className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider mb-3">
-        {label}
-      </div>
-      <div className="font-mono text-[28px] font-medium text-text-primary tracking-tight leading-none mb-1">
-        {value}
-      </div>
-      {detail && (
-        <div className="text-[12px] text-text-secondary">{detail}</div>
-      )}
-      {tooltip && (
-        <span className="tooltip-content">
-          {tooltip}
-          {goodRange && (
-            <span className="block mt-1 text-text-tertiary">{goodRange}</span>
-          )}
-        </span>
-      )}
-    </div>
+  const card = (
+    <Card
+      className={`gap-0 p-5 transition-colors ${
+        href ? "hover:border-primary/30 hover:bg-accent/40 cursor-pointer" : ""
+      }`}
+    >
+      <CardContent className="p-0">
+        <div className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </div>
+        <div className="mb-1 font-mono text-[28px] font-medium leading-none tracking-tight text-foreground">
+          {value}
+        </div>
+        {detail && (
+          <div className="text-[12px] text-muted-foreground">{detail}</div>
+        )}
+      </CardContent>
+    </Card>
   );
 
-  if (href) {
-    return <Link href={href}>{inner}</Link>;
-  }
-  return inner;
+  const tipped = tooltip ? (
+    <Tooltip>
+      <TooltipTrigger asChild>{card}</TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[280px]">
+        <p>{tooltip}</p>
+        {goodRange && (
+          <p className="mt-1 text-[11px] opacity-80">{goodRange}</p>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  ) : (
+    card
+  );
+
+  return href ? (
+    <Link href={href} className="block">
+      {tipped}
+    </Link>
+  ) : (
+    tipped
+  );
 }
 
 function fmt(n: number | null, decimals = 1): string {
@@ -91,13 +112,11 @@ export default async function OrgOverviewPage({
 
   return (
     <div>
-      <div className="mb-8 animate-in">
-        <h1 className="text-[22px] font-semibold text-text-primary tracking-[-0.02em]">
+      <div className="mb-8">
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
           Overview
         </h1>
-        <Suspense
-          fallback={<Skeleton className="h-4 w-64 mt-1" />}
-        >
+        <Suspense fallback={<Skeleton className="mt-1 h-4 w-64" />}>
           <OverviewSubtitle
             repoLabelPromise={repoLabelPromise}
             metricsPromise={metricsPromise}
@@ -115,10 +134,10 @@ export default async function OrgOverviewPage({
         </Suspense>
       </SectionErrorBoundary>
 
-      <div className="mt-6 animate-in" style={{ animationDelay: "250ms" }}>
+      <div className="mt-6">
         <Link
           href={`/${slug}/prs`}
-          className="text-[13px] text-accent hover:text-accent-hover transition-colors"
+          className="text-[13px] text-primary transition-colors hover:underline"
         >
           View all pull requests →
         </Link>
@@ -160,8 +179,8 @@ async function OverviewSubtitle({
     // subtitle reading just the repo label.
   }
   return (
-    <p className="text-[13px] text-text-secondary mt-1">
-      <span className="text-text-primary font-medium">{repoLabel}</span>
+    <p className="mt-1 text-[13px] text-muted-foreground">
+      <span className="font-medium text-foreground">{repoLabel}</span>
       {metrics !== null && (
         <>
           {" "}&middot;{" "}
@@ -185,10 +204,10 @@ function OverviewMetricsSkeleton() {
 
 function NoDataState() {
   return (
-    <div className="flex items-center justify-center h-[60vh]">
-      <div className="text-center space-y-3">
-        <h2 className="text-text-primary text-lg font-medium">No data yet</h2>
-        <p className="text-text-secondary text-sm">
+    <div className="flex h-[60vh] items-center justify-center">
+      <div className="space-y-3 text-center">
+        <h2 className="text-lg font-medium text-foreground">No data yet</h2>
+        <p className="text-sm text-muted-foreground">
           Connect a repository to start tracking metrics.
         </p>
       </div>
@@ -198,12 +217,12 @@ function NoDataState() {
 
 function NoFinalizedPRsState() {
   return (
-    <div className="flex items-center justify-center h-[60vh]">
-      <div className="text-center space-y-3">
-        <h2 className="text-text-primary text-lg font-medium">
+    <div className="flex h-[60vh] items-center justify-center">
+      <div className="space-y-3 text-center">
+        <h2 className="text-lg font-medium text-foreground">
           No finalized PRs yet
         </h2>
-        <p className="text-text-secondary text-sm">
+        <p className="text-sm text-muted-foreground">
           Metrics appear once pull requests are merged or closed.
         </p>
       </div>
@@ -234,8 +253,8 @@ async function OverviewMetricsBody({
   return (
     <>
       {/* Output Quality */}
-      <div className="mb-8 animate-in" style={{ animationDelay: "50ms" }}>
-        <h2 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-3 px-1">
+      <div className="mb-8">
+        <h2 className="mb-3 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Output Quality
         </h2>
         <div className="grid grid-cols-3 gap-3">
@@ -263,8 +282,8 @@ async function OverviewMetricsBody({
       </div>
 
       {/* Prompt Efficiency */}
-      <div className="mb-8 animate-in" style={{ animationDelay: "100ms" }}>
-        <h2 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-3 px-1">
+      <div className="mb-8">
+        <h2 className="mb-3 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Prompt Efficiency
         </h2>
         <div className="grid grid-cols-3 gap-3">
@@ -293,8 +312,8 @@ async function OverviewMetricsBody({
       </div>
 
       {/* Agent Behavior */}
-      <div className="mb-8 animate-in" style={{ animationDelay: "150ms" }}>
-        <h2 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-3 px-1">
+      <div className="mb-8">
+        <h2 className="mb-3 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           Agent Behavior
         </h2>
         <div className="grid grid-cols-3 gap-3">

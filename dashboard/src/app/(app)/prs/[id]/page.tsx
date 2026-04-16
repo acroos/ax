@@ -1,25 +1,13 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { getPRWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
+
+import { getPRWithMetricsAsync, getPRSize } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
 import { Skeleton } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
-
-function StateBadge({ state }: { state: string | null }) {
-  const s = state?.toLowerCase() ?? "unknown";
-  const styles: Record<string, string> = {
-    merged: "bg-purple-muted text-purple",
-    open: "bg-green-muted text-green",
-    closed: "bg-red-muted text-red",
-  };
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-medium ${styles[s] ?? "bg-surface-3 text-text-tertiary"}`}
-    >
-      {s}
-    </span>
-  );
-}
+import { StateBadge } from "@/components/state-badge";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface MetricDisplay {
   label: string;
@@ -152,10 +140,10 @@ export default async function PRDetailPage({
   return (
     <div>
       {/* Back link renders synchronously — doesn't depend on PR data. */}
-      <div className="mb-2 animate-in">
+      <div className="mb-2">
         <Link
           href="/prs"
-          className="text-[12px] text-text-tertiary hover:text-text-secondary transition-colors"
+          className="text-[12px] text-muted-foreground transition-colors hover:text-foreground"
         >
           ← Pull Requests
         </Link>
@@ -176,10 +164,13 @@ export default async function PRDetailPage({
 
 function PRNotFound() {
   return (
-    <div className="flex items-center justify-center h-[60vh]">
-      <div className="text-center space-y-3">
-        <h2 className="text-text-primary text-lg font-medium">PR not found</h2>
-        <Link href="/prs" className="text-accent text-sm hover:text-accent-hover">
+    <div className="flex h-[60vh] items-center justify-center">
+      <div className="space-y-3 text-center">
+        <h2 className="text-lg font-medium text-foreground">PR not found</h2>
+        <Link
+          href="/prs"
+          className="text-sm text-primary transition-colors hover:underline"
+        >
           Back to Pull Requests
         </Link>
       </div>
@@ -190,7 +181,7 @@ function PRNotFound() {
 function HeaderSkeleton() {
   return (
     <div className="mb-8">
-      <div className="flex items-center gap-3 mb-2">
+      <div className="mb-2 flex items-center gap-3">
         <Skeleton className="h-7 w-96" />
         <Skeleton className="h-5 w-16 rounded-full" />
         <Skeleton className="h-5 w-14 rounded" />
@@ -209,48 +200,39 @@ async function PRHeader({ promise }: { promise: Promise<PRWithMetrics | undefine
   if (!pr) throw new Error("PR not found");
 
   return (
-    <div
-      className="mb-8 animate-in"
-      style={{ animationDelay: "50ms" }}
-    >
-      <div className="flex items-center gap-3 mb-2">
-        <h1 className="text-[22px] font-semibold text-text-primary tracking-[-0.02em]">
-          <span className="font-mono text-accent">#{pr.number}</span>{" "}
+    <div className="mb-8">
+      <div className="mb-2 flex items-center gap-3">
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+          <span className="font-mono text-primary">#{pr.number}</span>{" "}
           {pr.title}
         </h1>
         <StateBadge state={pr.state} />
-        {(() => {
-          const size = getPRSize(pr.additions, pr.deletions);
-          const color = getPRSizeColor(size);
-          return (
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium ${color}`}>
-              {size}
-            </span>
-          );
-        })()}
+        <Badge variant="outline" className="font-mono">
+          {getPRSize(pr.additions, pr.deletions)}
+        </Badge>
       </div>
 
-      <div className="flex items-center gap-4 text-[13px] text-text-secondary">
+      <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
         {pr.github_owner && (
-          <span className="text-text-tertiary">
+          <span>
             {pr.github_owner}/{pr.github_repo}
           </span>
         )}
         {pr.branch && (
-          <span className="font-mono text-[12px] bg-surface-2 px-2 py-0.5 rounded text-text-secondary">
+          <span className="rounded bg-muted px-2 py-0.5 font-mono text-[12px]">
             {pr.branch}
           </span>
         )}
         <span>
-          <span className="text-green">+{pr.additions}</span>{" "}
-          <span className="text-red">-{pr.deletions}</span>{" "}
-          <span className="text-text-tertiary">
+          <span className="text-success">+{pr.additions}</span>{" "}
+          <span className="text-attention">-{pr.deletions}</span>{" "}
+          <span>
             across {pr.changed_files} file
             {pr.changed_files !== 1 && "s"}
           </span>
         </span>
         {pr.metrics?.finalized_at && (
-          <span className="text-text-tertiary">
+          <span>
             Finalized {new Date(pr.metrics.finalized_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </span>
         )}
@@ -264,18 +246,17 @@ function MetricGroupsSkeleton() {
     <div className="space-y-6">
       {[4, 3, 3].map((count, gi) => (
         <div key={gi}>
-          <Skeleton className="h-3 w-32 mb-3 ml-1" />
+          <Skeleton className="mb-3 ml-1 h-3 w-32" />
           <div className="grid grid-cols-3 gap-3">
             {Array.from({ length: count }).map((_, i) => (
-              <div
-                key={i}
-                className="rounded-xl border border-border-subtle bg-surface-1 p-5"
-              >
-                <Skeleton className="h-3 w-28 mb-3" />
-                <Skeleton className="h-7 w-20 mb-3" />
-                <Skeleton className="h-3 w-full mb-1.5" />
-                <Skeleton className="h-3 w-4/5" />
-              </div>
+              <Card key={i} className="p-5">
+                <CardContent className="p-0">
+                  <Skeleton className="mb-3 h-3 w-28" />
+                  <Skeleton className="mb-3 h-7 w-20" />
+                  <Skeleton className="mb-1.5 h-3 w-full" />
+                  <Skeleton className="h-3 w-4/5" />
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -299,7 +280,7 @@ async function MetricGroups({ promise }: { promise: Promise<PRWithMetrics | unde
 
   if (grouped.length === 0) {
     return (
-      <div className="text-center py-12 text-text-tertiary animate-in">
+      <div className="py-12 text-center text-muted-foreground">
         No metrics computed yet.
       </div>
     );
@@ -307,31 +288,26 @@ async function MetricGroups({ promise }: { promise: Promise<PRWithMetrics | unde
 
   return (
     <div className="space-y-6">
-      {grouped.map((group, gi) => (
-        <div
-          key={group.name}
-          className="animate-in"
-          style={{ animationDelay: `${100 + gi * 60}ms` }}
-        >
-          <h2 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-3 px-1">
+      {grouped.map((group) => (
+        <div key={group.name}>
+          <h2 className="mb-3 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             {group.name}
           </h2>
           <div className="grid grid-cols-3 gap-3">
             {group.metrics.map((m) => (
-              <div
-                key={m.label}
-                className="metric-card rounded-xl border border-border-subtle bg-surface-1 p-5"
-              >
-                <div className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider mb-3">
-                  {m.label}
-                </div>
-                <div className="font-mono text-[28px] font-medium text-text-primary tracking-tight leading-none mb-2">
-                  {m.value}
-                </div>
-                <div className="text-[12px] text-text-secondary leading-relaxed">
-                  {m.description}
-                </div>
-              </div>
+              <Card key={m.label} className="p-5">
+                <CardContent className="p-0">
+                  <div className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+                    {m.label}
+                  </div>
+                  <div className="mb-2 font-mono text-[28px] font-medium leading-none tracking-tight text-foreground">
+                    {m.value}
+                  </div>
+                  <div className="text-[12px] leading-relaxed text-muted-foreground">
+                    {m.description}
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>

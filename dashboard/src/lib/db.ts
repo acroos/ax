@@ -322,16 +322,6 @@ export function getPRSize(additions: number, deletions: number): PRSize {
   return "XL";
 }
 
-export function getPRSizeColor(size: PRSize): string {
-  switch (size) {
-    case "XS": return "text-green bg-green-muted";
-    case "S": return "text-green bg-green-muted";
-    case "M": return "text-amber bg-amber-muted";
-    case "L": return "text-red bg-red-muted";
-    case "XL": return "text-red bg-red-muted";
-  }
-}
-
 export async function getTimelineAsync(repoId?: number, orgSlug?: string): Promise<TimelinePoint[]> {
   if (repoId) {
     const apiPath = orgSlug
