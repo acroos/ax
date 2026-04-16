@@ -86,6 +86,11 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 ### Content
 - **Markdown** (`src/components/markdown.tsx`) — Renders metric docs from `docs/metrics/*.md` using `react-markdown` + `remark-gfm`. Custom styled components for headings, tables, code blocks.
 
+### Loading states
+- **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonPageHeader`. Shared building blocks for route-level loading UIs.
+- **Route-level `loading.tsx`** — Every page under `/(app)` has a sibling `loading.tsx` that Next.js renders instantly on navigation (before the page's async data awaits resolve). Each skeleton mirrors the real page's layout. Files: `[slug]/loading.tsx`, `[slug]/prs/loading.tsx`, `[slug]/compare/loading.tsx`, `[slug]/metrics/[metric]/loading.tsx`, `[slug]/settings/loading.tsx`, `[slug]/billing/loading.tsx`, `prs/[id]/loading.tsx`, `settings/loading.tsx`.
+- **Navigation progress bar** — `nextjs-toploader` is mounted in `src/app/layout.tsx` (2px, indigo `#6366F1`, no spinner). Shows at the top of the viewport during any `<Link>` navigation to give continuous "something is happening" feedback.
+
 ## Styling
 
 Dark mode only. Tailwind CSS v4 with a custom theme.
