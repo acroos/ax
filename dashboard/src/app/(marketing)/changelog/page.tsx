@@ -1,5 +1,12 @@
+import { Badge } from "@/components/ui/badge";
+
 // Changelog entries. Add new entries at the top.
-const entries: { date: string; title: string; description: string; tag: "feature" | "fix" | "improvement" }[] = [
+const entries: {
+  date: string;
+  title: string;
+  description: string;
+  tag: "feature" | "fix" | "improvement";
+}[] = [
   {
     date: "2026-04-16",
     title: "Metric set streamlined to 10",
@@ -38,10 +45,10 @@ const entries: { date: string; title: string; description: string; tag: "feature
   },
 ];
 
-const tagStyles = {
-  feature: "bg-accent/10 text-accent border-accent/20",
-  fix: "bg-red-muted text-red border-red/20",
-  improvement: "bg-green-muted text-green border-green/20",
+const tagClassNames: Record<(typeof entries)[number]["tag"], string> = {
+  feature: "bg-info text-info-foreground",
+  fix: "bg-attention text-attention-foreground",
+  improvement: "bg-success text-success-foreground",
 };
 
 const tagLabels = {
@@ -52,12 +59,12 @@ const tagLabels = {
 
 export default function ChangelogPage() {
   return (
-    <div className="max-w-[700px] mx-auto px-6 py-20">
+    <div className="mx-auto max-w-[700px] px-6 py-20">
       <div className="mb-12">
-        <h1 className="text-[28px] font-semibold text-text-primary mb-3">
+        <h1 className="mb-3 font-serif text-[32px] font-semibold text-foreground">
           Changelog
         </h1>
-        <p className="text-[15px] text-text-secondary">
+        <p className="text-[15px] text-muted-foreground">
           What&apos;s new, fixed, and improved in AX.
         </p>
       </div>
@@ -66,25 +73,25 @@ export default function ChangelogPage() {
         {entries.map((entry) => (
           <div
             key={`${entry.date}-${entry.title}`}
-            className="relative pl-6 pb-8 border-l border-border-subtle last:pb-0"
+            className="relative border-l border-border pb-8 pl-6 last:pb-0"
           >
             {/* Timeline dot */}
-            <div className="absolute left-0 top-1 w-2 h-2 rounded-full bg-surface-3 border-2 border-border -translate-x-[5px]" />
+            <div className="absolute left-0 top-1 -translate-x-[5px] size-2 rounded-full border-2 border-border bg-muted" />
 
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <time className="text-[12px] text-text-tertiary font-mono">
+            <div className="mb-1.5 flex items-center gap-2.5">
+              <time className="font-serif text-[13px] italic text-muted-foreground">
                 {entry.date}
               </time>
-              <span
-                className={`text-[10px] font-medium rounded-full px-2 py-0.5 border ${tagStyles[entry.tag]}`}
+              <Badge
+                className={`rounded-full border-transparent px-2 py-0 text-[10px] ${tagClassNames[entry.tag]}`}
               >
                 {tagLabels[entry.tag]}
-              </span>
+              </Badge>
             </div>
-            <h3 className="text-[15px] font-medium text-text-primary mb-1">
+            <h3 className="mb-1 text-[15px] font-medium text-foreground">
               {entry.title}
             </h3>
-            <p className="text-[13px] text-text-secondary leading-relaxed">
+            <p className="text-[13px] leading-relaxed text-muted-foreground">
               {entry.description}
             </p>
           </div>

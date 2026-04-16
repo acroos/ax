@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Migrate marketing & docs routes to Parchment & Clay (Phase 2)
+
+**Pages updated:** dashboard
+**What changed:** Every route under `(marketing)/` — `/`, `/docs`, `/docs/[slug]`, `/docs/data-collection`, `/plans`, `/setup`, `/changelog`, `/terms` — now renders through Parchment & Clay semantic tokens (`foreground`, `muted-foreground`, `card`, `border`, `primary`, `accent`, `success`, `notice`, `attention`, `info`). Zero remaining references to `text-text-*`, `bg-surface-*`, `border-border-subtle`, `bg-accent-hover`, or literal red/green status classes across these routes. Shadcn `Card`, `Badge`, and `Button` primitives replace the hand-rolled card/pill/button HTML on every page (two new primitives installed: `card`, `badge`). Lucide icons (`FileText`, `Shield`, `ChevronLeft`, `Check`) replace inline SVG glyphs in the docs routes. Serif applied to top-level page titles (landing hero, `/docs`, `/plans`, `/setup`, `/changelog`, `/terms`) and to section headings that act as editorial moments on the landing page and `/setup`; changelog entry dates use serif italic. `/plans` Pro card carries a `Badge` using the `notice` (ochre) token for "Recommended" instead of recoloring the card border as a primary accent — preserves primary's scarcity per THEME.md §4. `/changelog` tag pills use `info` (feature), `attention` (fix), `success` (improvement), replacing the old red/green split. `/plans` feature-table checkmark uses the `success` token, not literal green. Shared `Markdown` component (consumed by `/docs/[slug]` and `/docs/data-collection`) rewritten against semantic tokens; serif on `h1`/`h2`. No `@tailwindcss/typography` dependency introduced — custom per-tag components are still explicit. **Why:** the shells landed in Phase 1, so every marketing/docs page now lives inside a properly themed header + footer; switching the page bodies completes the marketing surface in the new palette. Primitive adoption keeps focus rings, disabled states, and hover affordances consistent with the authenticated app that lands in Phase 4.
+
+---
+
 ## 2026-04-16 — Migrate app & marketing shells to shadcn primitives (Phase 1)
 
 **Pages updated:** dashboard
