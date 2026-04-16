@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Remove developer comparison feature
+
+**Pages updated:** dashboard, architecture
+**What changed:** Removed the `/{slug}/compare` route and everything that fed it: the page and its `loading.tsx`, the `DeveloperSelector` and `TimeWindowPicker` filter components, the `TrendChart` / `Sparkline` chart components (only consumed by compare), the `author` field on the dashboard `PR` interface, and the `FilterOpts` / `DeveloperMetrics` types and `filterPRs`, `listDevelopersAsync`, `getFilteredMetricsAsync`, `getDeveloperComparisonAsync`, `getPercentile`, `getFilteredTimelineAsync` functions in `src/lib/db.ts`. The "Compare" sidebar nav link and `CompareIcon`, plus `"compare"` from `NON_ORG_SEGMENTS`, are gone from `src/app/(app)/layout.tsx`. The `compare_developers` capability was removed from `server/config/initializers/plans.rb` (free + pro), the `ax:override` example, the `PlanService` spec, the billing card's PRO_FEATURES list, the marketing `/plans` feature table, the marketing landing pricing teaser, and step 6 of the marketing setup guide. `plans/comparison-views.md` was deleted. **Why:** comparing individuals goes against the product ethos — AX exists to be the origin of *team* discussions about how to work better with agents, not to rank developers against each other. A future Pro+ "insights" capability will surface team-level workflow improvement suggestions to fill the same upgrade slot.
+
+---
+
 ## 2026-04-16 — Stream dashboard pages via in-page Suspense
 
 **Pages updated:** dashboard

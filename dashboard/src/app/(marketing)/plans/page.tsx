@@ -7,7 +7,6 @@ const features = [
   { name: "Team members", free: "1", pro: "Unlimited" },
   { name: "Repositories", free: "2", pro: "Unlimited" },
   { name: "History retention", free: "30 days", pro: "Unlimited" },
-  { name: "Developer comparison", free: false, pro: true },
   { name: "Data export", free: false, pro: true },
   { name: "Priority support", free: false, pro: true },
 ];

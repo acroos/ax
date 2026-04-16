@@ -32,7 +32,7 @@ AX is a managed service with three components:
 |-----------|-------------|
 | 🔧 **Go CLI** | Parses Claude Code session data from your machine and pushes it to the server. Installs hooks so this happens automatically. |
 | 🚂 **Rails API** | Ingests session data and GitHub webhooks, computes all 16 metrics server-side, manages orgs and auth. |
-| 📈 **Next.js Dashboard** | Web UI at `https://ax-metrics.vercel.app` for viewing metrics, comparing developers, and managing your team. |
+| 📈 **Next.js Dashboard** | Web UI at `https://ax-metrics.vercel.app` for viewing metrics and managing your team. |
 
 Data flows in two ways:
 1. **Claude Code sessions** → CLI parses local session files and pushes to the API

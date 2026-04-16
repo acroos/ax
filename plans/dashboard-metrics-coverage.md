@@ -2,20 +2,20 @@
 
 ## Context
 
-The dashboard's PR detail page shows all 15 PR-level metrics, but the aggregate views (overview, PR list, compare) only surface 9 of them. Plan analysis data (coverage, deviation, scope creep) and several other metrics (diff churn, line revisit rate, iteration depth, error recovery, unmerged token spend) are computed and stored but never appear on aggregate pages. This makes the dashboard feel incomplete — users see plan analysis in CLI output but can't find it in the UI.
+The dashboard's PR detail page shows all 15 PR-level metrics, but the aggregate views (overview, PR list) only surface 9 of them. Plan analysis data (coverage, deviation, scope creep) and several other metrics (diff churn, line revisit rate, iteration depth, error recovery, unmerged token spend) are computed and stored but never appear on aggregate pages. This makes the dashboard feel incomplete — users see plan analysis in CLI output but can't find it in the UI.
 
 ## What's Missing (by page)
 
-| Metric | Overview | PR List | Compare | PR Detail |
-|--------|----------|---------|---------|-----------|
-| Diff Churn | - | - | - | yes |
-| Line Revisit Rate | - | - | - | yes |
-| Iteration Depth | - | - | - | yes |
-| Error Recovery | - | - | - | yes |
-| Plan Coverage | - | - | - | yes |
-| Plan Deviation | - | - | - | yes |
-| Scope Creep | - | - | - | yes |
-| Unmerged Token Spend | - | - | - | - |
+| Metric | Overview | PR List | PR Detail |
+|--------|----------|---------|-----------|
+| Diff Churn | - | - | yes |
+| Line Revisit Rate | - | - | yes |
+| Iteration Depth | - | - | yes |
+| Error Recovery | - | - | yes |
+| Plan Coverage | - | - | yes |
+| Plan Deviation | - | - | yes |
+| Scope Creep | - | - | yes |
+| Unmerged Token Spend | - | - | - |
 
 ## Implementation
 
@@ -83,22 +83,16 @@ Add 2 columns (table is already wide, keep it minimal):
 - **Depth** (iteration_depth) — next to Messages column
 - **Churn** (diff_churn_lines) — next to Post-Open Commits
 
-### Step 7: Extend Compare page (`dashboard/src/app/compare/page.tsx`)
-
-Leaderboard: add Iteration Depth, Error Recovery columns.
-Individual vs Team cards: add Diff Churn, Iteration Depth, Error Recovery, Line Revisit Rate.
-
 ## Files to Modify
 
 1. `dashboard/src/lib/db.ts` — interfaces, computeAggregates, new query functions
 2. `internal/server/handlers.go` — server-side aggregation
 3. `dashboard/src/app/page.tsx` — overview layout + new cards
 4. `dashboard/src/app/prs/page.tsx` — 2 new table columns
-5. `dashboard/src/app/compare/page.tsx` — leaderboard + comparison cards
 
 ## Implementation Order
 
-**Phase 1 (this session):** Steps 1-4, 6-7 — data layer, all three aggregate pages, PR list on overview
+**Phase 1 (this session):** Steps 1-4, 6 — data layer, aggregate pages, PR list on overview
 **Phase 2 (next step):** Step 5 — clickable metric drill-downs with per-PR charts and metric docs
 
 ## Verification
@@ -107,6 +101,5 @@ Individual vs Team cards: add Diff Churn, Iteration Depth, Error Recovery, Line 
 2. Check overview page shows all 4 category sections with populated cards
 3. Check overview page shows PR list at the bottom
 4. Check PR list page shows Depth and Churn columns
-5. Check compare page shows new leaderboard columns
-6. Verify API mode parity: `ax server` + dashboard pointed at API returns same metrics
-7. Verify graceful handling: repo with no plan data should hide Planning section, not show dashes
+5. Verify API mode parity: `ax server` + dashboard pointed at API returns same metrics
+6. Verify graceful handling: repo with no plan data should hide Planning section, not show dashes

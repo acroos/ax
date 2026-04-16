@@ -19,7 +19,7 @@ RSpec.describe PlanService do
     it "returns boolean capabilities for free plan" do
       service = PlanService.for(org)
       expect(service.capability(:core_metrics)).to be true
-      expect(service.capability(:compare_developers)).to be false
+      expect(service.capability(:export_data)).to be false
     end
 
     it "returns unlimited for pro plan without active subscription" do
@@ -65,8 +65,8 @@ RSpec.describe PlanService do
     it "returns pro features for pro plan" do
       org.update!(plan: "pro")
       service = PlanService.for(org)
-      expect(service.capability(:compare_developers)).to be true
       expect(service.capability(:export_data)).to be true
+      expect(service.capability(:priority_support)).to be true
     end
 
     it "falls back to free plan for unknown plan names" do
@@ -96,7 +96,7 @@ RSpec.describe PlanService do
 
     it "returns false for disabled boolean capabilities" do
       service = PlanService.for(org)
-      expect(service.can?(:compare_developers)).to be false
+      expect(service.can?(:export_data)).to be false
     end
 
     it "returns true for numeric capabilities (truthy)" do
@@ -105,9 +105,9 @@ RSpec.describe PlanService do
     end
 
     it "respects overrides" do
-      org.update!(plan_overrides: { "compare_developers" => true })
+      org.update!(plan_overrides: { "export_data" => true })
       service = PlanService.for(org)
-      expect(service.can?(:compare_developers)).to be true
+      expect(service.can?(:export_data)).to be true
     end
   end
 
@@ -159,7 +159,7 @@ RSpec.describe PlanService do
       expect(details[:name]).to eq("pro")
       expect(details[:capabilities][:max_members]).to be_nil
       expect(details[:capabilities][:max_repos]).to be_nil
-      expect(details[:capabilities][:compare_developers]).to be true
+      expect(details[:capabilities][:export_data]).to be true
     end
 
     it "includes the seat count as max_members for pro with active subscription" do

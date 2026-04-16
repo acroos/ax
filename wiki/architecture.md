@@ -8,7 +8,7 @@ AX is three components that work together as a managed service.
 |-----------|----------|----------|------|
 | **Go CLI** | Go | `cli/` | Session data parsing, push to server, hook installation |
 | **Rails Server** | Ruby | `server/` | Managed service API: multi-tenant data storage, webhooks, auth, metric computation |
-| **Dashboard** | TypeScript | `dashboard/` | Web UI for viewing metrics, comparing developers, browsing docs |
+| **Dashboard** | TypeScript | `dashboard/` | Web UI for viewing metrics and browsing docs |
 
 ## Architecture
 

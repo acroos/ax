@@ -130,7 +130,7 @@ export default async function LandingPage() {
           </h2>
           <p className="text-[15px] text-text-secondary mb-8 max-w-[420px] mx-auto">
             Core metrics and GitHub integration included on the free plan.
-            Upgrade for unlimited team members, developer comparison, and data export.
+            Upgrade for unlimited team members and data export.
           </p>
           <Link
             href="/plans"

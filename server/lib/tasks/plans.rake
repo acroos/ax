@@ -35,7 +35,7 @@ namespace :ax do
       puts "Usage: rails ax:override[org-slug,capability_key,value]"
       puts "Examples:"
       puts "  rails ax:override[my-org,max_repos,10]"
-      puts "  rails ax:override[my-org,compare_developers,true]"
+      puts "  rails ax:override[my-org,export_data,true]"
       next
     end
 

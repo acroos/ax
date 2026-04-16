@@ -1,6 +1,6 @@
 # Dashboard
 
-The Next.js dashboard displays metrics, trends, and developer comparisons. It fetches all data from the Rails API (managed mode only).
+The Next.js dashboard displays metrics and trends for org-scoped pull requests. It fetches all data from the Rails API (managed mode only).
 
 Location: `dashboard/`
 
@@ -26,7 +26,6 @@ Location: `dashboard/`
 | `/{slug}` | Org Overview | Aggregate metrics across all PRs, grouped by category. Clickable metric cards link to drill-down pages. Shows selected repo name. |
 | `/{slug}/metrics/[metric]` | Metric Detail | Per-PR breakdown for a single metric: bar chart, summary stats, sortable table, and documentation |
 | `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics and session count column |
-| `/{slug}/compare` | Compare | Org-scoped developer leaderboard, individual vs team averages, time filtering |
 | `/{slug}/settings` | Org Settings | GitHub App installation card (status, connected repos, install/reinstall), members list (role management, removal), and invites (create, list, revoke) |
 | `/{slug}/billing` | Billing | Current plan badge, seat count and monthly total (Pro), usage bars (members vs purchased seats, repos vs limits), upgrade/manage buttons, feature comparison for free plan |
 
@@ -51,10 +50,7 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 | `computeAggregatesFromPRs(prs)` | Compute aggregate metrics from a PR array (no API call) |
 | `getAggregateMetricsAsync(repoId?, orgSlug?)` | Averages and sums across all metrics |
 | `getTimelineAsync(repoId?, orgSlug?)` | Time-series data for trend charts |
-| `getDeveloperComparisonAsync(opts)` | Per-developer metric aggregates |
-| `getFilteredMetricsAsync(opts)` | Metrics filtered by time range and/or author |
 | `listReposAsync(orgSlug?)` | Tracked repositories |
-| `listDevelopersAsync(repoId?, orgSlug?)` | Unique PR author logins |
 | `getGithubInstallation(orgSlug)` | Installation state + user role + connected repos |
 | `requestGithubInstallUrl(orgSlug)` | Signed GitHub App install URL |
 | `getBilling(orgSlug)` | Plan details, subscription status, usage counts |
@@ -72,14 +68,6 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 
 ## Components
 
-### Charts
-- **TrendChart** (`src/components/trend-chart.tsx`) — Recharts AreaChart with gradient fill, tooltips, and customizable units (e.g., "$" for cost metrics)
-- **Sparkline** (same file) — Tiny inline chart (80x24px) used in metric cards on the overview page
-
-### Filtering
-- **TimeWindowPicker** (`src/components/time-window-picker.tsx`) — Date range selector with presets (7d, 30d, 90d, All). Updates URL query params (`since`, `until`).
-- **DeveloperSelector** (`src/components/developer-selector.tsx`) — Dropdown to filter by PR author. Updates `author` query param.
-
 ### Navigation
 - **OrgSwitcher** (`src/components/org-switcher.tsx`) — Dropdown listing user's organizations with "Personal" badge. Visible in sidebar.
 
@@ -88,7 +76,7 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 
 ### Loading states
 - **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonTableBody`, `SkeletonPageHeader`, `SkeletonChartPanel`. Shared building blocks for route-level loading UIs and in-page Suspense fallbacks.
-- **Route-level `loading.tsx`** — Every page under `/(app)` has a sibling `loading.tsx` that Next.js renders instantly on navigation (before the page's async data awaits resolve). Each skeleton mirrors the real page's layout. Files: `[slug]/loading.tsx`, `[slug]/prs/loading.tsx`, `[slug]/compare/loading.tsx`, `[slug]/metrics/[metric]/loading.tsx`, `[slug]/settings/loading.tsx`, `[slug]/billing/loading.tsx`, `prs/[id]/loading.tsx`, `settings/loading.tsx`.
+- **Route-level `loading.tsx`** — Every page under `/(app)` has a sibling `loading.tsx` that Next.js renders instantly on navigation (before the page's async data awaits resolve). Each skeleton mirrors the real page's layout. Files: `[slug]/loading.tsx`, `[slug]/prs/loading.tsx`, `[slug]/metrics/[metric]/loading.tsx`, `[slug]/settings/loading.tsx`, `[slug]/billing/loading.tsx`, `prs/[id]/loading.tsx`, `settings/loading.tsx`.
 - **Navigation progress bar** — `nextjs-toploader` is mounted in `src/app/layout.tsx` (2px, indigo `#6366F1`, no spinner). Shows at the top of the viewport during any `<Link>` navigation to give continuous "something is happening" feedback.
 - **`SectionErrorBoundary`** (`src/components/section-error-boundary.tsx`) — Client-side class component that catches errors thrown from an async Suspense child and renders a fallback in place of that section only. Used to scope API failures to a single card/table instead of taking down the whole page.
 
@@ -106,7 +94,6 @@ Page-by-page streaming topology:
 |------|---------------------|------------------|
 | `/[slug]` | h1 + "View all PRs" link | Subtitle (repo + count), metrics body (4 category grids, `NoDataState` / `NoFinalizedPRsState` fallbacks) |
 | `/[slug]/prs` | h1 + table header | Subtitle count, `<tbody>` rows, `NoDataBody` fallback |
-| `/[slug]/compare` | h1 + `TimeWindowPicker` | `DeveloperSelector` dropdown, individual-vs-team cards (when author selected), leaderboard table |
 | `/[slug]/metrics/[metric]` | Back link + header + doc content (read from disk synchronously) | Data count subtitle, 5 summary stat cards, chart panel, PR table |
 | `/prs/[id]` | Back link | PR header (title + badges + metadata), grouped metric cards, `PRNotFound` fallback |
 | `/[slug]/settings` | h1 | GitHub App card, Members card, Invites card (each independent Suspense) |
@@ -185,7 +172,6 @@ The middleware enforces auth on all routes. Public paths are excluded: `/login`,
 | `src/app/layout.tsx` | Root layout with sidebar |
 | `src/app/page.tsx` | Root page (redirects to org or login) |
 | `src/app/[slug]/prs/page.tsx` | Org-scoped PR list |
-| `src/app/[slug]/compare/page.tsx` | Org-scoped developer comparison |
 | `src/app/prs/[id]/page.tsx` | PR detail |
 | `src/app/globals.css` | Theme, tokens, animations |
 | `src/app/api/v1/[...path]/route.ts` | API proxy for client components |
