@@ -68,8 +68,12 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 
 ## Components
 
+### Layout shells
+- **App sidebar** (`src/app/(app)/layout.tsx`) — Composes shadcn `Sidebar` + `SidebarProvider` + `SidebarInset`. Server-rendered `AppSidebar` resolves the current org slug (from the middleware-injected `x-pathname` header), fetches the user and the repo list in parallel, and streams into the shell under a Suspense boundary that renders `SidebarMenuSkeleton`. Contains: logo wordmark, `OrgSwitcher`, nav menu (Overview, Pull Requests, Org Settings, Billing, Docs — each a lucide icon + `SidebarMenuButton asChild`), optional "Filter by Repo" group (only when the active org has repos with GitHub metadata), and a footer with the user avatar, an Account shortcut, the `ThemeToggle`, and the Data & Privacy link. A `SidebarTrigger` in the inset's mobile header toggles the sheet on small screens.
+- **Marketing shell** (`src/app/(marketing)/layout.tsx`) — Header composes shadcn `NavigationMenu` + `NavigationMenuLink` for the four marketing links (Docs / Plans / Setup / Changelog), plus outline "Sign in" and primary "Get Started" `Button`s. Footer uses shadcn `Separator` with the `ThemeToggle` sitting in the right-hand nav.
+
 ### Navigation
-- **OrgSwitcher** (`src/components/org-switcher.tsx`) — Dropdown listing user's organizations with "Personal" badge. Visible in sidebar.
+- **OrgSwitcher** (`src/components/org-switcher.tsx`) — Combobox built from shadcn `Popover` + `Command` (cmdk). Receives `orgs` and `currentSlug` from the sidebar; highlights the current org with a check, navigates via `next/navigation` on select, shows a "Personal" label next to personal orgs, and filters via the command input.
 
 ### Content
 - **Markdown** (`src/components/markdown.tsx`) — Renders metric docs from `docs/metrics/*.md` using `react-markdown` + `remark-gfm`. Custom styled components for headings, tables, code blocks.
@@ -77,7 +81,7 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 ### Loading states
 - **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonTableBody`, `SkeletonPageHeader`, `SkeletonChartPanel`. Shared building blocks for route-level loading UIs and in-page Suspense fallbacks.
 - **Route-level `loading.tsx`** — Every page under `/(app)` has a sibling `loading.tsx` that Next.js renders instantly on navigation (before the page's async data awaits resolve). Each skeleton mirrors the real page's layout. Files: `[slug]/loading.tsx`, `[slug]/prs/loading.tsx`, `[slug]/metrics/[metric]/loading.tsx`, `[slug]/settings/loading.tsx`, `[slug]/billing/loading.tsx`, `prs/[id]/loading.tsx`, `settings/loading.tsx`.
-- **Navigation progress bar** — `nextjs-toploader` is mounted in `src/app/layout.tsx` (2px, terracotta `#B0602F` (Clay-500), no spinner). Shows at the top of the viewport during any `<Link>` navigation to give continuous "something is happening" feedback.
+- **Navigation progress bar** — `nextjs-toploader` is mounted in `src/app/layout.tsx` (2px, `var(--color-primary)` so it follows the theme, no spinner). Shows at the top of the viewport during any `<Link>` navigation to give continuous "something is happening" feedback.
 - **`SectionErrorBoundary`** (`src/components/section-error-boundary.tsx`) — Client-side class component that catches errors thrown from an async Suspense child and renders a fallback in place of that section only. Used to scope API failures to a single card/table instead of taking down the whole page.
 
 ### Streaming pattern (in-page Suspense)
