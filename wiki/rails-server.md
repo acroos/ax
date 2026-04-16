@@ -216,7 +216,7 @@ Process Stripe webhook events (same pattern as GitHub handlers). `ProcessStripeW
 | `SubscriptionDeleted` | `customer.subscription.deleted` | Mark canceled, revert org plan to "free" |
 | `InvoicePaymentFailed` | `invoice.payment_failed` | Log warning (hook point for notifications) |
 
-The Stripe API version is pinned in `config/initializers/stripe.rb` (`2025-04-30.basil`). Bumping it requires reviewing every Stripe object access in these handlers — for example, `current_period_start` / `current_period_end` were moved off `Subscription` onto each subscription item in this version.
+The Stripe API version is pinned in `config/initializers/stripe.rb` (default `2026-03-25.dahlia`, overridable via `STRIPE_API_VERSION`). Keep this in sync with the version configured on the Stripe dashboard webhook endpoint. Bumping it requires reviewing every Stripe object access in these handlers — for example, `current_period_start` / `current_period_end` were moved off `Subscription` onto each subscription item in `2025-04-30.basil`.
 
 ## Webhook Handling
 
