@@ -1,18 +1,21 @@
 # AX Brand Assets
 
-Final logo package: wordmark (Concept A) and symbol (Symbol 2 with end ticks).
-Everything here is derived from the Parchment & Clay palette.
+Authoritative brand package: wordmark (Concept A) and symbol (Symbol 2 with end ticks).
+Everything here derives from the Parchment & Clay palette.
 
 Full product name: **AX** (Agentic Experience).
+
+This directory holds the **sources of truth** for the logo — the SVG vectors and the
+brand contract. The actively-served files (React components, favicon, PWA icons, OG
+images, manifest) have been installed into the app; see "Where installed assets live"
+below.
 
 ## Folder layout
 
 ```
-ax-brand-assets/
-├── svg/          Authoritative vector sources
-├── png/          Rendered rasters (favicons, PWA, OG)
-├── react/        Drop-in React components
-└── next-app/     Files staged for Next.js app router conventions
+brand-assets/
+├── README.md    ← this file — brand contract
+└── svg/         ← authoritative vector sources (edit here, re-render rasters from these)
 ```
 
 ## Color contract
@@ -38,9 +41,7 @@ Reserve padding equal to the **x-height of the wordmark** (roughly 1/3 of the to
 
 ---
 
-## Files
-
-### SVG sources (`svg/`)
+## SVG sources (`svg/`)
 
 Two strategies are provided. Pick whichever fits your pipeline:
 
@@ -56,33 +57,35 @@ Two strategies are provided. Pick whichever fits your pipeline:
 
 **Favicon-specific**
 
-- `ax-favicon.svg` — auto-adapts to `prefers-color-scheme` via an inline `<style>` block. This is the file to reference from `<link rel="icon" type="image/svg+xml" href="...">`.
+- `ax-favicon.svg` — auto-adapts to `prefers-color-scheme` via an inline `<style>` block. The file currently served at `src/app/icon.svg` is derived from this.
 - `ax-favicon-small.svg` — chunkier geometry tuned for 16/32px rasterization if you prefer to roll your own pipeline.
 
-### Rendered PNGs (`png/`)
+---
 
-| File                         | Size     | Purpose                               |
-| ---------------------------- | -------- | ------------------------------------- |
-| `ax-icon-16.png`             | 16       | Browser tab (fallback)                |
-| `ax-icon-32.png`             | 32       | Browser tab                           |
-| `ax-icon-48.png`             | 48       | Windows site tile                     |
-| `ax-icon-192.png`            | 192      | PWA (any)                             |
-| `ax-icon-512.png`            | 512      | PWA (any)                             |
-| `ax-icon-192-dark.png`       | 192      | PWA variant for dark-themed launchers |
-| `ax-icon-512-dark.png`       | 512      | PWA variant for dark-themed launchers |
-| `ax-icon-maskable-192.png`   | 192      | PWA (maskable), 80% safe zone         |
-| `ax-icon-maskable-512.png`   | 512      | PWA (maskable), 80% safe zone         |
-| `apple-touch-icon.png`       | 180      | iOS home screen (parchment bg)        |
-| `favicon.ico`                | multi    | 16 / 32 / 48 bundled                  |
-| `og-image.png`               | 1200×630 | Open Graph / Twitter card (light)     |
-| `og-image-dark.png`          | 1200×630 | Open Graph / Twitter card (dark)      |
+## Where installed assets live
 
-### React components (`react/`)
+These were copied out of `brand-assets/` during Phase 0 foundation and are now served by the app directly. Update them **here first**, then re-install, to avoid drift.
+
+| Concern | Path | Notes |
+|---|---|---|
+| Logo React components | `src/components/logo/` | `Mark`, `Wordmark`, `Logo`. Inherit `currentColor` for ink, `var(--ax-clay)` for the dot. |
+| Favicon (SVG) | `src/app/icon.svg` | Next.js file-convention — served at `/icon.svg` automatically. |
+| Favicon (ICO) | `src/app/favicon.ico` | Served at `/favicon.ico`. |
+| Favicon (PNG fallback) | `src/app/icon.png` | Served at `/icon.png`. |
+| Apple touch icon | `src/app/apple-icon.png` | 180px, served at `/apple-icon.png`. |
+| Open Graph image | `src/app/opengraph-image.png` | 1200×630, served at `/opengraph-image.png`. |
+| Twitter card image | `src/app/twitter-image.png` | 1200×630, served at `/twitter-image.png`. |
+| PWA manifest | `src/app/manifest.webmanifest` | Served at `/manifest.webmanifest`. References absolute PNG URLs. |
+| PWA icons | `public/ax-icon-{192,512,maskable-192,maskable-512}.png` | Served at their literal paths (matching the manifest). |
+| `--ax-clay` token | `src/app/globals.css` | Aliased to `--color-primary`; logo accent themes automatically. |
+| Browser-chrome `themeColor` | `src/app/layout.tsx` (`viewport` export) | `#FAF5EC` light / `#14110C` dark. |
+
+## React component usage
 
 TSX components sized with `currentColor` for ink and `var(--ax-clay)` for the accent. Use them when you want the logo to automatically match your theme context.
 
 ```tsx
-import { Mark, Wordmark, Logo } from "@/components/logo";
+import { Logo, Mark, Wordmark } from "@/components/logo";
 
 // Header — wordmark that follows text color
 <Wordmark className="h-7 w-auto text-foreground" />
@@ -94,78 +97,16 @@ import { Mark, Wordmark, Logo } from "@/components/logo";
 <Logo variant="mark" className="h-8 w-8 text-foreground" />
 ```
 
-The components expect `--ax-clay` in scope. Add it to your theme so the dot picks up the correct tone in each mode:
-
-```css
-/* In theme.css */
-@theme {
-  --ax-clay: #B0602F;
-}
-.dark {
-  --ax-clay: #D68250;
-}
-```
-
-(If you're already exposing `--color-primary` from your semantic tokens, you can instead set `--ax-clay: var(--color-primary)` and get the same behavior for free.)
-
-### Next.js app router staging (`next-app/`)
-
-Drop these into your `app/` directory. Next.js picks them up automatically and generates the correct `<head>` tags.
-
-```
-app/
-├── favicon.ico             → /favicon.ico
-├── icon.svg                → <link rel="icon" type="image/svg+xml">
-├── icon.png                → <link rel="icon" type="image/png"> (fallback)
-├── apple-icon.png          → <link rel="apple-touch-icon">
-├── opengraph-image.png     → <meta property="og:image">
-├── twitter-image.png       → <meta name="twitter:image">
-└── manifest.webmanifest    (see below)
-```
-
-The manifest lives at `app/manifest.webmanifest`. In `layout.tsx`, reference it via the metadata API:
-
-```tsx
-export const metadata: Metadata = {
-  title: { default: "AX", template: "%s · AX" },
-  description: "Agentic Experience",
-  manifest: "/manifest.webmanifest",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FAF5EC" },
-    { media: "(prefers-color-scheme: dark)",  color: "#14110C" },
-  ],
-};
-```
-
-For the PWA icons themselves (192, 512, maskable) drop the PNG files from `png/` into `public/` — the manifest already references them by absolute path.
-
 ---
 
-## For non-Next.js apps
+## Regenerating rasters
 
-If you're serving static assets directly, the equivalent `<head>` block:
+PNG favicons, PWA icons, OG images, and Twitter card images are rendered from the SVG sources in `svg/` via `cairosvg` (`render_pngs.py` + `render_og.py` from the original design session). If you edit geometry in `svg/`, re-run those scripts and copy the outputs into:
 
-```html
-<link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="icon" href="/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#FAF5EC">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14110C">
+- `src/app/` (for Next.js file-convention assets: `icon.png`, `apple-icon.png`, `opengraph-image.png`, `twitter-image.png`, `favicon.ico`)
+- `public/` (for PWA icons referenced by absolute URL in the manifest)
 
-<!-- Open Graph -->
-<meta property="og:image" content="https://your-domain/og-image.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://your-domain/og-image.png">
-```
-
----
-
-## Regenerating
-
-The PNG assets are rendered from the SVG sources via `cairosvg`. If you edit the geometry in `svg/`, re-run the render scripts (`render_pngs.py` and `render_og.py` in the working session) to refresh the raster files.
+Keep the filenames matching the existing ones so Next.js and the manifest continue to resolve them.
 
 ## Don'ts
 

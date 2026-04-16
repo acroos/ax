@@ -96,7 +96,7 @@ A separate `dashboard/brand-assets/` package landed alongside the theme — SVG 
 - **Copy PWA icons** (`ax-icon-192.png`, `ax-icon-512.png`, `ax-icon-maskable-192.png`, `ax-icon-maskable-512.png`) into `public/` so the manifest's absolute-path references resolve.
 - **Add `--ax-clay` to `globals.css`** as an alias of `--color-primary` (light + dark inherit automatically). Brand README's recommended shortcut.
 - **Update `layout.tsx` metadata:** add `title.template` (`"%s · AX"`), and a `viewport` export with `themeColor` for light (`#FAF5EC`) / dark (`#14110C`) — Next.js 14+ moved `themeColor` out of `metadata` onto `viewport`.
-- **Keep `brand-assets/` directory as-is** as the reference archive (README, SVG sources, PNG originals, preview.html). It's not consumed at build time, but it's the authoritative source if brand assets need to be regenerated. We intentionally do *not* collapse it the way we did `design-system/` because the SVG sources remain load-bearing.
+- **Slim `brand-assets/` to source-of-truth only.** After copying, delete `brand-assets/next-app/`, `brand-assets/react/`, `brand-assets/png/`, and `brand-assets/preview.html` — they're 1:1 duplicates of what's now installed in the app and would drift if ever edited. Keep `brand-assets/README.md` (brand contract: color, clear space, min sizes, don'ts) and `brand-assets/svg/` (8 authoritative vector sources). Update the README to point readers at the in-app paths for components, favicons, PWA icons, OG images, and manifest. The remaining directory is small, durable, and the only place to edit when brand geometry or color needs to change.
 
 ### 0.6 Recharts theming helper
 
