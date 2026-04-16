@@ -97,6 +97,21 @@ For **sequential** data (heatmaps, density), use tints/shades of a single chart 
 
 `sidebar`, `sidebar-foreground`, `sidebar-primary`, `sidebar-accent`, `sidebar-border`, `sidebar-ring` — all pre-mapped for you. No further setup needed.
 
+### Brand assets
+
+The AX logo components (`<Mark>`, `<Wordmark>`, `<Logo>`) live at `src/components/logo/`. They use `currentColor` for the ink strokes (follows the surrounding `text-*` class) and `var(--ax-clay)` for the accent dot. `--ax-clay` is aliased to `--color-primary` in `globals.css`, so it brightens from `#B0602F` → `#D68250` in dark mode automatically.
+
+The authoritative SVG sources, PNG rasters, favicon files, and PWA icons live under `brand-assets/` at the dashboard root. Full usage guidance: [`brand-assets/README.md`](./brand-assets/README.md).
+
+Usage:
+```tsx
+import { Logo, Mark, Wordmark } from "@/components/logo";
+
+<Wordmark className="h-7 w-auto text-foreground" />   // headers
+<Mark className="h-6 w-6 text-foreground" />          // tight placements
+<Logo variant="mark" className="h-8 w-8" />           // convenience wrapper
+```
+
 ---
 
 ## 4. Dos and don'ts

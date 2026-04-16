@@ -1,12 +1,22 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import NextTopLoader from "nextjs-toploader";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AX — Agentic Coding Metrics",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://ax-metrics.vercel.app",
+  ),
+  title: { default: "AX — Agentic Coding Metrics", template: "%s · AX" },
   description: "Measure how effectively you work with AI coding agents",
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAF5EC" },
+    { media: "(prefers-color-scheme: dark)", color: "#14110C" },
+  ],
 };
 
 export default function RootLayout({

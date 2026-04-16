@@ -163,6 +163,11 @@
   --color-sidebar-border:             var(--color-hairline);
   --color-sidebar-ring:               var(--color-clay-500);
 
+  /* Brand assets — the AX logo reads --ax-clay for its accent dot.
+     Aliased to --color-primary so dark mode is handled automatically.
+     See brand-assets/README.md §Color contract. */
+  --ax-clay: var(--color-primary);
+
 
   /* ---------------------------------------------------------
    * 3. Non-color tokens.

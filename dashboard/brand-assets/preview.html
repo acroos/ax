@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AX Brand Assets · Preview</title>
+<style>
+  :root {
+    --bg: #FAF5EC;
+    --surface: #F5ECDB;
+    --text: #1E1912;
+    --text-subtle: #6F6454;
+    --hairline: rgba(30,25,18,0.12);
+    --clay: #B0602F;
+  }
+  .dark {
+    --bg: #14110C;
+    --surface: #1C1812;
+    --text: #F1E8D6;
+    --text-subtle: #A59989;
+    --hairline: rgba(241,232,214,0.12);
+    --clay: #D68250;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 48px;
+    transition: background 0.2s, color 0.2s;
+  }
+  h1, h2, .serif {
+    font-family: "Iowan Old Style", Charter, "Source Serif 4", Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  h1 { font-size: 32px; margin: 0 0 8px; }
+  .lede { color: var(--text-subtle); margin: 0 0 40px; max-width: 60ch; }
+  h2 {
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
+    border-top: 1px solid var(--hairline);
+    padding-top: 18px;
+    margin: 48px 0 20px;
+  }
+  .toggle {
+    position: fixed; top: 20px; right: 20px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-items: center;
+    min-width: 120px;
+  }
+  .card .label {
+    font-size: 12px;
+    color: var(--text-subtle);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .card img, .card svg { display: block; }
+  .size-16 img { width: 16px; height: 16px; image-rendering: pixelated; }
+  .size-32 img { width: 32px; height: 32px; image-rendering: pixelated; }
+  .size-48 img { width: 48px; height: 48px; image-rendering: pixelated; }
+  .size-180 img { width: 180px; height: 180px; border-radius: 36px; }
+  .size-192 img { width: 192px; height: 192px; }
+  .size-512 img { width: 256px; height: 256px; }
+  .og img { width: 600px; max-width: 100%; border-radius: 12px; border: 1px solid var(--hairline); }
+
+  .wordmark-24 { height: 24px; color: var(--text); --ax-clay: var(--clay); }
+  .wordmark-32 { height: 32px; color: var(--text); --ax-clay: var(--clay); }
+  .wordmark-48 { height: 48px; color: var(--text); --ax-clay: var(--clay); }
+  .wordmark-72 { height: 72px; color: var(--text); --ax-clay: var(--clay); }
+  .mark-16 { height: 16px; width: 16px; color: var(--text); --ax-clay: var(--clay); }
+  .mark-24 { height: 24px; width: 24px; color: var(--text); --ax-clay: var(--clay); }
+  .mark-32 { height: 32px; width: 32px; color: var(--text); --ax-clay: var(--clay); }
+  .mark-48 { height: 48px; width: 48px; color: var(--text); --ax-clay: var(--clay); }
+  .mark-72 { height: 72px; width: 72px; color: var(--text); --ax-clay: var(--clay); }
+
+  .chrome {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 420px;
+  }
+  .chrome .dot { width: 10px; height: 10px; border-radius: 999px; background: rgba(128,128,128,0.2); }
+  .chrome .tab {
+    background: var(--bg);
+    border-radius: 6px 6px 0 0;
+    padding: 6px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+  <button class="toggle" onclick="document.body.classList.toggle('dark')">Toggle dark</button>
+
+  <h1 class="serif">AX · Brand asset preview</h1>
+  <p class="lede">Final wordmark and symbol. Toggle dark mode to check both themes. All SVG shown here uses <code>currentColor</code> ink and <code>--ax-clay</code> accent.</p>
+
+  <h2>Wordmark at scale</h2>
+  <div class="row">
+    <div class="card">
+      <svg class="wordmark-24" viewBox="0 0 360 170" xmlns="http://www.w3.org/2000/svg" aria-label="AX">
+        <text x="180" y="106" font-family="'Iowan Old Style','Charter','Source Serif 4',Georgia,serif" font-size="120" font-weight="600" letter-spacing="-0.02em" text-anchor="middle" fill="currentColor">AX</text>
+        <g fill="none" stroke="currentColor" stroke-width="1.6">
+          <line x1="76" y1="128" x2="284" y2="128"/>
+          <line x1="76" y1="124" x2="76" y2="132"/>
+          <line x1="284" y1="124" x2="284" y2="132"/>
+        </g>
+        <circle cx="216" cy="118" r="4.2" fill="var(--ax-clay, #B0602F)"/>
+      </svg>
+      <div class="label">24px</div>
+    </div>
+    <div class="card">
+      <svg class="wordmark-32" viewBox="0 0 360 170" xmlns="http://www.w3.org/2000/svg" aria-label="AX">
+        <text x="180" y="106" font-family="'Iowan Old Style','Charter','Source Serif 4',Georgia,serif" font-size="120" font-weight="600" letter-spacing="-0.02em" text-anchor="middle" fill="currentColor">AX</text>
+        <g fill="none" stroke="currentColor" stroke-width="1.6">
+          <line x1="76" y1="128" x2="284" y2="128"/>
+          <line x1="76" y1="124" x2="76" y2="132"/>
+          <line x1="284" y1="124" x2="284" y2="132"/>
+        </g>
+        <circle cx="216" cy="118" r="4.2" fill="var(--ax-clay, #B0602F)"/>
+      </svg>
+      <div class="label">32px</div>
+    </div>
+    <div class="card">
+      <svg class="wordmark-48" viewBox="0 0 360 170" xmlns="http://www.w3.org/2000/svg" aria-label="AX">
+        <text x="180" y="106" font-family="'Iowan Old Style','Charter','Source Serif 4',Georgia,serif" font-size="120" font-weight="600" letter-spacing="-0.02em" text-anchor="middle" fill="currentColor">AX</text>
+        <g fill="none" stroke="currentColor" stroke-width="1.6">
+          <line x1="76" y1="128" x2="284" y2="128"/>
+          <line x1="76" y1="124" x2="76" y2="132"/>
+          <line x1="284" y1="124" x2="284" y2="132"/>
+        </g>
+        <circle cx="216" cy="118" r="4.2" fill="var(--ax-clay, #B0602F)"/>
+      </svg>
+      <div class="label">48px</div>
+    </div>
+    <div class="card">
+      <svg class="wordmark-72" viewBox="0 0 360 170" xmlns="http://www.w3.org/2000/svg" aria-label="AX">
+        <text x="180" y="106" font-family="'Iowan Old Style','Charter','Source Serif 4',Georgia,serif" font-size="120" font-weight="600" letter-spacing="-0.02em" text-anchor="middle" fill="currentColor">AX</text>
+        <g fill="none" stroke="currentColor" stroke-width="1.6">
+          <line x1="76" y1="128" x2="284" y2="128"/>
+          <line x1="76" y1="124" x2="76" y2="132"/>
+          <line x1="284" y1="124" x2="284" y2="132"/>
+        </g>
+        <circle cx="216" cy="118" r="4.2" fill="var(--ax-clay, #B0602F)"/>
+      </svg>
+      <div class="label">72px</div>
+    </div>
+  </div>
+
+  <h2>Symbol at scale</h2>
+  <div class="row">
+    <div class="card">
+      <svg class="mark-16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="AX">
+        <g fill="none" stroke="currentColor" stroke-width="3">
+          <line x1="20" y1="84" x2="100" y2="84"/>
+          <line x1="20" y1="79" x2="20" y2="89"/>
+          <line x1="100" y1="79" x2="100" y2="89"/>
+        </g>
+        <circle cx="72" cy="52" r="7.5" fill="var(--ax-clay, #B0602F)"/>
+      </svg>
+      <div class="label">16px</div>
+    </div>
+    <div class="card">
+      <svg class="mark-24" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="AX">
+        <g fill="none" stroke="currentColor" stroke-width="3">
+          <line x1="20" y1="84" x2="100" y2="84"/>
+          <line x1="20" y1="79" x2="20" y2="89"/>
+          <line x1="100" y1="79" x2="100" y2="89"/>
+        </g>
+        <circle cx="72" cy="52" r="7.5" fill="var(--ax-clay, #B0602F)"/>
+      </svg>
+      <div class="label">24px</div>
+    </div>
+    <div class="card">
+      <svg class="mark-32" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="AX">
+        <g fill="none" stroke="currentColor" stroke-width="3">
+          <line x1="20" y1="84" x2="100" y2="84"/>
+          <line x1="20" y1="79" x2="20" y2="89"/>
+          <line x1="100" y1="79" x2="100" y2="89"/>
+        </g>
+        <circle cx="72" cy="52" r="7.5" fill="var(--ax-clay, #B0602F)"/>
+      </svg>
+      <div class="label">32px</div>
+    </div>
+    <div class="card">
+      <svg class="mark-48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="AX">
+        <g fill="none" stroke="currentColor" stroke-width="3">
+          <line x1="20" y1="84" x2="100" y2="84"/>
+          <line x1="20" y1="79" x2="20" y2="89"/>
+          <line x1="100" y1="79" x2="100" y2="89"/>
+        </g>
+        <circle cx="72" cy="52" r="7.5" fill="var(--ax-clay, #B0602F)"/>
+      </svg>
+      <div class="label">48px</div>
+    </div>
+    <div class="card">
+      <svg class="mark-72" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-label="AX">
+        <g fill="none" stroke="currentColor" stroke-width="3">
+          <line x1="20" y1="84" x2="100" y2="84"/>
+          <line x1="20" y1="79" x2="20" y2="89"/>
+          <line x1="100" y1="79" x2="100" y2="89"/>
+        </g>
+        <circle cx="72" cy="52" r="7.5" fill="var(--ax-clay, #B0602F)"/>
+      </svg>
+      <div class="label">72px</div>
+    </div>
+  </div>
+
+  <h2>Rasterized favicons (actual pixels)</h2>
+  <div class="row">
+    <div class="card size-16"><img src="png/ax-icon-16.png" alt="16px"><div class="label">16px PNG</div></div>
+    <div class="card size-32"><img src="png/ax-icon-32.png" alt="32px"><div class="label">32px PNG</div></div>
+    <div class="card size-48"><img src="png/ax-icon-48.png" alt="48px"><div class="label">48px PNG</div></div>
+  </div>
+
+  <h2>Browser tab mockup</h2>
+  <div class="chrome">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <div class="tab">
+      <img src="png/ax-icon-32.png" width="14" height="14" alt="">
+      AX — Agentic Experience
+    </div>
+  </div>
+
+  <h2>iOS home screen (apple-touch-icon)</h2>
+  <div class="row">
+    <div class="card size-180"><img src="png/apple-touch-icon.png" alt="180px"><div class="label">180px (rounded by iOS)</div></div>
+  </div>
+
+  <h2>PWA icons</h2>
+  <div class="row">
+    <div class="card size-192"><img src="png/ax-icon-192.png" alt="192"><div class="label">192 · any</div></div>
+    <div class="card size-512"><img src="png/ax-icon-512.png" alt="512"><div class="label">512 · any</div></div>
+    <div class="card size-192"><img src="png/ax-icon-maskable-192.png" alt="192 maskable"><div class="label">192 · maskable</div></div>
+    <div class="card size-512"><img src="png/ax-icon-maskable-512.png" alt="512 maskable"><div class="label">512 · maskable</div></div>
+  </div>
+
+  <h2>Open Graph / Twitter</h2>
+  <div class="row">
+    <div class="card og"><img src="png/og-image.png" alt="OG"><div class="label">og-image.png · light</div></div>
+    <div class="card og"><img src="png/og-image-dark.png" alt="OG dark"><div class="label">og-image-dark.png</div></div>
+  </div>
+</body>
+</html>

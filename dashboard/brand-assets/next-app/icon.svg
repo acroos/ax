@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="AX">
+  <title>AX favicon</title>
+  <style>
+    .ink  { stroke: #1E1912; }
+    .clay { fill:   #B0602F; }
+    @media (prefers-color-scheme: dark) {
+      .ink  { stroke: #F1E8D6; }
+      .clay { fill:   #D68250; }
+    }
+  </style>
+  <g class="ink" fill="none" stroke-width="3">
+    <line x1="20" y1="84" x2="100" y2="84"/>
+    <line x1="20" y1="79" x2="20" y2="89"/>
+    <line x1="100" y1="79" x2="100" y2="89"/>
+  </g>
+  <circle class="clay" cx="72" cy="52" r="7.5"/>
+</svg>

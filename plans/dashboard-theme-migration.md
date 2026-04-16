@@ -87,7 +87,18 @@ The goal of Phase 0 is that on branch merge, **the app looks identical to what i
 - Add a `<ThemeToggle />` primitive (shadcn-style; uses `DropdownMenu` with Light / Dark / System options). Landing spot: top-right of the `(app)` sidebar/topbar and the `(marketing)` header. Actual placement finalized in Phase 1, but the component exists in Phase 0.
 - Persistence: default `next-themes` behavior (localStorage) is fine. No cookie-sync needed yet — SSR hydration mismatch is avoided by `suppressHydrationWarning` on `<html>`.
 
-### 0.5 Recharts theming helper
+### 0.5 Brand assets wiring
+
+A separate `dashboard/brand-assets/` package landed alongside the theme — SVG wordmark + symbol, PNG rasters, Next.js app-convention metadata files, React components (`Mark`, `Wordmark`, `Logo`). They're foundation work like the theme itself: Phase 1 (app/marketing shells) needs the logo components immediately, and favicon / manifest / OG images are "set once, forget" infrastructure that shouldn't block on route migrations.
+
+- **Copy React components** into `src/components/logo/` (`Mark.tsx`, `Wordmark.tsx`, `Logo.tsx`, `index.ts`). Components use `currentColor` for ink and `var(--ax-clay)` for the accent dot.
+- **Copy Next.js app-convention files** (`icon.svg`, `icon.png`, `apple-icon.png`, `favicon.ico`, `opengraph-image.png`, `twitter-image.png`, `manifest.webmanifest`) into `src/app/`. Next.js's file-convention metadata API auto-picks these up — no explicit references needed in `layout.tsx`.
+- **Copy PWA icons** (`ax-icon-192.png`, `ax-icon-512.png`, `ax-icon-maskable-192.png`, `ax-icon-maskable-512.png`) into `public/` so the manifest's absolute-path references resolve.
+- **Add `--ax-clay` to `globals.css`** as an alias of `--color-primary` (light + dark inherit automatically). Brand README's recommended shortcut.
+- **Update `layout.tsx` metadata:** add `title.template` (`"%s · AX"`), and a `viewport` export with `themeColor` for light (`#FAF5EC`) / dark (`#14110C`) — Next.js 14+ moved `themeColor` out of `metadata` onto `viewport`.
+- **Keep `brand-assets/` directory as-is** as the reference archive (README, SVG sources, PNG originals, preview.html). It's not consumed at build time, but it's the authoritative source if brand assets need to be regenerated. We intentionally do *not* collapse it the way we did `design-system/` because the SVG sources remain load-bearing.
+
+### 0.6 Recharts theming helper
 
 - `MetricBarChart` hard-codes four hex values. Don't migrate it yet, but in Phase 0 add a tiny helper `src/lib/chart-theme.ts` that reads CSS variables at render:
   ```ts
@@ -96,7 +107,7 @@ The goal of Phase 0 is that on branch merge, **the app looks identical to what i
   ```
   Phase 5 refactors `MetricBarChart` to use it. This is a no-op in Phase 0 except that it exists.
 
-### 0.6 Documentation updates (Phase 0 MUST NOT merge without these)
+### 0.7 Documentation updates (Phase 0 MUST NOT merge without these)
 
 These doc updates are load-bearing — they're what ensures every subsequent PR (and every future contributor) hits the new direction by default, not the old one.
 
@@ -137,7 +148,7 @@ These doc updates are load-bearing — they're what ensures every subsequent PR 
    **What changed:** Wired dashboard/design-system/theme.css into globals.css; installed shadcn/ui and base primitives; added next-themes toggle (light default); dropped Geist webfont. Per-route migrations follow in subsequent PRs.
    ```
 
-### 0.7 Phase 0 acceptance
+### 0.8 Phase 0 acceptance
 
 - `just dashboard-build` passes, `just dashboard-dev` serves on :3333.
 - Current pages render (they'll look off — unstyled buttons, wrong colors — that's expected; old tokens no longer resolve). No JS errors, no hydration mismatches.

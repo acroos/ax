@@ -130,6 +130,12 @@ Never write `dark:` variants for colors that already have semantic tokens — th
 
 `src/components/theme-toggle.tsx` renders the Light / Dark / System dropdown. It's wired up at the root via `ThemeProvider` (`src/components/theme-provider.tsx`, wrapping `next-themes`). First-visit preference honors the user's OS setting when System is selected.
 
+### Brand assets
+
+Logo components `<Mark>`, `<Wordmark>`, `<Logo>` live at `src/components/logo/` (re-exported from `index.ts`). They use `currentColor` for ink and `var(--ax-clay)` (aliased to `--color-primary`) for the accent dot, so they theme automatically. Use `<Wordmark>` in headers, `<Mark>` in tight placements (favicons, avatars), `<Logo variant="…">` as a convenience wrapper.
+
+The authoritative source files (SVG, PNG rasters, favicon bundles, OG images) live at `dashboard/brand-assets/` — see [`brand-assets/README.md`](../dashboard/brand-assets/README.md) for the full brand contract. Next.js app-router metadata files (`icon.svg`, `apple-icon.png`, `opengraph-image.png`, `twitter-image.png`, `favicon.ico`, `manifest.webmanifest`) sit at `src/app/` and are auto-picked-up by Next.js's file-convention metadata API. PWA icons referenced by absolute URL in the manifest live at `public/ax-icon-*.png`. Theme color for the browser chrome is declared in `src/app/layout.tsx` via the `viewport` export.
+
 ### Primitive components
 
 Primitive UI (button, dialog, dropdown-menu, input, select, tabs, tooltip, etc.) comes from [shadcn/ui](https://ui.shadcn.com/) under `src/components/ui/`. Install new primitives with `npx shadcn@latest add <name>` from `dashboard/`. See the Components section above for the app-level compositions.

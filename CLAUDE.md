@@ -76,6 +76,8 @@ Primitive UI components (button, dialog, dropdown-menu, input, select, tabs, too
 
 Light mode is the default; dark mode is user-toggleable via the `ThemeToggle` (`src/components/theme-toggle.tsx`) wired up through `next-themes`. Never write `dark:` Tailwind variants for colors that already have semantic tokens — the tokens remap automatically.
 
+Brand assets (logo components `Mark`, `Wordmark`, `Logo` at `src/components/logo/`; favicons, PWA icons, OG images, manifest) all flow from [`dashboard/brand-assets/`](dashboard/brand-assets/README.md). The logo accent uses `--ax-clay` which aliases `--color-primary`, so it themes automatically. Follow the brand contract: ink + clay only, never recolor the ticks, never fill the dot with anything else.
+
 See ADR-015 for the rationale behind both decisions.
 
 ## Decisions
