@@ -16,7 +16,5 @@ FactoryBot.define do
     total_file_reads { 10 }
     files_read_count { 8 }
     files_modified_count { 3 }
-    bash_errors { 1 }
-    bash_successes { 9 }
   end
 end

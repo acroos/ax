@@ -299,17 +299,11 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 			CacheReadInputTokens:     session.CacheReadInputTokens,
 			TotalCostUSD:             session.TotalCostUSD,
 			PrimaryModel:             session.PrimaryModel,
-			BashErrors:               session.BashErrors,
-			BashSuccesses:            session.BashSuccesses,
 			FilesReadCount:           len(session.FilesRead),
 			FilesModifiedCount:       len(session.FilesModified),
 			AssistantMessageCount:    session.AssistantMessages,
 			SidechainMessages:        session.SidechainMessages,
 			TotalFileReads:           session.TotalFileReads,
-		}
-
-		if len(session.PlanFiles) > 0 {
-			sd.PlannedFiles = parsers.ExtractPlannedFiles(session.PlanFiles)
 		}
 
 		sessions = append(sessions, sd)

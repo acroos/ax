@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const features = [
-  { name: "Core metrics (16 metrics)", free: true, pro: true },
+  { name: "Core metrics (10 metrics)", free: true, pro: true },
   { name: "GitHub integration & webhooks", free: true, pro: true },
   { name: "90-day PR backfill", free: true, pro: true },
   { name: "Team members", free: "1", pro: "Unlimited" },

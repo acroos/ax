@@ -1,6 +1,12 @@
 // Changelog entries. Add new entries at the top.
 const entries: { date: string; title: string; description: string; tag: "feature" | "fix" | "improvement" }[] = [
   {
+    date: "2026-04-16",
+    title: "Metric set streamlined to 10",
+    description: "Removed metrics that weren't pulling their weight: first-pass acceptance, test coverage, diff churn, messages/PR, self-correction rate, context efficiency, error recovery, and all planning metrics. The dashboard now focuses on 10 higher-signal metrics across three categories.",
+    tag: "improvement",
+  },
+  {
     date: "2026-04-15",
     title: "Stripe webhook idempotency",
     description: "Webhook events are now processed idempotently, preventing duplicate billing state changes from retried deliveries.",

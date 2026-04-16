@@ -99,21 +99,13 @@ export interface PR {
 
 export interface PRMetrics {
   pr_id: number;
-  messages_per_pr: number | null;
   iteration_depth: number | null;
   post_open_commits: number | null;
-  first_pass_accepted: boolean | null;
   ci_success_rate: number | null;
-  diff_churn_lines: number | null;
-  has_tests: boolean | null;
   line_revisit_rate: number | null;
-  self_correction_rate: number | null;
-  context_efficiency: number | null;
-  error_recovery_attempts: number | null;
+  review_cycle_time_minutes: number | null;
+  first_review_at: string | null;
   token_cost_usd: number | null;
-  plan_coverage_score: number | null;
-  plan_deviation_score: number | null;
-  scope_creep_detected: boolean | null;
   cache_hit_rate: number | null;
   sidechain_rate: number | null;
   re_read_rate: number | null;
@@ -132,24 +124,11 @@ export interface PRWithMetrics extends PR {
 export interface AggregateMetrics {
   totalPRs: number;
   avgPostOpenCommits: number;
-  firstPassAcceptanceRate: number;
   ciSuccessRate: number | null;
-  testCoverageRate: number;
-  avgMessagesPerPR: number | null;
   avgIterationDepth: number | null;
   avgTokenCost: number | null;
-  totalTokenCost: number | null;
-  avgSelfCorrectionRate: number | null;
-  avgContextEfficiency: number | null;
-  avgDiffChurnLines: number | null;
   avgLineRevisitRate: number | null;
-  avgErrorRecoveryAttempts: number | null;
-  avgPlanCoverage: number | null;
-  avgPlanDeviation: number | null;
-  scopeCreepRate: number | null;
-  planDataCount: number;
   sessionDataCount: number;
-  sessionMetricsCount: number;
   avgCacheHitRate: number | null;
   avgSidechainRate: number | null;
   avgReReadRate: number | null;
@@ -168,9 +147,7 @@ export interface TimelinePoint {
   createdAt: string;
   postOpenCommits: number | null;
   ciSuccessRate: number | null;
-  messagesPerPR: number | null;
   tokenCostUSD: number | null;
-  selfCorrectionRate: number | null;
 }
 
 // --- GitHub Installation ---
@@ -271,14 +248,9 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
 
   if (totalPRs === 0) {
     return {
-      totalPRs: 0, avgPostOpenCommits: 0, firstPassAcceptanceRate: 0,
-      ciSuccessRate: null, testCoverageRate: 0, avgMessagesPerPR: null,
-      avgIterationDepth: null, avgTokenCost: null, totalTokenCost: null,
-      avgSelfCorrectionRate: null, avgContextEfficiency: null,
-      avgDiffChurnLines: null, avgLineRevisitRate: null,
-      avgErrorRecoveryAttempts: null, avgPlanCoverage: null,
-      avgPlanDeviation: null, scopeCreepRate: null, planDataCount: 0,
-      sessionDataCount: 0, sessionMetricsCount: 0,
+      totalPRs: 0, avgPostOpenCommits: 0,
+      ciSuccessRate: null, avgIterationDepth: null, avgTokenCost: null,
+      avgLineRevisitRate: null, sessionDataCount: 0,
       avgCacheHitRate: null, avgSidechainRate: null,
       avgReReadRate: null, avgAutonomyScore: null,
     };
@@ -289,24 +261,9 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
     ? postOpen.reduce((s, p) => s + p.metrics!.post_open_commits!, 0) / postOpen.length
     : 0;
 
-  const accepted = withMetrics.filter((p) => p.metrics!.first_pass_accepted !== null);
-  const firstPassAcceptanceRate = accepted.length
-    ? accepted.filter((p) => p.metrics!.first_pass_accepted === true).length / accepted.length
-    : 0;
-
   const ci = withMetrics.filter((p) => p.metrics!.ci_success_rate !== null);
   const ciSuccessRate = ci.length
     ? ci.reduce((s, p) => s + p.metrics!.ci_success_rate!, 0) / ci.length
-    : null;
-
-  const tests = withMetrics.filter((p) => p.metrics!.has_tests !== null);
-  const testCoverageRate = tests.length
-    ? tests.filter((p) => p.metrics!.has_tests === true).length / tests.length
-    : 0;
-
-  const msgs = withMetrics.filter((p) => p.metrics!.messages_per_pr !== null);
-  const avgMessagesPerPR = msgs.length
-    ? msgs.reduce((s, p) => s + p.metrics!.messages_per_pr!, 0) / msgs.length
     : null;
 
   const iter = withMetrics.filter((p) => p.metrics!.iteration_depth !== null);
@@ -318,53 +275,11 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
   const avgTokenCost = cost.length
     ? cost.reduce((s, p) => s + p.metrics!.token_cost_usd!, 0) / cost.length
     : null;
-  const totalTokenCost = cost.length
-    ? cost.reduce((s, p) => s + p.metrics!.token_cost_usd!, 0)
-    : null;
-
-  const sc = withMetrics.filter((p) => p.metrics!.self_correction_rate !== null);
-  const avgSelfCorrectionRate = sc.length
-    ? sc.reduce((s, p) => s + p.metrics!.self_correction_rate!, 0) / sc.length
-    : null;
-
-  const ce = withMetrics.filter((p) => p.metrics!.context_efficiency !== null);
-  const avgContextEfficiency = ce.length
-    ? ce.reduce((s, p) => s + p.metrics!.context_efficiency!, 0) / ce.length
-    : null;
-
-  const churn = withMetrics.filter((p) => p.metrics!.diff_churn_lines !== null);
-  const avgDiffChurnLines = churn.length
-    ? churn.reduce((s, p) => s + p.metrics!.diff_churn_lines!, 0) / churn.length
-    : null;
 
   const revisit = withMetrics.filter((p) => p.metrics!.line_revisit_rate !== null);
   const avgLineRevisitRate = revisit.length
     ? revisit.reduce((s, p) => s + p.metrics!.line_revisit_rate!, 0) / revisit.length
     : null;
-
-  const errRec = withMetrics.filter((p) => p.metrics!.error_recovery_attempts !== null);
-  const avgErrorRecoveryAttempts = errRec.length
-    ? errRec.reduce((s, p) => s + p.metrics!.error_recovery_attempts!, 0) / errRec.length
-    : null;
-
-  const planCov = withMetrics.filter((p) => p.metrics!.plan_coverage_score !== null);
-  const avgPlanCoverage = planCov.length
-    ? planCov.reduce((s, p) => s + p.metrics!.plan_coverage_score!, 0) / planCov.length
-    : null;
-
-  const planDev = withMetrics.filter((p) => p.metrics!.plan_deviation_score !== null);
-  const avgPlanDeviation = planDev.length
-    ? planDev.reduce((s, p) => s + p.metrics!.plan_deviation_score!, 0) / planDev.length
-    : null;
-
-  const scopeCreepPRs = withMetrics.filter((p) => p.metrics!.scope_creep_detected !== null);
-  const scopeCreepRate = scopeCreepPRs.length
-    ? scopeCreepPRs.filter((p) => p.metrics!.scope_creep_detected === true).length / scopeCreepPRs.length
-    : null;
-
-  const planDataCount = withMetrics.filter(
-    (p) => p.metrics!.plan_coverage_score !== null || p.metrics!.plan_deviation_score !== null
-  ).length;
 
   const cacheHit = withMetrics.filter((p) => p.metrics!.cache_hit_rate !== null);
   const avgCacheHitRate = cacheHit.length
@@ -387,13 +302,9 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
     : null;
 
   return {
-    totalPRs, avgPostOpenCommits, firstPassAcceptanceRate,
-    ciSuccessRate, testCoverageRate, avgMessagesPerPR,
-    avgIterationDepth, avgTokenCost, totalTokenCost,
-    avgSelfCorrectionRate, avgContextEfficiency,
-    avgDiffChurnLines, avgLineRevisitRate, avgErrorRecoveryAttempts,
-    avgPlanCoverage, avgPlanDeviation, scopeCreepRate, planDataCount,
-    sessionDataCount: cost.length, sessionMetricsCount: msgs.length,
+    totalPRs, avgPostOpenCommits,
+    ciSuccessRate, avgIterationDepth, avgTokenCost,
+    avgLineRevisitRate, sessionDataCount: cost.length,
     avgCacheHitRate, avgSidechainRate, avgReReadRate, avgAutonomyScore,
   };
 }
@@ -441,9 +352,7 @@ function buildTimeline(prs: PRWithMetrics[]): TimelinePoint[] {
       createdAt: p.created_at!,
       postOpenCommits: p.metrics!.post_open_commits,
       ciSuccessRate: p.metrics!.ci_success_rate !== null ? Math.round(p.metrics!.ci_success_rate * 100) : null,
-      messagesPerPR: p.metrics!.messages_per_pr,
       tokenCostUSD: p.metrics!.token_cost_usd !== null ? Math.round(p.metrics!.token_cost_usd * 100) / 100 : null,
-      selfCorrectionRate: p.metrics!.self_correction_rate !== null ? Math.round(p.metrics!.self_correction_rate * 100) : null,
     }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }

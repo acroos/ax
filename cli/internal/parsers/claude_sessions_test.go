@@ -90,8 +90,6 @@ func TestParseSession(t *testing.T) {
 	t.Logf("  Files read: %d", len(session.FilesRead))
 	t.Logf("  Files modified: %d", len(session.FilesModified))
 	t.Logf("  Tool calls: %v", session.ToolCalls)
-	t.Logf("  Bash errors: %d", session.BashErrors)
-	t.Logf("  Bash successes: %d", session.BashSuccesses)
 	t.Logf("  PR URLs: %v", session.PRURLs)
 	t.Logf("  Commit SHAs: %v", session.CommitSHAs)
 
@@ -234,68 +232,6 @@ func TestExtractCommitSHAs(t *testing.T) {
 	}
 	if !seen["abc1234"] {
 		t.Errorf("expected SHA abc1234, got %v", seen)
-	}
-}
-
-func TestExtractPlannedFiles(t *testing.T) {
-	// Create a temp plan file with backtick-wrapped file paths
-	dir := t.TempDir()
-	planPath := filepath.Join(dir, "plan.md")
-	content := `# Plan: Add feature
-
-## Files to change
-- ` + "`internal/db/db.go`" + ` — add new table
-- ` + "`internal/api/types.go`" + ` — add new type
-- ` + "`server/app/services/push_service.rb`" + ` — accept new field
-
-## Tests
-- ` + "`internal/db/db_test.go`" + `
-
-## Notes
-Version ` + "`1.2.3`" + ` is required.
-`
-	if err := os.WriteFile(planPath, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	files := ExtractPlannedFiles([]string{planPath})
-
-	expected := map[string]bool{
-		"internal/db/db.go":                   true,
-		"internal/api/types.go":               true,
-		"server/app/services/push_service.rb": true,
-		"internal/db/db_test.go":              true,
-	}
-
-	if len(files) != len(expected) {
-		t.Fatalf("expected %d files, got %d: %v", len(expected), len(files), files)
-	}
-
-	for _, f := range files {
-		if !expected[f] {
-			t.Errorf("unexpected file: %s", f)
-		}
-	}
-}
-
-func TestExtractPlannedFilesDeduplicates(t *testing.T) {
-	dir := t.TempDir()
-	planPath := filepath.Join(dir, "plan.md")
-	content := "Edit `src/app.go` and then update `src/app.go` again."
-	if err := os.WriteFile(planPath, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	files := ExtractPlannedFiles([]string{planPath})
-	if len(files) != 1 {
-		t.Fatalf("expected 1 deduplicated file, got %d: %v", len(files), files)
-	}
-}
-
-func TestExtractPlannedFilesMissingFile(t *testing.T) {
-	files := ExtractPlannedFiles([]string{"/nonexistent/plan.md"})
-	if len(files) != 0 {
-		t.Fatalf("expected 0 files for missing plan, got %d", len(files))
 	}
 }
 

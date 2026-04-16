@@ -39,16 +39,15 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `Commit` | `commits` | Git commit (sha as PK, claude-authored flag, post-open flag) |
 | `CodingSession` | `sessions` | Claude Code session (tokens, cost, model, message counts) |
 | `SessionPr` | `session_prs` | Session-to-PR correlation with confidence |
-| `PrMetrics` | `pr_metrics` | All 16 metrics per PR (with finalization lock) |
+| `PrMetrics` | `pr_metrics` | 10 PR-level metrics (with finalization lock) |
 | `RepoMetrics` | `repo_metrics` | Repo-level aggregates (unmerged spend, totals) |
 | `WatchedRepo` | `watched_repos` | Polling metadata |
-| `PlanAnalysis` | `plan_analyses` | Plan-to-implementation comparison |
 
 ### Key Model Behaviors
 
-**PrFile** stores file paths fetched from the GitHub API at PR finalization. Used by server-side metric computation (has_tests, line_revisit_rate).
+**PrFile** stores file paths fetched from the GitHub API at PR finalization. Used by server-side metric computation (line_revisit_rate).
 
-**PrMetrics** has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`. Session-derived fields (messages_per_pr, token_cost_usd, iteration_depth, etc.) remain updatable via `update_session_metrics!` to support late-arriving session data.
+**PrMetrics** has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`. Session-derived fields (token_cost_usd, iteration_depth, cache_hit_rate, etc.) remain updatable via `update_session_metrics!` to support late-arriving session data.
 
 **User** automatically processes pending invites on creation — if someone was invited by GitHub username before they signed up, the invite is accepted on first login.
 
@@ -147,7 +146,7 @@ Matches sessions to PRs within a repo by branch name, then computes session-deri
 
 1. Finds all sessions and PRs for the repo with non-null branches
 2. Matches by branch name → creates `SessionPr` records (confidence: `"branch_match"`)
-3. For each PR with linked sessions: aggregates `messages_per_pr`, `token_cost_usd`, `iteration_depth`
+3. For each PR with linked sessions: aggregates `token_cost_usd` and `iteration_depth`, plus derived metrics (`cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`) via MetricsComputer
 4. Uses `update_session_metrics!` to enrich even settled PRs
 5. Idempotent — safe to run repeatedly
 
@@ -159,18 +158,18 @@ Handles OAuth and onboarding:
 
 ### GithubDataFetcher (`app/services/github_data_fetcher.rb`)
 Fetches file-level and commit data from the GitHub API at PR finalization:
-- `GET /repos/{owner}/{repo}/pulls/{number}/files` → PrFile records (for test detection + line revisit tracking)
-- `GET /repos/{owner}/{repo}/pulls/{number}/commits` → Commit records with per-commit additions (for diff churn)
+- `GET /repos/{owner}/{repo}/pulls/{number}/files` → PrFile records (for line revisit tracking)
+- `GET /repos/{owner}/{repo}/pulls/{number}/commits` → Commit records with per-commit additions
 
 Also computes and updates the PR's `additions`, `deletions`, and `changed_files` from the fetched file data (the GitHub list endpoint doesn't include diff stats).
 
 Only runs if the repo has a GitHub App installation. Skips gracefully otherwise.
 
 ### MetricsComputer (`app/services/metrics_computer.rb`)
-Computes three metrics that require file-level data:
-- `diff_churn_lines`: sum of per-commit additions minus PR net additions (floor 0)
-- `has_tests`: pattern-matches file paths against test file conventions (.test., .spec., _test., test/, etc.)
-- `line_revisit_rate`: fraction of files also changed in other finalized PRs in the same repo
+Computes metrics derived from fetched data and correlated sessions:
+- `ci_success_rate`: fraction of commits with `ci_passed = true`
+- `line_revisit_rate`: fraction of files also changed in other finalized PRs in the same repo (7-day lookback)
+- `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`: computed from correlated session aggregates
 
 Called by PrMerged and PrClosed handlers after GithubDataFetcher populates the data.
 
@@ -237,9 +236,9 @@ The `resolve_webhook_secret` method in `WebhooksController`:
 |---------|---------|--------|
 | `PrOpened` | PR opened | Create PR record, initialize empty PrMetrics, correlate with existing sessions |
 | `PrSynchronized` | Commits pushed | Recalculate `post_open_commits` |
-| `PrMerged` | PR merged | Fetch file/commit data from GitHub API, compute diff_churn/has_tests/line_revisit_rate, finalize all metrics (immutable) |
-| `PrClosed` | PR closed (not merged) | Fetch file/commit data from GitHub API, compute diff_churn/has_tests/line_revisit_rate, finalize as abandoned |
-| `ReviewSubmitted` | Review posted | Update `first_pass_accepted` |
+| `PrMerged` | PR merged | Fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize all metrics (immutable) |
+| `PrClosed` | PR closed (not merged) | Fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize as abandoned |
+| `ReviewSubmitted` | Review posted | Capture review cycle time on first human review |
 | `CiCompleted` | Check suite finished | Update `ci_success_rate` |
 
 #### Installation Lifecycle
@@ -290,7 +289,7 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 - Single-repo backfill. Triggered by: BackfillInstallationJob, PushService (post-push), InstallationRepositories webhook, ReconcileReposJob
 - Fetches PRs from the GitHub API for the last N days (default 90, configurable via `GITHUB_APP_BACKFILL_DAYS`)
 - Reuses existing webhook handlers (`PrOpened`, `PrMerged`, `PrClosed`, `ReviewSubmitted`) via `Backfillable` concern
-- Backfills PR reviews from GitHub API before finalization so `first_pass_accepted` is populated
+- Backfills PR reviews from GitHub API before finalization so review cycle time is captured
 - Per-PR errors are caught and logged without aborting the backfill
 - Runs `SessionPrCorrelationService` after backfill to link existing sessions to newly created PRs
 - Retries on `Octokit::TooManyRequests` (8 attempts, polynomial backoff) and `Octokit::ServerError` (3 attempts)

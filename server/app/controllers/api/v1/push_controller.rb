@@ -30,9 +30,8 @@ module Api
             :id, :branch, :started_at, :ended_at, :message_count, :turn_count,
             :input_tokens, :output_tokens, :cache_creation_input_tokens,
             :cache_read_input_tokens, :total_cost_usd, :primary_model,
-            :bash_errors, :bash_successes, :files_read_count, :files_modified_count,
-            :assistant_message_count, :sidechain_messages, :total_file_reads,
-            planned_files: []
+            :files_read_count, :files_modified_count,
+            :assistant_message_count, :sidechain_messages, :total_file_reads
           ],
           commits: [
             :sha, :pr_number, :session_id, :message, :author, :committed_at,
@@ -40,11 +39,9 @@ module Api
           ],
           session_prs: [ :session_id, :pr_number, :confidence ],
           pr_metrics: [
-            :pr_number, :messages_per_pr, :iteration_depth, :post_open_commits,
-            :first_pass_accepted, :ci_success_rate, :diff_churn_lines, :has_tests,
-            :line_revisit_rate, :self_correction_rate, :context_efficiency,
-            :error_recovery_attempts, :token_cost_usd, :plan_coverage_score,
-            :plan_deviation_score, :scope_creep_detected, :metrics_finalized, :finalized_at
+            :pr_number, :iteration_depth, :post_open_commits,
+            :ci_success_rate, :line_revisit_rate, :token_cost_usd,
+            :metrics_finalized, :finalized_at
           ],
           repo_metrics: [
             :period_start, :period_end, :period_type, :total_sessions, :total_tokens,

@@ -44,42 +44,12 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.first_pass_accepted !== null) {
-    metrics.push({
-      label: "First-Pass Accepted",
-      value: m.first_pass_accepted === true ? "Yes" : "No",
-      description:
-        "Whether the PR was merged without any reviewer requesting changes.",
-      category: "Output Quality",
-    });
-  }
-
   if (m.ci_success_rate !== null) {
     metrics.push({
       label: "CI Success Rate",
       value: `${Math.round(m.ci_success_rate * 100)}%`,
       description:
         "Percentage of CI checks that passed. Low rates suggest checks weren't run locally before pushing.",
-      category: "Output Quality",
-    });
-  }
-
-  if (m.has_tests !== null) {
-    metrics.push({
-      label: "Includes Tests",
-      value: m.has_tests === true ? "Yes" : "No",
-      description:
-        "Whether this PR includes changes to test files (*.test.*, *.spec.*, etc).",
-      category: "Output Quality",
-    });
-  }
-
-  if (m.diff_churn_lines !== null) {
-    metrics.push({
-      label: "Diff Churn",
-      value: `${m.diff_churn_lines} lines`,
-      description:
-        "Lines written then rewritten before merge. Higher values mean more wasted effort.",
       category: "Output Quality",
     });
   }
@@ -94,13 +64,13 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.messages_per_pr !== null) {
+  if (m.review_cycle_time_minutes !== null) {
     metrics.push({
-      label: "Messages",
-      value: String(m.messages_per_pr),
+      label: "Review Cycle Time",
+      value: `${m.review_cycle_time_minutes} min`,
       description:
-        "Human messages in Claude Code sessions that produced this PR. Fewer messages means clearer intent communication.",
-      category: "Prompt Efficiency",
+        "Minutes from PR open to first human review. Lower is a faster feedback loop.",
+      category: "Output Quality",
     });
   }
 
@@ -124,63 +94,43 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.self_correction_rate !== null) {
+  if (m.cache_hit_rate !== null) {
     metrics.push({
-      label: "Self-Correction Rate",
-      value: `${Math.round(m.self_correction_rate * 100)}%`,
+      label: "Cache Hit Rate",
+      value: `${Math.round(m.cache_hit_rate * 100)}%`,
       description:
-        "How often the agent recovered from errors without human intervention. Higher is better.",
+        "Ratio of cache-read tokens to total input tokens. Higher means better prompt cache utilization.",
+      category: "Prompt Efficiency",
+    });
+  }
+
+  if (m.sidechain_rate !== null) {
+    metrics.push({
+      label: "Sidechain Rate",
+      value: `${Math.round(m.sidechain_rate * 100)}%`,
+      description:
+        "Fraction of messages on sidechain branches. Lower means fewer dead-end reasoning paths.",
       category: "Agent Behavior",
     });
   }
 
-  if (m.context_efficiency !== null) {
+  if (m.re_read_rate !== null) {
     metrics.push({
-      label: "Context Efficiency",
-      value: m.context_efficiency.toFixed(2),
+      label: "Re-Read Rate",
+      value: m.re_read_rate.toFixed(2),
       description:
-        "Ratio of files modified to files read. Values around 0.3-0.5 are typical for thoughtful exploration.",
+        "Total file reads divided by unique files read. 1.0 means no re-reads; higher is redundant.",
       category: "Agent Behavior",
     });
   }
 
-  if (m.error_recovery_attempts !== null) {
+  if (m.autonomy_score !== null) {
     metrics.push({
-      label: "Error Recovery Attempts",
-      value: String(m.error_recovery_attempts),
+      label: "Autonomy Score",
+      value: m.autonomy_score.toFixed(1),
       description:
-        "Total Bash errors encountered. Fewer errors means the agent gets things right without trial-and-error.",
+        "Ratio of assistant to human messages. Higher means the agent worked more independently.",
       category: "Agent Behavior",
-    });
-  }
-
-  if (m.plan_coverage_score !== null) {
-    metrics.push({
-      label: "Plan Coverage",
-      value: `${Math.round(m.plan_coverage_score * 100)}%`,
-      description:
-        "What fraction of the actual changes were anticipated in the plan. Higher means the plan predicted the work well.",
-      category: "Planning Effectiveness",
-    });
-  }
-
-  if (m.plan_deviation_score !== null) {
-    metrics.push({
-      label: "Plan Deviation",
-      value: `${Math.round(m.plan_deviation_score * 100)}%`,
-      description:
-        "What fraction of planned files were actually changed. Lower means planned work was skipped or deferred.",
-      category: "Planning Effectiveness",
-    });
-  }
-
-  if (m.scope_creep_detected !== null) {
-    metrics.push({
-      label: "Scope Creep",
-      value: m.scope_creep_detected === true ? "Yes" : "No",
-      description:
-        "Whether more than half the changes came from outside the plan. Scope creep isn't always bad — it can mean the agent was thorough.",
-      category: "Planning Effectiveness",
     });
   }
 
@@ -312,7 +262,7 @@ async function PRHeader({ promise }: { promise: Promise<PRWithMetrics | undefine
 function MetricGroupsSkeleton() {
   return (
     <div className="space-y-6">
-      {[5, 3, 4].map((count, gi) => (
+      {[4, 3, 3].map((count, gi) => (
         <div key={gi}>
           <Skeleton className="h-3 w-32 mb-3 ml-1" />
           <div className="grid grid-cols-3 gap-3">
@@ -339,7 +289,7 @@ async function MetricGroups({ promise }: { promise: Promise<PRWithMetrics | unde
   if (!pr) throw new Error("PR not found");
 
   const metricDisplays = getMetricDisplays(pr);
-  const categories = ["Output Quality", "Prompt Efficiency", "Agent Behavior", "Planning Effectiveness"];
+  const categories = ["Output Quality", "Prompt Efficiency", "Agent Behavior"];
   const grouped = categories
     .map((cat) => ({
       name: cat,

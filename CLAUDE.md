@@ -72,7 +72,8 @@ ax push --all                       # Discover all repos and bulk push sessions
 
 All architectural decisions are documented in `docs/decisions/`. Reference these when working in the related area:
 
-- [001 — Metrics Selection](docs/decisions/001-metrics-selection.md): 16 metrics across 4 categories. Check this before adding or changing metrics.
+- [001 — Metrics Selection](docs/decisions/001-metrics-selection.md): Original metric set. Partially superseded by ADR-015.
+- [015 — Metric Pruning](docs/decisions/015-metric-pruning.md): 10 metrics across 3 categories (+ Unmerged Token Spend at repo level). Check this before adding or changing metrics.
 - [002 — Form Factor](docs/decisions/002-form-factor.md): CLI + web dashboard. Don't build a plugin-only solution.
 - [003 — Target Scope](docs/decisions/003-target-scope.md): **Superseded by ADR-014.** Originally: local → team → managed service path.
 - [004 — CLI Language](docs/decisions/004-cli-language.md): Go for CLI, TypeScript for dashboard only.

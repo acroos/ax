@@ -40,7 +40,7 @@ BackfillRepoJob (per-repo, idempotent):
   → Fetch PRs from GitHub API (last 90 days, configurable)
   → For each PR:
     → Create/update PR record (PrOpened handler)
-    → Fetch reviews → set first_pass_accepted
+    → Fetch reviews → capture review cycle time
     → If merged/closed: fetch files + commits, compute metrics, settle
   → Run SessionPrCorrelationService (match existing sessions to PRs)
 ```
@@ -63,9 +63,9 @@ GitHub Event → POST /webhooks/github → Validate HMAC-SHA256 signature
                               → Run SessionPrCorrelationService
   pull_request.synchronize  → Update post_open_commits
   pull_request.closed       → Fetch file/commit data from GitHub API
-                              → Compute diff_churn, has_tests, line_revisit_rate
+                              → Compute line_revisit_rate, ci_success_rate
                               → Settle metrics (merged or abandoned)
-  pull_request_review       → Update first_pass_accepted
+  pull_request_review       → Capture first review cycle time (human reviews only)
   check_suite.completed     → Update ci_success_rate
 ```
 
@@ -91,8 +91,8 @@ All PRs are shown in the dashboard regardless of settlement status. Open PRs sho
 
 `PrMetrics` has two field categories with different protection rules:
 
-- **GitHub-derived** (locked after settlement): `post_open_commits`, `first_pass_accepted`, `ci_success_rate`, `diff_churn_lines`, `has_tests`, `line_revisit_rate`
-- **Session-derived** (always updatable via `update_session_metrics!`): `messages_per_pr`, `iteration_depth`, `token_cost_usd`, `self_correction_rate`, `context_efficiency`, `error_recovery_attempts`, `plan_coverage_score`, `plan_deviation_score`, `scope_creep_detected`
+- **GitHub-derived** (locked after settlement): `post_open_commits`, `line_revisit_rate`, `first_review_at`, `review_cycle_time_minutes`
+- **Session-derived** (always updatable via `update_session_metrics!`): `iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`
 
 This allows late-arriving session data to enrich already-settled PRs, which is the normal case (developers push after PRs merge).
 
@@ -108,9 +108,9 @@ SessionPrCorrelationService:
   → Find all PRs for the repo with a non-null branch
   → Match by branch name → create SessionPr records (confidence: "branch_match")
   → Aggregate session metrics onto matched PRs:
-    messages_per_pr = SUM(session.message_count)
     token_cost_usd  = SUM(session.total_cost_usd)
     iteration_depth = MAX(session.turn_count)
+    cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score via MetricsComputer
 ```
 
 Correlation runs after: CLI push, GitHub App backfill, PR opened webhook.

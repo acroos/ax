@@ -6,15 +6,12 @@ class PrMetrics < ApplicationRecord
   before_update :prevent_settled_github_update
 
   GITHUB_DERIVED_FIELDS = %w[
-    post_open_commits first_pass_accepted
-    diff_churn_lines has_tests line_revisit_rate
+    post_open_commits line_revisit_rate
     first_review_at review_cycle_time_minutes
   ].freeze
 
   SESSION_DERIVED_FIELDS = %w[
-    messages_per_pr iteration_depth token_cost_usd
-    self_correction_rate context_efficiency error_recovery_attempts
-    plan_coverage_score plan_deviation_score scope_creep_detected
+    iteration_depth token_cost_usd
     cache_hit_rate sidechain_rate re_read_rate autonomy_score
   ].freeze
 

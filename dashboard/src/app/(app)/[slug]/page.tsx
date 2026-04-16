@@ -172,14 +172,13 @@ async function OverviewSubtitle({
   );
 }
 
-// Mirrors the real layout — three mandatory category grids of 6/5/6 cards.
-// Planning is conditional on data and thus omitted from the skeleton.
+// Mirrors the real layout — three category grids.
 function OverviewMetricsSkeleton() {
   return (
     <>
-      <SkeletonMetricCategory count={6} />
-      <SkeletonMetricCategory count={5} />
-      <SkeletonMetricCategory count={6} />
+      <SkeletonMetricCategory count={4} />
+      <SkeletonMetricCategory count={3} />
+      <SkeletonMetricCategory count={3} />
     </>
   );
 }
@@ -248,31 +247,10 @@ async function OverviewMetricsBody({
             {...tip("post-open-commits")}
           />
           <MetricCard
-            label="First-Pass Acceptance"
-            value={fmtPct(metrics.firstPassAcceptanceRate)}
-            detail="PRs merged without changes requested"
-            href={metricHref("first-pass-acceptance")}
-            {...tip("first-pass-acceptance")}
-          />
-          <MetricCard
             label="CI Success Rate"
             value={fmtPct(metrics.ciSuccessRate)}
             href={metricHref("ci-success-rate")}
             {...tip("ci-success-rate")}
-          />
-          <MetricCard
-            label="Test Coverage"
-            value={fmtPct(metrics.testCoverageRate)}
-            detail="PRs that include test changes"
-            href={metricHref("test-coverage")}
-            {...tip("test-coverage")}
-          />
-          <MetricCard
-            label="Avg Diff Churn"
-            value={metrics.avgDiffChurnLines !== null ? `${Math.round(metrics.avgDiffChurnLines)} lines` : "\u2014"}
-            detail="Lines written then rewritten"
-            href={metricHref("diff-churn")}
-            {...tip("diff-churn")}
           />
           <MetricCard
             label="Avg Line Revisit Rate"
@@ -290,12 +268,6 @@ async function OverviewMetricsBody({
           Prompt Efficiency
         </h2>
         <div className="grid grid-cols-3 gap-3">
-          <MetricCard
-            label="Avg Messages / PR"
-            value={fmt(metrics.avgMessagesPerPR, 0)}
-            href={metricHref("messages-per-pr")}
-            {...tip("messages-per-pr")}
-          />
           <MetricCard
             label="Avg Iteration Depth"
             value={fmt(metrics.avgIterationDepth, 0)}
@@ -317,13 +289,6 @@ async function OverviewMetricsBody({
             href={metricHref("cache-hit-rate")}
             {...tip("cache-hit-rate")}
           />
-          {metrics.totalTokenCost !== null && (
-            <MetricCard
-              label="Total Token Cost"
-              value={fmtCost(metrics.totalTokenCost)}
-              detail={metrics.sessionDataCount > 0 ? `Across ${metrics.sessionDataCount} PR${metrics.sessionDataCount !== 1 ? "s" : ""}` : undefined}
-            />
-          )}
         </div>
       </div>
 
@@ -333,25 +298,6 @@ async function OverviewMetricsBody({
           Agent Behavior
         </h2>
         <div className="grid grid-cols-3 gap-3">
-          <MetricCard
-            label="Avg Self-Correction Rate"
-            value={fmtPct(metrics.avgSelfCorrectionRate)}
-            href={metricHref("self-correction-rate")}
-            {...tip("self-correction-rate")}
-          />
-          <MetricCard
-            label="Avg Context Efficiency"
-            value={fmt(metrics.avgContextEfficiency, 2)}
-            href={metricHref("context-efficiency")}
-            {...tip("context-efficiency")}
-          />
-          <MetricCard
-            label="Avg Error Recovery"
-            value={fmt(metrics.avgErrorRecoveryAttempts, 0)}
-            detail="Bash errors per PR"
-            href={metricHref("error-recovery")}
-            {...tip("error-recovery")}
-          />
           <MetricCard
             label="Avg Sidechain Rate"
             value={fmtPct(metrics.avgSidechainRate)}
@@ -375,35 +321,6 @@ async function OverviewMetricsBody({
           />
         </div>
       </div>
-
-      {/* Planning Effectiveness */}
-      {metrics.planDataCount > 0 && (
-        <div className="mb-8 animate-in" style={{ animationDelay: "200ms" }}>
-          <h2 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-3 px-1">
-            Planning Effectiveness
-          </h2>
-          <div className="grid grid-cols-3 gap-3">
-            <MetricCard
-              label="Avg Plan Coverage"
-              value={fmtPct(metrics.avgPlanCoverage)}
-              href={metricHref("plan-coverage")}
-              {...tip("plan-coverage")}
-            />
-            <MetricCard
-              label="Avg Plan Deviation"
-              value={fmtPct(metrics.avgPlanDeviation)}
-              href={metricHref("plan-deviation")}
-              {...tip("plan-deviation")}
-            />
-            <MetricCard
-              label="Scope Creep Rate"
-              value={fmtPct(metrics.scopeCreepRate)}
-              href={metricHref("scope-creep")}
-              {...tip("scope-creep")}
-            />
-          </div>
-        </div>
-      )}
     </>
   );
 }

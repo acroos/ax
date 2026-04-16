@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_15_230000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_16_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -113,20 +113,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_15_230000) do
     t.index ["stripe_customer_id"], name: "index_organizations_on_stripe_customer_id", unique: true, where: "(stripe_customer_id IS NOT NULL)"
   end
 
-  create_table "plan_analyses", force: :cascade do |t|
-    t.text "actual_files"
-    t.text "analysis_json"
-    t.float "coverage_score"
-    t.datetime "created_at", null: false
-    t.float "deviation_score"
-    t.string "plan_file"
-    t.text "planned_files"
-    t.bigint "pr_id"
-    t.boolean "scope_creep_detected", default: false
-    t.datetime "updated_at", null: false
-    t.index ["pr_id"], name: "index_plan_analyses_on_pr_id"
-  end
-
   create_table "pr_files", force: :cascade do |t|
     t.integer "additions", default: 0
     t.datetime "created_at", null: false
@@ -145,26 +131,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_15_230000) do
     t.float "cache_hit_rate"
     t.float "ci_success_rate"
     t.datetime "computed_at", default: -> { "now()" }, null: false
-    t.float "context_efficiency"
     t.datetime "created_at", null: false
-    t.integer "diff_churn_lines"
-    t.integer "error_recovery_attempts"
     t.datetime "finalized_at"
-    t.boolean "first_pass_accepted"
     t.datetime "first_review_at"
-    t.boolean "has_tests"
     t.integer "iteration_depth"
     t.float "line_revisit_rate"
-    t.integer "messages_per_pr"
     t.boolean "metrics_finalized", default: false
-    t.float "plan_coverage_score"
-    t.float "plan_deviation_score"
     t.integer "post_open_commits"
     t.bigint "pr_id", null: false
     t.float "re_read_rate"
     t.integer "review_cycle_time_minutes"
-    t.boolean "scope_creep_detected"
-    t.float "self_correction_rate"
     t.float "sidechain_rate"
     t.float "token_cost_usd"
     t.datetime "updated_at", null: false
@@ -247,8 +223,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_15_230000) do
 
   create_table "sessions", id: :string, force: :cascade do |t|
     t.integer "assistant_message_count", default: 0, null: false
-    t.integer "bash_errors", default: 0
-    t.integer "bash_successes", default: 0
     t.string "branch"
     t.integer "cache_creation_input_tokens", default: 0
     t.integer "cache_read_input_tokens", default: 0
@@ -260,7 +234,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_15_230000) do
     t.integer "input_tokens", default: 0
     t.integer "message_count", default: 0
     t.integer "output_tokens", default: 0
-    t.text "planned_files"
     t.string "primary_model"
     t.string "pushed_by"
     t.bigint "repo_id"
@@ -479,7 +452,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_15_230000) do
   add_foreign_key "org_memberships", "users"
   add_foreign_key "org_memberships", "users", column: "invited_by_id"
   add_foreign_key "organizations", "users", column: "created_by_id"
-  add_foreign_key "plan_analyses", "prs"
   add_foreign_key "pr_files", "prs"
   add_foreign_key "pr_metrics", "prs"
   add_foreign_key "prs", "repos"

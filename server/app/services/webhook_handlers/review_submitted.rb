@@ -15,18 +15,7 @@ module WebhookHandlers
       return unless pr
       return if pr_finalized?(pr)
 
-      state = @review_data[:state]
       metrics = ensure_pr_metrics(pr)
-
-      case state
-      when "CHANGES_REQUESTED", "changes_requested"
-        metrics.update!(first_pass_accepted: false)
-      when "APPROVED", "approved"
-        # Latch: only set to true if not already set to false
-        if metrics.first_pass_accepted.nil?
-          metrics.update!(first_pass_accepted: true)
-        end
-      end
 
       # Capture review cycle time on first human review (exclude bots)
       capture_review_cycle_time(pr, metrics) if should_capture_review_time?

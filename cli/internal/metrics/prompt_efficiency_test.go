@@ -6,16 +6,6 @@ import (
 	"github.com/austinroos/ax/internal/parsers"
 )
 
-func TestMessagesPerPR(t *testing.T) {
-	sessions := []*parsers.ParsedSession{
-		{HumanMessages: 5},
-		{HumanMessages: 3},
-	}
-	if got := MessagesPerPR(sessions); got != 8 {
-		t.Errorf("MessagesPerPR = %d, want 8", got)
-	}
-}
-
 func TestIterationDepth(t *testing.T) {
 	sessions := []*parsers.ParsedSession{
 		{TurnCount: 4},
