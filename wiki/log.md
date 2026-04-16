@@ -11,6 +11,17 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Fix billing webhook regression and duplicate-checkout race
+
+**Pages updated:** rails-server
+**What changed:** Three intertwined fixes:
+1. **Pinned `Stripe.api_version`** in `config/initializers/stripe.rb` (default `2026-03-25.dahlia`, overridable via `STRIPE_API_VERSION`). The stripe-ruby v19 default had silently moved `current_period_start` / `current_period_end` off the `Subscription` object onto each subscription item, which caused `CheckoutCompleted` to crash with `NoMethodError`, leaving every paid upgrade stuck on `free`. Pinning keeps the wire format aligned with whatever version is configured on the Stripe webhook endpoint.
+2. **Updated `CheckoutCompleted` and `SubscriptionUpdated`** to read `current_period_*` from `items.data.first`. `CheckoutCompleted` also now skips entirely when the Stripe subscription is already `canceled` (handles delayed redeliveries after manual cleanup of duplicate subs).
+3. **New `POST /api/v1/orgs/:slug/billing/reconcile?session_id=…`** endpoint, called synchronously by the dashboard's `/{slug}/billing/success` route handler. Stripe's `success_url` now templates `{CHECKOUT_SESSION_ID}` so the browser carries the session id back. Reconcile retrieves the Checkout Session, asserts `metadata.org_id` matches the URL org, and reuses the same `CheckoutCompleted` handler — making the dashboard's view of the plan independent of webhook delivery latency. Idempotent with the webhook via the existing unique index on `subscriptions.stripe_subscription_id`.
+4. **Defense-in-depth in `BillingController#checkout`** — even when the local `Subscription` row is missing, the controller now lists Stripe-side subscriptions on the customer and refuses if any are `active` / `trialing` / `past_due`. Fails closed on Stripe API errors. This closes the race that allowed a user to complete the same Pro subscription multiple times while the webhook hadn't yet caught up.
+
+---
+
 ## 2026-04-16 — Add route-level loading skeletons + top navigation progress bar
 
 **Pages updated:** dashboard

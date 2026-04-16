@@ -11,13 +11,18 @@ module StripeHandlers
       item = @data.dig(:items, :data, 0)
       attrs = {
         status: @data[:status],
-        current_period_start: @data[:current_period_start] ? Time.at(@data[:current_period_start]) : nil,
-        current_period_end: @data[:current_period_end] ? Time.at(@data[:current_period_end]) : nil,
+        current_period_start: period_time(item, :current_period_start),
+        current_period_end: period_time(item, :current_period_end),
         cancel_at_period_end: @data[:cancel_at_period_end] || false,
         canceled_at: @data[:canceled_at] ? Time.at(@data[:canceled_at]) : nil
       }
       attrs[:quantity] = item[:quantity] if item && item[:quantity]
       attrs[:stripe_subscription_item_id] = item[:id] if item && item[:id] && subscription.stripe_subscription_item_id.blank?
+
+      # Don't clobber existing periods with nil if the payload doesn't carry them
+      # (e.g., events that touch the subscription without re-emitting items).
+      attrs.delete(:current_period_start) if attrs[:current_period_start].nil? && subscription.current_period_start.present?
+      attrs.delete(:current_period_end) if attrs[:current_period_end].nil? && subscription.current_period_end.present?
 
       subscription.update!(attrs)
 
@@ -32,6 +37,16 @@ module StripeHandlers
     end
 
     private
+
+    # Stripe API 2025-04-30.basil moved current_period_start/end from the
+    # Subscription object onto each subscription item. This reads from the
+    # item with safe nil handling and falls back to the legacy top-level
+    # field if a (very old) payload still carries it.
+    def period_time(item, attr)
+      epoch = item && item[attr]
+      epoch ||= @data[attr] # backwards compat with pre-basil payloads
+      epoch ? Time.at(epoch) : nil
+    end
 
     def plan_for_status(status)
       case status
