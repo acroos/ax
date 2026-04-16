@@ -39,6 +39,15 @@ module Api
         unless OrgMembership.exists?(user_id: user_id)
           UserSession.where(user_id: user_id).delete_all
         end
+
+        # Decrease seat count after removal. Failure is logged but doesn't
+        # block the response — the SubscriptionUpdated webhook will reconcile.
+        begin
+          SeatService.remove_seat!(@org)
+        rescue StripeService::Error, Stripe::StripeError => e
+          Rails.logger.error("Failed to decrease seat count for org #{@org.slug}: #{e.message}")
+        end
+
         head :no_content
       end
     end

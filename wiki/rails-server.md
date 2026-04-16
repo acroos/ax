@@ -111,7 +111,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/api/v1/orgs/:slug/billing` | Plan details, subscription status, usage counts (any member) |
+| `GET` | `/api/v1/orgs/:slug/billing` | Plan details, subscription status (incl. `quantity` and `seat_price_cents`), usage counts (any member) |
 | `POST` | `/api/v1/orgs/:slug/billing/checkout` | Create Stripe Checkout session, return URL (admin only) |
 | `POST` | `/api/v1/orgs/:slug/billing/portal` | Create Stripe Customer Portal session, return URL (admin only) |
 
@@ -189,20 +189,29 @@ Plan definitions live in `config/initializers/plans.rb` as a frozen `PLANS` cons
 
 Capabilities include `history_days` (free: 30, pro: unlimited) — controls how far back users can view PR data. The `history_cutoff` helper in `BaseController` converts this to a cutoff timestamp for date comparisons.
 
+**Seat-based `max_members` for Pro:** While `plans.rb` declares `max_members: Float::INFINITY` for Pro, the runtime value comes from `subscription.quantity` when the org has an active or trialing subscription. `plan_overrides` still take precedence for manual carve-outs.
+
 ### StripeService (`app/services/stripe_service.rb`)
 Wraps Stripe API calls for billing operations (class methods):
 
 - `find_or_create_customer(org)` — Creates Stripe customer or retrieves existing (uses `with_lock` for concurrency safety)
-- `create_checkout_session(org, success_url:, cancel_url:)` — Creates Stripe Checkout session for Pro upgrade
+- `create_checkout_session(org, success_url:, cancel_url:)` — Creates Stripe Checkout session for Pro upgrade. Initial seat quantity equals the org's current member count (minimum 1).
 - `create_portal_session(org, return_url:)` — Creates Stripe Customer Portal session for self-service billing management
+- `update_seat_count(subscription, new_quantity, proration_behavior:)` — Updates the Stripe `SubscriptionItem` quantity and syncs the local `Subscription.quantity`. Use `"create_prorations"` for increases and `"none"` for decreases.
+
+### SeatService (`app/services/seat_service.rb`)
+Orchestrates seat changes in sync with membership changes. No-ops when the org has no active subscription (free plan).
+
+- `add_seat!(org)` — Increments seat quantity by 1 (with prorations). Called BEFORE membership creation so a Stripe failure rolls back the membership.
+- `remove_seat!(org)` — Decrements seat quantity by 1 (minimum 1, no proration). Called AFTER membership deletion so a Stripe failure doesn't block the removal — the `customer.subscription.updated` webhook will eventually reconcile.
 
 ### Stripe Webhook Handlers (`app/services/stripe_handlers/`)
 Process Stripe webhook events (same pattern as GitHub handlers). `ProcessStripeWebhookJob` deduplicates via the `processed_stripe_events` table — a single `INSERT ... ON CONFLICT DO NOTHING` on `event_id` ensures each Stripe event is processed exactly once, even across retries or concurrent jobs.
 
 | Handler | Event | Action |
 |---------|-------|--------|
-| `CheckoutCompleted` | `checkout.session.completed` | Create Subscription, set org plan to "pro" |
-| `SubscriptionUpdated` | `customer.subscription.updated` | Sync status/period, update org plan based on status |
+| `CheckoutCompleted` | `checkout.session.completed` | Create Subscription (with `stripe_subscription_item_id` and `quantity`), set org plan to "pro" |
+| `SubscriptionUpdated` | `customer.subscription.updated` | Sync status/period/quantity, update org plan based on status. Quantity changes from seat add/remove flow through here. |
 | `SubscriptionDeleted` | `customer.subscription.deleted` | Mark canceled, revert org plan to "free" |
 | `InvoicePaymentFailed` | `invoice.payment_failed` | Log warning (hook point for notifications) |
 

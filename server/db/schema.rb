@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_15_215754) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_15_230000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -412,8 +412,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_15_215754) do
     t.datetime "current_period_end"
     t.datetime "current_period_start"
     t.bigint "organization_id", null: false
+    t.integer "quantity", default: 1, null: false
     t.string "status", default: "active", null: false
     t.string "stripe_subscription_id", null: false
+    t.string "stripe_subscription_item_id"
     t.datetime "updated_at", null: false
     t.index ["organization_id", "status"], name: "index_subscriptions_on_organization_id_and_status"
     t.index ["organization_id"], name: "index_subscriptions_on_organization_id"

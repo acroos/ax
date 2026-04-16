@@ -111,5 +111,33 @@ RSpec.describe "Members API", type: :request do
       expect(response).to have_http_status(:no_content)
       expect(UserSession.find_by(id: member_session.id)).to be_present
     end
+
+    it "decreases the Stripe seat count for Pro orgs" do
+      org.update!(plan: "pro")
+      create(:subscription, organization: org, quantity: 3, status: "active")
+      allow(SeatService).to receive(:remove_seat!)
+
+      membership = OrgMembership.find_by(user: member, organization: org)
+
+      delete "/api/v1/orgs/#{org.slug}/members/#{membership.id}",
+        headers: session_headers(admin)
+
+      expect(response).to have_http_status(:no_content)
+      expect(SeatService).to have_received(:remove_seat!).with(org)
+    end
+
+    it "still removes the member when the Stripe seat decrease fails" do
+      org.update!(plan: "pro")
+      create(:subscription, organization: org, quantity: 3, status: "active")
+      allow(SeatService).to receive(:remove_seat!).and_raise(StripeService::Error, "boom")
+
+      membership = OrgMembership.find_by(user: member, organization: org)
+
+      delete "/api/v1/orgs/#{org.slug}/members/#{membership.id}",
+        headers: session_headers(admin)
+
+      expect(response).to have_http_status(:no_content)
+      expect(OrgMembership.find_by(id: membership.id)).to be_nil
+    end
   end
 end

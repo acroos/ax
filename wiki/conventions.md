@@ -53,6 +53,13 @@ Patterns and norms for working in the AX codebase.
 - In services: check `PlanService.for(org).within_limit?` and raise domain error
 - Rake tasks: `ax:set_plan[slug,plan]`, `ax:override[slug,key,value]` for manual management
 
+### Seat-Based Pricing (Pro)
+- Pro is per-seat: `subscription.quantity` is the number of purchased seats and the source of truth for `max_members`
+- When adding members on Pro, call `SeatService.add_seat!(org)` BEFORE creating the membership — Stripe failure rolls back the membership
+- When removing members on Pro, call `SeatService.remove_seat!(org)` AFTER deleting the membership — Stripe failure does not block the removal (webhook reconciles)
+- Invite creation skips the `max_members` limit check on Pro since seats auto-purchase on acceptance
+- Both SeatService methods no-op for orgs without an active/trialing subscription, so callers can invoke unconditionally
+
 ## Dashboard
 
 ### File Organization

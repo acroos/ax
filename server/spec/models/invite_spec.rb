@@ -57,6 +57,49 @@ RSpec.describe Invite, type: :model do
       expect(invite.reload.status).to eq("accepted")
       expect(new_user.member_of?(org)).to be true
     end
+
+    it "auto-purchases a seat on Pro when at the seat limit" do
+      org.update!(plan: "pro")
+      # 1 seat (owner takes it), so an additional invite needs to buy one
+      sub = create(:subscription, organization: org, quantity: 1, status: "active")
+      allow(StripeService).to receive(:update_seat_count) do |s, qty, **|
+        s.update!(quantity: qty)
+      end
+
+      invite = Invite.create!(
+        organization: org,
+        github_username: "newuser",
+        role: "member",
+        invited_by: inviter
+      )
+
+      new_user = create(:user, github_username: "newuser")
+      invite.accept!(new_user)
+
+      expect(StripeService).to have_received(:update_seat_count).with(
+        sub, 2, proration_behavior: "create_prorations"
+      )
+      expect(new_user.member_of?(org)).to be true
+    end
+
+    it "rolls back the membership when seat purchase fails" do
+      org.update!(plan: "pro")
+      create(:subscription, organization: org, quantity: 1, status: "active")
+      allow(StripeService).to receive(:update_seat_count).and_raise(StripeService::Error, "boom")
+
+      invite = Invite.create!(
+        organization: org,
+        github_username: "newuser",
+        role: "member",
+        invited_by: inviter
+      )
+
+      new_user = create(:user, github_username: "newuser")
+
+      expect { invite.accept!(new_user) }.to raise_error(StripeService::Error)
+      expect(invite.reload.status).to eq("pending")
+      expect(new_user.member_of?(org)).to be false
+    end
   end
 
   describe "token generation" do

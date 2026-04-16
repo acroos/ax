@@ -57,6 +57,29 @@ RSpec.describe "Org Invites API", type: :request do
 
       expect(response).to have_http_status(:forbidden)
     end
+
+    it "allows invite creation on Pro at the seat limit (seat auto-purchases on accept)" do
+      # 2 members + 1 active subscription with quantity 2 = at the limit
+      create(:subscription, organization: org, quantity: 2, status: "active")
+
+      post "/api/v1/orgs/#{org.slug}/invites",
+        params: { github_username: "newuser", role: "member" },
+        headers: session_headers(owner)
+
+      expect(response).to have_http_status(:created)
+    end
+
+    it "rejects invite creation on free plan when at the limit" do
+      free_owner = create(:user)
+      free_org = create(:organization, created_by: free_owner, plan: "free")
+      create(:org_membership, organization: free_org, user: free_owner, role: "owner")
+
+      post "/api/v1/orgs/#{free_org.slug}/invites",
+        params: { github_username: "newuser", role: "member" },
+        headers: session_headers(free_owner)
+
+      expect(response).to have_http_status(:forbidden)
+    end
   end
 
   describe "DELETE /api/v1/orgs/:slug/invites/:id" do

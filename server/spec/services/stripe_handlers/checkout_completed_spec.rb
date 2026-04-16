@@ -3,12 +3,16 @@ require "rails_helper"
 RSpec.describe StripeHandlers::CheckoutCompleted do
   let(:org) { create(:organization, plan: "free", plan_overrides: {}) }
 
+  let(:stripe_item) { double("Stripe::SubscriptionItem", id: "si_test_456", quantity: 3) }
+  let(:stripe_items) { double("Stripe::ListObject", data: [ stripe_item ]) }
+
   let(:stripe_sub) do
     double("Stripe::Subscription",
       status: "active",
       current_period_start: Time.current.to_i,
       current_period_end: 1.month.from_now.to_i,
-      cancel_at_period_end: false
+      cancel_at_period_end: false,
+      items: stripe_items
     )
   end
 
@@ -29,6 +33,19 @@ RSpec.describe StripeHandlers::CheckoutCompleted do
     expect(sub).to be_present
     expect(sub.organization).to eq(org)
     expect(sub.status).to eq("active")
+  end
+
+  it "stores the subscription item ID and quantity from Stripe" do
+    session = {
+      metadata: { org_id: org.id.to_s },
+      subscription: "sub_test_123"
+    }
+
+    StripeHandlers::CheckoutCompleted.new(session).call
+
+    sub = Subscription.find_by(stripe_subscription_id: "sub_test_123")
+    expect(sub.stripe_subscription_item_id).to eq("si_test_456")
+    expect(sub.quantity).to eq(3)
   end
 
   it "is idempotent — does not duplicate subscription on re-delivery" do

@@ -56,6 +56,8 @@ export interface BillingInfo {
     status: string;
     current_period_end: string;
     cancel_at_period_end: boolean;
+    quantity: number;
+    seat_price_cents: number;
   } | null;
   usage: {
     members: number;
