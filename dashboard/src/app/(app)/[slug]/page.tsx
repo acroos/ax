@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getAggregateMetricsAsync, listReposAsync } from "@/lib/db";
-import type { AggregateMetrics } from "@/lib/db";
+import type { AggregateMetrics, SparklinePoint } from "@/lib/db";
 import { METRIC_DEFS } from "@/lib/metric-defs";
 import {
   Skeleton,
   SkeletonMetricCategory,
 } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
+import { SectionDivider } from "@/components/section-divider";
+import { Sparkline } from "@/components/sparkline";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -24,6 +26,9 @@ function MetricCard({
   tooltip,
   goodRange,
   href,
+  surface = "default",
+  delta,
+  sparkline,
 }: {
   label: string;
   value: string;
@@ -31,10 +36,15 @@ function MetricCard({
   tooltip?: string;
   goodRange?: string;
   href?: string;
+  surface?: "default" | "secondary";
+  delta?: string;
+  sparkline?: SparklinePoint[];
 }) {
   const card = (
     <Card
       className={`gap-0 p-5 transition-colors ${
+        surface === "secondary" ? "bg-secondary" : ""
+      } ${
         href ? "hover:border-primary/30 hover:bg-accent/40 cursor-pointer" : ""
       }`}
     >
@@ -42,11 +52,17 @@ function MetricCard({
         <div className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
           {label}
         </div>
-        <div className="mb-1 font-mono text-[28px] font-medium leading-none tracking-tight text-foreground">
+        <div className="mb-1 font-serif text-[28px] font-medium leading-none tracking-tight text-foreground [font-variant-numeric:lining-nums_tabular-nums]">
           {value}
         </div>
+        {delta && (
+          <div className="text-[12px] text-muted-foreground">{delta}</div>
+        )}
         {detail && (
           <div className="text-[12px] text-muted-foreground">{detail}</div>
+        )}
+        {sparkline && sparkline.length > 0 && (
+          <Sparkline data={sparkline} className="mt-3 h-6 w-full" />
         )}
       </CardContent>
     </Card>
@@ -230,6 +246,18 @@ function NoFinalizedPRsState() {
   );
 }
 
+function fmtDelta(
+  current: number | null,
+  prior: number | null,
+  formatter: (n: number | null) => string
+): string | undefined {
+  if (current === null || prior === null) return undefined;
+  const diff = current - prior;
+  if (Math.abs(diff) < 0.005) return undefined;
+  const arrow = diff > 0 ? "\u2191" : "\u2193";
+  return `${arrow} ${formatter(Math.abs(diff))} wk/wk`;
+}
+
 async function OverviewMetricsBody({
   promise,
   slug,
@@ -239,8 +267,12 @@ async function OverviewMetricsBody({
   slug: string;
   repoId: number | undefined;
 }) {
-  const metrics = await promise;
-  if (metrics.totalPRs === 0) return <NoFinalizedPRsState />;
+  const data = await promise;
+  if (data.totalPRs === 0) return <NoFinalizedPRsState />;
+
+  const m = (metricSlug: string) => data.metrics[metricSlug]?.current ?? null;
+  const prior = (metricSlug: string) => data.metrics[metricSlug]?.prior ?? null;
+  const spark = (metricSlug: string) => data.metrics[metricSlug]?.sparkline;
 
   const repoQuery = repoId ? `?repo=${repoId}` : "";
   const metricHref = (metricSlug: string) =>
@@ -254,26 +286,31 @@ async function OverviewMetricsBody({
     <>
       {/* Output Quality */}
       <div className="mb-8">
-        <h2 className="mb-3 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Output Quality
-        </h2>
+        <SectionDivider label="Output Quality" />
         <div className="grid grid-cols-3 gap-3">
           <MetricCard
             label="Avg Post-Open Commits"
-            value={fmt(metrics.avgPostOpenCommits)}
+            value={fmt(m("post-open-commits"))}
+            delta={fmtDelta(m("post-open-commits"), prior("post-open-commits"), (n) => fmt(n))}
+            sparkline={spark("post-open-commits")}
             detail="Lower is better"
             href={metricHref("post-open-commits")}
+            surface="secondary"
             {...tip("post-open-commits")}
           />
           <MetricCard
             label="CI Success Rate"
-            value={fmtPct(metrics.ciSuccessRate)}
+            value={fmtPct(m("ci-success-rate"))}
+            delta={fmtDelta(m("ci-success-rate"), prior("ci-success-rate"), fmtPct)}
+            sparkline={spark("ci-success-rate")}
             href={metricHref("ci-success-rate")}
             {...tip("ci-success-rate")}
           />
           <MetricCard
             label="Avg Line Revisit Rate"
-            value={fmt(metrics.avgLineRevisitRate, 2)}
+            value={fmt(m("line-revisit-rate"), 2)}
+            delta={fmtDelta(m("line-revisit-rate"), prior("line-revisit-rate"), (n) => fmt(n, 2))}
+            sparkline={spark("line-revisit-rate")}
             detail="Cross-PR file overlap"
             href={metricHref("line-revisit-rate")}
             {...tip("line-revisit-rate")}
@@ -283,27 +320,32 @@ async function OverviewMetricsBody({
 
       {/* Prompt Efficiency */}
       <div className="mb-8">
-        <h2 className="mb-3 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Prompt Efficiency
-        </h2>
+        <SectionDivider label="Prompt Efficiency" />
         <div className="grid grid-cols-3 gap-3">
           <MetricCard
             label="Avg Iteration Depth"
-            value={fmt(metrics.avgIterationDepth, 0)}
+            value={fmt(m("iteration-depth"), 0)}
+            delta={fmtDelta(m("iteration-depth"), prior("iteration-depth"), (n) => fmt(n, 0))}
+            sparkline={spark("iteration-depth")}
             detail="Human-agent turn pairs"
             href={metricHref("iteration-depth")}
+            surface="secondary"
             {...tip("iteration-depth")}
           />
           <MetricCard
             label="Avg Token Cost"
-            value={fmtCost(metrics.avgTokenCost)}
-            detail={metrics.sessionDataCount > 0 ? `${metrics.sessionDataCount} of ${metrics.totalPRs} PRs with session data` : undefined}
+            value={fmtCost(m("token-cost-per-pr"))}
+            delta={fmtDelta(m("token-cost-per-pr"), prior("token-cost-per-pr"), fmtCost)}
+            sparkline={spark("token-cost-per-pr")}
+            detail={data.sessionDataCount > 0 ? `${data.sessionDataCount} of ${data.totalPRs} PRs with session data` : undefined}
             href={metricHref("token-cost-per-pr")}
             {...tip("token-cost-per-pr")}
           />
           <MetricCard
             label="Avg Cache Hit Rate"
-            value={fmtPct(metrics.avgCacheHitRate)}
+            value={fmtPct(m("cache-hit-rate"))}
+            delta={fmtDelta(m("cache-hit-rate"), prior("cache-hit-rate"), fmtPct)}
+            sparkline={spark("cache-hit-rate")}
             detail="Prompt cache utilization"
             href={metricHref("cache-hit-rate")}
             {...tip("cache-hit-rate")}
@@ -313,27 +355,32 @@ async function OverviewMetricsBody({
 
       {/* Agent Behavior */}
       <div className="mb-8">
-        <h2 className="mb-3 px-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          Agent Behavior
-        </h2>
+        <SectionDivider label="Agent Behavior" />
         <div className="grid grid-cols-3 gap-3">
           <MetricCard
             label="Avg Sidechain Rate"
-            value={fmtPct(metrics.avgSidechainRate)}
+            value={fmtPct(m("sidechain-rate"))}
+            delta={fmtDelta(m("sidechain-rate"), prior("sidechain-rate"), fmtPct)}
+            sparkline={spark("sidechain-rate")}
             detail="Dead-end reasoning paths"
             href={metricHref("sidechain-rate")}
+            surface="secondary"
             {...tip("sidechain-rate")}
           />
           <MetricCard
             label="Avg Re-Read Rate"
-            value={fmt(metrics.avgReReadRate, 2)}
+            value={fmt(m("re-read-rate"), 2)}
+            delta={fmtDelta(m("re-read-rate"), prior("re-read-rate"), (n) => fmt(n, 2))}
+            sparkline={spark("re-read-rate")}
             detail="File read redundancy"
             href={metricHref("re-read-rate")}
             {...tip("re-read-rate")}
           />
           <MetricCard
             label="Avg Autonomy Score"
-            value={fmt(metrics.avgAutonomyScore, 1)}
+            value={fmt(m("autonomy-score"), 1)}
+            delta={fmtDelta(m("autonomy-score"), prior("autonomy-score"), (n) => fmt(n, 1))}
+            sparkline={spark("autonomy-score")}
             detail="Agent independence ratio"
             href={metricHref("autonomy-score")}
             {...tip("autonomy-score")}

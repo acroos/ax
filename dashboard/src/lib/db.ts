@@ -121,18 +121,21 @@ export interface PRWithMetrics extends PR {
   session_count: number;
 }
 
+export interface SparklinePoint {
+  t: string;
+  v: number | null;
+}
+
+export interface MetricAggregate {
+  current: number | null;
+  prior: number | null;
+  sparkline: SparklinePoint[];
+}
+
 export interface AggregateMetrics {
   totalPRs: number;
-  avgPostOpenCommits: number;
-  ciSuccessRate: number | null;
-  avgIterationDepth: number | null;
-  avgTokenCost: number | null;
-  avgLineRevisitRate: number | null;
   sessionDataCount: number;
-  avgCacheHitRate: number | null;
-  avgSidechainRate: number | null;
-  avgReReadRate: number | null;
-  avgAutonomyScore: number | null;
+  metrics: Record<string, MetricAggregate>;
 }
 
 export interface RepoLevelMetrics {
@@ -242,71 +245,38 @@ export async function getRepoLevelMetricsAsync(repoId?: number, orgSlug?: string
   return { unmergedCostUSD: null, totalCostUSD: null, unmergedRate: null };
 }
 
+const METRIC_FIELDS: Array<{ slug: string; field: keyof PRMetrics }> = [
+  { slug: "post-open-commits", field: "post_open_commits" },
+  { slug: "ci-success-rate", field: "ci_success_rate" },
+  { slug: "line-revisit-rate", field: "line_revisit_rate" },
+  { slug: "iteration-depth", field: "iteration_depth" },
+  { slug: "token-cost-per-pr", field: "token_cost_usd" },
+  { slug: "cache-hit-rate", field: "cache_hit_rate" },
+  { slug: "sidechain-rate", field: "sidechain_rate" },
+  { slug: "re-read-rate", field: "re_read_rate" },
+  { slug: "autonomy-score", field: "autonomy_score" },
+];
+
 export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics {
   const withMetrics = prs.filter((p) => p.metrics);
   const totalPRs = prs.length;
+  const sessionDataCount = withMetrics.filter(
+    (p) => p.metrics!.token_cost_usd !== null
+  ).length;
 
-  if (totalPRs === 0) {
-    return {
-      totalPRs: 0, avgPostOpenCommits: 0,
-      ciSuccessRate: null, avgIterationDepth: null, avgTokenCost: null,
-      avgLineRevisitRate: null, sessionDataCount: 0,
-      avgCacheHitRate: null, avgSidechainRate: null,
-      avgReReadRate: null, avgAutonomyScore: null,
+  const metrics: Record<string, MetricAggregate> = {};
+  for (const { slug, field } of METRIC_FIELDS) {
+    const vals = withMetrics
+      .map((p) => p.metrics![field] as number | null)
+      .filter((v): v is number => v !== null);
+    metrics[slug] = {
+      current: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null,
+      prior: null,
+      sparkline: [],
     };
   }
 
-  const postOpen = withMetrics.filter((p) => p.metrics!.post_open_commits !== null);
-  const avgPostOpenCommits = postOpen.length
-    ? postOpen.reduce((s, p) => s + p.metrics!.post_open_commits!, 0) / postOpen.length
-    : 0;
-
-  const ci = withMetrics.filter((p) => p.metrics!.ci_success_rate !== null);
-  const ciSuccessRate = ci.length
-    ? ci.reduce((s, p) => s + p.metrics!.ci_success_rate!, 0) / ci.length
-    : null;
-
-  const iter = withMetrics.filter((p) => p.metrics!.iteration_depth !== null);
-  const avgIterationDepth = iter.length
-    ? iter.reduce((s, p) => s + p.metrics!.iteration_depth!, 0) / iter.length
-    : null;
-
-  const cost = withMetrics.filter((p) => p.metrics!.token_cost_usd !== null);
-  const avgTokenCost = cost.length
-    ? cost.reduce((s, p) => s + p.metrics!.token_cost_usd!, 0) / cost.length
-    : null;
-
-  const revisit = withMetrics.filter((p) => p.metrics!.line_revisit_rate !== null);
-  const avgLineRevisitRate = revisit.length
-    ? revisit.reduce((s, p) => s + p.metrics!.line_revisit_rate!, 0) / revisit.length
-    : null;
-
-  const cacheHit = withMetrics.filter((p) => p.metrics!.cache_hit_rate !== null);
-  const avgCacheHitRate = cacheHit.length
-    ? cacheHit.reduce((s, p) => s + p.metrics!.cache_hit_rate!, 0) / cacheHit.length
-    : null;
-
-  const sidechain = withMetrics.filter((p) => p.metrics!.sidechain_rate !== null);
-  const avgSidechainRate = sidechain.length
-    ? sidechain.reduce((s, p) => s + p.metrics!.sidechain_rate!, 0) / sidechain.length
-    : null;
-
-  const reRead = withMetrics.filter((p) => p.metrics!.re_read_rate !== null);
-  const avgReReadRate = reRead.length
-    ? reRead.reduce((s, p) => s + p.metrics!.re_read_rate!, 0) / reRead.length
-    : null;
-
-  const autonomy = withMetrics.filter((p) => p.metrics!.autonomy_score !== null);
-  const avgAutonomyScore = autonomy.length
-    ? autonomy.reduce((s, p) => s + p.metrics!.autonomy_score!, 0) / autonomy.length
-    : null;
-
-  return {
-    totalPRs, avgPostOpenCommits,
-    ciSuccessRate, avgIterationDepth, avgTokenCost,
-    avgLineRevisitRate, sessionDataCount: cost.length,
-    avgCacheHitRate, avgSidechainRate, avgReReadRate, avgAutonomyScore,
-  };
+  return { totalPRs, sessionDataCount, metrics };
 }
 
 // --- Utility functions (no DB/API needed) ---
