@@ -322,14 +322,11 @@ export function getPRSize(additions: number, deletions: number): PRSize {
   return "XL";
 }
 
-export function getPRSizeColor(size: PRSize): string {
-  switch (size) {
-    case "XS": return "text-green bg-green-muted";
-    case "S": return "text-green bg-green-muted";
-    case "M": return "text-amber bg-amber-muted";
-    case "L": return "text-red bg-red-muted";
-    case "XL": return "text-red bg-red-muted";
-  }
+// PR size is informational, not a verdict — AX's "user decides what's good"
+// ethos (ADR-006, THEME.md §4) rules out alarm-red for large PRs. All sizes
+// share the neutral outline chip; the letter itself is the signal.
+export function getPRSizeColor(_size: PRSize): string {
+  return "bg-muted text-foreground border-border";
 }
 
 export async function getTimelineAsync(repoId?: number, orgSlug?: string): Promise<TimelinePoint[]> {
