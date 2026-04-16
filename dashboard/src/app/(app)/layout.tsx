@@ -34,6 +34,12 @@ import {
 } from "@/components/ui/sidebar";
 import { MARKETING_SEGMENTS } from "@/lib/routes";
 
+type RepoLite = {
+  id: number;
+  github_owner: string | null;
+  github_repo: string | null;
+};
+
 // Extract the first path segment as an org slug, but only if it looks like
 // an org slug (lowercase, alphanumeric with hyphens) and isn't a known
 // non-slug top-level route like /login, /settings, /docs, /onboarding, etc.
@@ -105,13 +111,9 @@ async function AppSidebar() {
   const activeRepoFilter = hdrs.get("x-repo-filter");
   const pathOrgSlug = parseOrgSlug(pathname);
 
-  const reposPromise = pathOrgSlug
-    ? listReposAsync(pathOrgSlug).catch(
-        () => [] as { id: number; github_owner: string | null; github_repo: string | null }[],
-      )
-    : Promise.resolve(
-        [] as { id: number; github_owner: string | null; github_repo: string | null }[],
-      );
+  const reposPromise: Promise<RepoLite[]> = pathOrgSlug
+    ? listReposAsync(pathOrgSlug).catch(() => [])
+    : Promise.resolve([]);
 
   const [user, repos] = await Promise.all([getCurrentUser(), reposPromise]);
 
@@ -166,41 +168,26 @@ async function AppSidebar() {
             <SidebarGroupLabel>Filter by Repo</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={!activeRepoFilter}>
-                    <Link href={overviewHref}>
-                      <span
-                        className={`size-1.5 shrink-0 rounded-full ${
-                          !activeRepoFilter ? "bg-primary" : "bg-muted-foreground/30"
-                        }`}
-                      />
-                      <span>All repositories</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                {filteredRepos.map((r) => {
-                  const isActive = activeRepoFilter === String(r.id);
-                  return (
-                    <SidebarMenuItem key={r.id}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        tooltip={`${r.github_owner}/${r.github_repo}`}
-                      >
-                        <Link href={`${overviewHref}?repo=${r.id}`}>
-                          <span
-                            className={`size-1.5 shrink-0 rounded-full ${
-                              isActive ? "bg-primary" : "bg-muted-foreground/30"
-                            }`}
-                          />
-                          <span className="truncate">
-                            {r.github_owner}/{r.github_repo}
-                          </span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
+                {[
+                  { id: null, label: "All repositories", href: overviewHref },
+                  ...filteredRepos.map((r) => ({
+                    id: String(r.id),
+                    label: `${r.github_owner}/${r.github_repo}`,
+                    href: `${overviewHref}?repo=${r.id}`,
+                  })),
+                ].map((item) => (
+                  <SidebarMenuItem key={item.id ?? "all"}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={(activeRepoFilter ?? null) === item.id}
+                      tooltip={item.label}
+                    >
+                      <Link href={item.href}>
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

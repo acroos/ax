@@ -26,7 +26,6 @@ export default function MarketingLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-6">
           <div className="flex items-center gap-6">
@@ -63,10 +62,8 @@ export default function MarketingLayout({
         </div>
       </header>
 
-      {/* Content */}
       <main className="flex-1">{children}</main>
 
-      {/* Footer */}
       <footer>
         <Separator />
         <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-4 px-6 py-6">

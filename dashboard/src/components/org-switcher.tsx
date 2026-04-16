@@ -26,6 +26,14 @@ interface Org {
   is_personal: boolean;
 }
 
+function OrgGlyph({ name }: { name: string }) {
+  return (
+    <span className="flex size-5 shrink-0 items-center justify-center rounded bg-accent text-[10px] font-bold text-accent-foreground">
+      {name.charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
 export function OrgSwitcher({
   orgs,
   currentSlug,
@@ -50,9 +58,7 @@ export function OrgSwitcher({
           className="h-9 w-full justify-between gap-2 px-2 font-medium"
         >
           <span className="flex min-w-0 items-center gap-2">
-            <span className="flex size-5 shrink-0 items-center justify-center rounded bg-accent text-[10px] font-bold text-accent-foreground">
-              {current.name.charAt(0).toUpperCase()}
-            </span>
+            <OrgGlyph name={current.name} />
             <span className="truncate text-sm">{current.name}</span>
           </span>
           <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
@@ -75,9 +81,7 @@ export function OrgSwitcher({
                       if (!isCurrent) router.push(`/${org.slug}`);
                     }}
                   >
-                    <span className="flex size-5 shrink-0 items-center justify-center rounded bg-accent text-[10px] font-bold text-accent-foreground">
-                      {org.name.charAt(0).toUpperCase()}
-                    </span>
+                    <OrgGlyph name={org.name} />
                     <span className="truncate">{org.name}</span>
                     {org.is_personal && (
                       <span className="ml-1 text-[10px] text-muted-foreground">
