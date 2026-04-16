@@ -27,17 +27,7 @@ post_open_commits = count(
 )
 ```
 
-## Interpreting Values
-
-- **Good:** Zero post-open commits is ideal — the PR was complete when opened. One or two post-open commits are common and acceptable, often representing minor review feedback or small CI fixes.
-- **Concerning:** Three or more post-open commits suggest the PR was opened prematurely or that the initial implementation had significant gaps. Consistently high counts may indicate the agent is not running tests or linters before the developer opens the PR, or that the developer is opening PRs too early in the process.
-- **Ambiguity:** Some teams use a "draft PR" workflow where the PR is opened early for visibility and iterated on. In this case, post-open commits are expected and the metric is less meaningful. Consider filtering out draft PRs or measuring from the "ready for review" event instead. Also, post-open commits driven by changing requirements (not quality issues) should be interpreted differently.
-
 ## Data Sources Required
 
 - **GitHub API** — Pull request metadata (`created_at`, `draft` status) and commit list with timestamps.
 - **Git** — Commit history on the PR branch for timestamp comparison.
-
-## Phase
-
-**Phase 1** — Uses git history and the GitHub API. No session data required.

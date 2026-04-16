@@ -39,17 +39,7 @@ ci_success_rate = first_push_success_count / len(prs) * 100
 
 For a commit-level view, evaluate every push to the PR branch rather than just the first one. The PR-level view (first push only) is recommended as it directly measures the agent's first-pass quality.
 
-## Interpreting Values
-
-- **Good:** 80-95% CI success rate on first push indicates the agent is reliably producing code that integrates with the project's build and test infrastructure. Perfection (100%) is unlikely due to flaky tests and environment issues, but consistently high rates are achievable.
-- **Concerning:** Below 60% suggests the agent is not accounting for CI requirements — it may be skipping tests, introducing type errors, or violating lint rules. Investigate whether the agent has access to the project's CI configuration and whether the developer's prompts include instructions to run checks before committing.
-- **Ambiguity:** Flaky tests inflate failure rates without reflecting agent quality. If the project has known flaky tests, consider excluding them or tracking a "flaky-adjusted" CI success rate. Also, some CI checks (e.g., deployment previews, performance benchmarks) may fail for reasons unrelated to code quality — filter to required/core checks only.
-
 ## Data Sources Required
 
 - **GitHub Status Checks / Check Runs API** — Check suite results per commit SHA, including conclusion status and whether the check is required.
 - **GitHub API** — PR metadata and commit history to identify first-push commits.
-
-## Phase
-
-**Phase 1** — Uses the GitHub API. No session data required.

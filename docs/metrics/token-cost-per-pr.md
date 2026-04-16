@@ -30,17 +30,7 @@ token_cost_per_pr = sum(
 
 Per-message computation handles mixed-model sessions correctly — if a session uses multiple models (e.g., Haiku for quick lookups and Opus for complex reasoning), each message is priced at its own model's rate.
 
-## Interpreting Values
-
-- **Good:** Cost proportional to PR complexity. Small bug fixes under $5, medium features $10-30, large features $30-80. Cost trending downward over time for similar-complexity work indicates improving prompt efficiency.
-- **Concerning:** Simple PRs costing $50+, or cost increasing over time for similar-complexity work. Consistently high cost relative to lines changed suggests the developer or agent is burning tokens unproductively — excessive context loading, repeated failed attempts, or overly verbose prompting.
-- **Ambiguity:** Complex exploratory work legitimately costs more. First-time work in unfamiliar areas costs more than subsequent work in the same area. Don't compare across different task types — a greenfield architecture spike will naturally cost more than a well-defined bug fix. Always consider task complexity and novelty when evaluating cost outliers.
-
 ## Data Sources Required
 
 - **Claude Code session data** — Per-message usage fields including `input_tokens`, `output_tokens`, cache token counts, and the `model` identifier for each message.
 - **Pricing module** — A model-specific pricing map that converts token counts to dollar costs. Must include input, output, and cache token rates for each supported model, with version tracking for pricing changes.
-
-## Phase
-
-**Phase 2** — Requires Claude Code session data ingestion.
