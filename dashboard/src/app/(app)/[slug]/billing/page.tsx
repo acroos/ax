@@ -31,9 +31,10 @@ export default async function BillingPage({
 
   // Kick off both fetches in parallel — no top-level await.
   const billingPromise = getBilling(slug);
-  const membersPromise = fetchAPI<{ members: Member[]; current_user_role: string }>(
-    orgApiPath(slug, "/members")
-  );
+  const membersPromise = fetchAPI<{
+    members: Member[];
+    current_user_role: string;
+  }>(orgApiPath(slug, "/members"));
 
   return (
     <div className="space-y-8">
@@ -120,7 +121,10 @@ async function BillingSection({
   // Parallel await — both fetches have been inflight since the page
   // started rendering. If either fails, the SectionErrorBoundary shows
   // the fallback card.
-  const [billing, membersData] = await Promise.all([billingPromise, membersPromise]);
+  const [billing, membersData] = await Promise.all([
+    billingPromise,
+    membersPromise,
+  ]);
   const currentUserRole = membersData.current_user_role ?? "member";
   const isAdmin = currentUserRole === "admin" || currentUserRole === "owner";
   return <BillingCard billing={billing} slug={slug} isAdmin={isAdmin} />;

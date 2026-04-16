@@ -49,9 +49,7 @@ export function BooleanMetricSummary({
           {trueCount}
           <span className="text-[20px] text-muted-foreground"> / {total}</span>
         </span>
-        <span className="text-[14px] text-muted-foreground">
-          PRs ({pct}%)
-        </span>
+        <span className="text-[14px] text-muted-foreground">PRs ({pct}%)</span>
       </div>
 
       {/* Proportion bar */}
@@ -88,7 +86,9 @@ export function BooleanMetricSummary({
               </Link>
             ))}
             {trueEntries.length === 0 && (
-              <span className="text-[12px] italic text-muted-foreground">None</span>
+              <span className="text-[12px] italic text-muted-foreground">
+                None
+              </span>
             )}
           </div>
         </div>
@@ -108,7 +108,9 @@ export function BooleanMetricSummary({
               </Link>
             ))}
             {falseEntries.length === 0 && (
-              <span className="text-[12px] italic text-muted-foreground">None</span>
+              <span className="text-[12px] italic text-muted-foreground">
+                None
+              </span>
             )}
           </div>
         </div>

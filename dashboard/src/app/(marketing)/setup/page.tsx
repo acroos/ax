@@ -11,8 +11,8 @@ export default function SetupPage() {
           Getting Started
         </h1>
         <p className="max-w-[520px] text-[15px] text-muted-foreground">
-          Connect your CLI, install the GitHub App, and start seeing metrics
-          in under five minutes.
+          Connect your CLI, install the GitHub App, and start seeing metrics in
+          under five minutes.
         </p>
       </div>
 
@@ -22,16 +22,16 @@ export default function SetupPage() {
             <Link href="/login" className="text-primary hover:underline">
               Sign in with GitHub
             </Link>{" "}
-            to create your account. AX requests read-only access to your
-            profile and email — no repository access is granted through OAuth.
+            to create your account. AX requests read-only access to your profile
+            and email — no repository access is granted through OAuth.
           </p>
         </SetupStep>
 
         <SetupStep number={2} title="Copy your API key">
           <p>
             After signing in, you&apos;ll be guided through onboarding where
-            your API key is displayed. Copy it — it&apos;s only shown once.
-            You can rotate it later from{" "}
+            your API key is displayed. Copy it — it&apos;s only shown once. You
+            can rotate it later from{" "}
             <strong className="font-medium text-foreground">
               Account Settings
             </strong>
@@ -62,7 +62,9 @@ export default function SetupPage() {
         <SetupStep number={5} title="Install the GitHub App">
           <p>
             Navigate to{" "}
-            <strong className="font-medium text-foreground">Org Settings</strong>{" "}
+            <strong className="font-medium text-foreground">
+              Org Settings
+            </strong>{" "}
             in the dashboard and click{" "}
             <strong className="font-medium text-foreground">
               Install GitHub App
@@ -78,23 +80,25 @@ export default function SetupPage() {
         </SetupStep>
 
         <SetupStep number={6} title="View your metrics">
-          <p>Once data flows in, your dashboard populates automatically. Explore:</p>
+          <p>
+            Once data flows in, your dashboard populates automatically. Explore:
+          </p>
           <ul className="mt-2 list-inside list-disc space-y-1 text-[14px] text-muted-foreground">
             <li>
-              <strong className="font-medium text-foreground">Overview</strong>
-              {" "}— Aggregate metrics at a glance
+              <strong className="font-medium text-foreground">Overview</strong>{" "}
+              — Aggregate metrics at a glance
             </li>
             <li>
               <strong className="font-medium text-foreground">
                 Pull Requests
-              </strong>
-              {" "}— Per-PR metric breakdown
+              </strong>{" "}
+              — Per-PR metric breakdown
             </li>
             <li>
               <strong className="font-medium text-foreground">
                 Metric Drill-Down
-              </strong>
-              {" "}— Trends and distributions for each metric
+              </strong>{" "}
+              — Trends and distributions for each metric
             </li>
           </ul>
         </SetupStep>
@@ -102,7 +106,9 @@ export default function SetupPage() {
         <SetupStep number={7} title="Invite your team" optional>
           <p>
             From{" "}
-            <strong className="font-medium text-foreground">Org Settings</strong>
+            <strong className="font-medium text-foreground">
+              Org Settings
+            </strong>
             , generate invite links for your team. Each link is single-use.
             Invited members sign in with GitHub and are automatically added to
             your organization.

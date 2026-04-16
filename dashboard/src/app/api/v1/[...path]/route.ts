@@ -5,7 +5,7 @@ const API_URL = process.env.AX_API_URL || "http://localhost:3000";
 
 async function proxy(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> {
   const { path } = await params;
   const search = request.nextUrl.search;

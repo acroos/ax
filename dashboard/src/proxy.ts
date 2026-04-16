@@ -6,9 +6,13 @@ import { MARKETING_SEGMENTS } from "@/lib/routes";
 // /auth covers the cross-origin handoff route /auth/accept which runs *before*
 // the session cookie exists, so it must be reachable without auth.
 const PUBLIC_PATHS = [
-  "/login", "/invite", "/auth", "/api",
+  "/login",
+  "/invite",
+  "/auth",
+  "/api",
   ...MARKETING_SEGMENTS.map((s) => `/${s}`),
-  "/_next", "/favicon",
+  "/_next",
+  "/favicon",
 ];
 
 export function proxy(request: NextRequest) {
@@ -25,7 +29,11 @@ export function proxy(request: NextRequest) {
   }
 
   // Allow public paths
-  if (pathname === "/" || pathname === "/up" || PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  if (
+    pathname === "/" ||
+    pathname === "/up" ||
+    PUBLIC_PATHS.some((p) => pathname.startsWith(p))
+  ) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
@@ -41,5 +49,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|svg|ico|webp)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|svg|ico|webp)$).*)",
+  ],
 };

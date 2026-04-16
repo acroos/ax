@@ -1,6 +1,11 @@
 import type { PRMetrics } from "./db";
 
-export type MetricValueType = "int" | "float" | "ratio" | "boolean" | "currency";
+export type MetricValueType =
+  | "int"
+  | "float"
+  | "ratio"
+  | "boolean"
+  | "currency";
 
 export interface MetricDefEntry {
   slug: string;
@@ -25,7 +30,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Output Quality",
     valueType: "int",
     lowerIsBetter: true,
-    tooltip: "Commits pushed after the PR was opened. Lower means the initial output was closer to final.",
+    tooltip:
+      "Commits pushed after the PR was opened. Lower means the initial output was closer to final.",
     goodRange: "Good: < 2",
   },
   {
@@ -36,7 +42,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Output Quality",
     valueType: "ratio",
     lowerIsBetter: false,
-    tooltip: "Fraction of CI checks that pass. 1.0 means all green on every PR.",
+    tooltip:
+      "Fraction of CI checks that pass. 1.0 means all green on every PR.",
     goodRange: "Good: > 90%",
   },
   {
@@ -47,7 +54,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Output Quality",
     valueType: "float",
     lowerIsBetter: true,
-    tooltip: "Files in this PR that were also changed in other recent PRs. Higher means unstable areas are being touched.",
+    tooltip:
+      "Files in this PR that were also changed in other recent PRs. Higher means unstable areas are being touched.",
     goodRange: "Good: < 0.2",
   },
   {
@@ -59,7 +67,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "int",
     unit: "min",
     lowerIsBetter: true,
-    tooltip: "Minutes from PR open to first human review. Lower means a faster feedback loop.",
+    tooltip:
+      "Minutes from PR open to first human review. Lower means a faster feedback loop.",
     goodRange: "Good: < 120 min",
   },
 
@@ -72,7 +81,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Prompt Efficiency",
     valueType: "ratio",
     lowerIsBetter: false,
-    tooltip: "Ratio of cache-read tokens to total input tokens. Higher means better prompt cache utilization and lower effective cost.",
+    tooltip:
+      "Ratio of cache-read tokens to total input tokens. Higher means better prompt cache utilization and lower effective cost.",
     goodRange: "Good: > 70%",
   },
   {
@@ -83,7 +93,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Prompt Efficiency",
     valueType: "int",
     lowerIsBetter: true,
-    tooltip: "Number of human turns (back-and-forth cycles). Fewer turns means clearer prompting.",
+    tooltip:
+      "Number of human turns (back-and-forth cycles). Fewer turns means clearer prompting.",
     goodRange: "Good: < 15",
   },
   {
@@ -95,7 +106,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "currency",
     unit: "$",
     lowerIsBetter: true,
-    tooltip: "Dollar cost of all tokens used across correlated sessions, using model-specific pricing.",
+    tooltip:
+      "Dollar cost of all tokens used across correlated sessions, using model-specific pricing.",
     goodRange: "Good: < $5",
   },
 
@@ -108,7 +120,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Agent Behavior",
     valueType: "ratio",
     lowerIsBetter: true,
-    tooltip: "Fraction of messages on sidechain branches (backtracking). Lower means fewer dead-end reasoning paths.",
+    tooltip:
+      "Fraction of messages on sidechain branches (backtracking). Lower means fewer dead-end reasoning paths.",
     goodRange: "Good: < 10%",
   },
   {
@@ -119,7 +132,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Agent Behavior",
     valueType: "float",
     lowerIsBetter: true,
-    tooltip: "Total file reads divided by unique files read. 1.0 means no re-reads; higher means files are being read redundantly.",
+    tooltip:
+      "Total file reads divided by unique files read. 1.0 means no re-reads; higher means files are being read redundantly.",
     goodRange: "Good: < 1.5",
   },
   {
@@ -130,7 +144,8 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     category: "Agent Behavior",
     valueType: "float",
     lowerIsBetter: false,
-    tooltip: "Ratio of assistant messages to human messages. Higher means the agent works more independently with fewer interventions.",
+    tooltip:
+      "Ratio of assistant messages to human messages. Higher means the agent works more independently with fewer interventions.",
     goodRange: "Good: > 3.0",
   },
 ];

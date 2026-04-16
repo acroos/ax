@@ -10,37 +10,43 @@ const entries: {
   {
     date: "2026-04-16",
     title: "Metric set streamlined to 10",
-    description: "Removed metrics that weren't pulling their weight: first-pass acceptance, test coverage, diff churn, messages/PR, self-correction rate, context efficiency, error recovery, and all planning metrics. The dashboard now focuses on 10 higher-signal metrics across three categories.",
+    description:
+      "Removed metrics that weren't pulling their weight: first-pass acceptance, test coverage, diff churn, messages/PR, self-correction rate, context efficiency, error recovery, and all planning metrics. The dashboard now focuses on 10 higher-signal metrics across three categories.",
     tag: "improvement",
   },
   {
     date: "2026-04-15",
     title: "Stripe webhook idempotency",
-    description: "Webhook events are now processed idempotently, preventing duplicate billing state changes from retried deliveries.",
+    description:
+      "Webhook events are now processed idempotently, preventing duplicate billing state changes from retried deliveries.",
     tag: "fix",
   },
   {
     date: "2026-04-14",
     title: "Prevent duplicate checkout sessions",
-    description: "Billing upgrades now guard against creating multiple Stripe checkout sessions when double-clicking the upgrade button.",
+    description:
+      "Billing upgrades now guard against creating multiple Stripe checkout sessions when double-clicking the upgrade button.",
     tag: "fix",
   },
   {
     date: "2026-04-14",
     title: "Invite acceptance respects member limits",
-    description: "Accepting an org invite now correctly checks the plan's member cap before granting access.",
+    description:
+      "Accepting an org invite now correctly checks the plan's member cap before granting access.",
     tag: "fix",
   },
   {
     date: "2026-04-13",
     title: "Session invalidation on membership changes",
-    description: "Active sessions are now revoked when a member is removed from an org or when an org downgrades from Pro to Free.",
+    description:
+      "Active sessions are now revoked when a member is removed from an org or when an org downgrades from Pro to Free.",
     tag: "improvement",
   },
   {
     date: "2026-04-13",
     title: "Cache invalidation after billing changes",
-    description: "Dashboard data now refreshes immediately after plan upgrades — no more stale capability states.",
+    description:
+      "Dashboard data now refreshes immediately after plan upgrades — no more stale capability states.",
     tag: "fix",
   },
 ];

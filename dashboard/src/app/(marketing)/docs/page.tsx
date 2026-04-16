@@ -1,27 +1,27 @@
-import fs from "fs"
-import { FileText } from "lucide-react"
-import Link from "next/link"
-import path from "path"
+import fs from "fs";
+import { FileText } from "lucide-react";
+import Link from "next/link";
+import path from "path";
 
 export default function DocsPage() {
-  const metricsDir = path.join(process.cwd(), "..", "docs", "metrics")
+  const metricsDir = path.join(process.cwd(), "..", "docs", "metrics");
   const indexContent = fs.readFileSync(
     path.join(metricsDir, "index.md"),
     "utf-8",
-  )
+  );
 
   const files = fs
     .readdirSync(metricsDir)
     .filter((f) => f.endsWith(".md") && f !== "index.md")
-    .sort()
+    .sort();
 
   const metrics = files.map((f) => {
-    const slug = f.replace(/\.md$/, "")
-    const content = fs.readFileSync(path.join(metricsDir, f), "utf-8")
-    const titleMatch = content.match(/^#\s+(.+)$/m)
-    const title = titleMatch ? titleMatch[1] : slug
-    return { slug, title }
-  })
+    const slug = f.replace(/\.md$/, "");
+    const content = fs.readFileSync(path.join(metricsDir, f), "utf-8");
+    const titleMatch = content.match(/^#\s+(.+)$/m);
+    const title = titleMatch ? titleMatch[1] : slug;
+    return { slug, title };
+  });
 
   return (
     <div className="mx-auto max-w-[760px] px-6 py-12">
@@ -43,5 +43,5 @@ export default function DocsPage() {
         ))}
       </div>
     </div>
-  )
+  );
 }

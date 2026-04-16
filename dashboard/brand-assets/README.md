@@ -22,11 +22,11 @@ brand-assets/
 
 The mark uses two colors only — ink (stroke/text) and clay (accent dot).
 
-| Role    | Light mode | Dark mode  | Notes                         |
-| ------- | ---------- | ---------- | ----------------------------- |
-| Ink     | `#1E1912`  | `#F1E8D6`  | Axis rule, ticks, wordmark    |
-| Clay    | `#B0602F`  | `#D68250`  | The observation dot only      |
-| Surface | `#FAF5EC`  | `#14110C`  | Parchment / midnight ink      |
+| Role    | Light mode | Dark mode | Notes                      |
+| ------- | ---------- | --------- | -------------------------- |
+| Ink     | `#1E1912`  | `#F1E8D6` | Axis rule, ticks, wordmark |
+| Clay    | `#B0602F`  | `#D68250` | The observation dot only   |
+| Surface | `#FAF5EC`  | `#14110C` | Parchment / midnight ink   |
 
 Never color the ticks or rule in clay. The dot is the one warm gesture in the mark — keeping it rare is what makes it read as "a finding" rather than decoration.
 
@@ -66,19 +66,19 @@ Two strategies are provided. Pick whichever fits your pipeline:
 
 These were copied out of `brand-assets/` during Phase 0 foundation and are now served by the app directly. Update them **here first**, then re-install, to avoid drift.
 
-| Concern | Path | Notes |
-|---|---|---|
-| Logo React components | `src/components/logo/` | `Mark`, `Wordmark`, `Logo`. Inherit `currentColor` for ink, `var(--ax-clay)` for the dot. |
-| Favicon (SVG) | `src/app/icon.svg` | Next.js file-convention — served at `/icon.svg` automatically. |
-| Favicon (ICO) | `src/app/favicon.ico` | Served at `/favicon.ico`. |
-| Favicon (PNG fallback) | `src/app/icon.png` | Served at `/icon.png`. |
-| Apple touch icon | `src/app/apple-icon.png` | 180px, served at `/apple-icon.png`. |
-| Open Graph image | `src/app/opengraph-image.png` | 1200×630, served at `/opengraph-image.png`. |
-| Twitter card image | `src/app/twitter-image.png` | 1200×630, served at `/twitter-image.png`. |
-| PWA manifest | `src/app/manifest.webmanifest` | Served at `/manifest.webmanifest`. References absolute PNG URLs. |
-| PWA icons | `public/ax-icon-{192,512,maskable-192,maskable-512}.png` | Served at their literal paths (matching the manifest). |
-| `--ax-clay` token | `src/app/globals.css` | Aliased to `--color-primary`; logo accent themes automatically. |
-| Browser-chrome `themeColor` | `src/app/layout.tsx` (`viewport` export) | `#FAF5EC` light / `#14110C` dark. |
+| Concern                     | Path                                                     | Notes                                                                                     |
+| --------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Logo React components       | `src/components/logo/`                                   | `Mark`, `Wordmark`, `Logo`. Inherit `currentColor` for ink, `var(--ax-clay)` for the dot. |
+| Favicon (SVG)               | `src/app/icon.svg`                                       | Next.js file-convention — served at `/icon.svg` automatically.                            |
+| Favicon (ICO)               | `src/app/favicon.ico`                                    | Served at `/favicon.ico`.                                                                 |
+| Favicon (PNG fallback)      | `src/app/icon.png`                                       | Served at `/icon.png`.                                                                    |
+| Apple touch icon            | `src/app/apple-icon.png`                                 | 180px, served at `/apple-icon.png`.                                                       |
+| Open Graph image            | `src/app/opengraph-image.png`                            | 1200×630, served at `/opengraph-image.png`.                                               |
+| Twitter card image          | `src/app/twitter-image.png`                              | 1200×630, served at `/twitter-image.png`.                                                 |
+| PWA manifest                | `src/app/manifest.webmanifest`                           | Served at `/manifest.webmanifest`. References absolute PNG URLs.                          |
+| PWA icons                   | `public/ax-icon-{192,512,maskable-192,maskable-512}.png` | Served at their literal paths (matching the manifest).                                    |
+| `--ax-clay` token           | `src/app/globals.css`                                    | Aliased to `--color-primary`; logo accent themes automatically.                           |
+| Browser-chrome `themeColor` | `src/app/layout.tsx` (`viewport` export)                 | `#FAF5EC` light / `#14110C` dark.                                                         |
 
 ## React component usage
 

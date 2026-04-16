@@ -40,10 +40,13 @@ function GitHubMark({ className }: { className?: string }) {
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
-  missing_installation_id: "GitHub did not return an installation ID. Please try installing again.",
+  missing_installation_id:
+    "GitHub did not return an installation ID. Please try installing again.",
   api_error: "Could not verify the installation with GitHub. Please try again.",
-  invalid_state: "The install link expired or was invalid. Please start over from settings.",
-  forbidden: "You do not have permission to install the GitHub App for this organization.",
+  invalid_state:
+    "The install link expired or was invalid. Please start over from settings.",
+  forbidden:
+    "You do not have permission to install the GitHub App for this organization.",
 };
 
 export function GitHubAppCard({
@@ -62,7 +65,7 @@ export function GitHubAppCard({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showBanner, setShowBanner] = useState(
-    installedParam === "true" || installedParam === "false"
+    installedParam === "true" || installedParam === "false",
   );
   const [showRepos, setShowRepos] = useState(false);
 
@@ -108,7 +111,8 @@ export function GitHubAppCard({
     : null;
 
   const errorMessage = errorParam
-    ? ERROR_MESSAGES[errorParam] || `${errorParam.replace(/_/g, " ")}. Please try again.`
+    ? ERROR_MESSAGES[errorParam] ||
+      `${errorParam.replace(/_/g, " ")}. Please try again.`
     : null;
 
   return (
@@ -138,7 +142,8 @@ export function GitHubAppCard({
           <Alert className="border-success/25 bg-success/10 text-success">
             <AlertDescription className="flex items-start justify-between gap-2 text-success">
               <span>
-                GitHub App installed successfully. Webhook events will now flow into AX.
+                GitHub App installed successfully. Webhook events will now flow
+                into AX.
                 {isSyncing && " Syncing recent PR history in the background..."}
               </span>
               <DismissButton onDismiss={() => setShowBanner(false)} />
@@ -149,7 +154,9 @@ export function GitHubAppCard({
         {showBanner && installedParam === "false" && (
           <Alert variant="destructive">
             <AlertDescription className="flex items-start justify-between gap-2">
-              <span>{errorMessage || "Installation failed. Please try again."}</span>
+              <span>
+                {errorMessage || "Installation failed. Please try again."}
+              </span>
               <DismissButton onDismiss={() => setShowBanner(false)} />
             </AlertDescription>
           </Alert>
@@ -166,9 +173,11 @@ export function GitHubAppCard({
         {!installation && (
           <div className="space-y-3">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Connect your GitHub organization to AX to automatically receive webhook
-              events for pull requests, reviews, and CI results. This replaces manual{" "}
-              <code className="text-[11px] text-foreground">ax push</code> for covered repos.
+              Connect your GitHub organization to AX to automatically receive
+              webhook events for pull requests, reviews, and CI results. This
+              replaces manual{" "}
+              <code className="text-[11px] text-foreground">ax push</code> for
+              covered repos.
             </p>
             {isAdmin ? (
               <Button size="sm" onClick={handleInstall} disabled={loading}>
@@ -188,7 +197,9 @@ export function GitHubAppCard({
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
                 <span className="text-muted-foreground">Account</span>
-                <p className="mt-0.5 font-mono text-foreground">{installation.account_login}</p>
+                <p className="mt-0.5 font-mono text-foreground">
+                  {installation.account_login}
+                </p>
               </div>
               <div>
                 <span className="text-muted-foreground">Repositories</span>
@@ -234,12 +245,16 @@ export function GitHubAppCard({
                     className={`size-3 transition-transform ${showRepos ? "rotate-90" : ""}`}
                     aria-hidden
                   />
-                  {installation.repos.length} connected {installation.repos.length === 1 ? "repo" : "repos"}
+                  {installation.repos.length} connected{" "}
+                  {installation.repos.length === 1 ? "repo" : "repos"}
                 </button>
                 {showRepos && (
                   <ul className="mt-2 space-y-1 pl-4">
                     {installation.repos.map((repo) => (
-                      <li key={repo.id} className="font-mono text-xs text-muted-foreground">
+                      <li
+                        key={repo.id}
+                        className="font-mono text-xs text-muted-foreground"
+                      >
                         {repo.github_owner}/{repo.github_repo}
                       </li>
                     ))}
@@ -267,7 +282,9 @@ export function GitHubAppCard({
           <div className="space-y-3">
             <p className="text-xs leading-relaxed text-muted-foreground">
               The GitHub App installation for{" "}
-              <span className="font-mono text-notice">{installation.account_login}</span>{" "}
+              <span className="font-mono text-notice">
+                {installation.account_login}
+              </span>{" "}
               is suspended. Webhook events are paused.
             </p>
             {isAdmin ? (

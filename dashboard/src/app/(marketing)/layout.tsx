@@ -72,7 +72,10 @@ export default function MarketingLayout({
             <span>AX — Agentic Coding DX Metrics</span>
           </div>
           <nav className="flex items-center gap-5 text-xs text-muted-foreground">
-            <Link href="/docs" className="transition-colors hover:text-foreground">
+            <Link
+              href="/docs"
+              className="transition-colors hover:text-foreground"
+            >
               Docs
             </Link>
             <Link
@@ -81,7 +84,10 @@ export default function MarketingLayout({
             >
               Privacy
             </Link>
-            <Link href="/terms" className="transition-colors hover:text-foreground">
+            <Link
+              href="/terms"
+              className="transition-colors hover:text-foreground"
+            >
               Terms
             </Link>
             <a

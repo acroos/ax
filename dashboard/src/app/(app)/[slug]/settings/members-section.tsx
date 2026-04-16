@@ -46,7 +46,12 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-export function MembersSection({ members: initialMembers, currentUserId, isAdmin, slug }: Props) {
+export function MembersSection({
+  members: initialMembers,
+  currentUserId,
+  isAdmin,
+  slug,
+}: Props) {
   const [members, setMembers] = useState(initialMembers);
   const [updating, setUpdating] = useState<number | null>(null);
   const [removing, setRemoving] = useState<number | null>(null);
@@ -61,7 +66,9 @@ export function MembersSection({ members: initialMembers, currentUserId, isAdmin
       });
       if (res.ok) {
         setMembers((prev) =>
-          prev.map((m) => (m.id === membershipId ? { ...m, role: newRole } : m))
+          prev.map((m) =>
+            m.id === membershipId ? { ...m, role: newRole } : m,
+          ),
         );
       }
     } finally {
@@ -94,7 +101,10 @@ export function MembersSection({ members: initialMembers, currentUserId, isAdmin
           {members.map((m) => {
             const isSelf = m.user.id === currentUserId;
             return (
-              <div key={m.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <div
+                key={m.id}
+                className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+              >
                 <Avatar size="sm">
                   {m.user.avatar_url && (
                     <AvatarImage src={m.user.avatar_url} alt="" />
@@ -152,7 +162,9 @@ export function MembersSection({ members: initialMembers, currentUserId, isAdmin
           })}
 
           {members.length === 0 && (
-            <p className="py-3 text-xs text-muted-foreground">No members found.</p>
+            <p className="py-3 text-xs text-muted-foreground">
+              No members found.
+            </p>
           )}
         </div>
       </CardContent>

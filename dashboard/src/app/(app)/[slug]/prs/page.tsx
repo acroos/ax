@@ -72,7 +72,10 @@ export default async function OrgPRsPage({
               <TableHead className="text-center">Size</TableHead>
               <TableHead className="text-center">State</TableHead>
               <TableHead className="text-center">
-                <HeaderWithTip label="Post-Open" tip="Commits after PR opened" />
+                <HeaderWithTip
+                  label="Post-Open"
+                  tip="Commits after PR opened"
+                />
               </TableHead>
               <TableHead className="text-center">
                 <HeaderWithTip label="CI" tip="CI checks passing rate" />
@@ -84,12 +87,17 @@ export default async function OrgPRsPage({
                 <HeaderWithTip label="Cost" tip="Token cost in dollars" />
               </TableHead>
               <TableHead className="text-center">
-                <HeaderWithTip label="Sessions" tip="Agent sessions linked to this PR" />
+                <HeaderWithTip
+                  label="Sessions"
+                  tip="Agent sessions linked to this PR"
+                />
               </TableHead>
             </TableRow>
           </TableHeader>
           <SectionErrorBoundary fallback={<NoDataBody />}>
-            <Suspense fallback={<SkeletonTableBody rows={10} columns={COLUMN_COUNT} />}>
+            <Suspense
+              fallback={<SkeletonTableBody rows={10} columns={COLUMN_COUNT} />}
+            >
               <PRTableBody promise={prsPromise} />
             </Suspense>
           </SectionErrorBoundary>
@@ -182,7 +190,8 @@ async function PRTableBody({ promise }: { promise: Promise<PRWithMetrics[]> }) {
             {pr.metrics?.post_open_commits ?? "\u2014"}
           </TableCell>
           <TableCell className="text-center font-mono text-[13px] text-muted-foreground">
-            {pr.metrics?.ci_success_rate !== null && pr.metrics?.ci_success_rate !== undefined
+            {pr.metrics?.ci_success_rate !== null &&
+            pr.metrics?.ci_success_rate !== undefined
               ? `${Math.round(pr.metrics.ci_success_rate * 100)}%`
               : "\u2014"}
           </TableCell>
@@ -190,7 +199,8 @@ async function PRTableBody({ promise }: { promise: Promise<PRWithMetrics[]> }) {
             {pr.metrics?.iteration_depth ?? "\u2014"}
           </TableCell>
           <TableCell className="text-right font-mono text-[13px] text-muted-foreground">
-            {pr.metrics?.token_cost_usd !== null && pr.metrics?.token_cost_usd !== undefined
+            {pr.metrics?.token_cost_usd !== null &&
+            pr.metrics?.token_cost_usd !== undefined
               ? `$${pr.metrics.token_cost_usd.toFixed(2)}`
               : "\u2014"}
           </TableCell>
@@ -208,4 +218,3 @@ async function PRTableBody({ promise }: { promise: Promise<PRWithMetrics[]> }) {
     </TableBody>
   );
 }
-

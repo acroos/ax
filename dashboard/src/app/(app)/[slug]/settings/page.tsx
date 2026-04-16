@@ -10,7 +10,9 @@ import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Card, CardContent } from "@/components/ui/card";
 
 type MembersResponse = { members: Member[]; current_user_role: string };
-type InstallationResponse = Awaited<ReturnType<typeof getGithubInstallation>> | null;
+type InstallationResponse = Awaited<
+  ReturnType<typeof getGithubInstallation>
+> | null;
 
 async function fetchSafe<T>(path: string): Promise<T | null> {
   try {
@@ -38,7 +40,9 @@ export default async function OrgSettingsPage({
 
   // Kick off all three fetches in parallel — shared across cards below.
   const installationPromise = getGithubInstallation(slug).catch(() => null);
-  const membersPromise = fetchSafe<MembersResponse>(orgApiPath(slug, "/members"));
+  const membersPromise = fetchSafe<MembersResponse>(
+    orgApiPath(slug, "/members"),
+  );
   const invitesPromise = fetchSafe<Invite[]>(orgApiPath(slug, "/invites"));
 
   return (
@@ -109,9 +113,10 @@ function SettingsCardSkeleton({ rows = 3 }: { rows?: number }) {
 // Derive isAdmin from the shared members response. Consumed by every card.
 function resolveIsAdmin(
   members: MembersResponse | null,
-  installation: InstallationResponse
+  installation: InstallationResponse,
 ): boolean {
-  const role = members?.current_user_role ?? installation?.user_role ?? "member";
+  const role =
+    members?.current_user_role ?? installation?.user_role ?? "member";
   return role === "admin" || role === "owner";
 }
 
@@ -174,13 +179,12 @@ async function AsyncInvitesSection({
   membersPromise: Promise<MembersResponse | null>;
   invitesPromise: Promise<Invite[] | null>;
 }) {
-  const [members, invites] = await Promise.all([membersPromise, invitesPromise]);
+  const [members, invites] = await Promise.all([
+    membersPromise,
+    invitesPromise,
+  ]);
   const isAdmin = resolveIsAdmin(members, null);
   return (
-    <InvitesSection
-      invites={invites ?? []}
-      isAdmin={isAdmin}
-      slug={slug}
-    />
+    <InvitesSection invites={invites ?? []} isAdmin={isAdmin} slug={slug} />
   );
 }

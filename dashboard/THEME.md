@@ -8,13 +8,13 @@ This is the canonical reference for visual design in AX Metrics. Read this befor
 
 ## 1. Philosophy
 
-AX helps teams **reflect together** on how their agentic workflows are going. The design ethos is *curious and non-judgmental* — think field notebook crossed with an observatory. The visual language must never make the product feel like a leaderboard, a scoreboard, or a performance review.
+AX helps teams **reflect together** on how their agentic workflows are going. The design ethos is _curious and non-judgmental_ — think field notebook crossed with an observatory. The visual language must never make the product feel like a leaderboard, a scoreboard, or a performance review.
 
 Three principles flow from this:
 
 **Warm, never cold.** Every neutral carries a touch of yellow/brown. Pure white and pure black never appear in the UI. The page should feel like aged paper, not a computer terminal.
 
-**One hero color, used sparingly.** Terracotta (Clay-500, `#B0602F`) is the *only* brand color. It appears on the logo mark, primary CTAs, active nav states, PR links, and brand-forward moments. It does **not** appear on status badges, metric values, or anywhere that could imply "this number is the good one." Protecting the hero color's scarcity is what makes it feel earned.
+**One hero color, used sparingly.** Terracotta (Clay-500, `#B0602F`) is the _only_ brand color. It appears on the logo mark, primary CTAs, active nav states, PR links, and brand-forward moments. It does **not** appear on status badges, metric values, or anywhere that could imply "this number is the good one." Protecting the hero color's scarcity is what makes it feel earned.
 
 **Status is language-led, not color-led.** We don't use alarm red. We don't use victory green. Our status palette is olive / ochre / russet / dusk — earthy, adult, non-reactive. "Needs discussion" is a conversation starter, not a verdict.
 
@@ -24,13 +24,13 @@ Three principles flow from this:
 
 Three tiers, from abstract to concrete:
 
-| Tier | Example | When to use |
-|---|---|---|
-| **Raw palette** | `--color-clay-500`, `--color-parchment`, `--color-ochre` | Rarely. Only when deliberately making a brand moment. |
-| **Semantic** | `--color-primary`, `--color-muted-foreground`, `--color-border` | **99% of components.** Reach for these first. |
-| **Tailwind utility** | `bg-primary`, `text-muted-foreground`, `border-border` | In JSX/HTML. Auto-generated from semantic tokens. |
+| Tier                 | Example                                                         | When to use                                           |
+| -------------------- | --------------------------------------------------------------- | ----------------------------------------------------- |
+| **Raw palette**      | `--color-clay-500`, `--color-parchment`, `--color-ochre`        | Rarely. Only when deliberately making a brand moment. |
+| **Semantic**         | `--color-primary`, `--color-muted-foreground`, `--color-border` | **99% of components.** Reach for these first.         |
+| **Tailwind utility** | `bg-primary`, `text-muted-foreground`, `border-border`          | In JSX/HTML. Auto-generated from semantic tokens.     |
 
-Dark mode swaps the semantic tokens' *values*. Utility class names don't change. Never write a `dark:` variant for a color that already has a semantic token — the token has already been remapped.
+Dark mode swaps the semantic tokens' _values_. Utility class names don't change. Never write a `dark:` variant for a color that already has a semantic token — the token has already been remapped.
 
 ```tsx
 // ✅ Good — one class, theme-aware automatically
@@ -48,31 +48,31 @@ Use this as your decision tree. If a token you need isn't here, check whether a 
 
 ### Surfaces
 
-| Token | Use for |
-|---|---|
-| `background` / `foreground` | The page. Body text on the page. |
-| `card` / `card-foreground` | Raised surfaces: KPI cards, panels, modal bodies. |
-| `popover` / `popover-foreground` | Floating surfaces: tooltips, dropdowns, command menus. |
-| `muted` / `muted-foreground` | Sunk wells, code blocks, inline metadata, timestamps. |
-| `secondary` / `secondary-foreground` | Secondary button backgrounds. Subtle chips. |
+| Token                                | Use for                                                |
+| ------------------------------------ | ------------------------------------------------------ |
+| `background` / `foreground`          | The page. Body text on the page.                       |
+| `card` / `card-foreground`           | Raised surfaces: KPI cards, panels, modal bodies.      |
+| `popover` / `popover-foreground`     | Floating surfaces: tooltips, dropdowns, command menus. |
+| `muted` / `muted-foreground`         | Sunk wells, code blocks, inline metadata, timestamps.  |
+| `secondary` / `secondary-foreground` | Secondary button backgrounds. Subtle chips.            |
 
 ### Brand & interaction
 
-| Token | Use for |
-|---|---|
-| `primary` / `primary-foreground` | Filled primary CTAs. Logo mark background. Active-nav fills (sparingly). |
-| `accent` / `accent-foreground` | Soft brand-tinted states: hover highlights, selected nav items, focused KPI cards. Think "selection," not "brand." |
-| `ring` | Focus ring on interactive elements. Always `primary`-colored. |
-| `border` / `input` | Hairline dividers, input borders. |
+| Token                            | Use for                                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `primary` / `primary-foreground` | Filled primary CTAs. Logo mark background. Active-nav fills (sparingly).                                           |
+| `accent` / `accent-foreground`   | Soft brand-tinted states: hover highlights, selected nav items, focused KPI cards. Think "selection," not "brand." |
+| `ring`                           | Focus ring on interactive elements. Always `primary`-colored.                                                      |
+| `border` / `input`               | Hairline dividers, input borders.                                                                                  |
 
 ### Status — use with care
 
-| Token | Meaning | Visual |
-|---|---|---|
-| `success` | "Healthy flow" / positive observation | Olive — not victory green |
-| `notice` | "Worth a look" / worth discussing | Ochre |
-| `attention` / `destructive` | "Needs discussion" / critical destructive action | Russet — not alarm red |
-| `info` | Neutral metadata, category pills | Dusk blue |
+| Token                       | Meaning                                          | Visual                    |
+| --------------------------- | ------------------------------------------------ | ------------------------- |
+| `success`                   | "Healthy flow" / positive observation            | Olive — not victory green |
+| `notice`                    | "Worth a look" / worth discussing                | Ochre                     |
+| `attention` / `destructive` | "Needs discussion" / critical destructive action | Russet — not alarm red    |
+| `info`                      | Neutral metadata, category pills                 | Dusk blue                 |
 
 Every status token has a `-foreground` sibling usable as a soft background in pills and callouts.
 
@@ -80,16 +80,16 @@ Every status token has a `-foreground` sibling usable as a soft background in pi
 
 Use `chart-1` through `chart-8` in this order. The first four are maximally distinguishable and cover the common case. Warm and cool alternate, which helps users with deuteranopia/protanopia tell series apart.
 
-| Slot | Hex (light) | Hex (dark) | Role |
-|---|---|---|---|
-| `chart-1` | `#B0602F` Clay | `#D68250` | Default / primary series |
-| `chart-2` | `#3E5875` Dusk | `#7B95B8` | Second series |
-| `chart-3` | `#5F7340` Olive | `#99B56A` | Third series |
-| `chart-4` | `#9A7A22` Ochre | `#D4AC51` | Fourth series |
-| `chart-5` | `#734A63` Plum | `#B088A0` | Extended |
-| `chart-6` | `#2F6267` Pine | `#5A9BA1` | Extended |
-| `chart-7` | `#95524E` Rose-stone | `#D08E88` | Extended |
-| `chart-8` | `#5E5444` Graphite | `#B8AC96` | Extended |
+| Slot      | Hex (light)          | Hex (dark) | Role                     |
+| --------- | -------------------- | ---------- | ------------------------ |
+| `chart-1` | `#B0602F` Clay       | `#D68250`  | Default / primary series |
+| `chart-2` | `#3E5875` Dusk       | `#7B95B8`  | Second series            |
+| `chart-3` | `#5F7340` Olive      | `#99B56A`  | Third series             |
+| `chart-4` | `#9A7A22` Ochre      | `#D4AC51`  | Fourth series            |
+| `chart-5` | `#734A63` Plum       | `#B088A0`  | Extended                 |
+| `chart-6` | `#2F6267` Pine       | `#5A9BA1`  | Extended                 |
+| `chart-7` | `#95524E` Rose-stone | `#D08E88`  | Extended                 |
+| `chart-8` | `#5E5444` Graphite   | `#B8AC96`  | Extended                 |
 
 For **sequential** data (heatmaps, density), use tints/shades of a single chart slot — don't invent a gradient from scratch. For **diverging** data (sentiment, delta-from-baseline), pair `chart-2` (dusk) on the low end with `chart-1` (clay) on the high end, muted-foreground at the midpoint.
 
@@ -104,6 +104,7 @@ The AX logo components (`<Mark>`, `<Wordmark>`, `<Logo>`) live at `src/component
 The authoritative SVG sources, PNG rasters, favicon files, and PWA icons live under `brand-assets/` at the dashboard root. Full usage guidance: [`brand-assets/README.md`](./brand-assets/README.md).
 
 Usage:
+
 ```tsx
 import { Logo, Mark, Wordmark } from "@/components/logo";
 
@@ -116,7 +117,7 @@ import { Logo, Mark, Wordmark } from "@/components/logo";
 
 ## 4. Dos and don'ts
 
-**Do** use `primary` for the *one* brand-forward action on a view. A view with two primary buttons is almost always a design mistake.
+**Do** use `primary` for the _one_ brand-forward action on a view. A view with two primary buttons is almost always a design mistake.
 
 **Don't** use `primary` as a status indicator. A `merged` pill is `success` (olive). A "high-value metric" is not colored differently from a "low-value metric" — in AX, the user decides what's good.
 
@@ -152,13 +153,13 @@ Light mode is the product default; dark mode is user-toggleable via the theme to
 
 All semantic token pairs meet **WCAG AA (4.5:1 for normal text, 3:1 for large text & UI components)** in both light and dark modes. Notable ratios:
 
-| Pair | Light | Dark |
-|---|---|---|
-| `foreground` on `background` | 14.8 : 1 | 14.2 : 1 |
-| `muted-foreground` on `background` | 5.1 : 1 | 6.4 : 1 |
-| `primary-foreground` on `primary` | 4.8 : 1 | 4.8 : 1 |
-| `accent-foreground` on `accent` | 7.7 : 1 | 5.9 : 1 |
-| `ring` on `background` | 3.0 : 1 | 3.1 : 1 (non-text, UI component threshold) |
+| Pair                               | Light    | Dark                                       |
+| ---------------------------------- | -------- | ------------------------------------------ |
+| `foreground` on `background`       | 14.8 : 1 | 14.2 : 1                                   |
+| `muted-foreground` on `background` | 5.1 : 1  | 6.4 : 1                                    |
+| `primary-foreground` on `primary`  | 4.8 : 1  | 4.8 : 1                                    |
+| `accent-foreground` on `accent`    | 7.7 : 1  | 5.9 : 1                                    |
+| `ring` on `background`             | 3.0 : 1  | 3.1 : 1 (non-text, UI component threshold) |
 
 When introducing a new color relationship, **verify contrast before merging**. A quick rule of thumb: if you're using the color for text, it must hit 4.5:1 against its background, or 3:1 if the text is ≥18px or ≥14px bold.
 

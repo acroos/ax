@@ -19,14 +19,22 @@ function UsageBar({
   max: number | null;
 }) {
   const isUnlimited = max === null;
-  const pct = isUnlimited ? 0 : max > 0 ? Math.min((current / max) * 100, 100) : 0;
+  const pct = isUnlimited
+    ? 0
+    : max > 0
+      ? Math.min((current / max) * 100, 100)
+      : 0;
   const atLimit = !isUnlimited && current >= (max ?? 0);
 
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between text-[13px]">
         <span className="text-muted-foreground">{label}</span>
-        <span className={atLimit ? "font-medium text-attention" : "text-muted-foreground"}>
+        <span
+          className={
+            atLimit ? "font-medium text-attention" : "text-muted-foreground"
+          }
+        >
           {current} / {isUnlimited ? "Unlimited" : max}
         </span>
       </div>
@@ -120,7 +128,9 @@ export function BillingCard({
         <CardContent className="space-y-5 p-0">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-medium text-foreground">Current Plan</h2>
+              <h2 className="text-sm font-medium text-foreground">
+                Current Plan
+              </h2>
               <div className="mt-2 flex items-center gap-2.5">
                 <PlanBadge plan={billing.plan.name} />
                 {willCancel && (
@@ -137,7 +147,11 @@ export function BillingCard({
                     {loading ? "Loading..." : "Upgrade to Pro"}
                   </Button>
                 ) : (
-                  <Button variant="outline" onClick={handleManage} disabled={loading}>
+                  <Button
+                    variant="outline"
+                    onClick={handleManage}
+                    disabled={loading}
+                  >
                     {loading ? "Loading..." : "Manage Billing"}
                   </Button>
                 )}
@@ -162,14 +176,20 @@ export function BillingCard({
               )}
               <div className="text-xs text-muted-foreground">
                 {sub.status === "active" && !willCancel && (
-                  <>Next billing date: {new Date(sub.current_period_end).toLocaleDateString()}</>
+                  <>
+                    Next billing date:{" "}
+                    {new Date(sub.current_period_end).toLocaleDateString()}
+                  </>
                 )}
                 {sub.status === "past_due" && (
-                  <span className="text-attention">Payment past due — please update your payment method.</span>
+                  <span className="text-attention">
+                    Payment past due — please update your payment method.
+                  </span>
                 )}
                 {willCancel && (
                   <span className="text-notice">
-                    Access continues until {new Date(sub.current_period_end).toLocaleDateString()}
+                    Access continues until{" "}
+                    {new Date(sub.current_period_end).toLocaleDateString()}
                   </span>
                 )}
               </div>
@@ -186,7 +206,9 @@ export function BillingCard({
             <UsageBar
               label="Team members"
               current={billing.usage.members}
-              max={typeof caps.max_members === "number" ? caps.max_members : null}
+              max={
+                typeof caps.max_members === "number" ? caps.max_members : null
+              }
             />
             <UsageBar
               label="Repositories"
@@ -206,8 +228,14 @@ export function BillingCard({
             </h2>
             <ul className="space-y-2.5">
               {PRO_FEATURES.map((f) => (
-                <li key={f.key} className="flex items-center gap-2.5 text-[13px]">
-                  <Check className="size-3.5 shrink-0 text-success" aria-hidden />
+                <li
+                  key={f.key}
+                  className="flex items-center gap-2.5 text-[13px]"
+                >
+                  <Check
+                    className="size-3.5 shrink-0 text-success"
+                    aria-hidden
+                  />
                   <span className="text-muted-foreground">{f.label}</span>
                 </li>
               ))}

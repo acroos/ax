@@ -14,7 +14,7 @@ const API_URL = process.env.AX_API_URL || "http://localhost:3000";
 // call cookies().set() / .delete() — server components cannot mutate cookies.
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
+  { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params;
   const sessionToken = req.cookies.get("_ax_session")?.value;
@@ -42,11 +42,11 @@ export async function GET(
           "Content-Type": "application/json",
         },
         cache: "no-store",
-      }
+      },
     );
   } catch {
     const res = NextResponse.redirect(
-      new URL("/invite/error?reason=network", req.url)
+      new URL("/invite/error?reason=network", req.url),
     );
     res.cookies.delete("pending_invite");
     return res;
@@ -55,7 +55,7 @@ export async function GET(
   if (!apiRes.ok) {
     const reason = apiRes.status === 404 ? "expired" : "unknown";
     const res = NextResponse.redirect(
-      new URL(`/invite/error?reason=${reason}`, req.url)
+      new URL(`/invite/error?reason=${reason}`, req.url),
     );
     res.cookies.delete("pending_invite");
     return res;

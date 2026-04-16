@@ -17,9 +17,8 @@ export function GET(req: NextRequest) {
   const nextParam = searchParams.get("next") || "/";
 
   // Only allow relative next paths so this cannot be used as an open redirect.
-  const safeNext = nextParam.startsWith("/") && !nextParam.startsWith("//")
-    ? nextParam
-    : "/";
+  const safeNext =
+    nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/";
 
   if (!token) {
     return NextResponse.redirect(new URL("/login", req.url));
