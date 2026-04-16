@@ -15,6 +15,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Add route-level loading skeletons + top navigation progress bar
+
+**Pages updated:** dashboard
+**What changed:** Every app route under `/(app)` now has a `loading.tsx` that Next.js renders instantly on navigation, before the server component's data awaits resolve. Skeletons mirror each page's real layout (overview metric grid, PR list table, metric-detail chart+table, PR detail grouped cards, settings cards, billing card, compare leaderboard). Added `nextjs-toploader` to `src/app/layout.tsx` — a 2px indigo progress bar at the top of the viewport during any client navigation. New shared primitives in `src/components/skeleton.tsx`: `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonPageHeader`. This is PR 1 of 2 on dashboard perceived-performance work; PR 2 will convert pages to Suspense-based streaming so the page shell renders before data arrives and data-heavy sections can stream in independently.
+
+---
+
 ## 2026-04-16 — Fix Stripe success redirect crash
 
 **Pages updated:** none (behavior equivalent, no user-visible wiki facts changed)
