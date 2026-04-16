@@ -166,4 +166,48 @@ RSpec.describe StripeHandlers::SubscriptionUpdated do
 
     expect(subscription.reload.stripe_subscription_item_id).to eq("si_backfilled")
   end
+
+  it "reads current_period_* from the subscription item (post-basil API)" do
+    new_start = 2.days.ago.to_i
+    new_end = 28.days.from_now.to_i
+
+    data = {
+      id: "sub_test_123",
+      status: "active",
+      cancel_at_period_end: false,
+      canceled_at: nil,
+      items: {
+        data: [ {
+          id: "si_existing",
+          quantity: 1,
+          current_period_start: new_start,
+          current_period_end: new_end
+        } ]
+      }
+    }
+
+    StripeHandlers::SubscriptionUpdated.new(data).call
+
+    subscription.reload
+    expect(subscription.current_period_start).to be_within(1.second).of(Time.at(new_start))
+    expect(subscription.current_period_end).to be_within(1.second).of(Time.at(new_end))
+  end
+
+  it "preserves existing periods when payload omits them entirely" do
+    original_start = subscription.current_period_start
+    original_end = subscription.current_period_end
+
+    data = {
+      id: "sub_test_123",
+      status: "active",
+      cancel_at_period_end: false,
+      canceled_at: nil
+    }
+
+    StripeHandlers::SubscriptionUpdated.new(data).call
+
+    subscription.reload
+    expect(subscription.current_period_start).to be_within(1.second).of(original_start)
+    expect(subscription.current_period_end).to be_within(1.second).of(original_end)
+  end
 end

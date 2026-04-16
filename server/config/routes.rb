@@ -39,6 +39,7 @@ Rails.application.routes.draw do
           get "/", action: :show
           post :checkout
           post :portal
+          post :reconcile
         end
         resources :members, only: [ :index, :update, :destroy ]
         resources :invites, controller: "org_invites", only: [ :index, :create, :destroy ]
