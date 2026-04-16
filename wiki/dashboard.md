@@ -200,7 +200,7 @@ The middleware enforces auth on all routes. Public paths are excluded: `/login`,
 | `src/app/page.tsx` | Root page (redirects to org or login) |
 | `src/app/[slug]/prs/page.tsx` | Org-scoped PR list |
 | `src/app/prs/[id]/page.tsx` | PR detail |
-| `src/app/globals.css` | Theme, tokens, animations |
+| `src/app/globals.css` | Parchment & Clay theme — `@theme` block, semantic tokens, `.dark` overrides, base layer |
 | `src/app/api/v1/[...path]/route.ts` | API proxy for client components |
 | `src/app/settings/api-key-section.tsx` | API key reveal + rotate client component |
 | `src/app/settings/logout-button.tsx` | Logout button client component |

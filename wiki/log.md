@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Parchment & Clay migration: Phase 6 verification sweep
+
+**Pages updated:** dashboard
+**What changed:** Final cleanup pass for the Parchment & Clay migration. Verified zero remaining references to the old token vocabulary (`--color-void`, `--color-surface-*`, `--color-text-primary|secondary|tertiary`, old `--color-accent`, `--color-green|red|purple|amber`) and the old hex leakage (`#6366F1`, `#1F1F2E`, `#252536`, `#E8E8ED`, `#56566A`) across `dashboard/src/`. Zero `dark:` Tailwind variants remain in `dashboard/src/app/**`; the only remaining `dark:` usages are inside shadcn primitives under `src/components/ui/` (ships that way upstream) and in `theme-toggle.tsx` for the sun/moon icon rotation, which is animation behavior rather than a color remap — both legitimate. Orphaned CSS rules (`.metric-card`, `.tooltip-*`, `.animate-in`) were already removed in Phase 0 and have no JSX references; `globals.css` now holds only the theme, base layer, and the scrollbar rule. `src/components/org-switcher.tsx` stays in place — Phase 1 rewrote it as a thin composition over shadcn `Popover` + `Command`, so it is no longer a hand-rolled primitive and doesn't need to be deleted. Updated the `wiki/dashboard.md` Key Files entry for `globals.css` to describe its actual contents (theme block + tokens + `.dark` overrides + base layer) — the stale "animations" descriptor is gone. **Why:** close out the migration plan with an explicit verification that the acceptance criteria from `plans/dashboard-theme-migration.md` hold — no surprises lurking in a forgotten corner, and the wiki accurately describes the final state.
+
+---
+
 ## 2026-04-16 — Migrate authenticated app routes + chart to Parchment & Clay (Phase 4 + Phase 5)
 
 **Pages updated:** dashboard
