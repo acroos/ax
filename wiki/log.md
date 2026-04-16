@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Stream dashboard pages via in-page Suspense
+
+**Pages updated:** dashboard
+**What changed:** Every data-driven `/(app)` page now renders its shell (headings, filter bars, table headers, back links, static doc content) synchronously and streams data-dependent sections through `<Suspense>` boundaries. Fetch promises are created at the page level without `await`ing; each async child awaits the promise it needs and React dedupes shared promises into a single network call. Per-section `SectionErrorBoundary` (new at `src/components/section-error-boundary.tsx`) scopes API failures to individual cards/tables instead of taking down the whole page — the previous page-level "No data yet" return was replaced by section-level fallbacks that leave unrelated shell content intact. Skeleton primitives extended with `SkeletonTableBody` and `SkeletonChartPanel`. Parallelized the last few sequential fetches: overview page now kicks off repo-label resolution and metrics fetch together, and settings/billing hold parallel multi-endpoint fetches behind per-card Suspense islands. The route-level `loading.tsx` files from the previous PR remain and still handle hard-navigation cases (slug change, cold route chunk) before the page function runs.
+
+---
+
 ## 2026-04-16 — Fix billing webhook regression and duplicate-checkout race
 
 **Pages updated:** rails-server

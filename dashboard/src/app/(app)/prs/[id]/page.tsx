@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { getPRWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
+import { Skeleton } from "@/components/skeleton";
+import { SectionErrorBoundary } from "@/components/section-error-boundary";
 
 function StateBadge({ state }: { state: string | null }) {
   const s = state?.toLowerCase() ?? "unknown";
@@ -192,41 +195,13 @@ export default async function PRDetailPage({
   const { id } = await params;
   const prId = parseInt(id, 10);
 
-  let pr: PRWithMetrics | undefined;
-  try {
-    pr = await getPRWithMetricsAsync(prId);
-  } catch {
-    // API error — PR not found or not authorized
-  }
-
-  if (!pr) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center space-y-3">
-          <h2 className="text-text-primary text-lg font-medium">
-            PR not found
-          </h2>
-          <Link href="/prs" className="text-accent text-sm hover:text-accent-hover">
-            Back to Pull Requests
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const metricDisplays = getMetricDisplays(pr);
-
-  // Group by category
-  const categories = ["Output Quality", "Prompt Efficiency", "Agent Behavior", "Planning Effectiveness"];
-  const grouped = categories
-    .map((cat) => ({
-      name: cat,
-      metrics: metricDisplays.filter((m) => m.category === cat),
-    }))
-    .filter((g) => g.metrics.length > 0);
+  // Kick off the fetch without awaiting; header and body will each consume
+  // the same promise so React dedupes into one request.
+  const prPromise = getPRWithMetricsAsync(prId);
 
   return (
     <div>
+      {/* Back link renders synchronously — doesn't depend on PR data. */}
       <div className="mb-2 animate-in">
         <Link
           href="/prs"
@@ -236,91 +211,181 @@ export default async function PRDetailPage({
         </Link>
       </div>
 
-      <div
-        className="mb-8 animate-in"
-        style={{ animationDelay: "50ms" }}
-      >
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-[22px] font-semibold text-text-primary tracking-[-0.02em]">
-            <span className="font-mono text-accent">#{pr.number}</span>{" "}
-            {pr.title}
-          </h1>
-          <StateBadge state={pr.state} />
-          {(() => {
-            const size = getPRSize(pr.additions, pr.deletions);
-            const color = getPRSizeColor(size);
-            return (
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium ${color}`}>
-                {size}
-              </span>
-            );
-          })()}
-        </div>
+      <SectionErrorBoundary fallback={<PRNotFound />}>
+        <Suspense fallback={<HeaderSkeleton />}>
+          <PRHeader promise={prPromise} />
+        </Suspense>
 
-        <div className="flex items-center gap-4 text-[13px] text-text-secondary">
-          {pr.github_owner && (
-            <span className="text-text-tertiary">
-              {pr.github_owner}/{pr.github_repo}
+        <Suspense fallback={<MetricGroupsSkeleton />}>
+          <MetricGroups promise={prPromise} />
+        </Suspense>
+      </SectionErrorBoundary>
+    </div>
+  );
+}
+
+function PRNotFound() {
+  return (
+    <div className="flex items-center justify-center h-[60vh]">
+      <div className="text-center space-y-3">
+        <h2 className="text-text-primary text-lg font-medium">PR not found</h2>
+        <Link href="/prs" className="text-accent text-sm hover:text-accent-hover">
+          Back to Pull Requests
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function HeaderSkeleton() {
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-3 mb-2">
+        <Skeleton className="h-7 w-96" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-5 w-14 rounded" />
+      </div>
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-3 w-32" />
+        <Skeleton className="h-5 w-40 rounded" />
+        <Skeleton className="h-3 w-56" />
+      </div>
+    </div>
+  );
+}
+
+async function PRHeader({ promise }: { promise: Promise<PRWithMetrics | undefined> }) {
+  const pr = await promise;
+  if (!pr) throw new Error("PR not found");
+
+  return (
+    <div
+      className="mb-8 animate-in"
+      style={{ animationDelay: "50ms" }}
+    >
+      <div className="flex items-center gap-3 mb-2">
+        <h1 className="text-[22px] font-semibold text-text-primary tracking-[-0.02em]">
+          <span className="font-mono text-accent">#{pr.number}</span>{" "}
+          {pr.title}
+        </h1>
+        <StateBadge state={pr.state} />
+        {(() => {
+          const size = getPRSize(pr.additions, pr.deletions);
+          const color = getPRSizeColor(size);
+          return (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium ${color}`}>
+              {size}
             </span>
-          )}
-          {pr.branch && (
-            <span className="font-mono text-[12px] bg-surface-2 px-2 py-0.5 rounded text-text-secondary">
-              {pr.branch}
-            </span>
-          )}
-          <span>
-            <span className="text-green">+{pr.additions}</span>{" "}
-            <span className="text-red">-{pr.deletions}</span>{" "}
-            <span className="text-text-tertiary">
-              across {pr.changed_files} file
-              {pr.changed_files !== 1 && "s"}
-            </span>
-          </span>
-          {pr.metrics?.finalized_at && (
-            <span className="text-text-tertiary">
-              Finalized {new Date(pr.metrics.finalized_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            </span>
-          )}
-        </div>
+          );
+        })()}
       </div>
 
-      {grouped.length === 0 ? (
-        <div className="text-center py-12 text-text-tertiary animate-in">
-          No metrics computed yet.
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {grouped.map((group, gi) => (
-            <div
-              key={group.name}
-              className="animate-in"
-              style={{ animationDelay: `${100 + gi * 60}ms` }}
-            >
-              <h2 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-3 px-1">
-                {group.name}
-              </h2>
-              <div className="grid grid-cols-3 gap-3">
-                {group.metrics.map((m) => (
-                  <div
-                    key={m.label}
-                    className="metric-card rounded-xl border border-border-subtle bg-surface-1 p-5"
-                  >
-                    <div className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider mb-3">
-                      {m.label}
-                    </div>
-                    <div className="font-mono text-[28px] font-medium text-text-primary tracking-tight leading-none mb-2">
-                      {m.value}
-                    </div>
-                    <div className="text-[12px] text-text-secondary leading-relaxed">
-                      {m.description}
-                    </div>
-                  </div>
-                ))}
+      <div className="flex items-center gap-4 text-[13px] text-text-secondary">
+        {pr.github_owner && (
+          <span className="text-text-tertiary">
+            {pr.github_owner}/{pr.github_repo}
+          </span>
+        )}
+        {pr.branch && (
+          <span className="font-mono text-[12px] bg-surface-2 px-2 py-0.5 rounded text-text-secondary">
+            {pr.branch}
+          </span>
+        )}
+        <span>
+          <span className="text-green">+{pr.additions}</span>{" "}
+          <span className="text-red">-{pr.deletions}</span>{" "}
+          <span className="text-text-tertiary">
+            across {pr.changed_files} file
+            {pr.changed_files !== 1 && "s"}
+          </span>
+        </span>
+        {pr.metrics?.finalized_at && (
+          <span className="text-text-tertiary">
+            Finalized {new Date(pr.metrics.finalized_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MetricGroupsSkeleton() {
+  return (
+    <div className="space-y-6">
+      {[5, 3, 4].map((count, gi) => (
+        <div key={gi}>
+          <Skeleton className="h-3 w-32 mb-3 ml-1" />
+          <div className="grid grid-cols-3 gap-3">
+            {Array.from({ length: count }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-border-subtle bg-surface-1 p-5"
+              >
+                <Skeleton className="h-3 w-28 mb-3" />
+                <Skeleton className="h-7 w-20 mb-3" />
+                <Skeleton className="h-3 w-full mb-1.5" />
+                <Skeleton className="h-3 w-4/5" />
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      )}
+      ))}
+    </div>
+  );
+}
+
+async function MetricGroups({ promise }: { promise: Promise<PRWithMetrics | undefined> }) {
+  const pr = await promise;
+  if (!pr) throw new Error("PR not found");
+
+  const metricDisplays = getMetricDisplays(pr);
+  const categories = ["Output Quality", "Prompt Efficiency", "Agent Behavior", "Planning Effectiveness"];
+  const grouped = categories
+    .map((cat) => ({
+      name: cat,
+      metrics: metricDisplays.filter((m) => m.category === cat),
+    }))
+    .filter((g) => g.metrics.length > 0);
+
+  if (grouped.length === 0) {
+    return (
+      <div className="text-center py-12 text-text-tertiary animate-in">
+        No metrics computed yet.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {grouped.map((group, gi) => (
+        <div
+          key={group.name}
+          className="animate-in"
+          style={{ animationDelay: `${100 + gi * 60}ms` }}
+        >
+          <h2 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-3 px-1">
+            {group.name}
+          </h2>
+          <div className="grid grid-cols-3 gap-3">
+            {group.metrics.map((m) => (
+              <div
+                key={m.label}
+                className="metric-card rounded-xl border border-border-subtle bg-surface-1 p-5"
+              >
+                <div className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider mb-3">
+                  {m.label}
+                </div>
+                <div className="font-mono text-[28px] font-medium text-text-primary tracking-tight leading-none mb-2">
+                  {m.value}
+                </div>
+                <div className="text-[12px] text-text-secondary leading-relaxed">
+                  {m.description}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

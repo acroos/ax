@@ -1,7 +1,13 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { getAggregateMetricsAsync, listReposAsync } from "@/lib/db";
 import type { AggregateMetrics } from "@/lib/db";
 import { METRIC_DEFS } from "@/lib/metric-defs";
+import {
+  Skeleton,
+  SkeletonMetricCategory,
+} from "@/components/skeleton";
+import { SectionErrorBoundary } from "@/components/section-error-boundary";
 
 const METRIC_INFO = Object.fromEntries(METRIC_DEFS.map((d) => [d.slug, d]));
 
@@ -63,6 +69,9 @@ function fmtCost(n: number | null): string {
   return `$${n.toFixed(2)}`;
 }
 
+// Page renders the shell synchronously (title, view-all link) and streams
+// the subtitle and metrics body via Suspense. Both promises are kicked off
+// in parallel at the top so they fetch concurrently instead of sequentially.
 export default async function OrgOverviewPage({
   params,
   searchParams,
@@ -74,53 +83,11 @@ export default async function OrgOverviewPage({
   const { repo } = await searchParams;
   const repoId = repo ? parseInt(repo, 10) : undefined;
 
-  // Look up repo name for display when filtering
-  let repoLabel = "All Repositories";
-  if (repoId) {
-    try {
-      const repos = await listReposAsync(slug);
-      const match = repos.find((r) => r.id === repoId);
-      if (match) repoLabel = `${match.github_owner}/${match.github_repo}`;
-    } catch {
-      // Fall back to generic label
-    }
-  }
-
-  const repoQuery = repoId ? `?repo=${repoId}` : "";
-  const metricHref = (metricSlug: string) => `/${slug}/metrics/${metricSlug}${repoQuery}`;
-  const tip = (metricSlug: string) => {
-    const def = METRIC_INFO[metricSlug];
-    return def ? { tooltip: def.tooltip, goodRange: def.goodRange } : {};
-  };
-
-  let metrics: AggregateMetrics;
-  try {
-    metrics = await getAggregateMetricsAsync(repoId, slug);
-  } catch {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center space-y-3">
-          <h2 className="text-text-primary text-lg font-medium">No data yet</h2>
-          <p className="text-text-secondary text-sm">
-            Connect a repository to start tracking metrics.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (metrics.totalPRs === 0) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center space-y-3">
-          <h2 className="text-text-primary text-lg font-medium">No finalized PRs yet</h2>
-          <p className="text-text-secondary text-sm">
-            Metrics appear once pull requests are merged or closed.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Kick off both fetches in parallel — do NOT await here. Each child
+  // component awaits what it needs; React dedupes multiple awaits on the
+  // same promise into a single fetch.
+  const metricsPromise = getAggregateMetricsAsync(repoId, slug);
+  const repoLabelPromise = resolveRepoLabel(slug, repoId);
 
   return (
     <div>
@@ -128,13 +95,145 @@ export default async function OrgOverviewPage({
         <h1 className="text-[22px] font-semibold text-text-primary tracking-[-0.02em]">
           Overview
         </h1>
-        <p className="text-[13px] text-text-secondary mt-1">
-          <span className="text-text-primary font-medium">{repoLabel}</span>
-          {" "}&middot;{" "}
-          {metrics.totalPRs} finalized PR{metrics.totalPRs !== 1 && "s"}
-        </p>
+        <Suspense
+          fallback={<Skeleton className="h-4 w-64 mt-1" />}
+        >
+          <OverviewSubtitle
+            repoLabelPromise={repoLabelPromise}
+            metricsPromise={metricsPromise}
+          />
+        </Suspense>
       </div>
 
+      <SectionErrorBoundary fallback={<NoDataState />}>
+        <Suspense fallback={<OverviewMetricsSkeleton />}>
+          <OverviewMetricsBody
+            promise={metricsPromise}
+            slug={slug}
+            repoId={repoId}
+          />
+        </Suspense>
+      </SectionErrorBoundary>
+
+      <div className="mt-6 animate-in" style={{ animationDelay: "250ms" }}>
+        <Link
+          href={`/${slug}/prs`}
+          className="text-[13px] text-accent hover:text-accent-hover transition-colors"
+        >
+          View all pull requests →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+async function resolveRepoLabel(
+  slug: string,
+  repoId: number | undefined
+): Promise<string> {
+  if (!repoId) return "All Repositories";
+  try {
+    const repos = await listReposAsync(slug);
+    const match = repos.find((r) => r.id === repoId);
+    if (match) return `${match.github_owner}/${match.github_repo}`;
+    return "All Repositories";
+  } catch {
+    return "All Repositories";
+  }
+}
+
+// Subtitle depends on both promises. If the metrics fetch fails we still
+// render the repo label (no PR count) rather than crashing the whole header.
+async function OverviewSubtitle({
+  repoLabelPromise,
+  metricsPromise,
+}: {
+  repoLabelPromise: Promise<string>;
+  metricsPromise: Promise<AggregateMetrics>;
+}) {
+  const repoLabel = await repoLabelPromise;
+  let metrics: AggregateMetrics | null = null;
+  try {
+    metrics = await metricsPromise;
+  } catch {
+    // Metrics body's error boundary will show "No data yet"; leave the
+    // subtitle reading just the repo label.
+  }
+  return (
+    <p className="text-[13px] text-text-secondary mt-1">
+      <span className="text-text-primary font-medium">{repoLabel}</span>
+      {metrics !== null && (
+        <>
+          {" "}&middot;{" "}
+          {metrics.totalPRs} finalized PR{metrics.totalPRs !== 1 && "s"}
+        </>
+      )}
+    </p>
+  );
+}
+
+// Mirrors the real layout — three mandatory category grids of 6/5/6 cards.
+// Planning is conditional on data and thus omitted from the skeleton.
+function OverviewMetricsSkeleton() {
+  return (
+    <>
+      <SkeletonMetricCategory count={6} />
+      <SkeletonMetricCategory count={5} />
+      <SkeletonMetricCategory count={6} />
+    </>
+  );
+}
+
+function NoDataState() {
+  return (
+    <div className="flex items-center justify-center h-[60vh]">
+      <div className="text-center space-y-3">
+        <h2 className="text-text-primary text-lg font-medium">No data yet</h2>
+        <p className="text-text-secondary text-sm">
+          Connect a repository to start tracking metrics.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function NoFinalizedPRsState() {
+  return (
+    <div className="flex items-center justify-center h-[60vh]">
+      <div className="text-center space-y-3">
+        <h2 className="text-text-primary text-lg font-medium">
+          No finalized PRs yet
+        </h2>
+        <p className="text-text-secondary text-sm">
+          Metrics appear once pull requests are merged or closed.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+async function OverviewMetricsBody({
+  promise,
+  slug,
+  repoId,
+}: {
+  promise: Promise<AggregateMetrics>;
+  slug: string;
+  repoId: number | undefined;
+}) {
+  const metrics = await promise;
+  if (metrics.totalPRs === 0) return <NoFinalizedPRsState />;
+
+  const repoQuery = repoId ? `?repo=${repoId}` : "";
+  const metricHref = (metricSlug: string) =>
+    `/${slug}/metrics/${metricSlug}${repoQuery}`;
+  const tip = (metricSlug: string) => {
+    const def = METRIC_INFO[metricSlug];
+    return def ? { tooltip: def.tooltip, goodRange: def.goodRange } : {};
+  };
+
+  return (
+    <>
       {/* Output Quality */}
       <div className="mb-8 animate-in" style={{ animationDelay: "50ms" }}>
         <h2 className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mb-3 px-1">
@@ -305,15 +404,6 @@ export default async function OrgOverviewPage({
           </div>
         </div>
       )}
-
-      <div className="mt-6 animate-in" style={{ animationDelay: "250ms" }}>
-        <Link
-          href={`/${slug}/prs`}
-          className="text-[13px] text-accent hover:text-accent-hover transition-colors"
-        >
-          View all pull requests →
-        </Link>
-      </div>
-    </div>
+    </>
   );
 }

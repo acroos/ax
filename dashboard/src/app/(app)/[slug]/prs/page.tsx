@@ -1,5 +1,11 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { listPRsWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
+import type { PRWithMetrics } from "@/lib/db";
+import { Skeleton, SkeletonTableBody } from "@/components/skeleton";
+import { SectionErrorBoundary } from "@/components/section-error-boundary";
+
+const COLUMN_COUNT = 13;
 
 function StateBadge({ state }: { state: string | null }) {
   const s = state?.toLowerCase() ?? "unknown";
@@ -27,6 +33,8 @@ function CheckMark({ value }: { value: boolean }) {
   );
 }
 
+// Shell renders synchronously: h1, subtitle (with a small Suspense for the
+// PR count), and the full table with its header. The tbody streams in.
 export default async function OrgPRsPage({
   params,
   searchParams,
@@ -37,22 +45,8 @@ export default async function OrgPRsPage({
   const { slug } = await params;
   const { repo } = await searchParams;
   const repoId = repo ? parseInt(repo, 10) : undefined;
-  let prs: Awaited<ReturnType<typeof listPRsWithMetricsAsync>>;
 
-  try {
-    prs = await listPRsWithMetricsAsync(repoId, slug);
-  } catch {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center space-y-3">
-          <h2 className="text-text-primary text-lg font-medium">No data yet</h2>
-          <p className="text-text-secondary text-sm">
-            Connect a repository to start tracking metrics.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const prsPromise = listPRsWithMetricsAsync(repoId, slug);
 
   return (
     <div>
@@ -60,9 +54,9 @@ export default async function OrgPRsPage({
         <h1 className="text-[22px] font-semibold text-text-primary tracking-[-0.02em]">
           Pull Requests
         </h1>
-        <p className="text-[13px] text-text-secondary mt-1">
-          {prs.length} pull request{prs.length !== 1 && "s"}
-        </p>
+        <Suspense fallback={<Skeleton className="h-4 w-32 mt-1" />}>
+          <PRCount promise={prsPromise} />
+        </Suspense>
       </div>
 
       <div className="rounded-xl border border-border-subtle overflow-hidden animate-in" style={{ animationDelay: "50ms" }}>
@@ -119,103 +113,151 @@ export default async function OrgPRsPage({
               </th>
             </tr>
           </thead>
-          <tbody>
-            {prs.map((pr, i) => (
-              <tr
-                key={pr.id}
-                className="border-t border-border-subtle hover:bg-surface-1/50 transition-colors animate-in"
-                style={{ animationDelay: `${Math.min(80 + i * 20, 500)}ms` }}
-              >
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/prs/${pr.id}`}
-                    className="font-mono text-[13px] text-accent hover:text-accent-hover transition-colors"
-                  >
-                    #{pr.number}
-                  </Link>
-                  {pr.github_owner && (
-                    <div className="text-[11px] text-text-tertiary mt-0.5">
-                      {pr.github_owner}/{pr.github_repo}
-                    </div>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/prs/${pr.id}`}
-                    className="text-[13px] text-text-primary hover:text-accent-hover transition-colors line-clamp-1"
-                  >
-                    {pr.title ?? "Untitled"}
-                  </Link>
-                </td>
-                <td className="px-3 py-3 text-center">
-                  {(() => {
-                    const size = getPRSize(pr.additions, pr.deletions);
-                    const color = getPRSizeColor(size);
-                    return (
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-medium ${color}`}>
-                        {size}
-                      </span>
-                    );
-                  })()}
-                </td>
-                <td className="px-3 py-3 text-center">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <StateBadge state={pr.state} />
-                    {pr.metrics && !pr.metrics.metrics_finalized && (
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber animate-pulse" title="Metrics pending" />
-                    )}
-                  </div>
-                </td>
-                <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-                  {pr.metrics?.post_open_commits ?? "\u2014"}
-                </td>
-                <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-                  {pr.metrics?.diff_churn_lines ?? "\u2014"}
-                </td>
-                <td className="px-3 py-3 text-center">
-                  {pr.metrics?.first_pass_accepted !== null ? (
-                    <CheckMark value={pr.metrics!.first_pass_accepted === true} />
-                  ) : (
-                    <span className="text-text-tertiary text-[13px]">&#8212;</span>
-                  )}
-                </td>
-                <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-                  {pr.metrics?.ci_success_rate !== null
-                    ? `${Math.round(pr.metrics!.ci_success_rate * 100)}%`
-                    : "\u2014"}
-                </td>
-                <td className="px-3 py-3 text-center">
-                  {pr.metrics?.has_tests !== null ? (
-                    <CheckMark value={pr.metrics!.has_tests === true} />
-                  ) : (
-                    <span className="text-text-tertiary text-[13px]">&#8212;</span>
-                  )}
-                </td>
-                <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-                  {pr.metrics?.messages_per_pr ?? "\u2014"}
-                </td>
-                <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
-                  {pr.metrics?.iteration_depth ?? "\u2014"}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-[13px] text-text-secondary">
-                  {pr.metrics?.token_cost_usd !== null
-                    ? `$${pr.metrics!.token_cost_usd.toFixed(2)}`
-                    : "\u2014"}
-                </td>
-                <td className="px-3 py-3 text-center">
-                  {pr.session_count > 0 ? (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-accent-muted text-accent">
-                      {pr.session_count}
-                    </span>
-                  ) : (
-                    <span className="text-text-tertiary text-[13px]">&#8212;</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <SectionErrorBoundary fallback={<NoDataBody />}>
+            <Suspense fallback={<SkeletonTableBody rows={10} columns={COLUMN_COUNT} />}>
+              <PRTableBody promise={prsPromise} />
+            </Suspense>
+          </SectionErrorBoundary>
         </table>
       </div>
     </div>
+  );
+}
+
+async function PRCount({ promise }: { promise: Promise<PRWithMetrics[]> }) {
+  let count: number | null = null;
+  try {
+    const prs = await promise;
+    count = prs.length;
+  } catch {
+    // Error is surfaced by the table body's error boundary below.
+  }
+  return (
+    <p className="text-[13px] text-text-secondary mt-1">
+      {count === null
+        ? "Unable to load pull requests"
+        : `${count} pull request${count !== 1 ? "s" : ""}`}
+    </p>
+  );
+}
+
+// Rendered as a <tbody> so it plugs into the table structure that already
+// has a thead. Keeps the error-state inside the table shell rather than
+// replacing the whole page.
+function NoDataBody() {
+  return (
+    <tbody>
+      <tr>
+        <td colSpan={COLUMN_COUNT} className="px-4 py-16 text-center">
+          <h2 className="text-text-primary text-sm font-medium mb-1">
+            No data yet
+          </h2>
+          <p className="text-text-secondary text-[13px]">
+            Connect a repository to start tracking metrics.
+          </p>
+        </td>
+      </tr>
+    </tbody>
+  );
+}
+
+async function PRTableBody({ promise }: { promise: Promise<PRWithMetrics[]> }) {
+  const prs = await promise;
+  return (
+    <tbody>
+      {prs.map((pr, i) => (
+        <tr
+          key={pr.id}
+          className="border-t border-border-subtle hover:bg-surface-1/50 transition-colors animate-in"
+          style={{ animationDelay: `${Math.min(80 + i * 20, 500)}ms` }}
+        >
+          <td className="px-4 py-3">
+            <Link
+              href={`/prs/${pr.id}`}
+              className="font-mono text-[13px] text-accent hover:text-accent-hover transition-colors"
+            >
+              #{pr.number}
+            </Link>
+            {pr.github_owner && (
+              <div className="text-[11px] text-text-tertiary mt-0.5">
+                {pr.github_owner}/{pr.github_repo}
+              </div>
+            )}
+          </td>
+          <td className="px-4 py-3">
+            <Link
+              href={`/prs/${pr.id}`}
+              className="text-[13px] text-text-primary hover:text-accent-hover transition-colors line-clamp-1"
+            >
+              {pr.title ?? "Untitled"}
+            </Link>
+          </td>
+          <td className="px-3 py-3 text-center">
+            {(() => {
+              const size = getPRSize(pr.additions, pr.deletions);
+              const color = getPRSizeColor(size);
+              return (
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-medium ${color}`}>
+                  {size}
+                </span>
+              );
+            })()}
+          </td>
+          <td className="px-3 py-3 text-center">
+            <div className="flex items-center justify-center gap-1.5">
+              <StateBadge state={pr.state} />
+              {pr.metrics && !pr.metrics.metrics_finalized && (
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber animate-pulse" title="Metrics pending" />
+              )}
+            </div>
+          </td>
+          <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
+            {pr.metrics?.post_open_commits ?? "\u2014"}
+          </td>
+          <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
+            {pr.metrics?.diff_churn_lines ?? "\u2014"}
+          </td>
+          <td className="px-3 py-3 text-center">
+            {pr.metrics?.first_pass_accepted !== null ? (
+              <CheckMark value={pr.metrics!.first_pass_accepted === true} />
+            ) : (
+              <span className="text-text-tertiary text-[13px]">&#8212;</span>
+            )}
+          </td>
+          <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
+            {pr.metrics?.ci_success_rate !== null
+              ? `${Math.round(pr.metrics!.ci_success_rate * 100)}%`
+              : "\u2014"}
+          </td>
+          <td className="px-3 py-3 text-center">
+            {pr.metrics?.has_tests !== null ? (
+              <CheckMark value={pr.metrics!.has_tests === true} />
+            ) : (
+              <span className="text-text-tertiary text-[13px]">&#8212;</span>
+            )}
+          </td>
+          <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
+            {pr.metrics?.messages_per_pr ?? "\u2014"}
+          </td>
+          <td className="px-3 py-3 text-center font-mono text-[13px] text-text-secondary">
+            {pr.metrics?.iteration_depth ?? "\u2014"}
+          </td>
+          <td className="px-4 py-3 text-right font-mono text-[13px] text-text-secondary">
+            {pr.metrics?.token_cost_usd !== null
+              ? `$${pr.metrics!.token_cost_usd.toFixed(2)}`
+              : "\u2014"}
+          </td>
+          <td className="px-3 py-3 text-center">
+            {pr.session_count > 0 ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-accent-muted text-accent">
+                {pr.session_count}
+              </span>
+            ) : (
+              <span className="text-text-tertiary text-[13px]">&#8212;</span>
+            )}
+          </td>
+        </tr>
+      ))}
+    </tbody>
   );
 }
