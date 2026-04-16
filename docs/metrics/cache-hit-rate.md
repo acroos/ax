@@ -18,16 +18,6 @@ cache_hit_rate = cache_read_input_tokens / (input_tokens + cache_creation_input_
 
 Summed across all sessions correlated to the PR. Returns a value between 0.0 and 1.0. Returns null if there are no input tokens.
 
-## Interpreting Values
-
-- **Good:** Above 70% — the model is effectively reusing cached context across turns, keeping costs low.
-- **Moderate:** 40-70% — some caching is happening but there may be opportunities to improve session structure.
-- **Concerning:** Below 40% — most input is being processed fresh each turn. Consider whether sessions are being interrupted or restarted unnecessarily, or whether CLAUDE.md / context files are structured in a way that defeats caching.
-
 ## Data Sources Required
 
 - **Claude Code session data** — Token usage breakdowns per assistant message, including `input_tokens`, `cache_creation_input_tokens`, and `cache_read_input_tokens`.
-
-## Phase
-
-**Phase 2** — Uses token data already present in session ingestion. No additional data collection needed.

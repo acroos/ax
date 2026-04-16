@@ -18,16 +18,6 @@ sidechain_rate = sidechain_messages / (human_messages + assistant_messages)
 
 Summed across all sessions correlated to the PR. Returns a value between 0.0 and 1.0. Returns null if there are no messages.
 
-## Interpreting Values
-
-- **Good:** Below 10% — the model is finding effective paths without much backtracking.
-- **Moderate:** 10-25% — some exploration is happening, which may be expected for complex tasks.
-- **Concerning:** Above 25% — significant backtracking suggests the model is struggling with the task. Consider whether the prompt is ambiguous, the codebase context is insufficient, or the task scope is too broad.
-
 ## Data Sources Required
 
 - **Claude Code session data** — Message-level `isSidechain` flag from session JSONL files.
-
-## Phase
-
-**Phase 2** — Requires parsing the `isSidechain` field from Claude Code session data.

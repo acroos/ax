@@ -19,7 +19,7 @@ Industry data shows healthy review cycle time (time to first review) is typicall
 ## How it's calculated
 
 ```
-Review Cycle Time (minutes) = 
+Review Cycle Time (minutes) =
   (first_review_submitted_at - pr_opened_at) / 60
 ```
 
@@ -27,18 +27,10 @@ Review Cycle Time (minutes) =
 - **Null when**: No reviews have been submitted yet (PR still open)
 - **Updates**: Once captured, the metric is locked at PR finalization (merge/close)
 
-## Interpretation
-
-| Range | Interpretation |
-|-------|---|
-| < 4 hours | Excellent feedback loop — reviewer engagement is strong |
-| 4-8 hours | Good — typical for asynchronous teams, some waiting |
-| 8-24 hours | Slower — review latency may be delaying merges |
-| > 24 hours | Bottleneck — significant review delays; may indicate understaffing or review culture issues |
-
 ## What affects this metric
 
 **Increases cycle time:**
+
 - Small team size relative to PR volume
 - Async-first culture without dedicated review windows
 - Time zone distribution requiring async reviews
@@ -46,6 +38,7 @@ Review Cycle Time (minutes) =
 - Developers working odd hours (off-peak reviews)
 
 **Decreases cycle time:**
+
 - Synchronous pair programming or code review pairing
 - Dedicated review windows (e.g., morning sync)
 - Clear code review SLAs

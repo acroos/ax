@@ -36,24 +36,8 @@ line_revisit_rate = revisit_count / total_modified * 100
 
 Can also be calculated at a file level (files modified in multiple recent PRs) for a less granular but faster analysis.
 
-## Interpreting Values
-
-- **Good:** Revisit rates below 10-15% suggest code is stable once written. Changes to recently-written code are occasional and expected (requirements evolve, bugs surface in production).
-- **Concerning:** Revisit rates above 30% indicate code instability. The agent may be producing code that does not fully satisfy requirements, leading to follow-up PRs that patch the same areas. Or it may indicate architectural issues where changes in one area consistently require adjustments in another.
-- **Ambiguity:** This is one of the most context-dependent metrics in the set. High revisit rates can indicate:
-  - **Quality issues** — Code was buggy and needed fixing. Correlate with CI Success Rate and First-Pass Acceptance Rate to confirm.
-  - **Unclear requirements** — The spec changed after implementation. Correlate with Scope Creep Detection and plan metrics.
-  - **Fast iteration** — The team is intentionally iterating rapidly on a new feature. This is healthy and expected in early development phases.
-  - **Refactoring** — Deliberate code improvement, not quality problems. Check commit messages and PR descriptions for refactoring signals.
-
-  Always disambiguate with other metrics before drawing conclusions from line revisit rate alone.
-
 ## Data Sources Required
 
 - **Git blame** — To determine when each line was last modified and by which commit.
 - **Git diff** — To identify which lines are being modified in the current PR.
 - **Git log** — To establish the time window for "recent" modifications.
-
-## Phase
-
-**Phase 1** — Uses git history (blame, diff, log). No session data required.

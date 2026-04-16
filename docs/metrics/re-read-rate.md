@@ -18,16 +18,6 @@ re_read_rate = total_file_reads / unique_files_read
 
 Where `total_file_reads` counts every Read tool invocation and `unique_files_read` counts distinct file paths read (already tracked as `files_read_count`). Summed across all correlated sessions. Returns null if no files were read.
 
-## Interpreting Values
-
-- **Good:** Below 1.5 — minimal redundant reading. The model is retaining context well.
-- **Moderate:** 1.5-2.5 — some re-reading, which may be expected for complex refactors touching many interconnected files.
-- **Concerning:** Above 2.5 — on average, every file is being read more than twice. Investigate whether large files should be broken up, or whether CLAUDE.md could provide better architectural context to reduce exploratory reads.
-
 ## Data Sources Required
 
 - **Claude Code session data** — Count of Read tool invocations (total) and unique file paths read.
-
-## Phase
-
-**Phase 2** — Requires tracking total Read tool calls in addition to unique file counts.
