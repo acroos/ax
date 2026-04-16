@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Overview page visual refresh + windowed metrics API
+
+**Pages updated:** dashboard, metrics, rails-server, data-flow
+**What changed:** Overview page visual refresh: metric values switched from `font-mono` to `font-serif` with `lining-nums tabular-nums` for field-notebook aesthetic; section headers replaced with `SectionDivider` component (AX axis-rule-and-dot motif — ticks + rule in `muted-foreground`, single clay dot, serif caps label); first card per section gets `bg-secondary` for visual rhythm. New `Sparkline` component (hand-rolled SVG, null-gap handling, auto-suppression). Week-over-week delta indicators (arrow + magnitude in `muted-foreground`, no status colors — per design philosophy). Backend: extracted `MetricsAggregator` service from inline controller SQL. Metrics aggregate endpoints now window to 7-day current + 7-day prior periods (was all-time). API response restructured from flat fields (`avgPostOpenCommits`, `ciSuccessRate`, etc.) to `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`. Dashboard `AggregateMetrics` interface and `computeAggregatesFromPRs` updated to match. **Why:** the Parchment & Clay palette migration delivered the color story but the overview page still felt flat — uniform card grid, mono numerals, no trend data. This adds visual hierarchy (serif values, motif dividers, surface variation) and temporal context (sparklines, deltas) without introducing status-color verdicts.
+
+---
+
 ## 2026-04-16 — Parchment & Clay migration: Phase 6 verification sweep
 
 **Pages updated:** dashboard
