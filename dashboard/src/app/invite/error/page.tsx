@@ -1,5 +1,15 @@
 import Link from "next/link";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
 const MESSAGES: Record<string, { title: string; body: string }> = {
   expired: {
     title: "Invite unavailable",
@@ -24,14 +34,23 @@ export default async function InviteErrorPage({
   const msg = MESSAGES[reason ?? "unknown"] ?? MESSAGES.unknown;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-void">
-      <div className="w-full max-w-sm space-y-4 text-center">
-        <h1 className="text-xl font-semibold text-text-primary">{msg.title}</h1>
-        <p className="text-sm text-text-secondary">{msg.body}</p>
-        <Link href="/" className="text-accent text-sm hover:underline">
-          Continue to dashboard
-        </Link>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-background px-6">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="items-center text-center">
+          <Badge className="bg-attention text-attention-foreground">
+            Heads up
+          </Badge>
+          <CardTitle className="mt-2 font-serif text-xl font-semibold">
+            {msg.title}
+          </CardTitle>
+          <CardDescription>{msg.body}</CardDescription>
+        </CardHeader>
+        <CardFooter className="justify-center">
+          <Button variant="outline" asChild>
+            <Link href="/">Continue to dashboard</Link>
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

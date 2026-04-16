@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Migrate auth & invite routes to Parchment & Clay (Phase 3)
+
+**Pages updated:** dashboard
+**What changed:** `/login` and `/invite/error` now render through Parchment & Clay semantic tokens. `/login/page.tsx` drops the hand-rolled centered card, bespoke "ax" logo bubble, and hand-styled GitHub OAuth anchor in favor of shadcn `Card` + `Button` (terracotta `default` variant, `size="lg"`) composed around the brand `<Mark>` component; title uses `font-serif` (editorial moment per THEME.md §4); legal/data-collection footnote uses `text-muted-foreground` with hover-to-foreground underlined links. `/invite/error/page.tsx` rebuilt on shadcn `Card` + `Badge` + `Button`: header carries a `Badge` using the `attention` token (russet, "Heads up") to preserve the non-judgmental ethos — never `destructive`, per the plan; footer has an outline Button → `Continue to dashboard`. The GitHub brand SVG is inlined in the login page with a WHY comment: Lucide intentionally omits branded logos for trademark reasons (the project's installed lucide-react v1.8.0 has no `Github` export). Route handlers `/auth/accept`, `/auth/logout`, `/invite/[token]` have no UI and were not touched. Zero remaining old-token references in the two migrated pages (no `bg-void`, `bg-surface-*`, `text-text-*`, `border-border-subtle`, bespoke `bg-accent`, literal hex, or `dark:` variants). **Why:** these are the last doorways into the app surface that still rendered on the old indigo-void palette; closing them means every externally-reachable entry point (login, invite handoff, error landings) now greets users in Parchment & Clay before they hit the authenticated routes (Phase 4).
+
+---
+
 ## 2026-04-16 — Migrate marketing & docs routes to Parchment & Clay (Phase 2)
 
 **Pages updated:** dashboard
