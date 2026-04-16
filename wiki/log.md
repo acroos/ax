@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Migrate app & marketing shells to shadcn primitives (Phase 1)
+
+**Pages updated:** dashboard
+**What changed:** The two long-lived layouts now render through shadcn primitives. `(app)/layout.tsx` drops the hand-rolled 220px sidebar in favor of shadcn `Sidebar` + `SidebarProvider` + `SidebarInset`, with lucide icons replacing the inline SVG glyphs (`Home`, `GitPullRequest`, `Settings`, `CreditCard`, `BookOpen`). Data fetching (org slug from `x-pathname`, `getCurrentUser`, `listReposAsync`) still runs server-side and streams into the shell under a Suspense boundary that now uses `SidebarMenuSkeleton`. The nav, repo filter, and user menu are preserved; the user footer picks up the `ThemeToggle` next to the avatar, and a mobile `SidebarTrigger` handles the collapsed state on small screens. `(marketing)/layout.tsx` swaps the bespoke header for shadcn `NavigationMenu` + outline/primary `Button`s (Sign in + Get Started kept as distinct CTAs) and the footer for a composition of `Separator` + `ThemeToggle`. `OrgSwitcher` is rebuilt on shadcn `Popover` + `Command` — the hand-rolled click-outside logic is gone; it now receives `currentSlug` from the sidebar so the active org is highlighted with a check and navigates via `next/navigation`. Root-layout `NextTopLoader` color flips from hex `#B0602F` to `var(--color-primary)` so the bar follows the theme. **Why:** these shells sit above every route, so rebuilding them on shadcn primitives lets every later phase inherit consistent spacing, focus rings, tooltips, and dark-mode remap without per-page work.
+
+---
+
 ## 2026-04-16 — Parchment & Clay theme + shadcn/ui adoption (Phase 0 foundation)
 
 **Pages updated:** dashboard, conventions

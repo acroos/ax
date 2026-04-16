@@ -1,28 +1,23 @@
 import Link from "next/link";
 
-function Logo() {
-  return (
-    <Link href="/" className="flex items-center gap-2.5">
-      <div className="w-7 h-7 rounded-lg bg-accent flex items-center justify-center">
-        <span className="text-white font-semibold text-sm tracking-tight">ax</span>
-      </div>
-      <span className="text-text-primary font-medium text-[15px] tracking-[-0.01em]">
-        AX
-      </span>
-    </Link>
-  );
-}
+import { Logo, Mark } from "@/components/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
+import { Separator } from "@/components/ui/separator";
 
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="text-text-secondary hover:text-text-primary transition-colors text-[13px] font-medium"
-    >
-      {children}
-    </Link>
-  );
-}
+const NAV_LINKS = [
+  { href: "/docs", label: "Docs" },
+  { href: "/plans", label: "Plans" },
+  { href: "/setup", label: "Setup" },
+  { href: "/changelog", label: "Changelog" },
+];
 
 export default function MarketingLayout({
   children,
@@ -30,60 +25,74 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Nav */}
-      <header className="border-b border-border-subtle bg-surface-0/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-[1100px] mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Logo />
-            <nav className="flex items-center gap-6">
-              <NavLink href="/docs">Docs</NavLink>
-              <NavLink href="/plans">Plans</NavLink>
-              <NavLink href="/setup">Setup</NavLink>
-              <NavLink href="/changelog">Changelog</NavLink>
-            </nav>
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+        <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-6">
+          <div className="flex items-center gap-6">
+            <Link
+              href="/"
+              aria-label="AX home"
+              className="flex items-center text-foreground"
+            >
+              <Logo variant="wordmark" className="h-5 w-auto" />
+            </Link>
+            <NavigationMenu viewport={false}>
+              <NavigationMenuList>
+                {NAV_LINKS.map((item) => (
+                  <NavigationMenuItem key={item.href}>
+                    <NavigationMenuLink
+                      asChild
+                      className={navigationMenuTriggerStyle()}
+                    >
+                      <Link href={item.href}>{item.label}</Link>
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                ))}
+              </NavigationMenuList>
+            </NavigationMenu>
           </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/login"
-              className="text-[13px] font-medium text-text-secondary hover:text-text-primary transition-colors"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/login"
-              className="text-[13px] font-medium px-3.5 py-1.5 rounded-lg bg-accent hover:bg-accent-hover text-white transition-colors"
-            >
-              Get Started
-            </Link>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/login">Sign in</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/login">Get Started</Link>
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Content */}
       <main className="flex-1">{children}</main>
 
-      {/* Footer */}
-      <footer className="border-t border-border-subtle">
-        <div className="max-w-[1100px] mx-auto px-6 py-8 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[12px] text-text-tertiary">
-            <div className="w-5 h-5 rounded bg-accent/20 flex items-center justify-center">
-              <span className="text-accent font-semibold text-[9px]">ax</span>
-            </div>
-            AX — Agentic Coding DX Metrics
+      <footer>
+        <Separator />
+        <div className="mx-auto flex max-w-[1100px] items-center justify-between gap-4 px-6 py-6">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Mark className="h-4 w-4 text-foreground" title="" />
+            <span>AX — Agentic Coding DX Metrics</span>
           </div>
-          <nav className="flex items-center gap-5 text-[12px] text-text-tertiary">
-            <Link href="/docs" className="hover:text-text-secondary transition-colors">Docs</Link>
-            <Link href="/docs/data-collection" className="hover:text-text-secondary transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-text-secondary transition-colors">Terms</Link>
+          <nav className="flex items-center gap-5 text-xs text-muted-foreground">
+            <Link href="/docs" className="transition-colors hover:text-foreground">
+              Docs
+            </Link>
+            <Link
+              href="/docs/data-collection"
+              className="transition-colors hover:text-foreground"
+            >
+              Privacy
+            </Link>
+            <Link href="/terms" className="transition-colors hover:text-foreground">
+              Terms
+            </Link>
             <a
               href="https://github.com/acroos/ax"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-text-secondary transition-colors"
+              className="transition-colors hover:text-foreground"
             >
               GitHub
             </a>
+            <ThemeToggle />
           </nav>
         </div>
       </footer>

@@ -31,7 +31,6 @@
  *     If you prefer `data-theme="dark"`, swap the selector. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-
 @theme {
   /* ---------------------------------------------------------
    * 1. Raw palette — the brand vocabulary.
@@ -89,7 +88,6 @@
   --color-cart-pine:     #2F6267;
   --color-cart-rose:     #95524E;
   --color-cart-graphite: #5E5444;
-
 
   /* ---------------------------------------------------------
    * 2. Semantic tokens (shadcn-compatible).
@@ -168,7 +166,6 @@
      See brand-assets/README.md §Color contract. */
   --ax-clay: var(--color-primary);
 
-
   /* ---------------------------------------------------------
    * 3. Non-color tokens.
    * --------------------------------------------------------- */
@@ -194,7 +191,6 @@
   --shadow-lg: 0 1px 2px rgba(30, 25, 18, 0.06),
                0 8px 24px rgba(30, 25, 18, 0.08);
 }
-
 
 /* ============================================================
  * Dark mode — only semantic tokens change.
@@ -270,7 +266,6 @@
                0 8px 24px rgba(0, 0, 0, 0.40);
 }
 
-
 /* ============================================================
  * Base layer — apply theme to html/body so nothing looks
  * "unstyled" before components mount. Add selection color,
@@ -305,7 +300,6 @@
     outline-offset: 2px;
   }
 }
-
 
 /* ============================================================
  * Dashboard-specific: subtle scrollbar using theme tokens

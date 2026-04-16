@@ -34,9 +34,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <NextTopLoader
-            color="#B0602F"
+            color="var(--color-primary)"
             height={2}
-            shadow="0 0 10px #B0602F, 0 0 5px #B0602F"
+            shadow="0 0 10px var(--color-primary), 0 0 5px var(--color-primary)"
             showSpinner={false}
             easing="ease"
             speed={200}
