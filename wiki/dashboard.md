@@ -77,7 +77,7 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 ### Loading states
 - **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonTableBody`, `SkeletonPageHeader`, `SkeletonChartPanel`. Shared building blocks for route-level loading UIs and in-page Suspense fallbacks.
 - **Route-level `loading.tsx`** — Every page under `/(app)` has a sibling `loading.tsx` that Next.js renders instantly on navigation (before the page's async data awaits resolve). Each skeleton mirrors the real page's layout. Files: `[slug]/loading.tsx`, `[slug]/prs/loading.tsx`, `[slug]/metrics/[metric]/loading.tsx`, `[slug]/settings/loading.tsx`, `[slug]/billing/loading.tsx`, `prs/[id]/loading.tsx`, `settings/loading.tsx`.
-- **Navigation progress bar** — `nextjs-toploader` is mounted in `src/app/layout.tsx` (2px, indigo `#6366F1`, no spinner). Shows at the top of the viewport during any `<Link>` navigation to give continuous "something is happening" feedback.
+- **Navigation progress bar** — `nextjs-toploader` is mounted in `src/app/layout.tsx` (2px, terracotta `#B0602F` (Clay-500), no spinner). Shows at the top of the viewport during any `<Link>` navigation to give continuous "something is happening" feedback.
 - **`SectionErrorBoundary`** (`src/components/section-error-boundary.tsx`) — Client-side class component that catches errors thrown from an async Suspense child and renders a fallback in place of that section only. Used to scope API failures to a single card/table instead of taking down the whole page.
 
 ### Streaming pattern (in-page Suspense)
@@ -106,25 +106,45 @@ Page-by-page streaming topology:
 
 ## Styling
 
-Dark mode only. Tailwind CSS v4 with a custom theme.
+Tailwind CSS v4 with the **Parchment & Clay** theme. Light mode is the default; dark mode is user-toggleable via `next-themes`. The canonical usage guide is [`dashboard/THEME.md`](../dashboard/THEME.md) — read it before styling anything.
 
-### Design Tokens (from `src/app/globals.css`)
+### Where tokens live
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--color-void` | `#08080D` | Page background |
-| `--color-surface-0` to `-3` | Progressive grays | Card/panel elevation |
-| `--color-border` | `#252536` | Default borders |
-| `--color-text-primary` | `#E8E8ED` | Main text |
-| `--color-text-secondary` | `#8B8B9E` | Reduced contrast text |
-| `--color-accent` | `#6366F1` | Primary CTA (indigo) |
+- **`dashboard/src/app/globals.css`** — source of truth. Contains the `@theme` block (raw palette + semantic aliases) and the `.dark` override block. Semantic tokens follow shadcn/ui conventions so primitives drop in without remapping.
+- **`dashboard/THEME.md`** — human-readable rules: when to reach for `primary` vs `accent` vs `success`, chart slot ordering, contrast ratios, dos and don'ts.
 
-Fonts: Geist (sans) and Geist Mono. Typography: 13-14px body, 11-12px labels, 20-22px headings.
+### Semantic tokens (99% of components)
 
-### Custom Effects
-- `.metric-card` — Hover glow on metric cards
-- `.animate-in` — Staggered fade-up entrance animations
-- `.tooltip-trigger` / `.tooltip-content` — Hover tooltips
+Prefer these Tailwind utilities over raw palette names:
+
+- Surfaces: `bg-background`, `bg-card`, `bg-popover`, `bg-muted`, `bg-secondary`
+- Brand: `bg-primary` / `text-primary-foreground`, `bg-accent` / `text-accent-foreground`, `ring-ring`
+- Status: `bg-success`, `bg-notice`, `bg-info`, `bg-attention`, `bg-destructive` (each with `-foreground` soft background sibling)
+- Charts: `bg-chart-1` through `bg-chart-8`
+- Sidebar: `bg-sidebar`, `bg-sidebar-primary`, `border-sidebar-border`
+- Text/border: `text-foreground`, `text-muted-foreground`, `border-border`
+
+Never write `dark:` variants for colors that already have semantic tokens — the token values remap automatically under `.dark`.
+
+### Theme toggle
+
+`src/components/theme-toggle.tsx` renders the Light / Dark / System dropdown. It's wired up at the root via `ThemeProvider` (`src/components/theme-provider.tsx`, wrapping `next-themes`). First-visit preference honors the user's OS setting when System is selected.
+
+### Brand assets
+
+Logo components `<Mark>`, `<Wordmark>`, `<Logo>` live at `src/components/logo/` (re-exported from `index.ts`). They use `currentColor` for ink and `var(--ax-clay)` (aliased to `--color-primary`) for the accent dot, so they theme automatically. Use `<Wordmark>` in headers, `<Mark>` in tight placements (favicons, avatars), `<Logo variant="…">` as a convenience wrapper.
+
+The authoritative SVG vector sources and the brand contract (color, clear space, min sizes, don'ts) live at `dashboard/brand-assets/` — see [`brand-assets/README.md`](../dashboard/brand-assets/README.md). Installed PNG rasters / favicons / OG images are rendered from those SVGs; regenerate from `brand-assets/svg/` if the logo geometry ever changes. Next.js app-router metadata files (`icon.svg`, `apple-icon.png`, `opengraph-image.png`, `twitter-image.png`, `favicon.ico`, `manifest.webmanifest`) sit at `src/app/` and are auto-picked-up by Next.js's file-convention metadata API. PWA icons referenced by absolute URL in the manifest live at `public/ax-icon-*.png`. Theme color for the browser chrome is declared in `src/app/layout.tsx` via the `viewport` export.
+
+### Primitive components
+
+Primitive UI (button, dialog, dropdown-menu, input, select, tabs, tooltip, etc.) comes from [shadcn/ui](https://ui.shadcn.com/) under `src/components/ui/`. Install new primitives with `npx shadcn@latest add <name>` from `dashboard/`. See the Components section above for the app-level compositions.
+
+### Typography
+
+- `font-sans` (default body): system-first stack with Inter fallback. No webfont loaded.
+- `font-serif`: reserved for page titles, pull quotes, and editorial moments (Iowan Old Style / Charter / Source Serif 4 fallbacks). Don't apply to body UI.
+- `font-mono`: JetBrains Mono / IBM Plex Mono fallbacks for code.
 
 ## Docs Rendering
 

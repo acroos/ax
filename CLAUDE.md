@@ -68,6 +68,18 @@ ax push --repo .                    # Push session data for current repo
 ax push --all                       # Discover all repos and bulk push sessions
 ```
 
+## Dashboard UI
+
+The dashboard uses Tailwind v4 with the **Parchment & Clay** theme defined in [`dashboard/src/app/globals.css`](dashboard/src/app/globals.css). Usage rules (semantic tokens, dos and don'ts, dark-mode, accessibility contract) live in [`dashboard/THEME.md`](dashboard/THEME.md) — **read it before styling any dashboard UI**.
+
+Primitive UI components (button, dialog, dropdown-menu, input, select, tabs, tooltip, etc.) come from [shadcn/ui](https://ui.shadcn.com/) under `dashboard/src/components/ui/`. Install new primitives with `npx shadcn@latest add <name>` run from `dashboard/`. Compose primitives into app-specific components under `dashboard/src/components/`; never hand-roll a button, dropdown, or modal from scratch.
+
+Light mode is the default; dark mode is user-toggleable via the `ThemeToggle` (`src/components/theme-toggle.tsx`) wired up through `next-themes`. Never write `dark:` Tailwind variants for colors that already have semantic tokens — the tokens remap automatically.
+
+Brand assets (logo components `Mark`, `Wordmark`, `Logo` at `src/components/logo/`; favicons, PWA icons, OG images, manifest) all flow from [`dashboard/brand-assets/`](dashboard/brand-assets/README.md). The logo accent uses `--ax-clay` which aliases `--color-primary`, so it themes automatically. Follow the brand contract: ink + clay only, never recolor the ticks, never fill the dot with anything else.
+
+See ADR-015 for the rationale behind both decisions.
+
 ## Decisions
 
 All architectural decisions are documented in `docs/decisions/`. Reference these when working in the related area:
@@ -78,7 +90,7 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [003 — Target Scope](docs/decisions/003-target-scope.md): **Superseded by ADR-014.** Originally: local → team → managed service path.
 - [004 — CLI Language](docs/decisions/004-cli-language.md): Go for CLI, TypeScript for dashboard only.
 - [005 — Session Ingestion](docs/decisions/005-session-ingestion-strategy.md): Claude Code hooks for team data collection. Relevant when building `ax init` or `ax push`.
-- [006 — UX Philosophy](docs/decisions/006-ux-philosophy.md): Linear-inspired, dark mode first, inline metric context. **Read this before any dashboard work.**
+- [006 — UX Philosophy](docs/decisions/006-ux-philosophy.md): Inline metric context, plain-language summaries, restrained chrome, honest about ambiguity. **Amended by ADR-015** — palette and mode defaults changed; principles still apply.
 - [007 — Dashboard Packaging](docs/decisions/007-dashboard-packaging.md): **Superseded by ADR-014.** Originally: embedded static build via `go:embed`.
 - [008 — Distribution](docs/decisions/008-distribution-strategy.md): Homebrew tap + GoReleaser. Relevant when setting up releases.
 - [009 — Token Cost Metrics](docs/decisions/009-token-cost-metrics.md): Token Cost per PR and Unmerged Token Spend. Dollar-cost metrics with model-specific pricing.
@@ -87,6 +99,7 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [012 — Event Service](docs/decisions/012-event-service.md): Platform-agnostic webhook receiver. **Reimplemented in Rails** — see `server/app/services/webhook_handlers/`.
 - [013 — GitHub Integration Model](docs/decisions/013-github-integration-model.md): Dual-app architecture — OAuth App for login, GitHub App for repo access and webhook delivery. Relevant to any managed-service auth or repo ingestion work.
 - [014 — Remove Local Mode](docs/decisions/014-remove-local-mode.md): Managed-only architecture. Supersedes ADR-003, ADR-007. CLI is a thin push client, metrics computed server-side.
+- [015 — Design System & shadcn/ui](docs/decisions/015-design-system-and-shadcn.md): Parchment & Clay theme + shadcn/ui as the primitive component library. Amends ADR-006. **Read before any dashboard styling work.**
 - [Open Questions](docs/decisions/open-questions.md): Pending decisions (CI images, PR author tracking, etc.)
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.

@@ -69,9 +69,11 @@ Patterns and norms for working in the AX codebase.
 - Data layer in `src/lib/db.ts`, auth in `src/lib/auth.ts`
 
 ### Styling
-- Tailwind CSS v4, dark mode only
-- Custom theme tokens in `src/app/globals.css`
-- No CSS modules or styled-components
+- Tailwind CSS v4 with the Parchment & Clay theme (`dashboard/src/app/globals.css`). See [`dashboard/THEME.md`](../dashboard/THEME.md) for the canonical token usage guide.
+- Light mode is the default; dark mode is user-toggleable via `next-themes`. Never write `dark:` Tailwind variants for colors that have semantic tokens — the tokens remap automatically.
+- Primitive UI (button, dialog, dropdown, input, select, tabs, tooltip, etc.) comes from [shadcn/ui](https://ui.shadcn.com/) under `src/components/ui/`. Install new primitives with `npx shadcn@latest add <name>` from `dashboard/`.
+- Application components under `src/components/` compose shadcn primitives. Don't hand-roll buttons, dropdowns, dialogs, or other primitives.
+- No CSS modules or styled-components.
 
 ## Cross-Cutting
 

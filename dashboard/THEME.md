@@ -1,6 +1,6 @@
 # AX Metrics — Theme Guide
 
-> **Palette:** Parchment & Clay (v1) · **Stack:** Tailwind v4 + Next.js · **Source of truth:** [`theme.css`](./theme.css)
+> **Palette:** Parchment & Clay (v1) · **Stack:** Tailwind v4 + Next.js · **Source of truth:** [`src/app/globals.css`](./src/app/globals.css)
 
 This is the canonical reference for visual design in AX Metrics. Read this before styling new UI. Update this file when palette decisions change — stale docs misguide both humans and agents.
 
@@ -97,6 +97,21 @@ For **sequential** data (heatmaps, density), use tints/shades of a single chart 
 
 `sidebar`, `sidebar-foreground`, `sidebar-primary`, `sidebar-accent`, `sidebar-border`, `sidebar-ring` — all pre-mapped for you. No further setup needed.
 
+### Brand assets
+
+The AX logo components (`<Mark>`, `<Wordmark>`, `<Logo>`) live at `src/components/logo/`. They use `currentColor` for the ink strokes (follows the surrounding `text-*` class) and `var(--ax-clay)` for the accent dot. `--ax-clay` is aliased to `--color-primary` in `globals.css`, so it brightens from `#B0602F` → `#D68250` in dark mode automatically.
+
+The authoritative SVG sources, PNG rasters, favicon files, and PWA icons live under `brand-assets/` at the dashboard root. Full usage guidance: [`brand-assets/README.md`](./brand-assets/README.md).
+
+Usage:
+```tsx
+import { Logo, Mark, Wordmark } from "@/components/logo";
+
+<Wordmark className="h-7 w-auto text-foreground" />   // headers
+<Mark className="h-6 w-6 text-foreground" />          // tight placements
+<Logo variant="mark" className="h-8 w-8" />           // convenience wrapper
+```
+
 ---
 
 ## 4. Dos and don'ts
@@ -125,11 +140,11 @@ For **sequential** data (heatmaps, density), use tints/shades of a single chart 
 
 ## 5. Dark mode
 
-Dark mode is activated by a `.dark` class on `<html>` (shadcn convention). To use `data-theme="dark"` instead, change the `@custom-variant` declaration at the top of `theme.css`.
+Dark mode is activated by a `.dark` class on `<html>` (shadcn convention), driven by `next-themes`. To use `data-theme="dark"` instead, change the `@custom-variant` declaration at the top of `src/app/globals.css`.
 
 Dark mode is **warm ink** (`#14110C`), never pure black or OLED black. The hero brightens from `#B0602F` to `#D68250` to hold WCAG AA contrast on the darker ground. This is handled automatically when you use `bg-primary` — no `dark:` variant needed.
 
-To toggle at runtime, any standard pattern works (e.g., Next.js + `next-themes`). Recommended attribute: the `class` attribute on `<html>`.
+Light mode is the product default; dark mode is user-toggleable via the theme toggle in the sidebar / marketing header. First-visit preference honors the user's OS setting.
 
 ---
 
@@ -153,7 +168,7 @@ Chart colors hit ≥3:1 against both light and dark backgrounds so small dots/li
 
 ## 7. When to update this file
 
-Update `THEME.md` and `theme.css` together when:
+Update `THEME.md` and `src/app/globals.css` together when:
 
 - Adding or removing a semantic token
 - Changing a brand-level value (hero color, primary neutral, status philosophy)
@@ -171,8 +186,10 @@ If you find yourself reaching for a raw palette token (`--color-clay-600`, `--co
 ## 8. File map
 
 ```
-theme.css        ← Tokens. Imported once, globally.
-THEME.md         ← This file. Usage rules and reasoning.
+dashboard/
+├── THEME.md                ← This file. Usage rules and reasoning.
+└── src/app/globals.css     ← Tokens and base layer. Imported once from
+                              the root layout. Source of truth for values.
 ```
 
-The palette's origin and a live preview of every token live in the design archive (the `ax-palette-v1.html` and `ax-dashboard-reskin.html` artifacts from the palette design session). Those are references, not source of truth — this file is the source of truth.
+Primitive UI components come from [shadcn/ui](https://ui.shadcn.com/) under `src/components/ui/`. Application-specific components live under `src/components/` and compose the primitives. Add new primitives with `npx shadcn@latest add <name>`.

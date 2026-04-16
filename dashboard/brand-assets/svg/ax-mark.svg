@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="AX mark">
+  <title>AX mark</title>
+  <g fill="none" stroke="#1E1912" stroke-width="3">
+    <line x1="20" y1="84" x2="100" y2="84"/>
+    <line x1="20" y1="79" x2="20" y2="89"/>
+    <line x1="100" y1="79" x2="100" y2="89"/>
+  </g>
+  <circle cx="72" cy="52" r="7.5" fill="#B0602F"/>
+</svg>
