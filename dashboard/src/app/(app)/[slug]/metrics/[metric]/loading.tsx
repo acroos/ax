@@ -1,4 +1,13 @@
 import { Skeleton } from "@/components/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // Mirrors /[slug]/metrics/[metric]/page.tsx:
 // back link + header + 5 summary stat cards + chart panel + PR table + doc card.
@@ -6,11 +15,11 @@ export default function MetricDetailLoading() {
   return (
     <div>
       {/* Back link */}
-      <Skeleton className="h-4 w-32 mb-6" />
+      <Skeleton className="mb-6 h-4 w-32" />
 
       {/* Header */}
       <div className="mb-6 mt-4">
-        <div className="flex items-center gap-3 mb-2">
+        <div className="mb-2 flex items-center gap-3">
           <Skeleton className="h-7 w-64" />
           <Skeleton className="h-5 w-28 rounded-full" />
         </div>
@@ -18,67 +27,70 @@ export default function MetricDetailLoading() {
       </div>
 
       {/* Summary stats: Count / Avg / Median / Min / Max */}
-      <div className="grid grid-cols-5 gap-3 mb-6">
+      <div className="mb-6 grid grid-cols-5 gap-3">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-xl border border-border-subtle bg-surface-1 p-4 text-center"
-          >
-            <Skeleton className="h-3 w-16 mx-auto mb-2" />
-            <Skeleton className="h-5 w-12 mx-auto" />
-          </div>
+          <Card key={i} className="p-4 text-center">
+            <CardContent className="p-0">
+              <Skeleton className="mx-auto mb-2 h-3 w-16" />
+              <Skeleton className="mx-auto h-5 w-12" />
+            </CardContent>
+          </Card>
         ))}
       </div>
 
       {/* Chart panel */}
-      <div className="rounded-xl border border-border-subtle bg-surface-1 p-5 mb-6">
-        <Skeleton className="h-3 w-40 mb-4" />
-        <Skeleton className="h-64 w-full" />
-      </div>
+      <Card className="mb-6 p-5">
+        <CardContent className="p-0">
+          <Skeleton className="mb-4 h-3 w-40" />
+          <Skeleton className="h-64 w-full" />
+        </CardContent>
+      </Card>
 
       {/* PR table */}
-      <div className="rounded-xl border border-border-subtle bg-surface-1 overflow-hidden mb-6">
-        <div className="px-5 py-3 border-b border-border-subtle">
+      <Card className="mb-6 gap-0 overflow-hidden p-0">
+        <div className="border-b border-border px-5 py-3">
           <Skeleton className="h-3 w-56" />
         </div>
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-text-tertiary text-left border-b border-border-subtle">
+        <Table>
+          <TableHeader>
+            <TableRow>
               {["PR", "Title", "Value", "State"].map((h) => (
-                <th key={h} className="px-5 py-2">
+                <TableHead key={h}>
                   <Skeleton className="h-3 w-12" />
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {Array.from({ length: 8 }).map((_, i) => (
-              <tr key={i} className="border-b border-border-subtle/50 last:border-0">
-                <td className="px-5 py-2.5">
+              <TableRow key={i}>
+                <TableCell>
                   <Skeleton className="h-4 w-10" />
-                </td>
-                <td className="px-5 py-2.5">
+                </TableCell>
+                <TableCell>
                   <Skeleton className="h-4 w-full max-w-[280px]" />
-                </td>
-                <td className="px-5 py-2.5">
-                  <Skeleton className="h-4 w-12 ml-auto" />
-                </td>
-                <td className="px-5 py-2.5">
-                  <Skeleton className="h-5 w-16 rounded-full mx-auto" />
-                </td>
-              </tr>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="ml-auto h-4 w-12" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="mx-auto h-5 w-16 rounded-full" />
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
 
       {/* About this metric */}
-      <div className="rounded-xl border border-border-subtle bg-surface-1 p-6 space-y-3">
-        <Skeleton className="h-3 w-40 mb-2" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
-        <Skeleton className="h-4 w-4/6" />
-      </div>
+      <Card className="p-6">
+        <CardContent className="space-y-3 p-0">
+          <Skeleton className="mb-2 h-3 w-40" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-4/6" />
+        </CardContent>
+      </Card>
     </div>
   );
 }
