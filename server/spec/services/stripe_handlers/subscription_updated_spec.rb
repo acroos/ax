@@ -115,4 +115,55 @@ RSpec.describe StripeHandlers::SubscriptionUpdated do
 
     expect { StripeHandlers::SubscriptionUpdated.new(data).call }.not_to raise_error
   end
+
+  it "syncs quantity changes from Stripe" do
+    data = {
+      id: "sub_test_123",
+      status: "active",
+      current_period_start: Time.current.to_i,
+      current_period_end: 1.month.from_now.to_i,
+      cancel_at_period_end: false,
+      canceled_at: nil,
+      items: { data: [ { id: "si_existing", quantity: 7 } ] }
+    }
+
+    StripeHandlers::SubscriptionUpdated.new(data).call
+
+    expect(subscription.reload.quantity).to eq(7)
+  end
+
+  it "preserves quantity when items payload is missing" do
+    subscription.update!(quantity: 5)
+
+    data = {
+      id: "sub_test_123",
+      status: "active",
+      current_period_start: Time.current.to_i,
+      current_period_end: 1.month.from_now.to_i,
+      cancel_at_period_end: false,
+      canceled_at: nil
+    }
+
+    StripeHandlers::SubscriptionUpdated.new(data).call
+
+    expect(subscription.reload.quantity).to eq(5)
+  end
+
+  it "backfills the subscription item ID if missing" do
+    subscription.update!(stripe_subscription_item_id: nil)
+
+    data = {
+      id: "sub_test_123",
+      status: "active",
+      current_period_start: Time.current.to_i,
+      current_period_end: 1.month.from_now.to_i,
+      cancel_at_period_end: false,
+      canceled_at: nil,
+      items: { data: [ { id: "si_backfilled", quantity: 1 } ] }
+    }
+
+    StripeHandlers::SubscriptionUpdated.new(data).call
+
+    expect(subscription.reload.stripe_subscription_item_id).to eq("si_backfilled")
+  end
 end

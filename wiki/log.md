@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-15 — Move Pro to per-seat pricing ($20/seat/month)
+
+**Pages updated:** data-model, rails-server, conventions, dashboard
+**What changed:** Migrated Pro from flat-rate (single Stripe price, quantity 1, unlimited members) to per-seat ($20/seat/month). New columns on `subscriptions`: `stripe_subscription_item_id`, `quantity`. New `SeatService` orchestrates Stripe seat sync — `add_seat!` runs BEFORE membership creation (Stripe failure rolls back the membership), `remove_seat!` runs AFTER deletion (Stripe failure doesn't block, webhook reconciles). `PlanService` now resolves `max_members` from `subscription.quantity` for Pro instead of `Float::INFINITY`. `Invite#accept!` auto-purchases a seat on Pro when at the limit. Invite creation skips the limit check on Pro since seats auto-purchase on accept. `MembersController#destroy` calls `SeatService.remove_seat!`. Billing API response includes `quantity` and `seat_price_cents`. Dashboard shows seat count and monthly total on Pro. Stripe Customer Portal "Update subscription quantity" should be enabled.
+
+---
+
 ## 2026-04-15 — Add Stripe webhook idempotency
 
 **Pages updated:** rails-server, data-model

@@ -45,6 +45,19 @@ RSpec.describe "Billing API", type: :request do
       expect(body["subscription"]["status"]).to eq("active")
       expect(body["subscription"]["cancel_at_period_end"]).to be false
     end
+
+    it "includes seat quantity and price for active Pro subscriptions" do
+      org.update!(plan: "pro")
+      create(:subscription, organization: org, quantity: 4, status: "active")
+
+      get "/api/v1/orgs/#{org.slug}/billing", headers: session_headers(owner)
+
+      body = JSON.parse(response.body)
+      expect(body["subscription"]["quantity"]).to eq(4)
+      expect(body["subscription"]["seat_price_cents"]).to eq(2000)
+      # max_members in plan capabilities reflects seat count
+      expect(body["plan"]["capabilities"]["max_members"]).to eq(4)
+    end
   end
 
   describe "POST /api/v1/orgs/:slug/billing/checkout" do

@@ -15,6 +15,9 @@ module Api
         render json: { org_slug: invite.organization.slug }
       rescue Invite::MemberLimitReached
         render json: { error: "This organization has reached its member limit." }, status: :forbidden
+      rescue StripeService::Error, Stripe::StripeError => e
+        Rails.logger.error("Failed to add seat for invite #{invite.id}: #{e.message}")
+        render json: { error: "Could not add a seat. Please contact the organization owner." }, status: :payment_required
       end
     end
   end

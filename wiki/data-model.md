@@ -197,7 +197,9 @@ Stripe subscription sync record. One per org (when on a paid plan).
 | id | bigint | PK |
 | organization_id | bigint | FK → organizations |
 | stripe_subscription_id | text | Unique, from Stripe |
+| stripe_subscription_item_id | text | Stripe `SubscriptionItem` ID — required to update seat quantity |
 | status | text | active, canceled, past_due, trialing, etc. |
+| quantity | integer | Purchased seat count (default: 1, source of truth for `max_members` on Pro) |
 | current_period_start | timestamp | |
 | current_period_end | timestamp | |
 | cancel_at_period_end | boolean | Cancellation scheduled |

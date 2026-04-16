@@ -19,8 +19,19 @@ class Invite < ApplicationRecord
       organization.lock!
       plan = PlanService.for(organization)
       current_count = organization.org_memberships.count
+
       unless plan.within_limit?(:max_members, current_count)
-        raise MemberLimitReached, "Organization has reached its member limit"
+        # On Pro with an active subscription, auto-purchase a seat. The
+        # Stripe call is wrapped in the same transaction so a failure rolls
+        # back the membership creation and keeps billing in sync.
+        if plan.plan_name == "pro" && organization.subscription&.active_or_trialing?
+          SeatService.add_seat!(organization)
+          plan = PlanService.for(organization.reload)
+        end
+
+        unless plan.within_limit?(:max_members, current_count)
+          raise MemberLimitReached, "Organization has reached its member limit"
+        end
       end
 
       update!(status: "accepted", accepted_at: Time.current)

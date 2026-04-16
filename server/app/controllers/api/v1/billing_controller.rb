@@ -1,6 +1,8 @@
 module Api
   module V1
     class BillingController < BaseController
+      SEAT_PRICE_CENTS = 2000
+
       before_action :require_session_auth!
       before_action :find_org!
       before_action :find_org_as_admin!, only: [ :checkout, :portal ]
@@ -14,7 +16,9 @@ module Api
           subscription: subscription ? {
             status: subscription.status,
             current_period_end: subscription.current_period_end,
-            cancel_at_period_end: subscription.cancel_at_period_end
+            cancel_at_period_end: subscription.cancel_at_period_end,
+            quantity: subscription.quantity,
+            seat_price_cents: SEAT_PRICE_CENTS
           } : nil,
           usage: {
             members: @org.org_memberships.count,

@@ -48,6 +48,8 @@ class AuthService
       invite.accept!(user)
     rescue Invite::MemberLimitReached
       Rails.logger.info("Skipping invite #{invite.id} for #{user.github_username}: org member limit reached")
+    rescue StripeService::Error, Stripe::StripeError => e
+      Rails.logger.error("Skipping invite #{invite.id} for #{user.github_username}: Stripe error: #{e.message}")
     end
   end
 end

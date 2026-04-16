@@ -22,11 +22,44 @@ RSpec.describe PlanService do
       expect(service.capability(:compare_developers)).to be false
     end
 
-    it "returns unlimited for pro plan" do
+    it "returns unlimited for pro plan without active subscription" do
       org.update!(plan: "pro")
       service = PlanService.for(org)
       expect(service.capability(:max_members)).to eq(Float::INFINITY)
       expect(service.capability(:max_repos)).to eq(Float::INFINITY)
+    end
+
+    it "returns subscription quantity as max_members for pro with active subscription" do
+      org.update!(plan: "pro")
+      create(:subscription, organization: org, quantity: 5, status: "active")
+      service = PlanService.for(org.reload)
+
+      expect(service.capability(:max_members)).to eq(5)
+      expect(service.capability(:max_repos)).to eq(Float::INFINITY)
+    end
+
+    it "returns subscription quantity for trialing subscriptions too" do
+      org.update!(plan: "pro")
+      create(:subscription, organization: org, quantity: 3, status: "trialing")
+      service = PlanService.for(org.reload)
+
+      expect(service.capability(:max_members)).to eq(3)
+    end
+
+    it "falls back to base config when subscription is canceled" do
+      org.update!(plan: "pro")
+      create(:subscription, organization: org, quantity: 5, status: "canceled")
+      service = PlanService.for(org.reload)
+
+      expect(service.capability(:max_members)).to eq(Float::INFINITY)
+    end
+
+    it "lets plan_overrides take precedence over subscription quantity" do
+      org.update!(plan: "pro", plan_overrides: { "max_members" => 100 })
+      create(:subscription, organization: org, quantity: 5, status: "active")
+      service = PlanService.for(org.reload)
+
+      expect(service.capability(:max_members)).to eq(100)
     end
 
     it "returns pro features for pro plan" do
@@ -127,6 +160,15 @@ RSpec.describe PlanService do
       expect(details[:capabilities][:max_members]).to be_nil
       expect(details[:capabilities][:max_repos]).to be_nil
       expect(details[:capabilities][:compare_developers]).to be true
+    end
+
+    it "includes the seat count as max_members for pro with active subscription" do
+      org.update!(plan: "pro")
+      create(:subscription, organization: org, quantity: 7, status: "active")
+      details = PlanService.for(org.reload).plan_details
+
+      expect(details[:capabilities][:max_members]).to eq(7)
+      expect(details[:capabilities][:max_repos]).to be_nil
     end
 
     it "returns numeric values for free plan" do

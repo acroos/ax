@@ -18,8 +18,12 @@ module Api
       end
 
       def create
-        enforce_limit!(:max_members, @org.org_memberships.count + @org.invites.pending.count)
-        return if performed?
+        # On Pro plans, seats auto-purchase when the invite is accepted, so
+        # we don't gate invite creation on the current seat count.
+        unless @org.plan == "pro" && @org.subscription&.active_or_trialing?
+          enforce_limit!(:max_members, @org.org_memberships.count + @org.invites.pending.count)
+          return if performed?
+        end
 
         invite = @org.invites.create!(
           github_username: params[:github_username],

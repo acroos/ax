@@ -15,6 +15,7 @@ module StripeHandlers
       return unless stripe_subscription_id
 
       stripe_sub = Stripe::Subscription.retrieve(stripe_subscription_id)
+      item = stripe_sub.items.data.first
 
       Subscription.find_or_create_by!(stripe_subscription_id: stripe_subscription_id) do |sub|
         sub.organization = org
@@ -22,6 +23,8 @@ module StripeHandlers
         sub.current_period_start = Time.at(stripe_sub.current_period_start)
         sub.current_period_end = Time.at(stripe_sub.current_period_end)
         sub.cancel_at_period_end = stripe_sub.cancel_at_period_end
+        sub.stripe_subscription_item_id = item&.id
+        sub.quantity = item&.quantity || 1
       end
 
       org.update!(plan: "pro") if stripe_sub.status == "active" || stripe_sub.status == "trialing"

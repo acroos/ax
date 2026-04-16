@@ -54,12 +54,18 @@ function PlanBadge({ plan }: { plan: string }) {
 }
 
 const PRO_FEATURES = [
+  { key: "seat_pricing", label: "$20 per seat / month" },
   { key: "compare_developers", label: "Developer comparison" },
   { key: "export_data", label: "Data export" },
   { key: "priority_support", label: "Priority support" },
-  { key: "max_members", label: "Unlimited team members" },
   { key: "max_repos", label: "Unlimited repositories" },
+  { key: "history_days", label: "Full historical data" },
 ];
+
+function formatDollars(cents: number) {
+  const dollars = cents / 100;
+  return Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`;
+}
 
 export function BillingCard({
   billing,
@@ -165,18 +171,27 @@ export function BillingCard({
         )}
 
         {sub && (
-          <div className="text-xs text-text-tertiary">
-            {sub.status === "active" && !willCancel && (
-              <>Next billing date: {new Date(sub.current_period_end).toLocaleDateString()}</>
+          <div className="space-y-1.5">
+            {isPro && (
+              <div className="text-sm text-text-primary">
+                {sub.quantity} {sub.quantity === 1 ? "seat" : "seats"}
+                <span className="text-text-tertiary"> · </span>
+                {formatDollars(sub.quantity * sub.seat_price_cents)}/month
+              </div>
             )}
-            {sub.status === "past_due" && (
-              <span className="text-orange-400">Payment past due — please update your payment method.</span>
-            )}
-            {willCancel && (
-              <span className="text-yellow-400">
-                Access continues until {new Date(sub.current_period_end).toLocaleDateString()}
-              </span>
-            )}
+            <div className="text-xs text-text-tertiary">
+              {sub.status === "active" && !willCancel && (
+                <>Next billing date: {new Date(sub.current_period_end).toLocaleDateString()}</>
+              )}
+              {sub.status === "past_due" && (
+                <span className="text-orange-400">Payment past due — please update your payment method.</span>
+              )}
+              {willCancel && (
+                <span className="text-yellow-400">
+                  Access continues until {new Date(sub.current_period_end).toLocaleDateString()}
+                </span>
+              )}
+            </div>
           </div>
         )}
       </div>
