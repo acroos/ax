@@ -131,6 +131,6 @@ When `ax push` arrives, the server looks up the repo by `github_owner + github_r
 PostgreSQL → Rails API (org-scoped) → fetch() with session token → Next.js server component → rendered page
 ```
 
-The dashboard's data layer (`dashboard/src/lib/db.ts`) provides async functions that fetch from the Rails API. All data endpoints are org-scoped. PR list endpoints return all PRs; aggregate endpoints filter to settled PRs only.
+The dashboard's data layer (`dashboard/src/lib/db.ts`) provides async functions that fetch from the Rails API. All data endpoints are org-scoped. PR list endpoints return all PRs; aggregate endpoints filter to settled PRs only. The overview aggregate endpoint (`/metrics`) windows to the last 7 days and returns per-metric `{ current, prior, sparkline }` for trend visualization and week-over-week deltas.
 
 See: [Dashboard — Data Layer](dashboard.md#data-layer)

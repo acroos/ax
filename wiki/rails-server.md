@@ -72,9 +72,9 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `GET` | `/api/v1/orgs/:slug/repos` | List org repos |
 | `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership + `history_days` cutoff) |
 | `GET` | `/api/v1/orgs/:slug/prs` | All PRs across all org repos (settled + open) |
-| `GET` | `/api/v1/orgs/:slug/metrics` | Aggregated metrics across all org repos |
+| `GET` | `/api/v1/orgs/:slug/metrics` | Windowed aggregate metrics (7-day current + prior) with daily sparkline buckets. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }` via `MetricsAggregator`. |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | All PRs with available metrics |
-| `GET` | `/api/v1/orgs/:slug/repos/:id/metrics` | Aggregated metrics (averages, sums) |
+| `GET` | `/api/v1/orgs/:slug/repos/:id/metrics` | Windowed aggregate metrics (same shape as org-level) plus repo-level fields (`unmergedCostUSD`, `totalCostUSD`, `unmergedRate`) |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/timeline` | PR timeline for trend charts |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/repo-metrics` | Repo-level metrics (unmerged spend) |
 
@@ -164,6 +164,17 @@ Fetches file-level and commit data from the GitHub API at PR finalization:
 Also computes and updates the PR's `additions`, `deletions`, and `changed_files` from the fetched file data (the GitHub list endpoint doesn't include diff stats).
 
 Only runs if the repo has a GitHub App installation. Skips gracefully otherwise.
+
+### MetricsAggregator (`app/services/metrics_aggregator.rb`)
+Computes windowed aggregate metrics for the overview page. Used by both `OrganizationsController#metrics` and `ReposController#metrics`.
+
+1. Takes a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`)
+2. Splits into current window (last 7 days by `finalized_at`) and prior window (7 days before that)
+3. Computes `AVG` for all 9 PR-level metrics in each window
+4. Builds daily sparkline buckets via `DATE(finalized_at)` grouping within the current window
+5. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`
+
+Metric slug → column mapping is maintained in `METRIC_COLUMNS`. Empty days in the sparkline are null (the dashboard renders gaps). Empty prior window returns null for `prior` (dashboard suppresses the delta).
 
 ### MetricsComputer (`app/services/metrics_computer.rb`)
 Computes metrics derived from fetched data and correlated sessions:

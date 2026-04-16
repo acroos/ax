@@ -23,7 +23,7 @@ Location: `dashboard/`
 
 | Route | Page | What it shows |
 |-------|------|---------------|
-| `/{slug}` | Org Overview | Aggregate metrics across all PRs, grouped by category. Clickable metric cards link to drill-down pages. Shows selected repo name. |
+| `/{slug}` | Org Overview | Windowed (7-day) aggregate metrics grouped by category with section dividers (AX motif), serif metric values, sparklines, and week-over-week deltas. First card per section uses `bg-secondary` for visual rhythm. Clickable cards link to drill-down pages. |
 | `/{slug}/metrics/[metric]` | Metric Detail | Per-PR breakdown for a single metric: bar chart, summary stats, sortable table, and documentation |
 | `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics and session count column |
 | `/{slug}/settings` | Org Settings | GitHub App installation card (status, connected repos, install/reinstall), members list (role management, removal), and invites (create, list, revoke) |
@@ -47,8 +47,8 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 |----------|---------|
 | `listPRsWithMetricsAsync(repoId?, orgSlug?)` | Finalized PRs with all computed metrics |
 | `getPRWithMetricsAsync(id)` | Single PR with metrics (hits `/api/v1/prs/:id`) |
-| `computeAggregatesFromPRs(prs)` | Compute aggregate metrics from a PR array (no API call) |
-| `getAggregateMetricsAsync(repoId?, orgSlug?)` | Averages and sums across all metrics |
+| `computeAggregatesFromPRs(prs)` | Compute aggregate metrics from a PR array (no API call). Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior: null, sparkline: [] } } }` — prior/sparkline are only populated by the server. |
+| `getAggregateMetricsAsync(repoId?, orgSlug?)` | Windowed aggregate metrics (7-day current + 7-day prior). Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`. |
 | `getTimelineAsync(repoId?, orgSlug?)` | Time-series data for trend charts |
 | `listReposAsync(orgSlug?)` | Tracked repositories |
 | `getGithubInstallation(orgSlug)` | Installation state + user role + connected repos |
@@ -80,6 +80,8 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 - **StateBadge** (`src/components/state-badge.tsx`) — Shared PR-state pill. Maps `merged → success` (olive), `open → info` (dusk), `closed → attention` (russet), `draft → muted`. Used by the PR list, PR detail header, and metric-detail PR table.
 - **BooleanMetricSummary** (`src/components/boolean-metric-summary.tsx`) — Two-column PR split with proportion bar for boolean metrics (e.g. `has_tests`, `first_pass_accepted`). Honors a `trueIsBetter` orientation; the "healthy" side uses `success` (olive), the other side `muted`, per THEME.md's non-judgmental palette.
 - **MetricBarChart** (`src/components/metric-bar-chart.tsx`) — Wraps shadcn's `chart` primitive over recharts. Takes a `colorSlot` (1..8) that resolves through `chartColor()` to `--color-chart-<n>`, so colors brighten automatically in dark mode. No hex values anywhere in the chart code.
+- **SectionDivider** (`src/components/section-divider.tsx`) — AX axis-rule-and-dot motif used as a section header on the overview page. Thin horizontal rule with end ticks in `muted-foreground`, single clay dot (`bg-primary`), section label in serif caps. Threads the brand through the page without overusing clay.
+- **Sparkline** (`src/components/sparkline.tsx`) — Hand-rolled SVG sparkline for inline trend visualization. Takes `SparklinePoint[]` data, breaks the line on null values (gaps), returns null when fewer than 2 data points. No external charting dependency. Used in overview metric cards.
 
 ### Loading states
 - **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonTableBody`, `SkeletonPageHeader`, `SkeletonChartPanel`. Shared building blocks for route-level loading UIs and in-page Suspense fallbacks.

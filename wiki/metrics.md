@@ -52,10 +52,11 @@ All metric computation happens server-side in the Rails application.
 - **GitHub-sourced metrics** (output quality) are computed from webhook data and GitHub API at PR finalization (merge/close)
 - **Session-dependent metrics** (prompt efficiency, agent behavior) are computed after session data is pushed from the CLI and correlated to PRs
 
-Server-side computation is split between two services:
+Server-side computation is split between three services:
 
 - **`MetricsComputer`** — Computes `ci_success_rate` (from per-commit `ci_passed` values on the `commits` table), `line_revisit_rate` (7-day lookback), and session-derived metrics (`cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`)
 - **`SessionPrCorrelationService`** — Aggregates `token_cost_usd` and `iteration_depth` from correlated session data, and calls MetricsComputer to compute all derived metrics
+- **`MetricsAggregator`** — Computes windowed aggregate metrics for the overview page. Takes a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`), applies a 7-day window, and returns: `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }`. Current = average over the last 7 days; prior = average over the 7 days before that (for delta computation). Sparkline = daily `DATE(finalized_at)` buckets with `AVG` per metric. Empty days are null (gaps in the sparkline).
 
 The Go `cli/internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
 

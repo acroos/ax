@@ -21,44 +21,18 @@ module Api
       end
 
       def metrics
-        finalized_metrics = PrMetrics
+        scope = PrMetrics
           .joins(:pr)
           .where(prs: { repo_id: @repo.id }, metrics_finalized: true)
 
-        total = finalized_metrics.count
-        return render json: { totalPRs: 0 } if total == 0
-
-        aggregated = finalized_metrics.pick(
-          Arel.sql("AVG(post_open_commits)"),
-          Arel.sql("AVG(ci_success_rate)"),
-          Arel.sql("AVG(iteration_depth)"),
-          Arel.sql("AVG(token_cost_usd)"),
-          Arel.sql("AVG(line_revisit_rate)"),
-          Arel.sql("COUNT(CASE WHEN token_cost_usd IS NOT NULL THEN 1 END)"),
-          Arel.sql("AVG(cache_hit_rate)"),
-          Arel.sql("AVG(sidechain_rate)"),
-          Arel.sql("AVG(re_read_rate)"),
-          Arel.sql("AVG(autonomy_score)")
-        )
+        result = MetricsAggregator.new(scope).call
 
         repo_met = ::RepoMetrics.where(repo: @repo).order(computed_at: :desc).first
+        result[:unmergedCostUSD] = repo_met&.unmerged_cost_usd
+        result[:totalCostUSD]    = repo_met&.total_cost_usd
+        result[:unmergedRate]    = repo_met&.unmerged_rate
 
-        render json: {
-          totalPRs: total,
-          avgPostOpenCommits: aggregated[0]&.to_f,
-          ciSuccessRate: aggregated[1]&.to_f,
-          avgIterationDepth: aggregated[2]&.to_f,
-          avgTokenCost: aggregated[3]&.to_f,
-          avgLineRevisitRate: aggregated[4]&.to_f,
-          sessionDataCount: aggregated[5].to_i,
-          avgCacheHitRate: aggregated[6]&.to_f,
-          avgSidechainRate: aggregated[7]&.to_f,
-          avgReReadRate: aggregated[8]&.to_f,
-          avgAutonomyScore: aggregated[9]&.to_f,
-          unmergedCostUSD: repo_met&.unmerged_cost_usd,
-          totalCostUSD: repo_met&.total_cost_usd,
-          unmergedRate: repo_met&.unmerged_rate
-        }
+        render json: result
       end
 
       def timeline
