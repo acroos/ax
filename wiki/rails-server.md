@@ -112,8 +112,9 @@ See [Authentication](authentication.md) for how these are used across modes.
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/v1/orgs/:slug/billing` | Plan details, subscription status (incl. `quantity` and `seat_price_cents`), usage counts (any member) |
-| `POST` | `/api/v1/orgs/:slug/billing/checkout` | Create Stripe Checkout session, return URL (admin only) |
+| `POST` | `/api/v1/orgs/:slug/billing/checkout` | Create Stripe Checkout session, return URL (admin only). Refuses if a Stripe-side `active`/`trialing`/`past_due` subscription already exists on the customer, even if the local `Subscription` row hasn't been written yet. |
 | `POST` | `/api/v1/orgs/:slug/billing/portal` | Create Stripe Customer Portal session, return URL (admin only) |
+| `POST` | `/api/v1/orgs/:slug/billing/reconcile?session_id=…` | Synchronously upsert local Subscription/plan from a Stripe Checkout Session (admin only). Called by the dashboard success route so the UI doesn't depend on webhook timing. Idempotent with the `checkout.session.completed` webhook. |
 
 ### Webhooks
 
@@ -210,10 +211,12 @@ Process Stripe webhook events (same pattern as GitHub handlers). `ProcessStripeW
 
 | Handler | Event | Action |
 |---------|-------|--------|
-| `CheckoutCompleted` | `checkout.session.completed` | Create Subscription (with `stripe_subscription_item_id` and `quantity`), set org plan to "pro" |
+| `CheckoutCompleted` | `checkout.session.completed` | Create Subscription (with `stripe_subscription_item_id` and `quantity`), set org plan to "pro". Skips entirely if the Stripe sub is already canceled (e.g., a delayed redelivery after manual cleanup). Reused by `BillingController#reconcile` for the synchronous upgrade path. |
 | `SubscriptionUpdated` | `customer.subscription.updated` | Sync status/period/quantity, update org plan based on status. Quantity changes from seat add/remove flow through here. |
 | `SubscriptionDeleted` | `customer.subscription.deleted` | Mark canceled, revert org plan to "free" |
 | `InvoicePaymentFailed` | `invoice.payment_failed` | Log warning (hook point for notifications) |
+
+The Stripe API version is pinned in `config/initializers/stripe.rb` (`2025-04-30.basil`). Bumping it requires reviewing every Stripe object access in these handlers — for example, `current_period_start` / `current_period_end` were moved off `Subscription` onto each subscription item in this version.
 
 ## Webhook Handling
 
