@@ -3,7 +3,10 @@
 const API_URL = process.env.AX_API_URL;
 const API_KEY = process.env.AX_API_KEY || "";
 
-export async function fetchAPI<T>(urlPath: string, init?: { method?: string; revalidate?: number | false }): Promise<T> {
+export async function fetchAPI<T>(
+  urlPath: string,
+  init?: { method?: string; revalidate?: number | false },
+): Promise<T> {
   const url = `${API_URL}${urlPath}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -33,7 +36,11 @@ export async function fetchAPI<T>(urlPath: string, init?: { method?: string; rev
     ? { cache: "no-store" as const }
     : { next: { revalidate: init?.revalidate ?? 60 } };
 
-  const res = await fetch(url, { headers, method: init?.method, ...cacheOpts } as RequestInit);
+  const res = await fetch(url, {
+    headers,
+    method: init?.method,
+    ...cacheOpts,
+  } as RequestInit);
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
@@ -179,12 +186,22 @@ export interface GithubInstallationResponse {
   user_role: OrgRole;
 }
 
-export async function getGithubInstallation(orgSlug: string): Promise<GithubInstallationResponse> {
-  return fetchAPI<GithubInstallationResponse>(orgApiPath(orgSlug, "/github_installation"), { revalidate: false });
+export async function getGithubInstallation(
+  orgSlug: string,
+): Promise<GithubInstallationResponse> {
+  return fetchAPI<GithubInstallationResponse>(
+    orgApiPath(orgSlug, "/github_installation"),
+    { revalidate: false },
+  );
 }
 
-export async function requestGithubInstallUrl(orgSlug: string): Promise<{ install_url: string }> {
-  return fetchAPI<{ install_url: string }>(orgApiPath(orgSlug, "/github_installation/install_url"), { method: "POST", revalidate: false });
+export async function requestGithubInstallUrl(
+  orgSlug: string,
+): Promise<{ install_url: string }> {
+  return fetchAPI<{ install_url: string }>(
+    orgApiPath(orgSlug, "/github_installation/install_url"),
+    { method: "POST", revalidate: false },
+  );
 }
 
 // --- Data functions ---
@@ -201,11 +218,16 @@ export async function getRepoAsync(id: number): Promise<Repo | undefined> {
   return repos.find((r) => r.id === id);
 }
 
-export async function getPRWithMetricsAsync(id: number): Promise<PRWithMetrics> {
+export async function getPRWithMetricsAsync(
+  id: number,
+): Promise<PRWithMetrics> {
   return fetchAPI<PRWithMetrics>(`/api/v1/prs/${id}`);
 }
 
-export async function listPRsWithMetricsAsync(repoId?: number, orgSlug?: string): Promise<PRWithMetrics[]> {
+export async function listPRsWithMetricsAsync(
+  repoId?: number,
+  orgSlug?: string,
+): Promise<PRWithMetrics[]> {
   if (repoId) {
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/prs`)
@@ -218,7 +240,10 @@ export async function listPRsWithMetricsAsync(repoId?: number, orgSlug?: string)
   return [];
 }
 
-export async function getAggregateMetricsAsync(repoId?: number, orgSlug?: string): Promise<AggregateMetrics> {
+export async function getAggregateMetricsAsync(
+  repoId?: number,
+  orgSlug?: string,
+): Promise<AggregateMetrics> {
   if (repoId) {
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/metrics`)
@@ -232,7 +257,10 @@ export async function getAggregateMetricsAsync(repoId?: number, orgSlug?: string
   return computeAggregatesFromPRs(prs);
 }
 
-export async function getRepoLevelMetricsAsync(repoId?: number, orgSlug?: string): Promise<RepoLevelMetrics> {
+export async function getRepoLevelMetricsAsync(
+  repoId?: number,
+  orgSlug?: string,
+): Promise<RepoLevelMetrics> {
   if (repoId) {
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/repo-metrics`)
@@ -242,23 +270,34 @@ export async function getRepoLevelMetricsAsync(repoId?: number, orgSlug?: string
   return { unmergedCostUSD: null, totalCostUSD: null, unmergedRate: null };
 }
 
-export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics {
+export function computeAggregatesFromPRs(
+  prs: PRWithMetrics[],
+): AggregateMetrics {
   const withMetrics = prs.filter((p) => p.metrics);
   const totalPRs = prs.length;
 
   if (totalPRs === 0) {
     return {
-      totalPRs: 0, avgPostOpenCommits: 0,
-      ciSuccessRate: null, avgIterationDepth: null, avgTokenCost: null,
-      avgLineRevisitRate: null, sessionDataCount: 0,
-      avgCacheHitRate: null, avgSidechainRate: null,
-      avgReReadRate: null, avgAutonomyScore: null,
+      totalPRs: 0,
+      avgPostOpenCommits: 0,
+      ciSuccessRate: null,
+      avgIterationDepth: null,
+      avgTokenCost: null,
+      avgLineRevisitRate: null,
+      sessionDataCount: 0,
+      avgCacheHitRate: null,
+      avgSidechainRate: null,
+      avgReReadRate: null,
+      avgAutonomyScore: null,
     };
   }
 
-  const postOpen = withMetrics.filter((p) => p.metrics!.post_open_commits !== null);
+  const postOpen = withMetrics.filter(
+    (p) => p.metrics!.post_open_commits !== null,
+  );
   const avgPostOpenCommits = postOpen.length
-    ? postOpen.reduce((s, p) => s + p.metrics!.post_open_commits!, 0) / postOpen.length
+    ? postOpen.reduce((s, p) => s + p.metrics!.post_open_commits!, 0) /
+      postOpen.length
     : 0;
 
   const ci = withMetrics.filter((p) => p.metrics!.ci_success_rate !== null);
@@ -276,19 +315,28 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
     ? cost.reduce((s, p) => s + p.metrics!.token_cost_usd!, 0) / cost.length
     : null;
 
-  const revisit = withMetrics.filter((p) => p.metrics!.line_revisit_rate !== null);
+  const revisit = withMetrics.filter(
+    (p) => p.metrics!.line_revisit_rate !== null,
+  );
   const avgLineRevisitRate = revisit.length
-    ? revisit.reduce((s, p) => s + p.metrics!.line_revisit_rate!, 0) / revisit.length
+    ? revisit.reduce((s, p) => s + p.metrics!.line_revisit_rate!, 0) /
+      revisit.length
     : null;
 
-  const cacheHit = withMetrics.filter((p) => p.metrics!.cache_hit_rate !== null);
+  const cacheHit = withMetrics.filter(
+    (p) => p.metrics!.cache_hit_rate !== null,
+  );
   const avgCacheHitRate = cacheHit.length
-    ? cacheHit.reduce((s, p) => s + p.metrics!.cache_hit_rate!, 0) / cacheHit.length
+    ? cacheHit.reduce((s, p) => s + p.metrics!.cache_hit_rate!, 0) /
+      cacheHit.length
     : null;
 
-  const sidechain = withMetrics.filter((p) => p.metrics!.sidechain_rate !== null);
+  const sidechain = withMetrics.filter(
+    (p) => p.metrics!.sidechain_rate !== null,
+  );
   const avgSidechainRate = sidechain.length
-    ? sidechain.reduce((s, p) => s + p.metrics!.sidechain_rate!, 0) / sidechain.length
+    ? sidechain.reduce((s, p) => s + p.metrics!.sidechain_rate!, 0) /
+      sidechain.length
     : null;
 
   const reRead = withMetrics.filter((p) => p.metrics!.re_read_rate !== null);
@@ -296,16 +344,26 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
     ? reRead.reduce((s, p) => s + p.metrics!.re_read_rate!, 0) / reRead.length
     : null;
 
-  const autonomy = withMetrics.filter((p) => p.metrics!.autonomy_score !== null);
+  const autonomy = withMetrics.filter(
+    (p) => p.metrics!.autonomy_score !== null,
+  );
   const avgAutonomyScore = autonomy.length
-    ? autonomy.reduce((s, p) => s + p.metrics!.autonomy_score!, 0) / autonomy.length
+    ? autonomy.reduce((s, p) => s + p.metrics!.autonomy_score!, 0) /
+      autonomy.length
     : null;
 
   return {
-    totalPRs, avgPostOpenCommits,
-    ciSuccessRate, avgIterationDepth, avgTokenCost,
-    avgLineRevisitRate, sessionDataCount: cost.length,
-    avgCacheHitRate, avgSidechainRate, avgReReadRate, avgAutonomyScore,
+    totalPRs,
+    avgPostOpenCommits,
+    ciSuccessRate,
+    avgIterationDepth,
+    avgTokenCost,
+    avgLineRevisitRate,
+    sessionDataCount: cost.length,
+    avgCacheHitRate,
+    avgSidechainRate,
+    avgReReadRate,
+    avgAutonomyScore,
   };
 }
 
@@ -322,7 +380,10 @@ export function getPRSize(additions: number, deletions: number): PRSize {
   return "XL";
 }
 
-export async function getTimelineAsync(repoId?: number, orgSlug?: string): Promise<TimelinePoint[]> {
+export async function getTimelineAsync(
+  repoId?: number,
+  orgSlug?: string,
+): Promise<TimelinePoint[]> {
   if (repoId) {
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/timeline`)
@@ -341,8 +402,14 @@ function buildTimeline(prs: PRWithMetrics[]): TimelinePoint[] {
       title: p.title ?? `PR #${p.number}`,
       createdAt: p.created_at!,
       postOpenCommits: p.metrics!.post_open_commits,
-      ciSuccessRate: p.metrics!.ci_success_rate !== null ? Math.round(p.metrics!.ci_success_rate * 100) : null,
-      tokenCostUSD: p.metrics!.token_cost_usd !== null ? Math.round(p.metrics!.token_cost_usd * 100) / 100 : null,
+      ciSuccessRate:
+        p.metrics!.ci_success_rate !== null
+          ? Math.round(p.metrics!.ci_success_rate * 100)
+          : null,
+      tokenCostUSD:
+        p.metrics!.token_cost_usd !== null
+          ? Math.round(p.metrics!.token_cost_usd * 100) / 100
+          : null,
     }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }

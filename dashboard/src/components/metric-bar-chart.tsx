@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Bar,
-  BarChart,
-  ReferenceLine,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, ReferenceLine, XAxis, YAxis } from "recharts";
 import { useRouter } from "next/navigation";
 
 import {

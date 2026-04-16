@@ -29,9 +29,9 @@ export default async function LandingPage() {
             Are your AI coding workflows actually working?
           </h1>
           <p className="mt-5 max-w-[560px] text-[17px] leading-relaxed text-muted-foreground">
-            AX measures what matters — cost per PR, iteration depth, CI
-            success, and more metrics that tell you if your agentic coding is
-            getting better.
+            AX measures what matters — cost per PR, iteration depth, CI success,
+            and more metrics that tell you if your agentic coding is getting
+            better.
           </p>
           <div className="mt-8 flex items-center gap-3">
             <Button size="lg" asChild>
@@ -74,12 +74,22 @@ export default async function LandingPage() {
             <MetricCategory
               title="Output Quality"
               description="Is the code your agent produces actually good? CI success, post-open commits, review cycle time, and line revisit rate."
-              metrics={["Post-Open Commits", "CI Success Rate", "Line Revisit Rate", "Review Cycle Time"]}
+              metrics={[
+                "Post-Open Commits",
+                "CI Success Rate",
+                "Line Revisit Rate",
+                "Review Cycle Time",
+              ]}
             />
             <MetricCategory
               title="Prompt Efficiency"
               description="Are you getting results with fewer interactions and less cost? Token spend, iteration depth, and cache utilization."
-              metrics={["Iteration Depth", "Token Cost per PR", "Cache Hit Rate", "Unmerged Token Spend"]}
+              metrics={[
+                "Iteration Depth",
+                "Token Cost per PR",
+                "Cache Hit Rate",
+                "Unmerged Token Spend",
+              ]}
             />
             <MetricCategory
               title="Agent Behavior"
@@ -144,7 +154,8 @@ export default async function LandingPage() {
             Start measuring what matters
           </h2>
           <p className="mx-auto mb-6 max-w-[400px] text-[15px] text-muted-foreground">
-            Sign in with GitHub and push your first session data in under five minutes.
+            Sign in with GitHub and push your first session data in under five
+            minutes.
           </p>
           <Button size="lg" asChild>
             <Link href="/login">Get Started</Link>

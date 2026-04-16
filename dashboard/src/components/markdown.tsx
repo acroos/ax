@@ -70,9 +70,7 @@ const components: Components = {
     <thead className="border-b border-border">{children}</thead>
   ),
   tbody: ({ children }) => <tbody>{children}</tbody>,
-  tr: ({ children }) => (
-    <tr className="border-b border-border">{children}</tr>
-  ),
+  tr: ({ children }) => <tr className="border-b border-border">{children}</tr>,
   th: ({ children }) => (
     <th className="text-left font-medium text-foreground px-3 py-2 bg-muted">
       {children}

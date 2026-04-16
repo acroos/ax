@@ -14,7 +14,11 @@ export function Skeleton({
 
 // Metric card skeleton — matches the `Card` shape used on the org overview
 // and metric-detail summary stats. Label, value, optional detail.
-export function SkeletonMetricCard({ showDetail = true }: { showDetail?: boolean }) {
+export function SkeletonMetricCard({
+  showDetail = true,
+}: {
+  showDetail?: boolean;
+}) {
   return (
     <Card className="p-5">
       <CardContent className="p-0">
@@ -74,7 +78,11 @@ export function SkeletonTableBody({
 }
 
 // A generic page header skeleton: h1 line + subtitle line.
-export function SkeletonPageHeader({ className = "mb-8" }: { className?: string }) {
+export function SkeletonPageHeader({
+  className = "mb-8",
+}: {
+  className?: string;
+}) {
   return (
     <div className={className}>
       <Skeleton className="mb-2 h-7 w-48" />

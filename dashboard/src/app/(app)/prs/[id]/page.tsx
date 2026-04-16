@@ -195,7 +195,11 @@ function HeaderSkeleton() {
   );
 }
 
-async function PRHeader({ promise }: { promise: Promise<PRWithMetrics | undefined> }) {
+async function PRHeader({
+  promise,
+}: {
+  promise: Promise<PRWithMetrics | undefined>;
+}) {
   const pr = await promise;
   if (!pr) throw new Error("PR not found");
 
@@ -233,7 +237,12 @@ async function PRHeader({ promise }: { promise: Promise<PRWithMetrics | undefine
         </span>
         {pr.metrics?.finalized_at && (
           <span>
-            Finalized {new Date(pr.metrics.finalized_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            Finalized{" "}
+            {new Date(pr.metrics.finalized_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
           </span>
         )}
       </div>
@@ -265,7 +274,11 @@ function MetricGroupsSkeleton() {
   );
 }
 
-async function MetricGroups({ promise }: { promise: Promise<PRWithMetrics | undefined> }) {
+async function MetricGroups({
+  promise,
+}: {
+  promise: Promise<PRWithMetrics | undefined>;
+}) {
   const pr = await promise;
   if (!pr) throw new Error("PR not found");
 
