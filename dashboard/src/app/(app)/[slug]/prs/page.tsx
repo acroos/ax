@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { listPRsWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
+import { listPRsWithMetricsAsync, getPRSize } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
 import { Skeleton, SkeletonTableBody } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
@@ -19,29 +19,18 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
 const COLUMN_COUNT = 9;
 
-function HeaderWithTip({
-  label,
-  tip,
-  align = "center",
-}: {
-  label: string;
-  tip: string;
-  align?: "center" | "right" | "left";
-}) {
-  const alignClass =
-    align === "right" ? "text-right" : align === "left" ? "text-left" : "text-center";
+// Column-header label with a hover tooltip. Alignment is the parent
+// TableHead's job; this component only provides the trigger.
+function HeaderWithTip({ label, tip }: { label: string; tip: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className={`${alignClass} cursor-default text-[11px] font-medium uppercase tracking-wider text-muted-foreground`}>
-          {label}
-        </span>
+        <span className="cursor-default">{label}</span>
       </TooltipTrigger>
       <TooltipContent>{tip}</TooltipContent>
     </Tooltip>
@@ -64,51 +53,49 @@ export default async function OrgPRsPage({
   const prsPromise = listPRsWithMetricsAsync(repoId, slug);
 
   return (
-    <TooltipProvider>
-      <div>
-        <div className="mb-6">
-          <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-            Pull Requests
-          </h1>
-          <Suspense fallback={<Skeleton className="mt-1 h-4 w-32" />}>
-            <PRCount promise={prsPromise} />
-          </Suspense>
-        </div>
-
-        <Card className="gap-0 overflow-hidden p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>PR</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead className="text-center">Size</TableHead>
-                <TableHead className="text-center">State</TableHead>
-                <TableHead className="text-center">
-                  <HeaderWithTip label="Post-Open" tip="Commits after PR opened" />
-                </TableHead>
-                <TableHead className="text-center">
-                  <HeaderWithTip label="CI" tip="CI checks passing rate" />
-                </TableHead>
-                <TableHead className="text-center">
-                  <HeaderWithTip label="Depth" tip="Human-agent turn pairs" />
-                </TableHead>
-                <TableHead className="text-right">
-                  <HeaderWithTip label="Cost" tip="Token cost in dollars" align="right" />
-                </TableHead>
-                <TableHead className="text-center">
-                  <HeaderWithTip label="Sessions" tip="Agent sessions linked to this PR" />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <SectionErrorBoundary fallback={<NoDataBody />}>
-              <Suspense fallback={<SkeletonTableBody rows={10} columns={COLUMN_COUNT} />}>
-                <PRTableBody promise={prsPromise} />
-              </Suspense>
-            </SectionErrorBoundary>
-          </Table>
-        </Card>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+          Pull Requests
+        </h1>
+        <Suspense fallback={<Skeleton className="mt-1 h-4 w-32" />}>
+          <PRCount promise={prsPromise} />
+        </Suspense>
       </div>
-    </TooltipProvider>
+
+      <Card className="gap-0 overflow-hidden p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>PR</TableHead>
+              <TableHead>Title</TableHead>
+              <TableHead className="text-center">Size</TableHead>
+              <TableHead className="text-center">State</TableHead>
+              <TableHead className="text-center">
+                <HeaderWithTip label="Post-Open" tip="Commits after PR opened" />
+              </TableHead>
+              <TableHead className="text-center">
+                <HeaderWithTip label="CI" tip="CI checks passing rate" />
+              </TableHead>
+              <TableHead className="text-center">
+                <HeaderWithTip label="Depth" tip="Human-agent turn pairs" />
+              </TableHead>
+              <TableHead className="text-right">
+                <HeaderWithTip label="Cost" tip="Token cost in dollars" />
+              </TableHead>
+              <TableHead className="text-center">
+                <HeaderWithTip label="Sessions" tip="Agent sessions linked to this PR" />
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <SectionErrorBoundary fallback={<NoDataBody />}>
+            <Suspense fallback={<SkeletonTableBody rows={10} columns={COLUMN_COUNT} />}>
+              <PRTableBody promise={prsPromise} />
+            </Suspense>
+          </SectionErrorBoundary>
+        </Table>
+      </Card>
+    </div>
   );
 }
 
@@ -129,9 +116,8 @@ async function PRCount({ promise }: { promise: Promise<PRWithMetrics[]> }) {
   );
 }
 
-// Rendered as a <TableBody> so it plugs into the table structure that already
-// has a header. Keeps the error-state inside the table shell rather than
-// replacing the whole page.
+// Error-state must render as a <TableBody> so it slots into the Table
+// shell rather than replacing the whole page.
 function NoDataBody() {
   return (
     <TableBody>
@@ -177,7 +163,9 @@ async function PRTableBody({ promise }: { promise: Promise<PRWithMetrics[]> }) {
             </Link>
           </TableCell>
           <TableCell className="text-center">
-            <PRSizeBadge additions={pr.additions} deletions={pr.deletions} />
+            <Badge variant="outline" className="font-mono">
+              {getPRSize(pr.additions, pr.deletions)}
+            </Badge>
           </TableCell>
           <TableCell>
             <div className="flex items-center justify-center gap-1.5">
@@ -221,20 +209,3 @@ async function PRTableBody({ promise }: { promise: Promise<PRWithMetrics[]> }) {
   );
 }
 
-function PRSizeBadge({
-  additions,
-  deletions,
-}: {
-  additions: number;
-  deletions: number;
-}) {
-  const size = getPRSize(additions, deletions);
-  const color = getPRSizeColor(size);
-  return (
-    <span
-      className={`inline-flex items-center rounded px-1.5 py-0.5 font-mono text-[11px] font-medium ${color}`}
-    >
-      {size}
-    </span>
-  );
-}

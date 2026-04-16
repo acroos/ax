@@ -12,7 +12,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
@@ -53,9 +52,7 @@ function MetricCard({
     </Card>
   );
 
-  // Wrap in tooltip if supplied. Tooltip anchors to the card itself so the
-  // entire surface is hoverable.
-  const wrapped = tooltip ? (
+  const tipped = tooltip ? (
     <Tooltip>
       <TooltipTrigger asChild>{card}</TooltipTrigger>
       <TooltipContent side="top" className="max-w-[280px]">
@@ -69,14 +66,13 @@ function MetricCard({
     card
   );
 
-  if (href) {
-    return (
-      <Link href={href} className="block">
-        {wrapped}
-      </Link>
-    );
-  }
-  return wrapped;
+  return href ? (
+    <Link href={href} className="block">
+      {tipped}
+    </Link>
+  ) : (
+    tipped
+  );
 }
 
 function fmt(n: number | null, decimals = 1): string {
@@ -115,40 +111,38 @@ export default async function OrgOverviewPage({
   const repoLabelPromise = resolveRepoLabel(slug, repoId);
 
   return (
-    <TooltipProvider>
-      <div>
-        <div className="mb-8">
-          <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-            Overview
-          </h1>
-          <Suspense fallback={<Skeleton className="mt-1 h-4 w-64" />}>
-            <OverviewSubtitle
-              repoLabelPromise={repoLabelPromise}
-              metricsPromise={metricsPromise}
-            />
-          </Suspense>
-        </div>
-
-        <SectionErrorBoundary fallback={<NoDataState />}>
-          <Suspense fallback={<OverviewMetricsSkeleton />}>
-            <OverviewMetricsBody
-              promise={metricsPromise}
-              slug={slug}
-              repoId={repoId}
-            />
-          </Suspense>
-        </SectionErrorBoundary>
-
-        <div className="mt-6">
-          <Link
-            href={`/${slug}/prs`}
-            className="text-[13px] text-primary transition-colors hover:underline"
-          >
-            View all pull requests →
-          </Link>
-        </div>
+    <div>
+      <div className="mb-8">
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+          Overview
+        </h1>
+        <Suspense fallback={<Skeleton className="mt-1 h-4 w-64" />}>
+          <OverviewSubtitle
+            repoLabelPromise={repoLabelPromise}
+            metricsPromise={metricsPromise}
+          />
+        </Suspense>
       </div>
-    </TooltipProvider>
+
+      <SectionErrorBoundary fallback={<NoDataState />}>
+        <Suspense fallback={<OverviewMetricsSkeleton />}>
+          <OverviewMetricsBody
+            promise={metricsPromise}
+            slug={slug}
+            repoId={repoId}
+          />
+        </Suspense>
+      </SectionErrorBoundary>
+
+      <div className="mt-6">
+        <Link
+          href={`/${slug}/prs`}
+          className="text-[13px] text-primary transition-colors hover:underline"
+        >
+          View all pull requests →
+        </Link>
+      </div>
+    </div>
   );
 }
 

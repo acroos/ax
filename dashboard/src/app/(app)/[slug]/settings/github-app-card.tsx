@@ -5,10 +5,24 @@ import { ChevronRight, ExternalLink } from "lucide-react";
 
 import { getInstallUrl } from "./actions";
 import type { GithubInstallation } from "@/lib/db";
+import { toneClass } from "@/components/state-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+
+function DismissButton({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onDismiss}
+      className="shrink-0 transition-opacity hover:opacity-70"
+      aria-label="Dismiss"
+    >
+      &times;
+    </button>
+  );
+}
 
 // GitHub's brand mark. lucide-react dropped branded logos for trademark
 // reasons, so we inline the octocat. Color follows currentColor.
@@ -108,52 +122,35 @@ export function GitHubAppCard({
             </h2>
           </div>
           {isActive && (
-            <Badge className="bg-success/15 text-success border-success/20" variant="outline">
+            <Badge variant="outline" className={toneClass("success")}>
               Connected
             </Badge>
           )}
           {isSuspended && (
-            <Badge className="bg-notice/15 text-notice border-notice/25" variant="outline">
+            <Badge variant="outline" className={toneClass("notice")}>
               Suspended
             </Badge>
           )}
         </div>
 
-        {/* Success banner */}
+        {/* Install-result banner (success or failure) */}
         {showBanner && installedParam === "true" && (
           <Alert className="border-success/25 bg-success/10 text-success">
-            <AlertDescription className="text-success">
-              <div className="flex items-start justify-between gap-2">
-                <span>
-                  GitHub App installed successfully. Webhook events will now flow into AX.
-                  {isSyncing && " Syncing recent PR history in the background..."}
-                </span>
-                <button
-                  onClick={() => setShowBanner(false)}
-                  className="shrink-0 transition-opacity hover:opacity-70"
-                  aria-label="Dismiss"
-                >
-                  &times;
-                </button>
-              </div>
+            <AlertDescription className="flex items-start justify-between gap-2 text-success">
+              <span>
+                GitHub App installed successfully. Webhook events will now flow into AX.
+                {isSyncing && " Syncing recent PR history in the background..."}
+              </span>
+              <DismissButton onDismiss={() => setShowBanner(false)} />
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Error banner */}
         {showBanner && installedParam === "false" && (
           <Alert variant="destructive">
-            <AlertDescription>
-              <div className="flex items-start justify-between gap-2">
-                <span>{errorMessage || "Installation failed. Please try again."}</span>
-                <button
-                  onClick={() => setShowBanner(false)}
-                  className="shrink-0 transition-opacity hover:opacity-70"
-                  aria-label="Dismiss"
-                >
-                  &times;
-                </button>
-              </div>
+            <AlertDescription className="flex items-start justify-between gap-2">
+              <span>{errorMessage || "Installation failed. Please try again."}</span>
+              <DismissButton onDismiss={() => setShowBanner(false)} />
             </AlertDescription>
           </Alert>
         )}

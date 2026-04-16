@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { toneClass, type Tone } from "@/components/state-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,15 +37,10 @@ interface Props {
 const ROLES = ["member", "admin", "owner"] as const;
 
 function RoleBadge({ role }: { role: string }) {
-  const classes: Record<string, string> = {
-    owner: "bg-notice/15 text-notice border-notice/25",
-    admin: "bg-info/15 text-info border-info/25",
-    member: "bg-muted text-muted-foreground border-border",
-  };
-  const variantClass =
-    classes[role] ?? "bg-muted text-muted-foreground border-border";
+  const tone: Tone =
+    role === "owner" ? "notice" : role === "admin" ? "info" : "muted";
   return (
-    <Badge variant="outline" className={variantClass}>
+    <Badge variant="outline" className={toneClass(tone)}>
       {role}
     </Badge>
   );

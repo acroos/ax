@@ -1,8 +1,3 @@
-// Shared skeleton primitives for route-level loading states. Each variant
-// composes shadcn's `Skeleton` + `Card` so the loading shapes match the
-// loaded surfaces exactly. Variant names are preserved so `loading.tsx`
-// files don't need to change shape when skeleton internals are tweaked.
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton as ShadcnSkeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";

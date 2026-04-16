@@ -17,6 +17,12 @@ import {
 } from "@/components/ui/chart";
 import { chartColor } from "@/lib/chart-theme";
 
+/**
+ * Chart slot 1..8 per THEME.md §3. Slot 1 (clay) is the default series; use
+ * 2..8 when multiple series need to be distinguishable.
+ */
+export type ChartSlot = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
 interface DataPoint {
   label: string;
   value: number;
@@ -25,11 +31,7 @@ interface DataPoint {
 
 interface MetricBarChartProps {
   data: DataPoint[];
-  /**
-   * Chart slot 1..8 per THEME.md §3. Slot 1 (clay) is the default series; use
-   * 2..8 when multiple series need to be distinguishable.
-   */
-  colorSlot?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  colorSlot?: ChartSlot;
   unit?: string;
   height?: number;
   isRatio?: boolean;

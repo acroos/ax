@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { getPRWithMetricsAsync, getPRSize, getPRSizeColor } from "@/lib/db";
+import { getPRWithMetricsAsync, getPRSize } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
 import { Skeleton } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { StateBadge } from "@/components/state-badge";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface MetricDisplay {
@@ -198,9 +199,6 @@ async function PRHeader({ promise }: { promise: Promise<PRWithMetrics | undefine
   const pr = await promise;
   if (!pr) throw new Error("PR not found");
 
-  const size = getPRSize(pr.additions, pr.deletions);
-  const sizeColor = getPRSizeColor(size);
-
   return (
     <div className="mb-8">
       <div className="mb-2 flex items-center gap-3">
@@ -209,11 +207,9 @@ async function PRHeader({ promise }: { promise: Promise<PRWithMetrics | undefine
           {pr.title}
         </h1>
         <StateBadge state={pr.state} />
-        <span
-          className={`inline-flex items-center rounded px-2 py-0.5 font-mono text-[11px] font-medium ${sizeColor}`}
-        >
-          {size}
-        </span>
+        <Badge variant="outline" className="font-mono">
+          {getPRSize(pr.additions, pr.deletions)}
+        </Badge>
       </div>
 
       <div className="flex items-center gap-4 text-[13px] text-muted-foreground">

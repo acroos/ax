@@ -8,7 +8,7 @@ import { listPRsWithMetricsAsync } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
 import { getMetricDef, formatMetricValue, type MetricDefEntry } from "@/lib/metric-defs";
 import { Markdown } from "@/components/markdown";
-import { MetricBarChart } from "@/components/metric-bar-chart";
+import { MetricBarChart, type ChartSlot } from "@/components/metric-bar-chart";
 import { BooleanMetricSummary } from "@/components/boolean-metric-summary";
 import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
@@ -38,7 +38,7 @@ function median(values: number[]): number {
 // Map each metric category to a chart slot (THEME.md §3). Slots 1..4 are
 // maximally distinguishable and cover the common case; additional categories
 // extend into slots 5+.
-const CATEGORY_CHART_SLOT: Record<string, 1 | 2 | 3 | 4 | 5> = {
+const CATEGORY_CHART_SLOT: Record<string, ChartSlot> = {
   "Output Quality": 1,
   "Prompt Efficiency": 2,
   "Agent Behavior": 3,
@@ -258,7 +258,7 @@ async function ChartPanel({
 }: {
   promise: Promise<PRWithMetrics[]>;
   def: MetricDefEntry;
-  colorSlot: 1 | 2 | 3 | 4 | 5;
+  colorSlot: ChartSlot;
 }) {
   const prs = await promise;
   const values = extractPRValues(prs, def);
