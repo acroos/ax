@@ -45,6 +45,7 @@ gem "omniauth-rails_csrf_protection"
 # GitHub App authentication
 gem "jwt"
 gem "octokit"
+gem "faraday-retry"
 
 # Payments
 gem "stripe"

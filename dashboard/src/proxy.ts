@@ -11,7 +11,7 @@ const PUBLIC_PATHS = [
   "/_next", "/favicon",
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Forward the pathname to server components via a request header. The root
