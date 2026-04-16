@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import NextTopLoader from "nextjs-toploader";
+
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,17 +15,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <NextTopLoader
-          color="#6366F1"
-          height={2}
-          shadow="0 0 10px #6366F1, 0 0 5px #6366F1"
-          showSpinner={false}
-          easing="ease"
-          speed={200}
-        />
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <NextTopLoader
+            color="#B0602F"
+            height={2}
+            shadow="0 0 10px #B0602F, 0 0 5px #B0602F"
+            showSpinner={false}
+            easing="ease"
+            speed={200}
+          />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

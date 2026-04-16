@@ -1,92 +1,310 @@
+/* ============================================================
+ *  AX Metrics — globals.css
+ *  Theme: "Parchment & Clay" v1
+ *  Tailwind v4 (CSS-first, @theme) · shadcn/ui-compatible tokens
+ *
+ *  Structure (read top to bottom):
+ *    1. @theme block        → Raw palette + semantic aliases.
+ *                             These become Tailwind utilities:
+ *                             bg-primary, text-muted-foreground,
+ *                             border-border, bg-chart-1, etc.
+ *    2. .dark overrides     → Dark-mode values for the same
+ *                             semantic tokens. Tailwind utilities
+ *                             don't need to change — the CSS
+ *                             variables do.
+ *    3. Base layer          → Sensible defaults so `html` and
+ *                             `body` pick up the theme without
+ *                             needing to remember class names.
+ *    4. Dashboard extras    → Scrollbar, color-scheme hints.
+ *
+ *  Prefer semantic tokens (--primary, --muted-foreground) in 99%
+ *  of components. Only reach for raw palette names (--clay-500,
+ *  --parchment) when you're intentionally making a brand moment.
+ *
+ *  Full usage guide: dashboard/THEME.md
+ * ============================================================ */
+
 @import "tailwindcss";
 
-@font-face {
-  font-family: "Geist";
-  src: url("https://cdn.jsdelivr.net/npm/geist@1.4.1/dist/fonts/geist-sans/Geist-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
+/* --- Tell Tailwind how dark mode is triggered.
+ *     We use a `.dark` class on <html> (shadcn convention).
+ *     If you prefer `data-theme="dark"`, swap the selector. */
+@custom-variant dark (&:where(.dark, .dark *));
 
-@font-face {
-  font-family: "Geist";
-  src: url("https://cdn.jsdelivr.net/npm/geist@1.4.1/dist/fonts/geist-sans/Geist-Medium.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Geist";
-  src: url("https://cdn.jsdelivr.net/npm/geist@1.4.1/dist/fonts/geist-sans/Geist-SemiBold.woff2") format("woff2");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Geist Mono";
-  src: url("https://cdn.jsdelivr.net/npm/geist@1.4.1/dist/fonts/geist-mono/GeistMono-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Geist Mono";
-  src: url("https://cdn.jsdelivr.net/npm/geist@1.4.1/dist/fonts/geist-mono/GeistMono-Medium.woff2") format("woff2");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
 
 @theme {
-  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, monospace;
+  /* ---------------------------------------------------------
+   * 1. Raw palette — the brand vocabulary.
+   *    Use these directly only for brand moments. Otherwise,
+   *    reach for the semantic tokens further down.
+   * --------------------------------------------------------- */
 
-  --color-void: #08080D;
-  --color-surface-0: #0C0C14;
-  --color-surface-1: #111119;
-  --color-surface-2: #181823;
-  --color-surface-3: #1F1F2E;
-  --color-border: #252536;
-  --color-border-subtle: #1A1A2A;
+  /* Clay — the single hero brand color (terracotta) */
+  --color-clay-50:  #FAF1E7;
+  --color-clay-100: #F1DDC4;
+  --color-clay-200: #E6BE97;
+  --color-clay-300: #D79A68;
+  --color-clay-400: #C37B44;
+  --color-clay-500: #B0602F;  /* hero */
+  --color-clay-600: #954E26;  /* hover / pressed */
+  --color-clay-700: #773E1F;  /* text on light surfaces (AAA) */
+  --color-clay-800: #5B2F19;
+  --color-clay-900: #3D1F10;
 
-  --color-text-primary: #E8E8ED;
-  --color-text-secondary: #8B8B9E;
-  --color-text-tertiary: #56566A;
+  /* Clay — brightened for dark-mode legibility */
+  --color-clay-dark-500: #D68250;
+  --color-clay-dark-600: #E39463;
+  --color-clay-dark-700: #E7AA7D;
 
-  --color-accent: #6366F1;
-  --color-accent-hover: #818CF8;
-  --color-accent-muted: #6366F120;
+  /* Warm neutrals — the "paper & ink" family.
+     Use sparingly; most components should use semantic aliases. */
+  --color-parchment:    #FAF5EC;  /* light page bg */
+  --color-wellstone:    #F3EDE0;  /* light sunk surface */
+  --color-hairline:     #E6DCC8;  /* light subtle border */
+  --color-dune:         #D2C4A8;  /* light strong border */
+  --color-stone:        #8A7E69;  /* mid neutral */
+  --color-graphite:     #5E5444;  /* muted text */
+  --color-ink:          #1E1912;  /* body text (warm black) */
+  --color-midnight:     #14110C;  /* dark page bg */
+  --color-midnight-raised: #1D1912; /* dark surface */
+  --color-midnight-sunk:   #100E0A; /* dark sunk */
 
-  --color-green: #34D399;
-  --color-green-muted: #34D39920;
-  --color-red: #F87171;
-  --color-red-muted: #F8717120;
-  --color-purple: #A78BFA;
-  --color-purple-muted: #A78BFA20;
-  --color-amber: #FBBF24;
-  --color-amber-muted: #FBBF2420;
+  /* Accent / status family (non-judgmental, earthy) */
+  --color-olive:        #5F7340;  /* "healthy" / success */
+  --color-olive-soft:   #EBEFD9;
+  --color-ochre:        #9A7A22;  /* "worth a look" / notice */
+  --color-ochre-soft:   #F4EAC6;
+  --color-russet:       #A14E3A;  /* "needs discussion" / attention */
+  --color-russet-soft:  #F4DCD2;
+  --color-dusk:         #3E5875;  /* info */
+  --color-dusk-soft:    #E0E6EF;
+
+  /* Cartographer — the 8-slot categorical viz palette.
+     Ordered for distinguishability; first 4 are the "common case". */
+  --color-cart-clay:     #B0602F;
+  --color-cart-dusk:     #3E5875;
+  --color-cart-olive:    #5F7340;
+  --color-cart-ochre:    #9A7A22;
+  --color-cart-plum:     #734A63;
+  --color-cart-pine:     #2F6267;
+  --color-cart-rose:     #95524E;
+  --color-cart-graphite: #5E5444;
+
+
+  /* ---------------------------------------------------------
+   * 2. Semantic tokens (shadcn-compatible).
+   *    These are what components should use 99% of the time.
+   *    If you ever adopt shadcn/ui, it will find exactly
+   *    these token names and work out of the box.
+   * --------------------------------------------------------- */
+
+  /* Surfaces */
+  --color-background:         var(--color-parchment);
+  --color-foreground:         var(--color-ink);
+  --color-card:               #FFFFFF;
+  --color-card-foreground:    var(--color-ink);
+  --color-popover:            #FFFFFF;
+  --color-popover-foreground: var(--color-ink);
+
+  /* Brand / primary (terracotta) */
+  --color-primary:            var(--color-clay-500);
+  --color-primary-foreground: #FFFFFF;
+
+  /* Secondary — warm neutral surface (e.g. secondary buttons) */
+  --color-secondary:            var(--color-wellstone);
+  --color-secondary-foreground: var(--color-ink);
+
+  /* Muted — disabled states, sunk areas, metadata backgrounds */
+  --color-muted:             var(--color-wellstone);
+  --color-muted-foreground:  #6F6454;  /* 5.1:1 on parchment · AA normal */
+
+  /* Accent — soft brand tint for selected/hovered states.
+     NOT the hero color. Use --primary for filled brand surfaces. */
+  --color-accent:             var(--color-clay-50);
+  --color-accent-foreground:  var(--color-clay-700);
+
+  /* Destructive — deliberately russet, not alarm red.
+     "needs discussion" energy, not "ERROR". */
+  --color-destructive:             var(--color-russet);
+  --color-destructive-foreground:  #FFFFFF;
+
+  /* Borders, inputs, focus ring */
+  --color-border: var(--color-hairline);
+  --color-input:  var(--color-hairline);
+  --color-ring:   var(--color-clay-500);
+
+  /* Status (non-shadcn; AX-specific semantic set) */
+  --color-success:             var(--color-olive);
+  --color-success-foreground:  var(--color-olive-soft);
+  --color-notice:              var(--color-ochre);
+  --color-notice-foreground:   var(--color-ochre-soft);
+  --color-info:                var(--color-dusk);
+  --color-info-foreground:     var(--color-dusk-soft);
+  --color-attention:           var(--color-russet);
+  --color-attention-foreground:var(--color-russet-soft);
+
+  /* Chart slots — use `bg-chart-1` through `bg-chart-8` in viz code. */
+  --color-chart-1: var(--color-cart-clay);
+  --color-chart-2: var(--color-cart-dusk);
+  --color-chart-3: var(--color-cart-olive);
+  --color-chart-4: var(--color-cart-ochre);
+  --color-chart-5: var(--color-cart-plum);
+  --color-chart-6: var(--color-cart-pine);
+  --color-chart-7: var(--color-cart-rose);
+  --color-chart-8: var(--color-cart-graphite);
+
+  /* Sidebar (shadcn's sidebar tokens — dashboard-friendly) */
+  --color-sidebar:                    #FFFFFF;
+  --color-sidebar-foreground:         var(--color-ink);
+  --color-sidebar-primary:            var(--color-clay-500);
+  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-accent:             var(--color-clay-50);
+  --color-sidebar-accent-foreground:  var(--color-clay-700);
+  --color-sidebar-border:             var(--color-hairline);
+  --color-sidebar-ring:               var(--color-clay-500);
+
+
+  /* ---------------------------------------------------------
+   * 3. Non-color tokens.
+   * --------------------------------------------------------- */
+
+  /* Typography — pair warm humanist serif with neutral sans.
+     Substitute with your licensed display face when ready. */
+  --font-sans:  ui-sans-serif, system-ui, -apple-system, "Inter",
+                "Söhne", "Segoe UI", Roboto, sans-serif;
+  --font-serif: ui-serif, "Iowan Old Style", "Charter",
+                "Source Serif 4", Georgia, serif;
+  --font-mono:  ui-monospace, "JetBrains Mono", "IBM Plex Mono",
+                SFMono-Regular, Menlo, monospace;
+
+  /* Radii — on the softer side, matches warm aesthetic */
+  --radius: 0.5rem;  /* 8px base; shadcn derives lg/md/sm from this */
+
+  /* Shadows — warm-tinted, never neutral gray */
+  --shadow-xs: 0 1px 2px rgba(30, 25, 18, 0.04);
+  --shadow-sm: 0 1px 2px rgba(30, 25, 18, 0.05),
+               0 2px 6px  rgba(30, 25, 18, 0.03);
+  --shadow-md: 0 1px 2px rgba(30, 25, 18, 0.05),
+               0 4px 12px rgba(30, 25, 18, 0.04);
+  --shadow-lg: 0 1px 2px rgba(30, 25, 18, 0.06),
+               0 8px 24px rgba(30, 25, 18, 0.08);
 }
 
-* {
-  box-sizing: border-box;
+
+/* ============================================================
+ * Dark mode — only semantic tokens change.
+ * Utility class names stay the same; the CSS variables re-map.
+ * ============================================================ */
+.dark {
+  /* Surfaces */
+  --color-background:         var(--color-midnight);
+  --color-foreground:         #F1E8D6;
+  --color-card:               var(--color-midnight-raised);
+  --color-card-foreground:    #F1E8D6;
+  --color-popover:            var(--color-midnight-raised);
+  --color-popover-foreground: #F1E8D6;
+
+  /* Brand — clay brightens on dark ground to hold AA contrast */
+  --color-primary:            var(--color-clay-dark-500);
+  --color-primary-foreground: #FFFFFF;
+
+  /* Secondary / muted / accent */
+  --color-secondary:            #2A241C;
+  --color-secondary-foreground: #F1E8D6;
+  --color-muted:                #2A241C;
+  --color-muted-foreground:     #A59989;   /* 6.4:1 on midnight */
+  --color-accent:               #2B1D12;
+  --color-accent-foreground:    var(--color-clay-dark-700);
+
+  /* Destructive */
+  --color-destructive:            #D97A62;
+  --color-destructive-foreground: #FFFFFF;
+
+  /* Borders / inputs / ring */
+  --color-border: #2E2720;
+  --color-input:  #2E2720;
+  --color-ring:   var(--color-clay-dark-500);
+
+  /* Status */
+  --color-success:             #99B56A;
+  --color-success-foreground:  #1F2614;
+  --color-notice:              #D4AC51;
+  --color-notice-foreground:   #2A2112;
+  --color-info:                #7B95B8;
+  --color-info-foreground:     #16202B;
+  --color-attention:           #D97A62;
+  --color-attention-foreground:#2A1710;
+
+  /* Chart — brightened for dark backgrounds */
+  --color-chart-1: #D68250;
+  --color-chart-2: #7B95B8;
+  --color-chart-3: #99B56A;
+  --color-chart-4: #D4AC51;
+  --color-chart-5: #B088A0;
+  --color-chart-6: #5A9BA1;
+  --color-chart-7: #D08E88;
+  --color-chart-8: #B8AC96;
+
+  /* Sidebar */
+  --color-sidebar:                    var(--color-midnight-raised);
+  --color-sidebar-foreground:         #F1E8D6;
+  --color-sidebar-primary:            var(--color-clay-dark-500);
+  --color-sidebar-primary-foreground: #FFFFFF;
+  --color-sidebar-accent:             #2B1D12;
+  --color-sidebar-accent-foreground:  var(--color-clay-dark-700);
+  --color-sidebar-border:             #2E2720;
+  --color-sidebar-ring:               var(--color-clay-dark-500);
+
+  /* Shadows — deeper and darker on dark ground */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40),
+               0 2px 6px  rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.45),
+               0 4px 12px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 1px 2px rgba(0, 0, 0, 0.50),
+               0 8px 24px rgba(0, 0, 0, 0.40);
 }
 
-html {
-  color-scheme: dark;
+
+/* ============================================================
+ * Base layer — apply theme to html/body so nothing looks
+ * "unstyled" before components mount. Add selection color,
+ * focus ring niceties, etc.
+ * ============================================================ */
+@layer base {
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Color-scheme hints for native form controls, scrollbars, etc. */
+  html { color-scheme: light; }
+  html.dark { color-scheme: dark; }
+
+  /* Warm selection instead of browser-default blue */
+  ::selection {
+    background-color: var(--color-clay-100);
+    color: var(--color-clay-900);
+  }
+  .dark ::selection {
+    background-color: var(--color-clay-800);
+    color: #FFFFFF;
+  }
+
+  /* Consistent focus ring that respects the theme */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
 }
 
-body {
-  background: var(--color-void);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
 
-/* Subtle scrollbar */
+/* ============================================================
+ * Dashboard-specific: subtle scrollbar using theme tokens
+ * ============================================================ */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -102,67 +320,5 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-tertiary);
-}
-
-/* Metric card shimmer on hover */
-@keyframes metric-glow {
-  0%, 100% { opacity: 0; }
-  50% { opacity: 1; }
-}
-
-.metric-card {
-  position: relative;
-  transition: border-color 0.3s ease, background-color 0.3s ease;
-}
-
-.metric-card:hover {
-  border-color: var(--color-accent-muted);
-  background-color: color-mix(in srgb, var(--color-surface-1) 90%, var(--color-accent) 10%);
-}
-
-/* Tooltip */
-.tooltip-trigger {
-  position: relative;
-}
-
-.tooltip-content {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: var(--color-surface-3);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--color-text-secondary);
-  width: 260px;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s ease, visibility 0.15s ease;
-  pointer-events: none;
-  z-index: 50;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-}
-
-.tooltip-trigger:hover .tooltip-content {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* Staggered entrance */
-@keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-in {
-  animation: fade-up 0.4s ease both;
+  background: var(--color-muted-foreground);
 }

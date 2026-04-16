@@ -4,6 +4,14 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Parchment & Clay theme + shadcn/ui adoption (Phase 0 foundation)
+
+**Pages updated:** dashboard, conventions
+**Decisions added:** 015-design-system-and-shadcn; ADR-006 amended (principles unchanged, palette and mode defaults changed)
+**What changed:** The dashboard's design system moves from the Linear-inspired indigo-on-dark "Void" palette to the warm **Parchment & Clay** palette (light default, terracotta `#B0602F` hero, earthy olive/ochre/russet/dusk status colors). Theme tokens now live in `dashboard/src/app/globals.css` (the old `design-system/theme.css` + `THEME.md` have been promoted out of that directory — CSS into `globals.css`, guide into `dashboard/THEME.md`, and `design-system/` deleted). Semantic tokens follow shadcn/ui conventions so primitives drop in without remapping. Dark mode is first-class and user-toggleable via `next-themes` + a new `ThemeToggle` component (`src/components/theme-toggle.tsx`); `ThemeProvider` wraps the root layout. Geist webfont (previously loaded from a CDN) is gone — fonts use the theme's system-first sans stack, Iowan Old Style / Charter / Source Serif 4 for `font-serif`, no webfonts loaded. The `nextjs-toploader` color in `src/app/layout.tsx` switched from indigo `#6366F1` to Clay-500 `#B0602F`. shadcn/ui is installed (base primitives lazy-added: `button`, `dropdown-menu`; more to land as each route migrates); `clsx` + `tailwind-merge` wired through `src/lib/utils.ts` (`cn` helper); `lucide-react` is the icon library; `src/lib/chart-theme.ts` is a Phase 5 helper for recharts color refs. This is the foundation PR — existing routes still use the old `.metric-card` / `.tooltip-*` / `.animate-in` classes and old `--color-surface-*` tokens, so they will render visually broken until their follow-up phases migrate them. Full migration plan in `plans/dashboard-theme-migration.md`. **Why:** the old palette read as performance-review / leaderboard territory, which works against AX's team-reflection ethos; hand-rolled primitives (no Button, Dialog, DropdownMenu, Select, Tabs, Tooltip) caused drift and slowed every UI change. Taking both decisions together is strictly less work than doing them separately — the new palette was designed with shadcn-compatible token names.
+
+---
+
 ## 2026-04-16 — Remove developer comparison feature
 
 **Pages updated:** dashboard, architecture

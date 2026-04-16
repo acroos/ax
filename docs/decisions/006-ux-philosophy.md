@@ -1,7 +1,9 @@
 # ADR-006: Linear-inspired Dashboard UX
 
+> **Amended by [ADR-015](./015-design-system-and-shadcn.md) (2026-04-16).** The principles below — inline metric context, plain-language summaries, visual hierarchy, restrained chrome — remain authoritative. The *palette implementation* has changed: the Linear-inspired indigo-on-dark visual language has been replaced by the Parchment & Clay palette (light-default, terracotta hero, warm earthy status colors), and primitive components now come from shadcn/ui instead of being hand-rolled. See ADR-015 for the rationale and the table of specific differences.
+
 ## Status
-Accepted
+Accepted (amended by ADR-015)
 
 ## Date
 2026-03-24
