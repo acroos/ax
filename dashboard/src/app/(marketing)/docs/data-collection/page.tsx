@@ -9,7 +9,7 @@ import { BackToDocsLink } from "../back-to-docs-link";
 export default function DataCollectionPage() {
   const content = fs.readFileSync(
     path.join(process.cwd(), "..", "docs", "data-collection.md"),
-    "utf-8"
+    "utf-8",
   );
 
   return (

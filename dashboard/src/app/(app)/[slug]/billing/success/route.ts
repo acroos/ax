@@ -20,7 +20,7 @@ import { fetchAPI, orgApiPath } from "@/lib/db";
 // truth and will catch up — but the page may briefly show the old plan.
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
   const sessionId = req.nextUrl.searchParams.get("session_id");
@@ -28,8 +28,11 @@ export async function GET(
   if (sessionId) {
     try {
       await fetchAPI(
-        orgApiPath(slug, `/billing/reconcile?session_id=${encodeURIComponent(sessionId)}`),
-        { method: "POST" }
+        orgApiPath(
+          slug,
+          `/billing/reconcile?session_id=${encodeURIComponent(sessionId)}`,
+        ),
+        { method: "POST" },
       );
     } catch (err) {
       console.error("Billing reconcile failed:", err);
@@ -38,6 +41,6 @@ export async function GET(
 
   revalidatePath(`/${slug}`, "layout");
   return NextResponse.redirect(
-    new URL(`/${slug}/billing?billing=success`, req.url)
+    new URL(`/${slug}/billing?billing=success`, req.url),
   );
 }

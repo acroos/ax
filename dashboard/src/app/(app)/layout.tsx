@@ -198,9 +198,7 @@ async function AppSidebar() {
         {user && (
           <div className="flex items-center gap-2 px-2">
             <Avatar size="sm">
-              {user.avatar_url && (
-                <AvatarImage src={user.avatar_url} alt="" />
-              )}
+              {user.avatar_url && <AvatarImage src={user.avatar_url} alt="" />}
               <AvatarFallback>
                 {(user.display_name || user.github_username || "?")
                   .charAt(0)
@@ -229,11 +227,7 @@ async function AppSidebar() {
   );
 }
 
-export default function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <Suspense fallback={<SidebarSkeletonContents />}>

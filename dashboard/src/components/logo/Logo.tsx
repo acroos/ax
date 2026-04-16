@@ -17,10 +17,16 @@ type LogoProps = {
  *   <Logo variant="wordmark" className="h-7 w-auto text-foreground" />
  *   <Logo variant="mark"     className="h-8 w-8 text-foreground" />
  */
-export function Logo({ variant = "wordmark", className, title = "AX" }: LogoProps) {
-  return variant === "mark"
-    ? <Mark className={className} title={title} />
-    : <Wordmark className={className} title={title} />;
+export function Logo({
+  variant = "wordmark",
+  className,
+  title = "AX",
+}: LogoProps) {
+  return variant === "mark" ? (
+    <Mark className={className} title={title} />
+  ) : (
+    <Wordmark className={className} title={title} />
+  );
 }
 
 export default Logo;

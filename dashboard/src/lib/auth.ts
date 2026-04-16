@@ -8,7 +8,12 @@ export interface CurrentUser {
   display_name: string | null;
   email: string | null;
   avatar_url: string | null;
-  organizations: { slug: string; name: string; is_personal: boolean; plan: string }[];
+  organizations: {
+    slug: string;
+    name: string;
+    is_personal: boolean;
+    plan: string;
+  }[];
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {

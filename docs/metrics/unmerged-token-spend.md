@@ -33,17 +33,7 @@ unmerged_rate = waste_cost / total_cost if total_cost > 0 else 0
 
 Open PRs are excluded because they represent in-progress work — their final outcome is unknown.
 
-## Interpreting Values
-
-- **Good:** Under 15% unmerged rate. Some exploration spend is healthy — it means the team is experimenting, spiking on approaches, and making informed decisions about what to build. A 0% rate would actually be concerning, suggesting the team never explores or abandons dead-end approaches.
-- **Concerning:** Over 30% unmerged rate sustained over weeks. Large absolute dollar amounts on abandoned work. An increasing trend in unmerged rate suggests worsening requirements clarity or planning quality. Also concerning: a small number of sessions accounting for a disproportionate share of waste cost.
-- **Ambiguity:** Sessions not correlated to any PR might be legitimate non-PR work — refactoring that gets squashed into another branch, documentation generation, exploration to answer a technical question, or local tooling setup. Open PRs are excluded from the calculation to avoid penalizing in-progress work. This metric works best when evaluated over multi-week windows to smooth out natural variation.
-
 ## Data Sources Required
 
 - **Claude Code session data** — Per-message usage fields (input tokens, output tokens, cache tokens, model) for computing dollar cost per session.
 - **PR merge status** — Whether each PR was merged, closed without merging, or is still open. Sourced from the GitHub API.
-
-## Phase
-
-**Phase 2** — Requires Claude Code session data ingestion.

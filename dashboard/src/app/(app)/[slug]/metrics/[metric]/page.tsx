@@ -1,28 +1,23 @@
 import fs from "fs";
-import path from "path";
-import Link from "next/link";
-import { Suspense } from "react";
 import { ChevronLeft } from "lucide-react";
+import Link from "next/link";
+import path from "path";
+import { Suspense } from "react";
 
-import { listPRsWithMetricsAsync } from "@/lib/db";
-import type { PRWithMetrics } from "@/lib/db";
-import { getMetricDef, formatMetricValue, type MetricDefEntry } from "@/lib/metric-defs";
+import { BooleanMetricSummary } from "@/components/boolean-metric-summary";
 import { Markdown } from "@/components/markdown";
 import { MetricBarChart, type ChartSlot } from "@/components/metric-bar-chart";
-import { BooleanMetricSummary } from "@/components/boolean-metric-summary";
-import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
+import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { StateBadge } from "@/components/state-badge";
+import type { PRWithMetrics } from "@/lib/db";
+import { listPRsWithMetricsAsync } from "@/lib/db";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  formatMetricValue,
+  getMetricDef,
+  type MetricDefEntry,
+} from "@/lib/metric-defs";
 
 const metricsDir = path.join(process.cwd(), "..", "docs", "metrics");
 
@@ -89,7 +84,9 @@ export default async function MetricDetailPage({
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <div className="space-y-3 text-center">
-          <h2 className="text-lg font-medium text-foreground">Metric not found</h2>
+          <h2 className="text-lg font-medium text-foreground">
+            Metric not found
+          </h2>
           <p className="text-sm text-muted-foreground">
             No metric with slug <code className="text-primary">{metric}</code>
           </p>
@@ -111,7 +108,9 @@ export default async function MetricDetailPage({
   const colorSlot = CATEGORY_CHART_SLOT[def.category] ?? 1;
 
   // Shared PR fetch — three islands await the same promise.
-  const prsPromise = listPRsWithMetricsAsync(repoId, slug).catch(() => [] as PRWithMetrics[]);
+  const prsPromise = listPRsWithMetricsAsync(repoId, slug).catch(
+    () => [] as PRWithMetrics[],
+  );
 
   return (
     <div>
@@ -148,17 +147,14 @@ export default async function MetricDetailPage({
 
       {/* Chart panel */}
       <div className="mb-6">
-        <SectionErrorBoundary fallback={<SkeletonChartPanel title="Per-PR Breakdown" />}>
+        <SectionErrorBoundary
+          fallback={<SkeletonChartPanel title="Per-PR Breakdown" />}
+        >
           <Suspense fallback={<SkeletonChartPanel title="Per-PR Breakdown" />}>
             <ChartPanel promise={prsPromise} def={def} colorSlot={colorSlot} />
           </Suspense>
         </SectionErrorBoundary>
       </div>
-
-      {/* PR table */}
-      <Suspense fallback={<PRTableSkeleton def={def} />}>
-        <PRTable promise={prsPromise} def={def} />
-      </Suspense>
 
       {/* Doc content renders synchronously — it's read from disk above. */}
       {docContent && (
@@ -295,102 +291,6 @@ async function ChartPanel({
           />
         )}
       </CardContent>
-    </Card>
-  );
-}
-
-function PRTableSkeleton({ def }: { def: MetricDefEntry }) {
-  return (
-    <Card className="mb-6 gap-0 overflow-hidden p-0">
-      <div className="border-b border-border px-5 py-3">
-        <h2 className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-          All PRs — sorted by {def.label.toLowerCase()}
-        </h2>
-      </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>PR</TableHead>
-            <TableHead>Title</TableHead>
-            <TableHead className="text-right">{def.label}</TableHead>
-            <TableHead className="text-center">State</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <TableRow key={i}>
-              <TableCell><Skeleton className="h-4 w-10" /></TableCell>
-              <TableCell><Skeleton className="h-4 w-full max-w-[280px]" /></TableCell>
-              <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
-              <TableCell className="text-center"><Skeleton className="mx-auto h-5 w-16 rounded-full" /></TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
-  );
-}
-
-async function PRTable({
-  promise,
-  def,
-}: {
-  promise: Promise<PRWithMetrics[]>;
-  def: MetricDefEntry;
-}) {
-  const prs = await promise;
-  const values = extractPRValues(prs, def);
-  const sorted = [...values].sort((a, b) =>
-    def.lowerIsBetter ? a.value - b.value : b.value - a.value
-  );
-
-  if (sorted.length === 0) return null;
-
-  return (
-    <Card className="mb-6 gap-0 overflow-hidden p-0">
-      <div className="border-b border-border px-5 py-3">
-        <h2 className="text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-          All PRs — sorted by {def.label.toLowerCase()}
-        </h2>
-      </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>PR</TableHead>
-            <TableHead>Title</TableHead>
-            <TableHead className="text-right">{def.label}</TableHead>
-            <TableHead className="text-center">State</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.map((pr) => (
-            <TableRow key={pr.prId}>
-              <TableCell>
-                <Link
-                  href={`/prs/${pr.prId}`}
-                  className="font-mono text-primary transition-colors hover:underline"
-                >
-                  #{pr.prNumber}
-                </Link>
-              </TableCell>
-              <TableCell className="max-w-[400px] truncate text-foreground">
-                <Link
-                  href={`/prs/${pr.prId}`}
-                  className="transition-colors hover:text-primary"
-                >
-                  {pr.title}
-                </Link>
-              </TableCell>
-              <TableCell className="text-right font-mono text-muted-foreground">
-                {formatMetricValue(pr.value, def)}
-              </TableCell>
-              <TableCell className="text-center">
-                <StateBadge state={pr.state} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
     </Card>
   );
 }

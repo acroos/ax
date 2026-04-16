@@ -45,9 +45,7 @@ export default function PlansPage() {
               <span className="text-[32px] font-semibold text-foreground">
                 $0
               </span>
-              <span className="text-[13px] text-muted-foreground">
-                forever
-              </span>
+              <span className="text-[13px] text-muted-foreground">forever</span>
             </div>
             <CardDescription className="mt-2 text-[13px]">
               Core metrics for individual developers. No credit card required.

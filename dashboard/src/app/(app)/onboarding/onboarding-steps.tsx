@@ -126,8 +126,12 @@ export function OnboardingSteps({ displayName, orgSlug }: Props) {
 
                 {!loading && !apiKey && (
                   <p className="text-xs text-muted-foreground">
-                    Your key has already been revealed. You can generate a new one in{" "}
-                    <a href="/settings" className="text-primary hover:underline">
+                    Your key has already been revealed. You can generate a new
+                    one in{" "}
+                    <a
+                      href="/settings"
+                      className="text-primary hover:underline"
+                    >
                       Settings
                     </a>
                     .
@@ -194,7 +198,9 @@ export function OnboardingSteps({ displayName, orgSlug }: Props) {
               </h2>
               <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
                 Push your first session data with{" "}
-                <code className="font-mono text-xs text-foreground">ax push</code>{" "}
+                <code className="font-mono text-xs text-foreground">
+                  ax push
+                </code>{" "}
                 from any repo, and your metrics will appear on the dashboard.
               </p>
             </div>

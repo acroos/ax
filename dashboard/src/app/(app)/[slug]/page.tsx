@@ -3,10 +3,7 @@ import { Suspense } from "react";
 import { getAggregateMetricsAsync, listReposAsync } from "@/lib/db";
 import type { AggregateMetrics, SparklinePoint } from "@/lib/db";
 import { METRIC_DEFS } from "@/lib/metric-defs";
-import {
-  Skeleton,
-  SkeletonMetricCategory,
-} from "@/components/skeleton";
+import { Skeleton, SkeletonMetricCategory } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { SectionDivider } from "@/components/section-divider";
 import { Sparkline } from "@/components/sparkline";
@@ -164,7 +161,7 @@ export default async function OrgOverviewPage({
 
 async function resolveRepoLabel(
   slug: string,
-  repoId: number | undefined
+  repoId: number | undefined,
 ): Promise<string> {
   if (!repoId) return "All Repositories";
   try {
@@ -199,8 +196,9 @@ async function OverviewSubtitle({
       <span className="font-medium text-foreground">{repoLabel}</span>
       {metrics !== null && (
         <>
-          {" "}&middot;{" "}
-          {metrics.totalPRs} finalized PR{metrics.totalPRs !== 1 && "s"}
+          {" "}
+          &middot; {metrics.totalPRs} finalized PR
+          {metrics.totalPRs !== 1 && "s"}
         </>
       )}
     </p>

@@ -1,11 +1,6 @@
 import { SkeletonPageHeader, SkeletonTableRow } from "@/components/skeleton";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // Mirrors /[slug]/prs/page.tsx:
 // header + 9-column PR table with ~10 placeholder rows.

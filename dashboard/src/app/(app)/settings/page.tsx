@@ -42,7 +42,9 @@ export default async function SettingsPage() {
                   {user.display_name}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground">@{user.github_username}</p>
+              <p className="text-xs text-muted-foreground">
+                @{user.github_username}
+              </p>
               {user.email && (
                 <p className="text-xs text-muted-foreground">{user.email}</p>
               )}
@@ -59,7 +61,8 @@ export default async function SettingsPage() {
         <CardContent className="space-y-4 p-0">
           <h2 className="text-sm font-medium text-foreground">Session</h2>
           <p className="text-xs text-muted-foreground">
-            Log out of AX on this device. Your CLI configuration is not affected.
+            Log out of AX on this device. Your CLI configuration is not
+            affected.
           </p>
           <LogoutButton />
         </CardContent>

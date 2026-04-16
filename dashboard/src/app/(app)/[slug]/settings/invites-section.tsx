@@ -37,7 +37,11 @@ function timeUntil(dateStr: string): string {
   return `in ${hours}h`;
 }
 
-export function InvitesSection({ invites: initialInvites, isAdmin, slug }: Props) {
+export function InvitesSection({
+  invites: initialInvites,
+  isAdmin,
+  slug,
+}: Props) {
   const [invites, setInvites] = useState(initialInvites);
   const [revoking, setRevoking] = useState<number | null>(null);
   const [username, setUsername] = useState("");
@@ -98,7 +102,10 @@ export function InvitesSection({ invites: initialInvites, isAdmin, slug }: Props
         {invites.length > 0 ? (
           <div className="divide-y divide-border">
             {invites.map((inv) => (
-              <div key={inv.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <div
+                key={inv.id}
+                className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="text-[13px] font-medium text-foreground">
                     @{inv.github_username}
@@ -133,7 +140,10 @@ export function InvitesSection({ invites: initialInvites, isAdmin, slug }: Props
             </h3>
             <form onSubmit={handleCreate} className="flex items-end gap-2">
               <div className="flex-1 space-y-1">
-                <Label htmlFor="invite-username" className="text-[11px] text-muted-foreground">
+                <Label
+                  htmlFor="invite-username"
+                  className="text-[11px] text-muted-foreground"
+                >
                   GitHub username
                 </Label>
                 <Input
@@ -146,7 +156,10 @@ export function InvitesSection({ invites: initialInvites, isAdmin, slug }: Props
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="invite-role" className="text-[11px] text-muted-foreground">
+                <Label
+                  htmlFor="invite-role"
+                  className="text-[11px] text-muted-foreground"
+                >
                   Role
                 </Label>
                 <Select value={role} onValueChange={setRole}>
@@ -154,8 +167,12 @@ export function InvitesSection({ invites: initialInvites, isAdmin, slug }: Props
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="member" className="text-xs">member</SelectItem>
-                    <SelectItem value="admin" className="text-xs">admin</SelectItem>
+                    <SelectItem value="member" className="text-xs">
+                      member
+                    </SelectItem>
+                    <SelectItem value="admin" className="text-xs">
+                      admin
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -168,9 +185,7 @@ export function InvitesSection({ invites: initialInvites, isAdmin, slug }: Props
               </Button>
             </form>
 
-            {error && (
-              <p className="text-xs text-destructive">{error}</p>
-            )}
+            {error && <p className="text-xs text-destructive">{error}</p>}
 
             {inviteLink && (
               <div className="space-y-2 rounded-lg bg-muted p-3">

@@ -28,18 +28,18 @@ export default function TermsPage() {
           <Section title="2. Description of Service">
             <p>
               AX is a developer experience analytics service that measures
-              coding workflow metrics by analyzing GitHub pull request data
-              and Claude Code session metadata. The Service consists of a
+              coding workflow metrics by analyzing GitHub pull request data and
+              Claude Code session metadata. The Service consists of a
               command-line tool, an API, and a web dashboard.
             </p>
           </Section>
 
           <Section title="3. Accounts and Access">
             <p>
-              You must authenticate via GitHub OAuth to use the Service. You
-              are responsible for maintaining the security of your API keys
-              and session tokens. You must notify us promptly if you believe
-              your credentials have been compromised.
+              You must authenticate via GitHub OAuth to use the Service. You are
+              responsible for maintaining the security of your API keys and
+              session tokens. You must notify us promptly if you believe your
+              credentials have been compromised.
             </p>
           </Section>
 
@@ -61,18 +61,18 @@ export default function TermsPage() {
 
           <Section title="5. Acceptable Use">
             <p>
-              You agree not to misuse the Service, including but not limited
-              to: attempting to gain unauthorized access, interfering with
-              other users, reverse-engineering the Service, or using the
-              Service for any unlawful purpose.
+              You agree not to misuse the Service, including but not limited to:
+              attempting to gain unauthorized access, interfering with other
+              users, reverse-engineering the Service, or using the Service for
+              any unlawful purpose.
             </p>
           </Section>
 
           <Section title="6. Plans and Billing">
             <p>
               The Service offers free and paid plans. Paid subscriptions are
-              billed monthly through Stripe. You may cancel at any time;
-              access continues through the end of the current billing period.
+              billed monthly through Stripe. You may cancel at any time; access
+              continues through the end of the current billing period.
               Downgrades may result in loss of access to certain features and
               removal of team members exceeding the free plan limits.
             </p>
@@ -88,8 +88,8 @@ export default function TermsPage() {
 
           <Section title="8. Limitation of Liability">
             <p>
-              To the maximum extent permitted by law, AX and its operators
-              shall not be liable for any indirect, incidental, special,
+              To the maximum extent permitted by law, AX and its operators shall
+              not be liable for any indirect, incidental, special,
               consequential, or punitive damages arising from your use of the
               Service.
             </p>
@@ -97,9 +97,9 @@ export default function TermsPage() {
 
           <Section title="9. Changes to Terms">
             <p>
-              We may update these terms from time to time. Continued use of
-              the Service after changes constitutes acceptance. We will notify
-              users of material changes via the dashboard or email.
+              We may update these terms from time to time. Continued use of the
+              Service after changes constitutes acceptance. We will notify users
+              of material changes via the dashboard or email.
             </p>
           </Section>
 
