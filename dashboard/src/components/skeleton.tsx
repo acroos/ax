@@ -56,12 +56,50 @@ export function SkeletonTableRow({ columns }: { columns: number }) {
   );
 }
 
+// Bare `<tbody>` of N skeleton rows — used as a Suspense fallback when the
+// table header is rendered synchronously by the page but the body streams.
+export function SkeletonTableBody({
+  rows = 10,
+  columns,
+}: {
+  rows?: number;
+  columns: number;
+}) {
+  return (
+    <tbody>
+      {Array.from({ length: rows }).map((_, i) => (
+        <SkeletonTableRow key={i} columns={columns} />
+      ))}
+    </tbody>
+  );
+}
+
 // A generic page header skeleton: h1 line + subtitle line.
 export function SkeletonPageHeader({ className = "mb-8" }: { className?: string }) {
   return (
     <div className={className}>
       <Skeleton className="h-7 w-48 mb-2" />
       <Skeleton className="h-4 w-64" />
+    </div>
+  );
+}
+
+// Chart panel skeleton — matches the bordered card used on metric-detail.
+// `title` renders real heading text so the panel's shape doesn't shift when
+// the chart resolves; only the chart body itself is a skeleton block.
+export function SkeletonChartPanel({
+  title,
+  height = 256,
+}: {
+  title: string;
+  height?: number;
+}) {
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface-1 p-5">
+      <h2 className="text-[12px] font-medium text-text-tertiary uppercase tracking-wider mb-4">
+        {title}
+      </h2>
+      <Skeleton className="w-full" style={{ height }} />
     </div>
   );
 }

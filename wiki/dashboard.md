@@ -87,9 +87,35 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 - **Markdown** (`src/components/markdown.tsx`) — Renders metric docs from `docs/metrics/*.md` using `react-markdown` + `remark-gfm`. Custom styled components for headings, tables, code blocks.
 
 ### Loading states
-- **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonPageHeader`. Shared building blocks for route-level loading UIs.
+- **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonTableBody`, `SkeletonPageHeader`, `SkeletonChartPanel`. Shared building blocks for route-level loading UIs and in-page Suspense fallbacks.
 - **Route-level `loading.tsx`** — Every page under `/(app)` has a sibling `loading.tsx` that Next.js renders instantly on navigation (before the page's async data awaits resolve). Each skeleton mirrors the real page's layout. Files: `[slug]/loading.tsx`, `[slug]/prs/loading.tsx`, `[slug]/compare/loading.tsx`, `[slug]/metrics/[metric]/loading.tsx`, `[slug]/settings/loading.tsx`, `[slug]/billing/loading.tsx`, `prs/[id]/loading.tsx`, `settings/loading.tsx`.
 - **Navigation progress bar** — `nextjs-toploader` is mounted in `src/app/layout.tsx` (2px, indigo `#6366F1`, no spinner). Shows at the top of the viewport during any `<Link>` navigation to give continuous "something is happening" feedback.
+- **`SectionErrorBoundary`** (`src/components/section-error-boundary.tsx`) — Client-side class component that catches errors thrown from an async Suspense child and renders a fallback in place of that section only. Used to scope API failures to a single card/table instead of taking down the whole page.
+
+### Streaming pattern (in-page Suspense)
+Pages render their shell (headings, filter bars, table headers, static links) synchronously and stream data-dependent sections through `<Suspense>` boundaries. The shared recipe:
+
+1. Page-level `await` only covers cheap bindings (`params`, `searchParams`, auth redirects).
+2. Data-fetch promises are created without awaiting — e.g. `const prsPromise = listPRsWithMetricsAsync(...)`.
+3. Each promise is passed as a prop to one or more async child components. Multiple children awaiting the same promise share a single fetch (React dedupes).
+4. Each child is wrapped in `<Suspense fallback={<Skeleton…/>}>` and, where API failure should degrade gracefully, in `<SectionErrorBoundary fallback={<EmptyState/>}>` as well.
+
+Page-by-page streaming topology:
+
+| Page | Shell (synchronous) | Streamed islands |
+|------|---------------------|------------------|
+| `/[slug]` | h1 + "View all PRs" link | Subtitle (repo + count), metrics body (4 category grids, `NoDataState` / `NoFinalizedPRsState` fallbacks) |
+| `/[slug]/prs` | h1 + table header | Subtitle count, `<tbody>` rows, `NoDataBody` fallback |
+| `/[slug]/compare` | h1 + `TimeWindowPicker` | `DeveloperSelector` dropdown, individual-vs-team cards (when author selected), leaderboard table |
+| `/[slug]/metrics/[metric]` | Back link + header + doc content (read from disk synchronously) | Data count subtitle, 5 summary stat cards, chart panel, PR table |
+| `/prs/[id]` | Back link | PR header (title + badges + metadata), grouped metric cards, `PRNotFound` fallback |
+| `/[slug]/settings` | h1 | GitHub App card, Members card, Invites card (each independent Suspense) |
+| `/[slug]/billing` | h1 + banner | Billing card |
+
+**Gotchas:**
+- `redirect()` must be called above any Suspense boundary — calling it from inside an async child raises a render-time error instead of navigating.
+- Shared promises should have `.catch(() => fallbackValue)` attached at creation time if both a subtitle and a body consume them and you only want the error boundary to trigger on the body.
+- Error boundaries must nest the Suspense (`<SectionErrorBoundary><Suspense>…</Suspense></SectionErrorBoundary>`) — otherwise the boundary never sees the throw.
 
 ## Styling
 

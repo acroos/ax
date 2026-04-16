@@ -6,6 +6,8 @@ import {
 import type { DeveloperMetrics, AggregateMetrics, PRWithMetrics } from "@/lib/db";
 import { TimeWindowPicker } from "@/components/time-window-picker";
 import { DeveloperSelector } from "@/components/developer-selector";
+import { Skeleton } from "@/components/skeleton";
+import { SectionErrorBoundary } from "@/components/section-error-boundary";
 
 function filterPRsLocal(prs: PRWithMetrics[], opts: { author?: string; since?: string; until?: string }): PRWithMetrics[] {
   return prs.filter((p) => {
@@ -43,34 +45,9 @@ export default async function OrgComparePage({ params, searchParams }: Props) {
   const since = p.since || undefined;
   const until = p.until || undefined;
 
-  let developers: string[] = [];
-  let devComparison: DeveloperMetrics[] = [];
-  let teamMetrics: AggregateMetrics | null = null;
-  let individualMetrics: AggregateMetrics | null = null;
-
-  try {
-    // Single API call — derive everything locally instead of 4 sequential fetches
-    const allPRs = await listPRsWithMetricsAsync(repoId, slug);
-
-    // Extract unique authors
-    const authorSet = new Set<string>();
-    for (const pr of allPRs) {
-      if (pr.author) authorSet.add(pr.author);
-    }
-    developers = Array.from(authorSet).sort();
-
-    // Filter by time window, then compute comparison and team metrics
-    const timeFiltered = filterPRsLocal(allPRs, { since, until });
-    devComparison = buildDeveloperComparison(timeFiltered);
-    teamMetrics = computeAggregatesFromPRs(timeFiltered);
-
-    if (author) {
-      const authorFiltered = filterPRsLocal(allPRs, { author, since, until });
-      individualMetrics = computeAggregatesFromPRs(authorFiltered);
-    }
-  } catch {
-    // API error
-  }
+  // Fetch once; swallow errors so downstream sections render an empty state
+  // rather than a full-page error.
+  const prsPromise = listPRsWithMetricsAsync(repoId, slug).catch(() => [] as PRWithMetrics[]);
 
   return (
     <div>
@@ -81,133 +58,255 @@ export default async function OrgComparePage({ params, searchParams }: Props) {
         </p>
       </div>
 
-      {/* Filter bar */}
+      {/* Filter bar — TimeWindowPicker is author-agnostic and renders
+          instantly; DeveloperSelector needs the author list from PRs. */}
       <div className="flex items-center gap-4 mb-8">
-        <Suspense>
-          <TimeWindowPicker />
-        </Suspense>
-        <Suspense>
-          <DeveloperSelector developers={developers} />
+        <TimeWindowPicker />
+        <Suspense fallback={<Skeleton className="h-7 w-56" />}>
+          <AsyncDeveloperSelector promise={prsPromise} />
         </Suspense>
       </div>
 
-      {/* Individual vs Team comparison */}
-      {author && individualMetrics && teamMetrics && (
-        <div className="grid grid-cols-2 gap-6 mb-8">
-          <MetricCard title={`${author}'s metrics`} metrics={individualMetrics} />
-          <MetricCard title="Team average" metrics={teamMetrics} />
-        </div>
+      {/* Individual vs team cards are only shown when an author is selected.
+          Gate the whole section behind Suspense so the cards stream in. */}
+      {author && (
+        <SectionErrorBoundary fallback={null}>
+          <Suspense fallback={<IndividualVsTeamSkeleton />}>
+            <IndividualVsTeam
+              promise={prsPromise}
+              author={author}
+              since={since}
+              until={until}
+            />
+          </Suspense>
+        </SectionErrorBoundary>
       )}
 
-      {/* Developer leaderboard */}
-      {devComparison.length > 0 && (
-        <div className="bg-surface-1 border border-border-subtle rounded-lg overflow-hidden">
-          <div className="px-5 py-3 border-b border-border-subtle">
-            <h2 className="text-[14px] font-medium text-text-primary">Developer Leaderboard</h2>
-          </div>
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-text-tertiary text-left border-b border-border-subtle">
-                <th className="px-5 py-2 font-medium">Developer</th>
-                <th className="px-5 py-2 font-medium text-right">PRs</th>
-                <th className="px-5 py-2 font-medium text-right">Post-Open</th>
-                <th className="px-5 py-2 font-medium text-right">1st Pass</th>
-                <th className="px-5 py-2 font-medium text-right">CI Rate</th>
-                <th className="px-5 py-2 font-medium text-right">Msgs/PR</th>
-                <th className="px-5 py-2 font-medium text-right">Depth</th>
-                <th className="px-5 py-2 font-medium text-right">Cost/PR</th>
-                <th className="px-5 py-2 font-medium text-right">Errors</th>
-              </tr>
-            </thead>
-            <tbody>
-              {devComparison.map((dev) => (
-                <tr
-                  key={dev.author}
-                  className="border-b border-border-subtle/50 hover:bg-surface-2/50 transition-colors"
-                >
-                  <td className="px-5 py-2.5 text-text-primary font-medium">{dev.author}</td>
-                  <td className="px-5 py-2.5 text-right text-text-secondary">{dev.prCount}</td>
-                  <td className="px-5 py-2.5 text-right text-text-secondary">
-                    {dev.metrics.avgPostOpenCommits.toFixed(1)}
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-secondary">
-                    {(dev.metrics.firstPassAcceptanceRate * 100).toFixed(0)}%
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-secondary">
-                    {dev.metrics.ciSuccessRate !== null
-                      ? `${(dev.metrics.ciSuccessRate * 100).toFixed(0)}%`
-                      : "\u2014"}
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-secondary">
-                    {dev.metrics.avgMessagesPerPR !== null
-                      ? dev.metrics.avgMessagesPerPR.toFixed(0)
-                      : "\u2014"}
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-secondary">
-                    {dev.metrics.avgIterationDepth !== null
-                      ? dev.metrics.avgIterationDepth.toFixed(0)
-                      : "\u2014"}
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-secondary">
-                    {dev.metrics.avgTokenCost !== null
-                      ? `$${dev.metrics.avgTokenCost.toFixed(2)}`
-                      : "\u2014"}
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-secondary">
-                    {dev.metrics.avgErrorRecoveryAttempts !== null
-                      ? dev.metrics.avgErrorRecoveryAttempts.toFixed(0)
-                      : "\u2014"}
-                  </td>
-                </tr>
+      {/* Leaderboard */}
+      <SectionErrorBoundary fallback={<NoDevData />}>
+        <Suspense fallback={<LeaderboardSkeleton />}>
+          <Leaderboard
+            promise={prsPromise}
+            since={since}
+            until={until}
+          />
+        </Suspense>
+      </SectionErrorBoundary>
+    </div>
+  );
+}
+
+async function AsyncDeveloperSelector({
+  promise,
+}: {
+  promise: Promise<PRWithMetrics[]>;
+}) {
+  const prs = await promise;
+  const authorSet = new Set<string>();
+  for (const pr of prs) if (pr.author) authorSet.add(pr.author);
+  const developers = Array.from(authorSet).sort();
+  return <DeveloperSelector developers={developers} />;
+}
+
+function IndividualVsTeamSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-6 mb-8">
+      {[0, 1].map((i) => (
+        <div
+          key={i}
+          className="bg-surface-1 border border-border-subtle rounded-lg p-5"
+        >
+          <Skeleton className="h-4 w-32 mb-4" />
+          {Array.from({ length: 12 }).map((_, j) => (
+            <div key={j} className="flex justify-between items-center py-1">
+              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function IndividualVsTeam({
+  promise,
+  author,
+  since,
+  until,
+}: {
+  promise: Promise<PRWithMetrics[]>;
+  author: string;
+  since: string | undefined;
+  until: string | undefined;
+}) {
+  const allPRs = await promise;
+  const timeFiltered = filterPRsLocal(allPRs, { since, until });
+  const teamMetrics = computeAggregatesFromPRs(timeFiltered);
+  const authorFiltered = filterPRsLocal(allPRs, { author, since, until });
+  const individualMetrics = computeAggregatesFromPRs(authorFiltered);
+
+  return (
+    <div className="grid grid-cols-2 gap-6 mb-8">
+      <MetricCard title={`${author}'s metrics`} metrics={individualMetrics} />
+      <MetricCard title="Team average" metrics={teamMetrics} />
+    </div>
+  );
+}
+
+function LeaderboardSkeleton() {
+  return (
+    <div className="bg-surface-1 border border-border-subtle rounded-lg overflow-hidden">
+      <div className="px-5 py-3 border-b border-border-subtle">
+        <Skeleton className="h-4 w-48" />
+      </div>
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-text-tertiary text-left border-b border-border-subtle">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <th key={i} className="px-5 py-2">
+                <Skeleton className="h-3 w-16" />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <tr key={i} className="border-b border-border-subtle/50">
+              {Array.from({ length: 9 }).map((_, j) => (
+                <td key={j} className="px-5 py-2.5">
+                  <Skeleton className="h-4 w-full max-w-[80px]" />
+                </td>
               ))}
-              {/* Team total row */}
-              {teamMetrics && (
-                <tr className="bg-surface-2/30 font-medium">
-                  <td className="px-5 py-2.5 text-text-tertiary">Team</td>
-                  <td className="px-5 py-2.5 text-right text-text-tertiary">{teamMetrics.totalPRs}</td>
-                  <td className="px-5 py-2.5 text-right text-text-tertiary">
-                    {teamMetrics.avgPostOpenCommits.toFixed(1)}
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-tertiary">
-                    {(teamMetrics.firstPassAcceptanceRate * 100).toFixed(0)}%
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-tertiary">
-                    {teamMetrics.ciSuccessRate !== null
-                      ? `${(teamMetrics.ciSuccessRate * 100).toFixed(0)}%`
-                      : "\u2014"}
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-tertiary">
-                    {teamMetrics.avgMessagesPerPR !== null
-                      ? teamMetrics.avgMessagesPerPR.toFixed(0)
-                      : "\u2014"}
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-tertiary">
-                    {teamMetrics.avgIterationDepth !== null
-                      ? teamMetrics.avgIterationDepth.toFixed(0)
-                      : "\u2014"}
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-tertiary">
-                    {teamMetrics.avgTokenCost !== null
-                      ? `$${teamMetrics.avgTokenCost.toFixed(2)}`
-                      : "\u2014"}
-                  </td>
-                  <td className="px-5 py-2.5 text-right text-text-tertiary">
-                    {teamMetrics.avgErrorRecoveryAttempts !== null
-                      ? teamMetrics.avgErrorRecoveryAttempts.toFixed(0)
-                      : "\u2014"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-      {devComparison.length === 0 && (
-        <div className="text-center py-16 text-text-tertiary text-[13px]">
-          No developer data available. Connect a repository to start tracking metrics.
-        </div>
-      )}
+function NoDevData() {
+  return (
+    <div className="text-center py-16 text-text-tertiary text-[13px]">
+      No developer data available. Connect a repository to start tracking metrics.
+    </div>
+  );
+}
+
+async function Leaderboard({
+  promise,
+  since,
+  until,
+}: {
+  promise: Promise<PRWithMetrics[]>;
+  since: string | undefined;
+  until: string | undefined;
+}) {
+  const allPRs = await promise;
+  const timeFiltered = filterPRsLocal(allPRs, { since, until });
+  const devComparison = buildDeveloperComparison(timeFiltered);
+  const teamMetrics = computeAggregatesFromPRs(timeFiltered);
+
+  if (devComparison.length === 0) return <NoDevData />;
+
+  return (
+    <div className="bg-surface-1 border border-border-subtle rounded-lg overflow-hidden">
+      <div className="px-5 py-3 border-b border-border-subtle">
+        <h2 className="text-[14px] font-medium text-text-primary">Developer Leaderboard</h2>
+      </div>
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-text-tertiary text-left border-b border-border-subtle">
+            <th className="px-5 py-2 font-medium">Developer</th>
+            <th className="px-5 py-2 font-medium text-right">PRs</th>
+            <th className="px-5 py-2 font-medium text-right">Post-Open</th>
+            <th className="px-5 py-2 font-medium text-right">1st Pass</th>
+            <th className="px-5 py-2 font-medium text-right">CI Rate</th>
+            <th className="px-5 py-2 font-medium text-right">Msgs/PR</th>
+            <th className="px-5 py-2 font-medium text-right">Depth</th>
+            <th className="px-5 py-2 font-medium text-right">Cost/PR</th>
+            <th className="px-5 py-2 font-medium text-right">Errors</th>
+          </tr>
+        </thead>
+        <tbody>
+          {devComparison.map((dev) => (
+            <tr
+              key={dev.author}
+              className="border-b border-border-subtle/50 hover:bg-surface-2/50 transition-colors"
+            >
+              <td className="px-5 py-2.5 text-text-primary font-medium">{dev.author}</td>
+              <td className="px-5 py-2.5 text-right text-text-secondary">{dev.prCount}</td>
+              <td className="px-5 py-2.5 text-right text-text-secondary">
+                {dev.metrics.avgPostOpenCommits.toFixed(1)}
+              </td>
+              <td className="px-5 py-2.5 text-right text-text-secondary">
+                {(dev.metrics.firstPassAcceptanceRate * 100).toFixed(0)}%
+              </td>
+              <td className="px-5 py-2.5 text-right text-text-secondary">
+                {dev.metrics.ciSuccessRate !== null
+                  ? `${(dev.metrics.ciSuccessRate * 100).toFixed(0)}%`
+                  : "\u2014"}
+              </td>
+              <td className="px-5 py-2.5 text-right text-text-secondary">
+                {dev.metrics.avgMessagesPerPR !== null
+                  ? dev.metrics.avgMessagesPerPR.toFixed(0)
+                  : "\u2014"}
+              </td>
+              <td className="px-5 py-2.5 text-right text-text-secondary">
+                {dev.metrics.avgIterationDepth !== null
+                  ? dev.metrics.avgIterationDepth.toFixed(0)
+                  : "\u2014"}
+              </td>
+              <td className="px-5 py-2.5 text-right text-text-secondary">
+                {dev.metrics.avgTokenCost !== null
+                  ? `$${dev.metrics.avgTokenCost.toFixed(2)}`
+                  : "\u2014"}
+              </td>
+              <td className="px-5 py-2.5 text-right text-text-secondary">
+                {dev.metrics.avgErrorRecoveryAttempts !== null
+                  ? dev.metrics.avgErrorRecoveryAttempts.toFixed(0)
+                  : "\u2014"}
+              </td>
+            </tr>
+          ))}
+          <tr className="bg-surface-2/30 font-medium">
+            <td className="px-5 py-2.5 text-text-tertiary">Team</td>
+            <td className="px-5 py-2.5 text-right text-text-tertiary">{teamMetrics.totalPRs}</td>
+            <td className="px-5 py-2.5 text-right text-text-tertiary">
+              {teamMetrics.avgPostOpenCommits.toFixed(1)}
+            </td>
+            <td className="px-5 py-2.5 text-right text-text-tertiary">
+              {(teamMetrics.firstPassAcceptanceRate * 100).toFixed(0)}%
+            </td>
+            <td className="px-5 py-2.5 text-right text-text-tertiary">
+              {teamMetrics.ciSuccessRate !== null
+                ? `${(teamMetrics.ciSuccessRate * 100).toFixed(0)}%`
+                : "\u2014"}
+            </td>
+            <td className="px-5 py-2.5 text-right text-text-tertiary">
+              {teamMetrics.avgMessagesPerPR !== null
+                ? teamMetrics.avgMessagesPerPR.toFixed(0)
+                : "\u2014"}
+            </td>
+            <td className="px-5 py-2.5 text-right text-text-tertiary">
+              {teamMetrics.avgIterationDepth !== null
+                ? teamMetrics.avgIterationDepth.toFixed(0)
+                : "\u2014"}
+            </td>
+            <td className="px-5 py-2.5 text-right text-text-tertiary">
+              {teamMetrics.avgTokenCost !== null
+                ? `$${teamMetrics.avgTokenCost.toFixed(2)}`
+                : "\u2014"}
+            </td>
+            <td className="px-5 py-2.5 text-right text-text-tertiary">
+              {teamMetrics.avgErrorRecoveryAttempts !== null
+                ? teamMetrics.avgErrorRecoveryAttempts.toFixed(0)
+                : "\u2014"}
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   );
 }
