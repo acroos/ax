@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Fix Stripe success redirect crash
+
+**Pages updated:** none (behavior equivalent, no user-visible wiki facts changed)
+**What changed:** Stripe Checkout `success_url` now points to `/{slug}/billing/success` (a new dashboard route handler) instead of `/{slug}/billing?billing=success`. The handler calls `revalidatePath` to bust stale org-layout caches and then redirects to the billing page with `?billing=success` for the confirmation banner. Previously the page component called `revalidatePath` during render, which Next.js 16 disallows — the first post-checkout load crashed with a Server Components render error and only worked after a manual reload.
+
+---
+
 ## 2026-04-15 — Move Pro to per-seat pricing ($20/seat/month)
 
 **Pages updated:** data-model, rails-server, conventions, dashboard

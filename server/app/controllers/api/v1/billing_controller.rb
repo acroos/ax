@@ -34,7 +34,7 @@ module Api
 
         session = StripeService.create_checkout_session(
           @org,
-          success_url: "#{dashboard_url}/#{@org.slug}/billing?billing=success",
+          success_url: "#{dashboard_url}/#{@org.slug}/billing/success",
           cancel_url: "#{dashboard_url}/#{@org.slug}/billing?billing=canceled"
         )
 

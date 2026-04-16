@@ -1,6 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
 import { fetchAPI, orgApiPath, getBilling, type BillingInfo } from "@/lib/db";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { BillingCard } from "./billing-card";
 
@@ -22,10 +21,6 @@ export default async function BillingPage({
 
   const { slug } = await params;
   const query = await searchParams;
-
-  if (query.billing === "success") {
-    revalidatePath(`/${slug}`, "layout");
-  }
 
   let billing: BillingInfo | null = null;
   let membersData: { members: Member[]; current_user_role: string } | null = null;
