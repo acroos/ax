@@ -66,7 +66,8 @@ GitHub Event → POST /webhooks/github → Validate HMAC-SHA256 signature
                               → Compute line_revisit_rate, ci_success_rate
                               → Settle metrics (merged or abandoned)
   pull_request_review       → Capture first review cycle time (human reviews only)
-  check_suite.completed     → Update ci_success_rate
+  check_suite.completed     → Update per-commit ci_passed, recompute ci_success_rate
+                              (uses commit.pr association, not webhook payload)
 ```
 
 Webhooks are an optimization on top of API backfill. If a webhook is missed, the daily reconciliation job catches the drift.
@@ -124,6 +125,11 @@ When `ax push` arrives, the server looks up the repo by `github_owner + github_r
 ## Periodic Reconciliation
 
 `ReconcileReposJob` runs daily (3am) and enqueues `BackfillRepoJob` for every repo with an active GitHub App. This is the self-healing layer: catches missed webhooks, state drift, and ensures the system converges to GitHub's truth.
+
+`ReconcileCiDataJob` runs every 6 hours and fills CI data gaps that the general backfill can't reach (since finalized PRs are skipped by `BackfillRepoJob`). It does two things:
+
+1. **Backfills missing CI status** — finds commits with `ci_passed = nil` on finalized PRs, re-fetches check suite results from the GitHub API, and sets `ci_passed` for any completed suites
+2. **Recomputes stale rates** — finds finalized PRs with `ci_success_rate = nil` where commits now have `ci_passed` data (filled by webhooks or the backfill above), and recomputes the metric
 
 ## Display Path
 

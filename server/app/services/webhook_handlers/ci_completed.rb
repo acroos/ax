@@ -25,19 +25,12 @@ module WebhookHandlers
         commit.update!(ci_passed: true)
       end
 
-      # Recompute ci_success_rate for each associated PR.
-      # Use update_column to bypass the finalization guard —
-      # late-arriving webhooks should still update settled PRs.
-      prs = @check_suite_data[:pull_requests] || []
-      repo = find_repo(@repo_data)
-      return unless repo
-
-      prs.each do |pr_ref|
-        pr = Pr.find_by(repo: repo, number: pr_ref[:number])
-        next unless pr
-
-        recompute_ci_rate(pr)
-      end
+      # Recompute ci_success_rate for the commit's PR.
+      # Use the commit's PR association rather than the webhook payload's
+      # pull_requests array, which GitHub often leaves empty for merged PRs.
+      # update_column bypasses the finalization guard so late-arriving
+      # webhooks still update settled PRs.
+      recompute_ci_rate(commit.pr) if commit.pr
     end
 
     private

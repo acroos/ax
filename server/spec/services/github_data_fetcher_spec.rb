@@ -77,7 +77,7 @@ RSpec.describe GithubDataFetcher do
       expect { described_class.new(pr).call }.not_to change { PrFile.count }
     end
 
-    context "when check suites are incomplete" do
+    context "when some check suites are incomplete" do
       before do
         stub_request(:get, %r{api\.github\.com/repos/acme/widget/commits/.+/check-suites})
           .to_return(
@@ -93,7 +93,30 @@ RSpec.describe GithubDataFetcher do
           )
       end
 
-      it "does not set ci_passed when any suite is still in progress" do
+      it "sets ci_passed based on completed suites, ignoring in-progress ones" do
+        described_class.new(pr).call
+
+        commit = Commit.find("abc123")
+        expect(commit.ci_passed).to be true
+      end
+    end
+
+    context "when no check suites are completed" do
+      before do
+        stub_request(:get, %r{api\.github\.com/repos/acme/widget/commits/.+/check-suites})
+          .to_return(
+            status: 200,
+            body: {
+              total_count: 1,
+              check_suites: [
+                { id: 1, status: "in_progress", conclusion: nil }
+              ]
+            }.to_json,
+            headers: { "Content-Type" => "application/json" }
+          )
+      end
+
+      it "does not set ci_passed" do
         described_class.new(pr).call
 
         commit = Commit.find("abc123")

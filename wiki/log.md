@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Fix CI success rate data gaps + automatic reconciliation
+
+**Pages updated:** metrics, data-flow
+**What changed:** Fixed two bugs causing CI success rate data to be missing for most finalized PRs. (1) `GithubDataFetcher#fetch_ci_status` had an all-or-nothing guard that skipped all CI data when any check suite was in-progress at finalization time (common — merging triggers new CI runs). Now evaluates completed suites immediately and defers in-progress ones. (2) `CiCompleted` webhook handler relied on GitHub's `check_suite.completed` payload `pull_requests` array for PR lookup, which GitHub often leaves empty for merged PRs. Now uses `commit.pr` association instead. Added `ReconcileCiDataJob` (runs every 6 hours via Solid Queue) that backfills `ci_passed` for commits on finalized PRs that were missed at finalization time, then recomputes `ci_success_rate` for any PR where the rate is still nil but commit data now exists. **Why:** CI success rate was almost always nil because finalization and webhook delivery consistently fell into the gap between these two code paths.
+
+---
+
 ## 2026-04-16 — Overview page visual refresh + windowed metrics API
 
 **Pages updated:** dashboard, metrics, rails-server, data-flow

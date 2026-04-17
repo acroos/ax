@@ -101,10 +101,13 @@ class GithubDataFetcher
     check_suites = response[:check_suites] || []
     return if check_suites.empty?
 
-    # Don't judge CI until all suites have completed
-    return if check_suites.any? { |cs| cs[:status] != "completed" }
+    completed = check_suites.select { |cs| cs[:status] == "completed" }
+    return if completed.empty?
 
-    all_passed = check_suites.all? { |cs| cs[:conclusion] == "success" }
+    # Judge only completed suites — incomplete ones will arrive via
+    # check_suite.completed webhooks and the reconciliation job.
+    # Failure is sticky: any failed suite means ci_passed = false.
+    all_passed = completed.all? { |cs| cs[:conclusion] == "success" }
     commit.update!(ci_passed: all_passed)
   rescue => e
     Rails.logger.warn("[ci_status] Failed to fetch check suites for #{sha}: #{e.message}")
