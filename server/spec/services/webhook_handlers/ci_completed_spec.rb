@@ -61,30 +61,30 @@ RSpec.describe WebhookHandlers::CiCompleted do
 
       before { commit }
 
-      it "recomputes ci_success_rate for associated PRs" do
+      it "recomputes ci_success_rate via the commit's PR association" do
         commit.update!(ci_passed: true)
-        commit2 = create(:commit, sha: "def456", repo: repo, pr: pr, ci_passed: false)
+        create(:commit, sha: "def456", repo: repo, pr: pr, ci_passed: false)
 
-        check_suite = build_check_suite(
-          sha: "abc123",
-          conclusion: "success",
-          pull_requests: [ { number: 1 } ]
-        )
+        check_suite = build_check_suite(sha: "abc123", conclusion: "success")
 
-        described_class.new(check_suite, repo_data, installation: installation).call
+        described_class.new(check_suite, repo_data).call
 
         expect(metrics.reload.ci_success_rate).to eq(0.5)
       end
 
+      it "recomputes even when webhook payload has no pull_requests" do
+        check_suite = build_check_suite(sha: "abc123", conclusion: "success", pull_requests: [])
+
+        described_class.new(check_suite, repo_data).call
+
+        expect(metrics.reload.ci_success_rate).to eq(1.0)
+      end
+
       it "skips rate computation when no commits have ci_passed set" do
-        check_suite = build_check_suite(
-          sha: "abc123",
-          conclusion: "success",
-          pull_requests: [ { number: 1 } ]
-        )
+        check_suite = build_check_suite(sha: "abc123", conclusion: "success")
 
         # ci_passed is nil before the handler runs; after, it's true
-        described_class.new(check_suite, repo_data, installation: installation).call
+        described_class.new(check_suite, repo_data).call
 
         # Only 1 commit with ci_passed set (true), so rate = 1.0
         expect(metrics.reload.ci_success_rate).to eq(1.0)

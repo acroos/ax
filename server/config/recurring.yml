@@ -16,3 +16,6 @@ production:
   reconcile_repos:
     class: ReconcileReposJob
     schedule: at 3am every day
+  reconcile_ci_data:
+    class: ReconcileCiDataJob
+    schedule: every 6 hours

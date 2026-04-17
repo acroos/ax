@@ -15,7 +15,7 @@ Measures the quality of code produced by the agent-human collaboration and the f
 | Metric | Type | Source | What it measures |
 |--------|------|--------|------------------|
 | Post-Open Commits | int | GitHub | Commits pushed after PR was opened. Lower = cleaner first draft. |
-| CI Success Rate | float | GitHub | Fraction of commits on the PR that passed all CI check suites. Per-commit CI status (`ci_passed`) is stored on the `commits` table, fetched via `list_check_suites` per commit SHA. |
+| CI Success Rate | float | GitHub | Fraction of commits on the PR that passed all CI check suites. Per-commit CI status (`ci_passed`) is stored on the `commits` table, fetched via `list_check_suites` per commit SHA. At finalization, completed suites are evaluated immediately; in-progress suites are deferred to webhooks and the `ReconcileCiDataJob`. |
 | Line Revisit Rate | float | GitHub | Files in this PR that were also changed in other PRs finalized within the last 7 days. Higher = unstable areas. |
 | Review Cycle Time | int | GitHub Webhooks | Minutes from PR open to first human review. Lower = faster feedback loop. |
 
@@ -79,7 +79,7 @@ PR opened
 - Late-arriving session data can still enrich already-settled PRs (the normal case — developers push after PRs merge)
 
 ### Scoped write protection
-- **CI-derived** (updatable after finalization): `ci_success_rate` — computed from per-commit `ci_passed` values. Updated via `update_column` by `CiCompleted` webhook handler to handle late-arriving check suite results.
+- **CI-derived** (updatable after finalization): `ci_success_rate` — computed from per-commit `ci_passed` values. Updated via `update_column` by `CiCompleted` webhook handler (uses the commit's PR association, not the webhook payload's `pull_requests` array) and by `ReconcileCiDataJob` (runs every 6 hours) to handle late-arriving check suite results.
 - **GitHub-derived** (locked after finalization): `post_open_commits`, `line_revisit_rate`, `first_review_at`, `review_cycle_time_minutes`
 - **Session-derived** (always updatable via `update_session_metrics!`): `iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`
 
