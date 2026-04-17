@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev --port 3333",
+    "dev:mock": "MOCK_DATA=true next dev --port 3333",
     "build": "next build",
     "start": "next start --port 3333"
   },

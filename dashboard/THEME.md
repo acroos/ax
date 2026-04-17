@@ -51,7 +51,7 @@ Use this as your decision tree. If a token you need isn't here, check whether a 
 | Token                                | Use for                                                |
 | ------------------------------------ | ------------------------------------------------------ |
 | `background` / `foreground`          | The page. Body text on the page.                       |
-| `card` / `card-foreground`           | Raised surfaces: KPI cards, panels, modal bodies.      |
+| `card` / `card-foreground`           | Sunk surfaces: KPI cards, panels, modal bodies. Slightly darker than the page background (wellstone in light, midnight-sunk in dark). Cards have a transparent border by default — override with an explicit border-color class when a visible stroke is needed. |
 | `popover` / `popover-foreground`     | Floating surfaces: tooltips, dropdowns, command menus. |
 | `muted` / `muted-foreground`         | Sunk wells, code blocks, inline metadata, timestamps.  |
 | `secondary` / `secondary-foreground` | Secondary button backgrounds. Subtle chips.            |
@@ -133,9 +133,11 @@ import { Logo, Mark, Wordmark } from "@/components/logo";
 
 **Don't** set the serif for body UI. Keep sans-serif for density and legibility.
 
-**Do** use `shadow-sm` or `shadow-md` on cards. The shadows are warm-tinted (ink, not black), which preserves the aesthetic.
+**Do** use `shadow-sm` or `shadow-md` on cards. The shadows are warm-tinted (ink, not black), which preserves the aesthetic. Cards rely on their sunk background color plus subtle shadow for definition — no border stroke needed.
 
 **Don't** use harsh `shadow-xl` / `shadow-2xl`. The palette is restrained; heavy elevation breaks the "paper" feel.
+
+**Don't** add `border-border` to cards unless you specifically need a visible stroke (e.g., a highlighted plan tier). The default card border is transparent — the sunk background + warm shadow provides enough definition.
 
 ---
 

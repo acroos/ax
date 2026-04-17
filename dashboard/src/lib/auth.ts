@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { isMock, mockUser } from "./mock";
 
 const API_URL = process.env.AX_API_URL || "http://localhost:3000";
 
@@ -17,6 +18,7 @@ export interface CurrentUser {
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
+  if (isMock) return mockUser;
   try {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get("_ax_session")?.value;

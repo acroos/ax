@@ -22,7 +22,6 @@ function MetricCard({
   detail,
   tooltip,
   href,
-  surface = "default",
   delta,
   sparkline,
 }: {
@@ -31,15 +30,12 @@ function MetricCard({
   detail?: string;
   tooltip?: string;
   href?: string;
-  surface?: "default" | "secondary";
   delta?: string;
   sparkline?: SparklinePoint[];
 }) {
   const card = (
     <Card
       className={`gap-0 p-5 transition-colors ${
-        surface === "secondary" ? "bg-secondary" : ""
-      } ${
         href ? "hover:border-primary/30 hover:bg-accent/40 cursor-pointer" : ""
       }`}
     >
@@ -288,7 +284,6 @@ async function OverviewMetricsBody({
             sparkline={spark("post-open-commits")}
             detail="Lower is better"
             href={metricHref("post-open-commits")}
-            surface="secondary"
             {...tip("post-open-commits")}
           />
           <MetricCard
@@ -323,7 +318,6 @@ async function OverviewMetricsBody({
             sparkline={spark("iteration-depth")}
             detail="Human-agent turn pairs"
             href={metricHref("iteration-depth")}
-            surface="secondary"
             {...tip("iteration-depth")}
           />
           <MetricCard
@@ -358,7 +352,6 @@ async function OverviewMetricsBody({
             sparkline={spark("sidechain-rate")}
             detail="Dead-end reasoning paths"
             href={metricHref("sidechain-rate")}
-            surface="secondary"
             {...tip("sidechain-rate")}
           />
           <MetricCard
