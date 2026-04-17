@@ -8,11 +8,7 @@ import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { SectionDivider } from "@/components/section-divider";
 import { Sparkline } from "@/components/sparkline";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ClientTooltip } from "@/components/client-tooltip";
 
 const METRIC_INFO = Object.fromEntries(METRIC_DEFS.map((d) => [d.slug, d]));
 
@@ -60,12 +56,9 @@ function MetricCard({
   );
 
   const tipped = tooltip ? (
-    <Tooltip>
-      <TooltipTrigger asChild>{card}</TooltipTrigger>
-      <TooltipContent side="top" className="max-w-[280px]">
-        <p>{tooltip}</p>
-      </TooltipContent>
-    </Tooltip>
+    <ClientTooltip content={<p>{tooltip}</p>} side="top" className="max-w-[280px]">
+      {card}
+    </ClientTooltip>
   ) : (
     card
   );

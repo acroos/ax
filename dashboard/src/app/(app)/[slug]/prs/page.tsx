@@ -16,11 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ClientTooltip } from "@/components/client-tooltip";
 
 const COLUMN_COUNT = 9;
 
@@ -28,12 +24,9 @@ const COLUMN_COUNT = 9;
 // TableHead's job; this component only provides the trigger.
 function HeaderWithTip({ label, tip }: { label: string; tip: string }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="cursor-default">{label}</span>
-      </TooltipTrigger>
-      <TooltipContent>{tip}</TooltipContent>
-    </Tooltip>
+    <ClientTooltip content={tip}>
+      <span className="cursor-default">{label}</span>
+    </ClientTooltip>
   );
 }
 

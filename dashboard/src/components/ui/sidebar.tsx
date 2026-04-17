@@ -510,6 +510,10 @@ function SidebarMenuButton({
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot.Root : "button";
   const { isMobile, state } = useSidebar();
+  // Defer tooltip rendering until after hydration so the server-rendered HTML
+  // (no tooltip wrapper) matches the initial client render exactly.
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
 
   const button = (
     <Comp
@@ -522,7 +526,7 @@ function SidebarMenuButton({
     />
   );
 
-  if (!tooltip) {
+  if (!tooltip || !mounted) {
     return button;
   }
 
