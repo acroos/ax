@@ -17,7 +17,6 @@ export interface MetricDefEntry {
   unit?: string;
   lowerIsBetter: boolean;
   tooltip: string;
-  goodRange: string;
 }
 
 export const METRIC_DEFS: MetricDefEntry[] = [
@@ -31,8 +30,7 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "int",
     lowerIsBetter: true,
     tooltip:
-      "Commits pushed after the PR was opened. Lower means the initial output was closer to final.",
-    goodRange: "Good: < 2",
+      "How many commits were pushed after the PR was opened — fewer means the agent got it right the first time.",
   },
   {
     slug: "ci-success-rate",
@@ -43,8 +41,7 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "ratio",
     lowerIsBetter: false,
     tooltip:
-      "Fraction of CI checks that pass. 1.0 means all green on every PR.",
-    goodRange: "Good: > 90%",
+      "How often agent-generated code passes CI on the first try — low rates mean the agent is producing code that doesn't build or pass tests.",
   },
   {
     slug: "line-revisit-rate",
@@ -55,8 +52,7 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "float",
     lowerIsBetter: true,
     tooltip:
-      "Files in this PR that were also changed in other recent PRs. Higher means unstable areas are being touched.",
-    goodRange: "Good: < 0.2",
+      "How often the same files get changed across multiple recent PRs — high churn suggests the agent isn't making durable changes.",
   },
   {
     slug: "review-cycle-time",
@@ -68,8 +64,7 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     unit: "min",
     lowerIsBetter: true,
     tooltip:
-      "Minutes from PR open to first human review. Lower means a faster feedback loop.",
-    goodRange: "Good: < 120 min",
+      "How long from PR open to first human review — shorter waits mean faster feedback and less context-switching.",
   },
 
   // Prompt Efficiency
@@ -82,8 +77,7 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "ratio",
     lowerIsBetter: false,
     tooltip:
-      "Ratio of cache-read tokens to total input tokens. Higher means better prompt cache utilization and lower effective cost.",
-    goodRange: "Good: > 70%",
+      "How much of the agent's input was served from cache — higher means you're spending less on repeated context.",
   },
   {
     slug: "iteration-depth",
@@ -94,8 +88,7 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "int",
     lowerIsBetter: true,
     tooltip:
-      "Number of human turns (back-and-forth cycles). Fewer turns means clearer prompting.",
-    goodRange: "Good: < 15",
+      "How many back-and-forth turns it takes to finish a task — fewer means your prompts are clear and the agent stays on track.",
   },
   {
     slug: "token-cost-per-pr",
@@ -107,8 +100,7 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     unit: "$",
     lowerIsBetter: true,
     tooltip:
-      "Dollar cost of all tokens used across correlated sessions, using model-specific pricing.",
-    goodRange: "Good: < $5",
+      "How much you spent on AI tokens to produce this PR — tracks whether the agent is cost-efficient or burning through tokens.",
   },
 
   // Agent Behavior
@@ -121,8 +113,7 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "ratio",
     lowerIsBetter: true,
     tooltip:
-      "Fraction of messages on sidechain branches (backtracking). Lower means fewer dead-end reasoning paths.",
-    goodRange: "Good: < 10%",
+      "How often the agent backtracks down dead-end reasoning paths — lower means less wasted work and faster completions.",
   },
   {
     slug: "re-read-rate",
@@ -133,8 +124,7 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "float",
     lowerIsBetter: true,
     tooltip:
-      "Total file reads divided by unique files read. 1.0 means no re-reads; higher means files are being read redundantly.",
-    goodRange: "Good: < 1.5",
+      "How often the agent re-reads files it already opened — excessive re-reads waste tokens and slow things down.",
   },
   {
     slug: "autonomy-score",
@@ -145,8 +135,7 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     valueType: "float",
     lowerIsBetter: false,
     tooltip:
-      "Ratio of assistant messages to human messages. Higher means the agent works more independently with fewer interventions.",
-    goodRange: "Good: > 3.0",
+      "How much work the agent does between human interventions — higher means it operates independently with less hand-holding.",
   },
 ];
 
