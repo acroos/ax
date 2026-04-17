@@ -1,5 +1,6 @@
 class MetricsAggregator
   WINDOW_DAYS = 7
+  SPARKLINE_DAYS = 30
 
   # Maps dashboard metric slug → pr_metrics column name.
   METRIC_COLUMNS = {
@@ -28,9 +29,12 @@ class MetricsAggregator
     current_scope = @base_scope.where(finalized_at: current_start..now)
     prior_scope   = @base_scope.where(finalized_at: prior_start..current_start)
 
+    sparkline_start = now - SPARKLINE_DAYS.days
+    sparkline_scope = @base_scope.where(finalized_at: sparkline_start..now)
+
     current_aggs    = aggregate(current_scope)
     prior_aggs      = aggregate(prior_scope)
-    sparkline_data  = sparkline(current_scope, current_start, now)
+    sparkline_data  = sparkline(sparkline_scope, sparkline_start, now)
 
     total_prs          = current_scope.count
     session_data_count = current_scope.where.not(token_cost_usd: nil).count
