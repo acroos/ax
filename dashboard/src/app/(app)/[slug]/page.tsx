@@ -21,7 +21,6 @@ function MetricCard({
   value,
   detail,
   tooltip,
-  goodRange,
   href,
   surface = "default",
   delta,
@@ -31,7 +30,6 @@ function MetricCard({
   value: string;
   detail?: string;
   tooltip?: string;
-  goodRange?: string;
   href?: string;
   surface?: "default" | "secondary";
   delta?: string;
@@ -70,9 +68,6 @@ function MetricCard({
       <TooltipTrigger asChild>{card}</TooltipTrigger>
       <TooltipContent side="top" className="max-w-[280px]">
         <p>{tooltip}</p>
-        {goodRange && (
-          <p className="mt-1 text-[11px] opacity-80">{goodRange}</p>
-        )}
       </TooltipContent>
     </Tooltip>
   ) : (
@@ -277,7 +272,7 @@ async function OverviewMetricsBody({
     `/${slug}/metrics/${metricSlug}${repoQuery}`;
   const tip = (metricSlug: string) => {
     const def = METRIC_INFO[metricSlug];
-    return def ? { tooltip: def.tooltip, goodRange: def.goodRange } : {};
+    return def ? { tooltip: def.tooltip } : {};
   };
 
   return (
@@ -301,6 +296,7 @@ async function OverviewMetricsBody({
             value={fmtPct(m("ci-success-rate"))}
             delta={fmtDelta(m("ci-success-rate"), prior("ci-success-rate"), fmtPct)}
             sparkline={spark("ci-success-rate")}
+            detail="First-run pass rate"
             href={metricHref("ci-success-rate")}
             {...tip("ci-success-rate")}
           />
