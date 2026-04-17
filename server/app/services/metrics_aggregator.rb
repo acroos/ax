@@ -1,6 +1,5 @@
 class MetricsAggregator
-  WINDOW_DAYS = 7
-  SPARKLINE_DAYS = 30
+  VALID_WINDOWS = [ 7, 30, 90 ].freeze
 
   # Maps dashboard metric slug → pr_metrics column name.
   METRIC_COLUMNS = {
@@ -17,24 +16,25 @@ class MetricsAggregator
 
   # @param base_scope [ActiveRecord::Relation] a PrMetrics scope already
   #   filtered to the correct org/repo and `metrics_finalized: true`.
-  def initialize(base_scope)
+  # @param window_days [Integer] 7, 30, or 90 — controls current/prior
+  #   comparison windows and sparkline date range.
+  def initialize(base_scope, window_days: 30)
+    raise ArgumentError, "window_days must be one of #{VALID_WINDOWS}" unless VALID_WINDOWS.include?(window_days)
     @base_scope = base_scope
+    @window_days = window_days
   end
 
   def call
     now = Time.current
-    current_start = now - WINDOW_DAYS.days
-    prior_start   = current_start - WINDOW_DAYS.days
+    current_start = now - @window_days.days
+    prior_start   = current_start - @window_days.days
 
     current_scope = @base_scope.where(finalized_at: current_start..now)
     prior_scope   = @base_scope.where(finalized_at: prior_start..current_start)
 
-    sparkline_start = now - SPARKLINE_DAYS.days
-    sparkline_scope = @base_scope.where(finalized_at: sparkline_start..now)
-
     current_aggs    = aggregate(current_scope)
     prior_aggs      = aggregate(prior_scope)
-    sparkline_data  = sparkline(sparkline_scope, sparkline_start, now)
+    sparkline_data  = sparkline(current_scope, current_start, now)
 
     total_prs          = current_scope.count
     session_data_count = current_scope.where.not(token_cost_usd: nil).count

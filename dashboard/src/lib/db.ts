@@ -249,15 +249,17 @@ export async function listPRsWithMetricsAsync(
 export async function getAggregateMetricsAsync(
   repoId?: number,
   orgSlug?: string,
+  range?: string,
 ): Promise<AggregateMetrics> {
+  const rangeParam = range ? `?range=${range}` : "";
   if (repoId) {
     const apiPath = orgSlug
-      ? orgApiPath(orgSlug, `/repos/${repoId}/metrics`)
-      : `/api/v1/repos/${repoId}/metrics`;
+      ? orgApiPath(orgSlug, `/repos/${repoId}/metrics`) + rangeParam
+      : `/api/v1/repos/${repoId}/metrics` + rangeParam;
     return fetchAPI<AggregateMetrics>(apiPath);
   }
   if (orgSlug) {
-    return fetchAPI<AggregateMetrics>(orgApiPath(orgSlug, "/metrics"));
+    return fetchAPI<AggregateMetrics>(orgApiPath(orgSlug, "/metrics") + rangeParam);
   }
   const prs = await listPRsWithMetricsAsync(repoId, orgSlug);
   return computeAggregatesFromPRs(prs);

@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-17 — Dashboard card redesign + time range toggle
+
+**Pages updated:** dashboard
+**What changed:** Redesigned metric cards from flat layout to "stacked narrative" (Option C): label, value, delta pill, hero sparkline (h-16, was h-6), detail text. Sparkline component now uses 200x64 viewBox with subtle area fill. Added 7d/30d/90d range toggle (segmented control in page header, `?range=` query param, default 30d). Range controls sparkline window, delta comparison period, and PR count. Backend `MetricsAggregator` now accepts `window_days:` keyword (7, 30, or 90) instead of hardcoded 7-day window + 30-day sparkline. Delta format changed from "wk/wk" to "vs prior {range}". Mock data generators parameterized for variable sparkline lengths. **Why:** The sparkline — the most compelling data on the dashboard — was too small to read trends. Users need to answer "how are we doing now?" and "what is our trend?" at different time horizons.
+
+---
+
 ## 2026-04-16 — Mock data mode for UI iteration
 
 **Pages updated:** dashboard, conventions

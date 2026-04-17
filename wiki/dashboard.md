@@ -23,7 +23,7 @@ Location: `dashboard/`
 
 | Route | Page | What it shows |
 |-------|------|---------------|
-| `/{slug}` | Org Overview | Windowed (7-day) aggregate metrics grouped by category with section dividers (AX motif), serif metric values, sparklines, and week-over-week deltas. First card per section uses `bg-secondary` for visual rhythm. Clickable cards link to drill-down pages. |
+| `/{slug}` | Org Overview | Aggregate metrics grouped by category with section dividers (AX motif). Cards use a "stacked narrative" layout: serif metric value, delta pill, hero sparkline (h-16), then detail text. A 7d/30d/90d range toggle (`?range=` query param, default 30d) controls the comparison window, sparkline date range, and delta period. Clickable cards link to drill-down pages. |
 | `/{slug}/metrics/[metric]` | Metric Detail | Per-PR breakdown for a single metric: bar chart, summary stats, sortable table, and documentation |
 | `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics and session count column |
 | `/{slug}/settings` | Org Settings | GitHub App installation card (status, connected repos, install/reinstall), members list (role management, removal), and invites (create, list, revoke) |
@@ -48,7 +48,7 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 | `listPRsWithMetricsAsync(repoId?, orgSlug?)` | Finalized PRs with all computed metrics |
 | `getPRWithMetricsAsync(id)` | Single PR with metrics (hits `/api/v1/prs/:id`) |
 | `computeAggregatesFromPRs(prs)` | Compute aggregate metrics from a PR array (no API call). Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior: null, sparkline: [] } } }` — prior/sparkline are only populated by the server. |
-| `getAggregateMetricsAsync(repoId?, orgSlug?)` | Windowed aggregate metrics (7-day current + 7-day prior). Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`. |
+| `getAggregateMetricsAsync(repoId?, orgSlug?, range?)` | Windowed aggregate metrics. `range` is `"7d"`, `"30d"` (default), or `"90d"` — controls both the current/prior comparison windows and the sparkline date range. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`. |
 | `getTimelineAsync(repoId?, orgSlug?)` | Time-series data for trend charts |
 | `listReposAsync(orgSlug?)` | Tracked repositories |
 | `getGithubInstallation(orgSlug)` | Installation state + user role + connected repos |
