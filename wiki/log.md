@@ -4,6 +4,20 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-16 — Mock data mode for UI iteration
+
+**Pages updated:** dashboard, conventions
+**What changed:** Added `MOCK_DATA=true` mode that lets the dashboard run locally without a Rails backend or GitHub OAuth. Intercepts at 4 chokepoints: `getCurrentUser()` returns a mock user, `fetchAPI()` routes to a local mock data module, middleware skips auth, and the API proxy returns mock responses. Mock data includes 150 PRs across 3 repos with realistic metric distributions, 30-day sparklines with tuned trends, 4 org members, billing info, and GitHub installation. Run with `just dashboard-mock` or `npm run dev:mock`. **Why:** UI iteration workflow required starting the Rails server and authenticating via GitHub, which is too heavy for styling and component work.
+
+---
+
+## 2026-04-16 — Sunk card surfaces, remove card border strokes
+
+**Pages updated:** dashboard
+**What changed:** Card surfaces switched from white (`#FFFFFF`) to wellstone (`--color-wellstone`, `#F3EDE0`) in light mode and from midnight-raised to midnight-sunk in dark mode. Cards now appear slightly darker/sunk against the page background instead of raised-white. Visible border stroke removed from base Card component (replaced with `border-transparent` so overrides like the Pro plan card's `border-primary/40` still work). Removed the `surface` prop from overview MetricCard since all cards now share the same sunk surface. Updated THEME.md with new card surface guidance. **Why:** Aligns the dashboard's card treatment with the reference palette's "UI in context" pattern — lighter background with sunk cards, no visible stroke.
+
+---
+
 ## 2026-04-16 — Fix CI success rate data gaps + automatic reconciliation
 
 **Pages updated:** metrics, data-flow

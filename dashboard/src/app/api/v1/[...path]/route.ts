@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { isMock, mockApiRoute } from "@/lib/mock";
 
 const API_URL = process.env.AX_API_URL || "http://localhost:3000";
 
@@ -8,6 +9,11 @@ async function proxy(
   { params }: { params: Promise<{ path: string[] }> },
 ): Promise<NextResponse> {
   const { path } = await params;
+
+  if (isMock) {
+    return mockApiRoute(request.method, path.join("/"), request);
+  }
+
   const search = request.nextUrl.search;
   const target = `${API_URL}/api/v1/${path.join("/")}${search}`;
 

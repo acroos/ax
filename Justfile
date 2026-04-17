@@ -51,6 +51,10 @@ server-migrate:
 dashboard-dev:
     cd dashboard && npm run dev
 
+# Start the dashboard in mock-data mode (no backend needed)
+dashboard-mock:
+    cd dashboard && npm run dev:mock
+
 # Build the dashboard
 dashboard-build:
     cd dashboard && npm run build

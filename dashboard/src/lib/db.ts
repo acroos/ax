@@ -1,5 +1,7 @@
 // --- API client ---
 // The dashboard always fetches from the Rails API (managed mode).
+import { isMock, mockFetchAPI } from "./mock";
+
 const API_URL = process.env.AX_API_URL;
 const API_KEY = process.env.AX_API_KEY || "";
 
@@ -7,6 +9,7 @@ export async function fetchAPI<T>(
   urlPath: string,
   init?: { method?: string; revalidate?: number | false },
 ): Promise<T> {
+  if (isMock) return mockFetchAPI<T>(urlPath, init);
   const url = `${API_URL}${urlPath}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

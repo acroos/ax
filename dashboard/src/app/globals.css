@@ -99,7 +99,7 @@
   /* Surfaces */
   --color-background: var(--color-parchment);
   --color-foreground: var(--color-ink);
-  --color-card: #ffffff;
+  --color-card: var(--color-wellstone);
   --color-card-foreground: var(--color-ink);
   --color-popover: #ffffff;
   --color-popover-foreground: var(--color-ink);
@@ -202,7 +202,7 @@
   /* Surfaces */
   --color-background: var(--color-midnight);
   --color-foreground: #f1e8d6;
-  --color-card: var(--color-midnight-raised);
+  --color-card: var(--color-midnight-sunk);
   --color-card-foreground: #f1e8d6;
   --color-popover: var(--color-midnight-raised);
   --color-popover-foreground: #f1e8d6;

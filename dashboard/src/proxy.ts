@@ -28,6 +28,11 @@ export function proxy(request: NextRequest) {
     requestHeaders.set("x-repo-filter", repoParam);
   }
 
+  // Mock mode: skip auth entirely
+  if (process.env.MOCK_DATA === "true") {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
   // Allow public paths
   if (
     pathname === "/" ||
