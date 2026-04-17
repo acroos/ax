@@ -1,32 +1,25 @@
 import { Skeleton } from "@/components/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
-// Mirrors /[slug]/metrics/[metric]/page.tsx:
-// back link + header + 5 summary stat cards + chart panel + PR table + doc card.
 export default function MetricDetailLoading() {
   return (
     <div>
       {/* Back link */}
       <Skeleton className="mb-6 h-4 w-32" />
 
-      {/* Header */}
+      {/* Header + range toggle */}
       <div className="mb-6 mt-4">
-        <div className="mb-2 flex items-center gap-3">
-          <Skeleton className="h-7 w-64" />
-          <Skeleton className="h-5 w-28 rounded-full" />
+        <div className="flex items-baseline justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-5 w-28 rounded-full" />
+          </div>
+          <Skeleton className="h-8 w-[120px] rounded-lg" />
         </div>
-        <Skeleton className="h-4 w-40" />
+        <Skeleton className="mt-1 h-4 w-40" />
       </div>
 
-      {/* Summary stats: Count / Avg / Median / Min / Max */}
+      {/* Summary stats: Count / Avg / P10 / P50 / P90 */}
       <div className="mb-6 grid grid-cols-5 gap-3">
         {Array.from({ length: 5 }).map((_, i) => (
           <Card key={i} className="p-4 text-center">
@@ -38,49 +31,37 @@ export default function MetricDetailLoading() {
         ))}
       </div>
 
-      {/* Chart panel */}
+      {/* Trend chart */}
       <Card className="mb-6 p-5">
         <CardContent className="p-0">
-          <Skeleton className="mb-4 h-3 w-40" />
-          <Skeleton className="h-64 w-full" />
+          <Skeleton className="mb-4 h-3 w-20" />
+          <Skeleton className="h-[280px] w-full" />
         </CardContent>
       </Card>
 
-      {/* PR table */}
-      <Card className="mb-6 gap-0 overflow-hidden p-0">
-        <div className="border-b border-border px-5 py-3">
-          <Skeleton className="h-3 w-56" />
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {["PR", "Title", "Value", "State"].map((h) => (
-                <TableHead key={h}>
-                  <Skeleton className="h-3 w-12" />
-                </TableHead>
+      {/* Distribution + Notable PRs */}
+      <div className="mb-6 grid grid-cols-2 gap-3">
+        <Card className="p-5">
+          <CardContent className="p-0">
+            <Skeleton className="mb-4 h-3 w-28" />
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-5 w-full" />
               ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <TableRow key={i}>
-                <TableCell>
-                  <Skeleton className="h-4 w-10" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="h-4 w-full max-w-[280px]" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="ml-auto h-4 w-12" />
-                </TableCell>
-                <TableCell>
-                  <Skeleton className="mx-auto h-5 w-16 rounded-full" />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="p-5">
+          <CardContent className="p-0">
+            <Skeleton className="mb-4 h-3 w-24" />
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-5 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* About this metric */}
       <Card className="p-6">
