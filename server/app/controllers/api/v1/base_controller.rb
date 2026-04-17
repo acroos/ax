@@ -48,6 +48,12 @@ module Api
         }, status: :forbidden
       end
 
+      VALID_RANGES = { "7d" => 7, "30d" => 30, "90d" => 90 }.freeze
+
+      def parsed_range
+        VALID_RANGES.fetch(params[:range], 30)
+      end
+
       def history_cutoff
         plan = PlanService.for(@org)
         days = plan.capability(:history_days)

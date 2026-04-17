@@ -16,7 +16,19 @@ import {
   MOCK_MEMBERS,
   MOCK_INVITES,
   getMockAggregatesForRepo,
+  getMockAggregatesForDays,
 } from "./data";
+
+const RANGE_TO_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
+
+function parseRangeDays(urlPath: string): number {
+  const match = urlPath.match(/[?&]range=(\w+)/);
+  return match ? (RANGE_TO_DAYS[match[1]] ?? 30) : 30;
+}
+
+function stripQueryString(urlPath: string): string {
+  return urlPath.split("?")[0];
+}
 
 // ---------------------------------------------------------------------------
 // Server-side router (used by fetchAPI in db.ts)
@@ -31,15 +43,18 @@ export function mockFetchAPI<T>(
     return mockMutationResponse(urlPath, init.method) as T;
   }
 
+  const days = parseRangeDays(urlPath);
+  const cleanPath = stripQueryString(urlPath);
+
   // --- Repo-scoped routes: /api/v1/orgs/:slug/repos/:id/*
-  const repoScoped = urlPath.match(
+  const repoScoped = cleanPath.match(
     /^\/api\/v1\/orgs\/[^/]+\/repos\/(\d+)\/(.+)$/,
   );
   if (repoScoped) {
     const repoId = parseInt(repoScoped[1], 10);
     const sub = repoScoped[2];
     if (sub === "prs") return MOCK_PRS.filter((p) => p.repo_id === repoId) as T;
-    if (sub === "metrics") return getMockAggregatesForRepo(repoId) as T;
+    if (sub === "metrics") return getMockAggregatesForRepo(repoId, days) as T;
     if (sub === "repo-metrics") return MOCK_REPO_METRICS as T;
     if (sub === "timeline")
       return MOCK_TIMELINE.filter((t) => {
@@ -49,12 +64,12 @@ export function mockFetchAPI<T>(
   }
 
   // --- Org-scoped routes: /api/v1/orgs/:slug/*
-  const orgScoped = urlPath.match(/^\/api\/v1\/orgs\/[^/]+\/(.+)$/);
+  const orgScoped = cleanPath.match(/^\/api\/v1\/orgs\/[^/]+\/(.+)$/);
   if (orgScoped) {
     const sub = orgScoped[1];
     if (sub === "repos") return MOCK_REPOS as T;
     if (sub === "prs") return MOCK_PRS as T;
-    if (sub === "metrics") return MOCK_AGGREGATES as T;
+    if (sub === "metrics") return getMockAggregatesForDays(days) as T;
     if (sub === "billing") return MOCK_BILLING as T;
     if (sub === "github_installation") return MOCK_INSTALLATION as T;
     if (sub === "github_installation/install_url") return { install_url: "#" } as T;

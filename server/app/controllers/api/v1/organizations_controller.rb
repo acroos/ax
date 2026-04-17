@@ -50,7 +50,7 @@ module Api
           .joins(pr: :repo)
           .where(repos: { organization_id: @org.id }, metrics_finalized: true)
 
-        render json: MetricsAggregator.new(scope).call
+        render json: MetricsAggregator.new(scope, window_days: parsed_range).call
       end
 
       private

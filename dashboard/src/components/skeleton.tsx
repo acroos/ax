@@ -12,19 +12,17 @@ export function Skeleton({
   return <ShadcnSkeleton className={className} style={style} />;
 }
 
-// Metric card skeleton — matches the `Card` shape used on the org overview
-// and metric-detail summary stats. Label, value, optional detail.
-export function SkeletonMetricCard({
-  showDetail = true,
-}: {
-  showDetail?: boolean;
-}) {
+// Metric card skeleton — matches the Option C stacked narrative layout:
+// label, value, delta pill, sparkline hero, detail.
+export function SkeletonMetricCard() {
   return (
     <Card className="p-5">
       <CardContent className="p-0">
         <Skeleton className="mb-3 h-3 w-24" />
         <Skeleton className="mb-2 h-7 w-20" />
-        {showDetail && <Skeleton className="h-3 w-32" />}
+        <Skeleton className="mb-3 h-4 w-28 rounded-full" />
+        <Skeleton className="mb-2 h-16 w-full" />
+        <Skeleton className="h-3 w-32" />
       </CardContent>
     </Card>
   );

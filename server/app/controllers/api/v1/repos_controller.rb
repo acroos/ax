@@ -25,7 +25,7 @@ module Api
           .joins(:pr)
           .where(prs: { repo_id: @repo.id }, metrics_finalized: true)
 
-        result = MetricsAggregator.new(scope).call
+        result = MetricsAggregator.new(scope, window_days: parsed_range).call
 
         repo_met = ::RepoMetrics.where(repo: @repo).order(computed_at: :desc).first
         result[:unmergedCostUSD] = repo_met&.unmerged_cost_usd

@@ -224,25 +224,25 @@ type SparklineConfig = {
   clampMax?: number;
 };
 
-function generateSparkline(cfg: SparklineConfig): SparklinePoint[] {
+function generateSparkline(cfg: SparklineConfig, days = 30): SparklinePoint[] {
   const points: SparklinePoint[] = [];
-  for (let i = 0; i < 30; i++) {
-    const raw = cfg.base + cfg.trend * (i / 29) + (rand() - 0.5) * cfg.noise;
+  for (let i = 0; i < days; i++) {
+    const raw = cfg.base + cfg.trend * (i / (days - 1)) + (rand() - 0.5) * cfg.noise;
     const clamped = Math.min(cfg.clampMax ?? Infinity, Math.max(cfg.clampMin ?? -Infinity, raw));
     points.push({
-      t: daysAgo(29 - i),
+      t: daysAgo(days - 1 - i),
       v: Math.round(clamped * 1000) / 1000,
     });
   }
   return points;
 }
 
-function aggregateFromSparkline(sparkline: SparklinePoint[]): MetricAggregate {
-  const last7 = sparkline.slice(-7).map((p) => p.v).filter((v): v is number => v !== null);
-  const prior7 = sparkline.slice(-14, -7).map((p) => p.v).filter((v): v is number => v !== null);
+function aggregateFromSparkline(sparkline: SparklinePoint[], windowDays = 30): MetricAggregate {
+  const currentSlice = sparkline.slice(-windowDays).map((p) => p.v).filter((v): v is number => v !== null);
+  const priorSlice = sparkline.slice(-windowDays * 2, -windowDays).map((p) => p.v).filter((v): v is number => v !== null);
   const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
-  const current = avg(last7);
-  const prior = avg(prior7);
+  const current = avg(currentSlice);
+  const prior = avg(priorSlice);
   return {
     current: current !== null ? Math.round(current * 100) / 100 : null,
     prior: prior !== null ? Math.round(prior * 100) / 100 : null,
@@ -262,7 +262,7 @@ const SPARKLINE_CONFIGS: Record<string, SparklineConfig> = {
   "autonomy-score": { base: 6.5, trend: 1.5, noise: 1.2, clampMin: 0 },
 };
 
-function buildAggregateMetrics(prs: PRWithMetrics[]): AggregateMetrics {
+function buildAggregateMetrics(prs: PRWithMetrics[], days = 30): AggregateMetrics {
   const totalPRs = prs.length;
   const sessionDataCount = prs.filter(
     (p) => p.metrics && p.metrics.token_cost_usd !== null,
@@ -270,7 +270,13 @@ function buildAggregateMetrics(prs: PRWithMetrics[]): AggregateMetrics {
 
   const metrics: Record<string, MetricAggregate> = {};
   for (const [slug, cfg] of Object.entries(SPARKLINE_CONFIGS)) {
-    metrics[slug] = aggregateFromSparkline(generateSparkline(cfg));
+    // Generate 2x the window so aggregateFromSparkline can compute both
+    // current and prior averages. The sparkline returned to the client
+    // only covers the current window (last `days` points).
+    const fullSparkline = generateSparkline(cfg, days * 2);
+    const agg = aggregateFromSparkline(fullSparkline, days);
+    agg.sparkline = fullSparkline.slice(-days);
+    metrics[slug] = agg;
   }
 
   return { totalPRs, sessionDataCount, metrics };
@@ -278,12 +284,16 @@ function buildAggregateMetrics(prs: PRWithMetrics[]): AggregateMetrics {
 
 export const MOCK_AGGREGATES: AggregateMetrics = buildAggregateMetrics(MOCK_PRS);
 
+export function getMockAggregatesForDays(days: number): AggregateMetrics {
+  return buildAggregateMetrics(MOCK_PRS, days);
+}
+
 // Per-repo aggregates (same sparkline shapes, slightly different seeds)
-export function getMockAggregatesForRepo(repoId: number): AggregateMetrics {
+export function getMockAggregatesForRepo(repoId: number, days = 30): AggregateMetrics {
   const repoPrs = MOCK_PRS.filter((p) => p.repo_id === repoId);
-  // Re-use the org-level sparklines but adjust totals
+  const base = buildAggregateMetrics(repoPrs, days);
   return {
-    ...MOCK_AGGREGATES,
+    ...base,
     totalPRs: repoPrs.length,
     sessionDataCount: repoPrs.filter(
       (p) => p.metrics && p.metrics.token_cost_usd !== null,
