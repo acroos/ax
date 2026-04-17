@@ -8,8 +8,7 @@ import { BooleanMetricSummary } from "@/components/boolean-metric-summary";
 import { Markdown } from "@/components/markdown";
 import {
   MetricTrendChart,
-  type TrendPoint,
-  type ChartSlot,
+  type DailyPoint,
 } from "@/components/metric-trend-chart";
 import { RangeToggle, type Range } from "@/components/range-toggle";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
@@ -23,7 +22,6 @@ import {
   getMetricDef,
   type MetricDefEntry,
 } from "@/lib/metric-defs";
-import { chartColor } from "@/lib/chart-theme";
 
 const metricsDir = path.join(process.cwd(), "..", "docs", "metrics");
 
@@ -34,12 +32,6 @@ const metricsDir = path.join(process.cwd(), "..", "docs", "metrics");
 const VALID_RANGES: Range[] = ["7d", "30d", "90d"];
 const RANGE_DAYS: Record<Range, number> = { "7d": 7, "30d": 30, "90d": 90 };
 
-const CATEGORY_CHART_SLOT: Record<string, ChartSlot> = {
-  "Output Quality": 1,
-  "Prompt Efficiency": 2,
-  "Agent Behavior": 3,
-  "Planning Effectiveness": 4,
-};
 
 // ---------------------------------------------------------------------------
 // Utility functions
@@ -96,26 +88,39 @@ function filterByRange(values: PRValue[], range: Range): PRValue[] {
   return values.filter((v) => v.timestamp >= cutoff);
 }
 
-/**
- * Rolling average: for each PR (sorted by date), the window is the larger of
- * all PRs within the last 7 days or the 10 most recent PRs.
- */
-function computeRollingAvgs(sorted: PRValue[]): number[] {
-  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-  return sorted.map((point, i) => {
-    const timeStart = point.timestamp - SEVEN_DAYS_MS;
-    let timeCount = 0;
-    for (let j = i; j >= 0; j--) {
-      if (sorted[j].timestamp >= timeStart) timeCount++;
-      else break;
+/** Group PRs by calendar day and compute per-day averages + ranges. */
+function aggregateByDay(values: PRValue[]): DailyPoint[] {
+  const byDay = new Map<
+    string,
+    { vals: number[]; ts: number }
+  >();
+  for (const v of values) {
+    const dayKey = new Date(v.timestamp).toISOString().slice(0, 10);
+    const existing = byDay.get(dayKey);
+    if (existing) {
+      existing.vals.push(v.value);
+    } else {
+      byDay.set(dayKey, {
+        vals: [v.value],
+        ts: new Date(dayKey + "T12:00:00Z").getTime(),
+      });
     }
-    const countWindowSize = Math.min(i + 1, 10);
-    const windowSize = Math.max(timeCount, countWindowSize);
-    const start = Math.max(0, i + 1 - windowSize);
-    let sum = 0;
-    for (let j = start; j <= i; j++) sum += sorted[j].value;
-    return sum / (i - start + 1);
-  });
+  }
+  return [...byDay.values()]
+    .map((d) => {
+      const avg = d.vals.reduce((s, v) => s + v, 0) / d.vals.length;
+      const min = Math.min(...d.vals);
+      const max = Math.max(...d.vals);
+      return {
+        timestamp: d.ts,
+        avg,
+        min,
+        max,
+        count: d.vals.length,
+        range: [avg - min, max - avg] as [number, number],
+      };
+    })
+    .sort((a, b) => a.timestamp - b.timestamp);
 }
 
 // ---------------------------------------------------------------------------
@@ -253,7 +258,6 @@ export default async function MetricDetailPage({
   }
 
   const backHref = repoId ? `/${slug}?repo=${repoId}` : `/${slug}`;
-  const colorSlot = CATEGORY_CHART_SLOT[def.category] ?? 1;
   const prsPromise = listPRsWithMetricsAsync(repoId, slug).catch(
     () => [] as PRWithMetrics[],
   );
@@ -294,7 +298,6 @@ export default async function MetricDetailPage({
               promise={prsPromise}
               def={def}
               range={range}
-              colorSlot={colorSlot}
               slug={slug}
             />
           </Suspense>
@@ -358,13 +361,11 @@ async function MetricDataSections({
   promise,
   def,
   range,
-  colorSlot,
   slug,
 }: {
   promise: Promise<PRWithMetrics[]>;
   def: MetricDefEntry;
   range: Range;
-  colorSlot: ChartSlot;
   slug: string;
 }) {
   const prs = await promise;
@@ -387,37 +388,33 @@ async function MetricDataSections({
   const p50 = percentile(sorted, 50);
   const p90 = percentile(sorted, 90);
 
-  // Prior period average for delta
+  // Prior period for deltas
   const days = RANGE_DAYS[range];
   const rangeStart = Date.now() - days * 24 * 60 * 60 * 1000;
   const priorStart = rangeStart - days * 24 * 60 * 60 * 1000;
   const priorValues = allValues.filter(
     (v) => v.timestamp >= priorStart && v.timestamp < rangeStart,
   );
-  const priorAvg =
-    priorValues.length > 0
-      ? priorValues.reduce((s, v) => s + v.value, 0) / priorValues.length
-      : null;
+  const priorNums = priorValues.map((v) => v.value);
+  const priorSorted = [...priorNums].sort((a, b) => a - b);
 
-  let delta: string | undefined;
-  if (priorAvg !== null) {
-    const diff = avg - priorAvg;
-    if (Math.abs(diff) >= 0.005) {
-      const arrow = diff > 0 ? "\u2191" : "\u2193";
-      delta = `${arrow} ${formatMetricValue(Math.abs(diff), def)} vs prior ${range}`;
-    }
+  function makeDelta(current: number, prior: number | null): string | undefined {
+    if (prior === null) return undefined;
+    const diff = current - prior;
+    if (Math.abs(diff) < 0.005) return `\u2014 no change vs prior ${range}`;
+    const arrow = diff > 0 ? "\u2191" : "\u2193";
+    return `${arrow} ${formatMetricValue(Math.abs(diff), def)} vs prior ${range}`;
   }
 
+  const priorAvg = priorNums.length > 0
+    ? priorNums.reduce((s, v) => s + v, 0) / priorNums.length
+    : null;
+  const priorP10 = priorSorted.length > 0 ? percentile(priorSorted, 10) : null;
+  const priorP50 = priorSorted.length > 0 ? percentile(priorSorted, 50) : null;
+  const priorP90 = priorSorted.length > 0 ? percentile(priorSorted, 90) : null;
+
   // -- Trend chart data --
-  const rollingAvgs = computeRollingAvgs(values);
-  const trendData: TrendPoint[] = values.map((v, i) => ({
-    timestamp: v.timestamp,
-    value: v.value,
-    rollingAvg: rollingAvgs[i],
-    prNumber: v.prNumber,
-    prId: v.prId,
-    title: v.title,
-  }));
+  const dailyData = aggregateByDay(values);
 
   // -- Distribution --
   const distribution = computeDistribution(numericValues, def);
@@ -433,10 +430,10 @@ async function MetricDataSections({
 
   const stats: { label: string; value: string; delta?: string }[] = [
     { label: "Count", value: String(values.length) },
-    { label: "Average", value: formatMetricValue(avg, def), delta },
-    { label: "P10", value: formatMetricValue(p10, def) },
-    { label: "P50", value: formatMetricValue(p50, def) },
-    { label: "P90", value: formatMetricValue(p90, def) },
+    { label: "Average", value: formatMetricValue(avg, def), delta: makeDelta(avg, priorAvg) },
+    { label: "P10", value: formatMetricValue(p10, def), delta: makeDelta(p10, priorP10) },
+    { label: "P50", value: formatMetricValue(p50, def), delta: makeDelta(p50, priorP50) },
+    { label: "P90", value: formatMetricValue(p90, def), delta: makeDelta(p90, priorP90) },
   ];
 
   return (
@@ -469,8 +466,7 @@ async function MetricDataSections({
             Trend
           </h2>
           <MetricTrendChart
-            data={trendData}
-            colorSlot={colorSlot}
+            dailyData={dailyData}
             unit={def.unit}
             isRatio={def.valueType === "ratio"}
             average={avg}
@@ -485,7 +481,7 @@ async function MetricDataSections({
             <h2 className="mb-4 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
               Distribution
             </h2>
-            <Distribution data={distribution} colorSlot={colorSlot} />
+            <Distribution data={distribution} />
           </CardContent>
         </Card>
         <Card className="p-5">
@@ -539,13 +535,7 @@ async function BooleanPanel({
 // Presentational components (server-rendered)
 // ---------------------------------------------------------------------------
 
-function Distribution({
-  data,
-  colorSlot,
-}: {
-  data: DistBucket[];
-  colorSlot: ChartSlot;
-}) {
+function Distribution({ data }: { data: DistBucket[] }) {
   if (data.length === 0) {
     return (
       <div className="flex h-32 items-center justify-center text-[12px] text-muted-foreground">
@@ -563,11 +553,10 @@ function Distribution({
           </span>
           <div className="relative h-5 flex-1 overflow-hidden rounded bg-muted">
             <div
-              className="absolute inset-y-0 left-0 rounded"
+              className="absolute inset-y-0 left-0 rounded bg-clay-600 dark:bg-clay-dark-500"
               style={{
                 width: `${Math.max(bucket.pct * 100, bucket.count > 0 ? 4 : 0)}%`,
-                backgroundColor: chartColor(colorSlot),
-                opacity: 0.65,
+                opacity: 0.75,
               }}
             />
           </div>

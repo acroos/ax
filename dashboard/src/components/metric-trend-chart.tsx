@@ -1,34 +1,29 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import {
   ComposedChart,
+  ErrorBar,
   Line,
   ReferenceLine,
   XAxis,
   YAxis,
   Tooltip,
 } from "recharts";
-import {
-  ChartConfig,
-  ChartContainer,
-} from "@/components/ui/chart";
-import { chartColor, themeVar } from "@/lib/chart-theme";
+import { ChartConfig, ChartContainer } from "@/components/ui/chart";
+import { themeVar } from "@/lib/chart-theme";
 
-export type ChartSlot = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
-
-export interface TrendPoint {
+export interface DailyPoint {
   timestamp: number;
-  value: number;
-  rollingAvg: number;
-  prNumber: number;
-  prId: number;
-  title: string;
+  avg: number;
+  min: number;
+  max: number;
+  count: number;
+  /** [avg − min, max − avg] — used by recharts ErrorBar */
+  range: [number, number];
 }
 
 interface MetricTrendChartProps {
-  data: TrendPoint[];
-  colorSlot?: ChartSlot;
+  dailyData: DailyPoint[];
   unit?: string;
   height?: number;
   isRatio?: boolean;
@@ -48,7 +43,7 @@ function TrendTooltip({
   fmt,
 }: {
   active?: boolean;
-  payload?: Array<{ payload: TrendPoint }>;
+  payload?: Array<{ payload: DailyPoint }>;
   fmt: (v: number) => string;
 }) {
   if (!active || !payload?.length) return null;
@@ -58,26 +53,25 @@ function TrendTooltip({
   return (
     <div className="rounded-lg border border-border bg-popover px-3 py-2 shadow-md">
       <div className="text-[13px] font-medium text-popover-foreground">
-        PR #{point.prNumber}
+        {formatDate(point.timestamp)}
       </div>
-      <div className="mb-1.5 text-[11px] text-muted-foreground">
-        {new Date(point.timestamp).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })}
-      </div>
-      <div className="space-y-0.5">
+      <div className="mt-1 space-y-0.5">
         <div className="flex items-center justify-between gap-4 text-[12px]">
-          <span className="text-muted-foreground">Value</span>
+          <span className="text-muted-foreground">Daily avg</span>
           <span className="font-mono font-medium text-popover-foreground">
-            {fmt(point.value)}
+            {fmt(point.avg)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-4 text-[12px]">
-          <span className="text-muted-foreground">Trend</span>
+          <span className="text-muted-foreground">Range</span>
           <span className="font-mono text-muted-foreground">
-            {fmt(point.rollingAvg)}
+            {fmt(point.min)} – {fmt(point.max)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4 text-[12px]">
+          <span className="text-muted-foreground">PRs</span>
+          <span className="font-mono text-muted-foreground">
+            {point.count}
           </span>
         </div>
       </div>
@@ -86,16 +80,13 @@ function TrendTooltip({
 }
 
 export function MetricTrendChart({
-  data,
-  colorSlot = 1,
+  dailyData,
   unit = "",
   height = 280,
   isRatio = false,
   average,
 }: MetricTrendChartProps) {
-  const router = useRouter();
-
-  if (data.length === 0) {
+  if (dailyData.length === 0) {
     return (
       <div
         className="flex items-center justify-center text-[13px] text-muted-foreground"
@@ -118,14 +109,16 @@ export function MetricTrendChart({
       ? (v: number) => `$${v}`
       : undefined;
 
+  // Use darker clay for light mode (clay-600 has ~6.8:1 contrast on
+  // wellstone) and brighter clay for dark mode. The default chart-1
+  // slot is too warm-on-warm for thin lines in light mode.
   const config: ChartConfig = {
-    value: {
-      label: "Value",
-      color: chartColor(colorSlot),
-    },
-    rollingAvg: {
-      label: "Trend",
-      color: chartColor(colorSlot),
+    avg: {
+      label: "Daily Average",
+      theme: {
+        light: "var(--color-clay-600)",
+        dark: "var(--color-clay-dark-500)",
+      },
     },
   };
 
@@ -136,15 +129,8 @@ export function MetricTrendChart({
       style={{ height }}
     >
       <ComposedChart
-        data={data}
+        data={dailyData}
         margin={{ top: 8, right: 32, bottom: 0, left: -20 }}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onClick={(state: any) => {
-          if (state?.activePayload?.[0]?.payload?.prId) {
-            router.push(`/prs/${state.activePayload[0].payload.prId}`);
-          }
-        }}
-        style={{ cursor: "pointer" }}
       >
         <XAxis
           dataKey="timestamp"
@@ -164,9 +150,7 @@ export function MetricTrendChart({
           tickFormatter={yTickFormatter}
           domain={isRatio ? [0, 1] : undefined}
         />
-        <Tooltip
-          content={<TrendTooltip fmt={fmt} />}
-        />
+        <Tooltip content={<TrendTooltip fmt={fmt} />} />
         {average !== undefined && (
           <ReferenceLine
             y={average}
@@ -181,36 +165,32 @@ export function MetricTrendChart({
             }}
           />
         )}
-        {/* Rolling average — rendered first so dots layer on top */}
+        {/* Daily average line with range candles */}
         <Line
-          dataKey="rollingAvg"
-          stroke="var(--color-rollingAvg)"
-          strokeWidth={2}
-          strokeOpacity={0.45}
-          dot={false}
+          dataKey="avg"
           type="monotone"
-          isAnimationActive={false}
-          connectNulls
-        />
-        {/* Individual values as dots */}
-        <Line
-          dataKey="value"
-          stroke="transparent"
-          strokeWidth={0}
-          dot={{
-            r: 4,
-            fill: "var(--color-value)",
-            fillOpacity: 0.85,
-            strokeWidth: 0,
-          }}
+          stroke="var(--color-avg)"
+          strokeWidth={2.5}
+          dot={false}
           activeDot={{
-            r: 6,
-            fill: "var(--color-value)",
+            r: 5,
+            fill: "var(--color-avg)",
             stroke: themeVar("card"),
             strokeWidth: 2,
           }}
           isAnimationActive={false}
-        />
+          connectNulls
+        >
+          {/* Renders min–max whiskers; single-PR days get width-only
+              caps (a horizontal tick) since range is [0, 0]. */}
+          <ErrorBar
+            dataKey="range"
+            width={6}
+            strokeWidth={2}
+            stroke="var(--color-avg)"
+            opacity={0.55}
+          />
+        </Line>
       </ComposedChart>
     </ChartContainer>
   );
