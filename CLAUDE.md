@@ -100,6 +100,7 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [013 — GitHub Integration Model](docs/decisions/013-github-integration-model.md): Dual-app architecture — OAuth App for login, GitHub App for repo access and webhook delivery. Relevant to any managed-service auth or repo ingestion work.
 - [014 — Remove Local Mode](docs/decisions/014-remove-local-mode.md): Managed-only architecture. Supersedes ADR-003, ADR-007. CLI is a thin push client, metrics computed server-side.
 - [015 — Design System & shadcn/ui](docs/decisions/015-design-system-and-shadcn.md): Parchment & Clay theme + shadcn/ui as the primitive component library. Amends ADR-006. **Read before any dashboard styling work.**
+- [016 — Teams within Orgs](docs/decisions/016-teams-within-orgs.md): Teams as people-groups within orgs for metric scoping and access control. Pro-only. Relevant when working on team management, team-scoped metrics, or org access control.
 - [Open Questions](docs/decisions/open-questions.md): Pending decisions (CI images, PR author tracking, etc.)
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.

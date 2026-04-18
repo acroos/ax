@@ -126,6 +126,7 @@ export interface PRMetrics {
 
 export interface PRWithMetrics extends PR {
   metrics: PRMetrics | null;
+  author: string | null;
   github_owner: string | null;
   github_repo: string | null;
   session_count: number;
@@ -207,6 +208,73 @@ export async function requestGithubInstallUrl(
   return fetchAPI<{ install_url: string }>(
     orgApiPath(orgSlug, "/github_installation/install_url"),
     { method: "POST", revalidate: false },
+  );
+}
+
+// --- Teams ---
+
+export interface Team {
+  id: number;
+  slug: string;
+  name: string;
+  parent_team_slug: string | null;
+  member_count: number;
+  child_team_count: number;
+}
+
+export interface TeamMember {
+  id: number;
+  org_membership_id: number;
+  user: {
+    id: number;
+    github_username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
+}
+
+export interface TeamDetail extends Team {
+  members: TeamMember[];
+  child_teams: Team[];
+}
+
+export async function listTeamsAsync(orgSlug: string): Promise<Team[]> {
+  return fetchAPI<Team[]>(orgApiPath(orgSlug, "/teams"));
+}
+
+export async function getTeamAsync(
+  orgSlug: string,
+  teamSlug: string,
+): Promise<TeamDetail> {
+  return fetchAPI<TeamDetail>(orgApiPath(orgSlug, `/teams/${teamSlug}`));
+}
+
+export async function getTeamMetricsAsync(
+  orgSlug: string,
+  teamSlug: string,
+  range?: string,
+): Promise<AggregateMetrics> {
+  const rangeParam = range ? `?range=${range}` : "";
+  return fetchAPI<AggregateMetrics>(
+    orgApiPath(orgSlug, `/teams/${teamSlug}/metrics`) + rangeParam,
+  );
+}
+
+export async function listTeamPRsAsync(
+  orgSlug: string,
+  teamSlug: string,
+): Promise<PRWithMetrics[]> {
+  return fetchAPI<PRWithMetrics[]>(
+    orgApiPath(orgSlug, `/teams/${teamSlug}/prs`),
+  );
+}
+
+export async function listTeamMembersAsync(
+  orgSlug: string,
+  teamSlug: string,
+): Promise<TeamMember[]> {
+  return fetchAPI<TeamMember[]>(
+    orgApiPath(orgSlug, `/teams/${teamSlug}/members`),
   );
 }
 

@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { MembersSection, type Member } from "./members-section";
 import { InvitesSection, type Invite } from "./invites-section";
 import { GitHubAppCard } from "./github-app-card";
+import { TeamsSection } from "./teams-section";
+import { listTeamsAsync, type Team } from "@/lib/db";
 import { Skeleton } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,6 +47,13 @@ export default async function OrgSettingsPage({
   );
   const invitesPromise = fetchSafe<Invite[]>(orgApiPath(slug, "/invites"));
 
+  // Teams (Pro-only, will 403 on free plan — catch and return empty)
+  const currentOrg = user.organizations.find((o) => o.slug === slug);
+  const isProPlan = currentOrg?.plan === "pro" && !currentOrg?.is_personal;
+  const teamsPromise = isProPlan
+    ? listTeamsAsync(slug).catch(() => [])
+    : Promise.resolve([]);
+
   return (
     <div className="space-y-8">
       <div>
@@ -78,6 +87,18 @@ export default async function OrgSettingsPage({
           />
         </Suspense>
       </SectionErrorBoundary>
+
+      {isProPlan && (
+        <SectionErrorBoundary fallback={<SettingsCardSkeleton rows={3} />}>
+          <Suspense fallback={<SettingsCardSkeleton rows={3} />}>
+            <AsyncTeamsSection
+              slug={slug}
+              membersPromise={membersPromise}
+              teamsPromise={teamsPromise}
+            />
+          </Suspense>
+        </SectionErrorBoundary>
+      )}
 
       <SectionErrorBoundary fallback={<SettingsCardSkeleton rows={2} />}>
         <Suspense fallback={<SettingsCardSkeleton rows={2} />}>
@@ -187,4 +208,18 @@ async function AsyncInvitesSection({
   return (
     <InvitesSection invites={invites ?? []} isAdmin={isAdmin} slug={slug} />
   );
+}
+
+async function AsyncTeamsSection({
+  slug,
+  membersPromise,
+  teamsPromise,
+}: {
+  slug: string;
+  membersPromise: Promise<MembersResponse | null>;
+  teamsPromise: Promise<Team[]>;
+}) {
+  const [members, teams] = await Promise.all([membersPromise, teamsPromise]);
+  const isAdmin = resolveIsAdmin(members, null);
+  return <TeamsSection teams={teams} isAdmin={isAdmin} slug={slug} />;
 }

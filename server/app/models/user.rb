@@ -24,4 +24,9 @@ class User < ApplicationRecord
   def admin_or_owner_of?(org)
     org_memberships.exists?(organization: org, role: %w[admin owner])
   end
+
+  def teams_in(org)
+    Team.joins(:team_memberships)
+        .where(team_memberships: { org_membership_id: org_memberships.where(organization: org).select(:id) })
+  end
 end

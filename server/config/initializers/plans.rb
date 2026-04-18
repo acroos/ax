@@ -6,7 +6,8 @@ PLANS = {
     core_metrics: true,
     github_integration: true,
     export_data: false,
-    priority_support: false
+    priority_support: false,
+    teams: false
   }.freeze,
   "pro" => {
     max_members: Float::INFINITY,
@@ -15,6 +16,7 @@ PLANS = {
     core_metrics: true,
     github_integration: true,
     export_data: true,
-    priority_support: true
+    priority_support: true,
+    teams: true
   }.freeze
 }.freeze

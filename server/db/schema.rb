@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_16_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_18_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -395,6 +395,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_16_120000) do
     t.index ["stripe_subscription_id"], name: "index_subscriptions_on_stripe_subscription_id", unique: true
   end
 
+  create_table "team_memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "org_membership_id", null: false
+    t.bigint "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["org_membership_id"], name: "index_team_memberships_on_org_membership_id"
+    t.index ["team_id", "org_membership_id"], name: "index_team_memberships_on_team_id_and_org_membership_id", unique: true
+    t.index ["team_id"], name: "index_team_memberships_on_team_id"
+  end
+
+  create_table "teams", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.string "name", null: false
+    t.bigint "organization_id", null: false
+    t.bigint "parent_team_id"
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_teams_on_created_by_id"
+    t.index ["organization_id", "slug"], name: "index_teams_on_organization_id_and_slug", unique: true
+    t.index ["organization_id"], name: "index_teams_on_organization_id"
+    t.index ["parent_team_id"], name: "index_teams_on_parent_team_id"
+  end
+
   create_table "user_sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "expires_at", null: false
@@ -467,6 +491,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_16_120000) do
   add_foreign_key "solid_queue_recurring_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_scheduled_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "subscriptions", "organizations"
+  add_foreign_key "team_memberships", "org_memberships"
+  add_foreign_key "team_memberships", "teams"
+  add_foreign_key "teams", "organizations"
+  add_foreign_key "teams", "teams", column: "parent_team_id"
+  add_foreign_key "teams", "users", column: "created_by_id"
   add_foreign_key "user_sessions", "users"
   add_foreign_key "watched_repos", "repos"
 end

@@ -28,6 +28,11 @@ Location: `dashboard/`
 | `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics and session count column |
 | `/{slug}/settings` | Org Settings | GitHub App installation card (status, connected repos, install/reinstall), members list (role management, removal), and invites (create, list, revoke) |
 | `/{slug}/billing` | Billing | Current plan badge, seat count and monthly total (Pro), usage bars (members vs purchased seats, repos vs limits), upgrade/manage buttons, feature comparison for free plan |
+| `/{slug}/teams` | Teams Index | List of teams in the org (Pro only) |
+| `/{slug}/teams/{team}` | Team Overview | Aggregate metrics for a team (mirrors org overview, scoped to team members) |
+| `/{slug}/teams/{team}/prs` | Team PR List | PRs authored by team members |
+| `/{slug}/teams/{team}/metrics/{metric}` | Team Metric Detail | Per-PR breakdown for a metric, scoped to team |
+| `/{slug}/settings/teams/{team}` | Team Edit | Edit team name, manage team members (admin only) |
 
 ### Auth Routes
 
@@ -54,6 +59,11 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 | `getGithubInstallation(orgSlug)` | Installation state + user role + connected repos |
 | `requestGithubInstallUrl(orgSlug)` | Signed GitHub App install URL |
 | `getBilling(orgSlug)` | Plan details, subscription status, usage counts |
+| `listTeams(orgSlug)` | Teams in the org |
+| `getTeam(orgSlug, teamSlug)` | Team detail |
+| `getTeamPRs(orgSlug, teamSlug)` | PRs authored by team members |
+| `getTeamMetrics(orgSlug, teamSlug, range?)` | Windowed aggregate metrics for a team |
+| `getTeamMembers(orgSlug, teamSlug)` | Team members list |
 
 ### API Communication
 
@@ -69,7 +79,7 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 ## Components
 
 ### Layout shells
-- **App sidebar** (`src/app/(app)/layout.tsx`) — Composes shadcn `Sidebar` + `SidebarProvider` + `SidebarInset`. Server-rendered `AppSidebar` resolves the current org slug (from the middleware-injected `x-pathname` header), fetches the user and the repo list in parallel, and streams into the shell under a Suspense boundary that renders `SidebarMenuSkeleton`. Contains: logo wordmark, `OrgSwitcher`, nav menu (Overview, Pull Requests, Org Settings, Billing, Docs — each a lucide icon + `SidebarMenuButton asChild`), optional "Filter by Repo" group (only when the active org has repos with GitHub metadata), and a footer with the user avatar, an Account shortcut, the `ThemeToggle`, and the Data & Privacy link. A `SidebarTrigger` in the inset's mobile header toggles the sheet on small screens.
+- **App sidebar** (`src/app/(app)/layout.tsx`) — Composes shadcn `Sidebar` + `SidebarProvider` + `SidebarInset`. Server-rendered `AppSidebar` resolves the current org slug (from the middleware-injected `x-pathname` header), fetches the user and the repo list in parallel, and streams into the shell under a Suspense boundary that renders `SidebarMenuSkeleton`. Contains: logo wordmark, `OrgSwitcher`, nav menu (Overview, Pull Requests, Org Settings, Billing, Docs — each a lucide icon + `SidebarMenuButton asChild`), optional "Teams" group (Pro orgs only, lists teams the user belongs to with links to team overview pages), optional "Filter by Repo" group (only when the active org has repos with GitHub metadata), and a footer with the user avatar, an Account shortcut, the `ThemeToggle`, and the Data & Privacy link. A `SidebarTrigger` in the inset's mobile header toggles the sheet on small screens.
 - **Marketing shell** (`src/app/(marketing)/layout.tsx`) — Header composes shadcn `NavigationMenu` + `NavigationMenuLink` for the four marketing links (Docs / Plans / Setup / Changelog), plus outline "Sign in" and primary "Get Started" `Button`s. Footer uses shadcn `Separator` with the `ThemeToggle` sitting in the right-hand nav.
 
 ### Navigation
@@ -105,7 +115,10 @@ Page-by-page streaming topology:
 | `/[slug]/prs` | h1 + table header | Subtitle count, `<tbody>` rows, `NoDataBody` fallback |
 | `/[slug]/metrics/[metric]` | Back link + header + doc content (read from disk synchronously) | Data count subtitle, 5 summary stat cards, chart panel, PR table |
 | `/prs/[id]` | Back link | PR header (title + badges + metadata), grouped metric cards, `PRNotFound` fallback |
-| `/[slug]/settings` | h1 | GitHub App card, Members card, Invites card (each independent Suspense) |
+| `/[slug]/teams` | h1 | Teams list |
+| `/[slug]/teams/[team]` | h1 + team name | Team metrics body (mirrors org overview) |
+| `/[slug]/teams/[team]/prs` | h1 | Team PR table |
+| `/[slug]/settings` | h1 | GitHub App card, Members card, Invites card, Teams card (each independent Suspense) |
 | `/[slug]/billing` | h1 + banner | Billing card |
 
 **Gotchas:**
@@ -210,6 +223,9 @@ The middleware enforces auth on all routes. Public paths are excluded: `/login`,
 | `src/app/onboarding/onboarding-steps.tsx` | Multi-step onboarding client component |
 | `src/app/[slug]/settings/github-app-card.tsx` | GitHub App installation card (3-state: missing/active/suspended, connected repos list, syncing indicator, reinstall flow) |
 | `src/app/[slug]/settings/members-section.tsx` | Member management client component |
+| `src/app/[slug]/settings/teams-section.tsx` | Team create/delete management (admin, Pro only) |
+| `src/app/[slug]/settings/teams/[team]/page.tsx` | Team edit page (name, members) |
+| `src/app/[slug]/teams/` | Team overview, PR list, and metric detail pages |
 | `src/app/[slug]/settings/invites-section.tsx` | Invite management client component |
 | `src/middleware.ts` | Auth enforcement |
 | `next.config.ts` | Build config |

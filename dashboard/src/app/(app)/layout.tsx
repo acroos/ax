@@ -7,9 +7,11 @@ import {
   GitPullRequest,
   Home,
   Settings,
+  Users,
 } from "lucide-react";
 
-import { listReposAsync } from "@/lib/db";
+import { listReposAsync, listTeamsAsync } from "@/lib/db";
+import type { Team } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -115,7 +117,15 @@ async function AppSidebar() {
     ? listReposAsync(pathOrgSlug).catch(() => [])
     : Promise.resolve([]);
 
-  const [user, repos] = await Promise.all([getCurrentUser(), reposPromise]);
+  const teamsPromise: Promise<Team[]> = pathOrgSlug
+    ? listTeamsAsync(pathOrgSlug).catch(() => [])
+    : Promise.resolve([]);
+
+  const [user, repos, teams] = await Promise.all([
+    getCurrentUser(),
+    reposPromise,
+    teamsPromise,
+  ]);
 
   // Fall back to the user's first org when the current path has no slug
   // (e.g. /onboarding, /settings) — the sidebar still shows something useful.
@@ -124,6 +134,24 @@ async function AppSidebar() {
   const overviewHref = base || "/";
 
   const filteredRepos = repos.filter((r) => r.github_owner && r.github_repo);
+
+  // Teams are only available for Pro-plan orgs
+  const currentOrg = user?.organizations.find((o) => o.slug === orgSlug);
+  const isProPlan = currentOrg?.plan === "pro";
+  const isPersonalOrg = currentOrg?.is_personal ?? false;
+  const showTeams = isProPlan && !isPersonalOrg;
+
+  // Build team sidebar labels — show parent prefix for nested teams, truncate at 7
+  const MAX_SIDEBAR_TEAMS = 7;
+  const teamLookup = Object.fromEntries(teams.map((t) => [t.slug, t]));
+  function teamLabel(t: Team): string {
+    if (t.parent_team_slug && teamLookup[t.parent_team_slug]) {
+      return `${teamLookup[t.parent_team_slug].name} > ${t.name}`;
+    }
+    return t.name;
+  }
+  const visibleTeams = teams.slice(0, MAX_SIDEBAR_TEAMS);
+  const hiddenTeamCount = teams.length - visibleTeams.length;
 
   const navItems = [
     { href: overviewHref, label: "Overview", icon: Home },
@@ -162,6 +190,52 @@ async function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {showTeams && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Teams</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="All Teams">
+                    <Link href={`${base}/teams`}>
+                      <Users />
+                      <span>All Teams</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                {visibleTeams.map((t) => (
+                  <SidebarMenuItem key={t.slug}>
+                    <SidebarMenuButton asChild tooltip={t.name}>
+                      <Link href={`${base}/teams/${t.slug}`}>
+                        <span className="truncate">{teamLabel(t)}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+                {hiddenTeamCount > 0 && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <Link
+                        href={`${base}/teams`}
+                        className="text-muted-foreground"
+                      >
+                        <span>+{hiddenTeamCount} more...</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
+                {teams.length === 0 && (
+                  <SidebarMenuItem>
+                    <span className="px-2 py-1 text-xs text-muted-foreground">
+                      No teams yet
+                    </span>
+                  </SidebarMenuItem>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {filteredRepos.length > 0 && (
           <SidebarGroup>
