@@ -50,13 +50,21 @@ export default async function LandingPage() {
           <p className="mb-6 text-center text-[13px] font-medium text-muted-foreground">
             Your dashboard at a glance
           </p>
-          <div className="overflow-hidden rounded-xl border border-border shadow-lg">
+          <Link
+            href="/demo"
+            className="group relative block overflow-hidden rounded-xl border border-border shadow-lg transition-shadow hover:shadow-xl"
+          >
             <img
               src="/dashboard-preview.png"
               alt="AX dashboard showing metric cards across Output Quality, Prompt Efficiency, and Agent Behavior categories"
               className="w-full"
             />
-          </div>
+            <div className="absolute inset-0 flex items-center justify-center bg-foreground/0 transition-colors group-hover:bg-foreground/60">
+              <span className="translate-y-2 text-lg font-semibold text-background opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
+                Try the interactive demo &rarr;
+              </span>
+            </div>
+          </Link>
         </div>
       </section>
 
