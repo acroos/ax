@@ -47,9 +47,6 @@ export default async function LandingPage() {
       {/* Dashboard preview */}
       <section className="border-t border-border bg-muted/40">
         <div className="mx-auto max-w-[1100px] px-6 py-16">
-          <p className="mb-6 text-center text-[13px] font-medium text-muted-foreground">
-            Your dashboard at a glance
-          </p>
           <Link
             href="/demo"
             className="group relative block overflow-hidden rounded-xl border border-border shadow-lg transition-shadow hover:shadow-xl"
@@ -72,7 +69,7 @@ export default async function LandingPage() {
       <section className="border-t border-border">
         <div className="mx-auto max-w-[1100px] px-6 py-20">
           <p className="mb-3 text-[13px] font-medium uppercase tracking-wider text-muted-foreground">
-            10 metrics across 3 categories
+            11 metrics across 3 categories
           </p>
           <h2 className="mb-12 max-w-[480px] font-serif text-[26px] font-semibold leading-snug text-foreground">
             Understand every dimension of your AI coding workflow
@@ -121,9 +118,8 @@ export default async function LandingPage() {
           <div className="grid grid-cols-3 gap-6">
             <Step
               number={1}
-              title="Install the CLI"
-              description="One command to install, one to connect. AX hooks into Claude Code's session lifecycle automatically."
-              code="brew install acroos/tap/ax"
+              title="Create an account"
+              description="Sign in with GitHub to create your org. Invite your team and get set up in seconds."
             />
             <Step
               number={2}
@@ -132,26 +128,11 @@ export default async function LandingPage() {
             />
             <Step
               number={3}
-              title="See your metrics"
-              description="Push session data from any repo. Your dashboard populates with metrics as PRs are opened, reviewed, and merged."
+              title="Connect the CLI"
+              description="Install the CLI and run ax init to link your local environment. AX hooks into Claude Code's session lifecycle automatically."
+              code="brew install acroos/tap/ax && ax init"
             />
           </div>
-        </div>
-      </section>
-
-      {/* Pricing teaser */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-[1100px] px-6 py-20 text-center">
-          <h2 className="mb-3 font-serif text-[26px] font-semibold text-foreground">
-            Free to start, scales with your team
-          </h2>
-          <p className="mx-auto mb-8 max-w-[420px] text-[15px] text-muted-foreground">
-            Core metrics and GitHub integration included on the free plan.
-            Upgrade for unlimited team members and data export.
-          </p>
-          <Button variant="outline" asChild>
-            <Link href="/plans">View Plans</Link>
-          </Button>
         </div>
       </section>
 
@@ -159,15 +140,20 @@ export default async function LandingPage() {
       <section className="border-t border-border bg-muted/40">
         <div className="mx-auto max-w-[1100px] px-6 py-16 text-center">
           <h2 className="mb-3 font-serif text-[26px] font-semibold text-foreground">
-            Start measuring what matters
+            Free to start, scales with your team
           </h2>
-          <p className="mx-auto mb-6 max-w-[400px] text-[15px] text-muted-foreground">
-            Sign in with GitHub and push your first session data in under five
-            minutes.
+          <p className="mx-auto mb-6 max-w-[420px] text-[15px] text-muted-foreground">
+            Core metrics and GitHub integration included on the free plan.
+            Upgrade for unlimited team members and data export.
           </p>
-          <Button size="lg" asChild>
-            <Link href="/login">Get Started</Link>
-          </Button>
+          <div className="flex items-center justify-center gap-3">
+            <Button size="lg" asChild>
+              <Link href="/login">Get Started</Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/plans">View Plans</Link>
+            </Button>
+          </div>
         </div>
       </section>
     </div>
