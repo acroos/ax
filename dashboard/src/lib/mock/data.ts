@@ -484,3 +484,15 @@ export function getMockTeamMetrics(teamSlug: string, days = 30): AggregateMetric
   const prs = getMockTeamPRs(teamSlug);
   return buildAggregateMetrics(prs, days);
 }
+
+// ---------------------------------------------------------------------------
+// Mock "My" data — PRs and metrics for the current user
+// ---------------------------------------------------------------------------
+
+export function getMockMyPRs(): PRWithMetrics[] {
+  return MOCK_PRS.filter((pr) => pr.author === MOCK_USER.github_username);
+}
+
+export function getMockMyMetrics(days = 30): AggregateMetrics {
+  return buildAggregateMetrics(getMockMyPRs(), days);
+}

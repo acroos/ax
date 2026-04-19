@@ -278,6 +278,24 @@ export async function listTeamMembersAsync(
   );
 }
 
+// --- Current user (me) ---
+
+export async function getMyMetricsAsync(
+  orgSlug: string,
+  range?: string,
+): Promise<AggregateMetrics> {
+  const rangeParam = range ? `?range=${range}` : "";
+  return fetchAPI<AggregateMetrics>(
+    orgApiPath(orgSlug, "/me/metrics") + rangeParam,
+  );
+}
+
+export async function listMyPRsAsync(
+  orgSlug: string,
+): Promise<PRWithMetrics[]> {
+  return fetchAPI<PRWithMetrics[]>(orgApiPath(orgSlug, "/me/prs"));
+}
+
 // --- Data functions ---
 
 export async function listReposAsync(orgSlug?: string): Promise<Repo[]> {

@@ -50,6 +50,10 @@ Rails.application.routes.draw do
         get :prs, to: "organizations#prs"
         get :metrics, to: "organizations#metrics"
 
+        # Current user's PRs and metrics within this org
+        get "me/prs", to: "me#prs"
+        get "me/metrics", to: "me#metrics"
+
         resources :teams, param: :team_slug, only: [ :index, :create ] do
           member do
             get "/", to: "teams#show"

@@ -107,6 +107,15 @@ See [Authentication](authentication.md) for how these are used across modes.
 
 Teams are gated by the `teams` plan capability (free: false, pro: true). Regular members can only access teams they belong to; admins can see and manage all teams. Team-scoped PR and metric endpoints filter by the GitHub usernames of all team members (including descendants for hierarchical teams).
 
+### My Dashboard (Session Token)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/orgs/:slug/me/prs` | PRs authored by the current user in this org |
+| `GET` | `/api/v1/orgs/:slug/me/metrics` | Aggregate metrics for the current user's PRs (reuses MetricsAggregator) |
+
+Filters PRs by `current_user.github_username` as the author, following the same pattern as team-scoped endpoints. Controller: `Api::V1::MeController`.
+
 ### GitHub App Installation (Session Token, Admin Required for Install)
 
 | Method | Path | Purpose |
@@ -359,6 +368,7 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 | `app/controllers/api/v1/base_controller.rb` | Auth helpers (API key + session) |
 | `app/controllers/api/v1/push_controller.rb` | Push endpoint |
 | `app/controllers/api/v1/teams_controller.rb` | Team CRUD + team-scoped PRs/metrics |
+| `app/controllers/api/v1/me_controller.rb` | Current user's PRs and metrics within an org |
 | `app/controllers/api/v1/team_memberships_controller.rb` | Team member management |
 | `app/controllers/concerns/pr_serialization.rb` | Shared PR JSON serialization |
 | `app/controllers/api/v1/repos_controller.rb` | Data read endpoints |

@@ -7,6 +7,7 @@ import {
   Home,
   Settings,
   CreditCard,
+  User,
   Users,
 } from "lucide-react";
 
@@ -159,6 +160,7 @@ async function AppSidebar() {
 
   const navItems = [
     { href: overviewHref, label: "Overview", icon: Home },
+    { href: `${base}/me`, label: "My Dashboard", icon: User },
     { href: `${base}/prs`, label: "Pull Requests", icon: GitPullRequest },
   ];
 
