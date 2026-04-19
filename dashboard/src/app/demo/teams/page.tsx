@@ -1,5 +1,3 @@
-export const runtime = "edge";
-
 import Link from "next/link";
 import { Users, Plus } from "lucide-react";
 import { MOCK_TEAMS } from "@/lib/mock/data";

@@ -1,5 +1,3 @@
-export const runtime = "edge";
-
 import Link from "next/link";
 import { getMockTeamPRs, getMockTeamDetail } from "@/lib/mock/data";
 import { getPRSize } from "@/lib/db";
