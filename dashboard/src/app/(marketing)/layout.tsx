@@ -55,7 +55,7 @@ export default function MarketingLayout({
               <Link href="/login">Sign in</Link>
             </Button>
             <Button size="sm" asChild>
-              <Link href="/demo">Explore Demo</Link>
+              <Link href="/login">Get Started</Link>
             </Button>
           </div>
         </div>

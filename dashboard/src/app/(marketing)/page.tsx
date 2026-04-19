@@ -59,7 +59,7 @@ export default async function LandingPage() {
           </p>
           <div className="mt-8 flex items-center gap-3">
             <Button size="lg" asChild>
-              <Link href="/login">Get Started</Link>
+              <Link href="/demo">Explore Demo</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <Link href="/docs">View Docs</Link>
