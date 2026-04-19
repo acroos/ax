@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-18 — Teams within organizations
+
+**Pages updated:** data-model, rails-server, dashboard
+**What changed:** Added Teams as a sub-grouping within Organizations (Pro plan only). Two new tables: `teams` (name, slug unique within org, optional parent_team_id for hierarchy, created_by_id) and `team_memberships` (joins teams to org_memberships, not users directly, with org validation). New models `Team` and `TeamMembership` with associations on Organization, OrgMembership, and User (`teams_in(org)`). Team has `descendant_team_ids` (recursive CTE), `member_github_usernames` (includes descendants), `direct_member_count`. Plan capability `teams: false` (free) / `teams: true` (pro). Server: 11 new API endpoints under `/api/v1/orgs/:slug/teams` — CRUD, team-scoped PRs and metrics (reuses MetricsAggregator filtered by member GitHub usernames), and member management. Authorization: admins manage all teams, members can only access their own teams. BaseController gains `find_team!`, `find_team_as_admin!`, `team_member?`, `require_teams_feature!`. Extracted `PrSerialization` concern from 3 controllers. Dashboard: 5 new routes (`/{slug}/teams`, `/{slug}/teams/{team}`, `/{slug}/teams/{team}/prs`, `/{slug}/teams/{team}/metrics/{metric}`, `/{slug}/settings/teams/{team}`), TeamsSection in org settings (create/delete), TeamEditForm (edit name, manage members), Teams group in sidebar (Pro orgs only). **Why:** Teams let organizations slice their metrics by sub-groups (frontend, backend, platform, etc.) without creating separate orgs, supporting the team-reflection ethos at a more granular level.
+
+---
+
 ## 2026-04-17 — Dashboard card redesign + time range toggle
 
 **Pages updated:** dashboard

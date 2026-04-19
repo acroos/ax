@@ -15,8 +15,12 @@ import {
   MOCK_INSTALLATION,
   MOCK_MEMBERS,
   MOCK_INVITES,
+  MOCK_TEAMS,
   getMockAggregatesForRepo,
   getMockAggregatesForDays,
+  getMockTeamDetail,
+  getMockTeamPRs,
+  getMockTeamMetrics,
 } from "./data";
 
 const RANGE_TO_DAYS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
@@ -63,6 +67,33 @@ export function mockFetchAPI<T>(
       }) as T;
   }
 
+  // --- Team-scoped routes: /api/v1/orgs/:slug/teams/:team_slug/*
+  const teamScoped = cleanPath.match(
+    /^\/api\/v1\/orgs\/[^/]+\/teams\/([^/]+)\/(.+)$/,
+  );
+  if (teamScoped) {
+    const teamSlug = teamScoped[1];
+    const sub = teamScoped[2];
+    if (sub === "prs") return getMockTeamPRs(teamSlug) as T;
+    if (sub === "metrics") return getMockTeamMetrics(teamSlug, days) as T;
+    if (sub === "members") {
+      const detail = getMockTeamDetail(teamSlug);
+      return (detail?.members ?? []) as T;
+    }
+  }
+
+  // --- Team detail or list: /api/v1/orgs/:slug/teams[/:team_slug]
+  const teamMatch = cleanPath.match(
+    /^\/api\/v1\/orgs\/[^/]+\/teams(?:\/([^/]+))?$/,
+  );
+  if (teamMatch) {
+    const teamSlug = teamMatch[1];
+    if (teamSlug) {
+      return (getMockTeamDetail(teamSlug) ?? {}) as T;
+    }
+    return MOCK_TEAMS as T;
+  }
+
   // --- Org-scoped routes: /api/v1/orgs/:slug/*
   const orgScoped = cleanPath.match(/^\/api\/v1\/orgs\/[^/]+\/(.+)$/);
   if (orgScoped) {
@@ -104,6 +135,16 @@ function mockMutationResponse(urlPath: string, method: string): unknown {
     return { link: "http://localhost:3333/invite/mock-token" };
   if (urlPath.includes("/github_installation/install_url"))
     return { install_url: "#" };
+  if (urlPath.match(/\/teams\/[^/]+\/members/) && method === "POST")
+    return { id: 99, org_membership_id: 1, user: { id: 1, github_username: "austinroos", display_name: "Austin Roos", avatar_url: null } };
+  if (urlPath.match(/\/teams\/[^/]+\/members\/\d+/) && method === "DELETE")
+    return {};
+  if (urlPath.match(/\/teams\/[^/]+$/) && method === "DELETE")
+    return { deleted_count: 1 };
+  if (urlPath.match(/\/teams\/[^/]+$/) && method === "PUT")
+    return { id: 1, slug: "platform", name: "Platform", parent_team_slug: null, member_count: 2, child_team_count: 1 };
+  if (urlPath.match(/\/teams$/) && method === "POST")
+    return { id: 99, slug: "new-team", name: "New Team", parent_team_slug: null, member_count: 0, child_team_count: 0 };
   return {};
 }
 

@@ -4,6 +4,7 @@ class Organization < ApplicationRecord
   has_many :repos, dependent: :destroy
   has_many :github_installations, dependent: :destroy
   has_many :invites, dependent: :destroy
+  has_many :teams, dependent: :destroy
   has_one :subscription, dependent: :destroy
   belongs_to :created_by, class_name: "User"
 

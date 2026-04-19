@@ -217,6 +217,31 @@ Idempotency guard for Stripe webhook processing. One row per Stripe event ID, in
 
 Unique on (organization_id, user_id).
 
+### teams
+Teams within an organization. Supports hierarchy via optional parent team.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | bigint | PK |
+| organization_id | bigint | FK → organizations |
+| name | text | Display name |
+| slug | text | URL-safe, unique within org |
+| parent_team_id | bigint | FK → teams (nullable, self-referential) |
+| created_by_id | bigint | FK → users |
+
+Index on (organization_id, slug).
+
+### team_memberships
+Join table between teams and org memberships.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | bigint | PK |
+| team_id | bigint | FK → teams |
+| org_membership_id | bigint | FK → org_memberships |
+
+Unique on (team_id, org_membership_id).
+
 ### api_keys
 
 | Column | Type | Notes |

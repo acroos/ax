@@ -50,6 +50,19 @@ Rails.application.routes.draw do
         get :prs, to: "organizations#prs"
         get :metrics, to: "organizations#metrics"
 
+        resources :teams, param: :team_slug, only: [ :index, :create ] do
+          member do
+            get "/", to: "teams#show"
+            put "/", to: "teams#update"
+            delete "/", to: "teams#destroy"
+            get :prs, to: "teams#prs"
+            get :metrics, to: "teams#metrics"
+            get "members", to: "team_memberships#index", as: :team_members
+            post "members", to: "team_memberships#create"
+            delete "members/:id", to: "team_memberships#destroy", as: :team_member
+          end
+        end
+
         resources :repos, only: [ :index ] do
           member do
             get :prs

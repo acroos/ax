@@ -16,6 +16,9 @@ import type {
   TimelinePoint,
   BillingInfo,
   GithubInstallationResponse,
+  Team,
+  TeamDetail,
+  TeamMember,
 } from "@/lib/db";
 
 // ---------------------------------------------------------------------------
@@ -146,6 +149,8 @@ const BRANCHES = [
   "feat/progressive-images", "refactor/form-validation",
 ];
 
+const MOCK_AUTHORS = ["austinroos", "jamiekwon", "sammori", "alexchen"];
+
 function generatePR(id: number, repoId: number): PRWithMetrics {
   const titleIdx = (id - 1) % PR_TITLES.length;
   const daysBack = randInt(0, 59);
@@ -156,6 +161,7 @@ function generatePR(id: number, repoId: number): PRWithMetrics {
   const repo = MOCK_REPOS.find((r) => r.id === repoId)!;
   const additions = randInt(5, 800);
   const deletions = randInt(2, 300);
+  const author = MOCK_AUTHORS[id % MOCK_AUTHORS.length];
 
   // Most PRs have metrics; ~5% don't (to test empty states)
   const hasMetrics = rand() > 0.05;
@@ -193,6 +199,7 @@ function generatePR(id: number, repoId: number): PRWithMetrics {
     additions,
     deletions,
     changed_files: randInt(1, 30),
+    author,
     github_owner: repo.github_owner,
     github_repo: repo.github_repo,
     session_count: hasSessionData ? randInt(1, 4) : 0,
@@ -422,3 +429,58 @@ export const MOCK_INVITES = [
   { id: 1, github_username: "taylorblake", role: "member", expires_at: daysAgo(-5) },
   { id: 2, github_username: "morganli", role: "admin", expires_at: daysAgo(-3) },
 ];
+
+// ---------------------------------------------------------------------------
+// Mock teams
+// ---------------------------------------------------------------------------
+
+const TEAM_MEMBERS_MAP: Record<string, TeamMember[]> = {
+  platform: [
+    { id: 1, org_membership_id: 1, user: { id: 1, github_username: "austinroos", display_name: "Austin Roos", avatar_url: null } },
+    { id: 2, org_membership_id: 2, user: { id: 2, github_username: "jamiekwon", display_name: "Jamie Kwon", avatar_url: null } },
+  ],
+  frontend: [
+    { id: 3, org_membership_id: 3, user: { id: 3, github_username: "sammori", display_name: "Sam Mori", avatar_url: null } },
+    { id: 4, org_membership_id: 4, user: { id: 4, github_username: "alexchen", display_name: "Alex Chen", avatar_url: null } },
+  ],
+  infrastructure: [
+    { id: 5, org_membership_id: 1, user: { id: 1, github_username: "austinroos", display_name: "Austin Roos", avatar_url: null } },
+  ],
+};
+
+export const MOCK_TEAMS: Team[] = [
+  { id: 1, slug: "platform", name: "Platform", parent_team_slug: null, member_count: 2, child_team_count: 1 },
+  { id: 2, slug: "frontend", name: "Frontend", parent_team_slug: null, member_count: 2, child_team_count: 0 },
+  { id: 3, slug: "infrastructure", name: "Infrastructure", parent_team_slug: "platform", member_count: 1, child_team_count: 0 },
+];
+
+export function getMockTeamDetail(teamSlug: string): TeamDetail | null {
+  const team = MOCK_TEAMS.find((t) => t.slug === teamSlug);
+  if (!team) return null;
+  return {
+    ...team,
+    members: TEAM_MEMBERS_MAP[teamSlug] ?? [],
+    child_teams: MOCK_TEAMS.filter((t) => t.parent_team_slug === teamSlug),
+  };
+}
+
+export function getMockTeamPRs(teamSlug: string): PRWithMetrics[] {
+  const detail = getMockTeamDetail(teamSlug);
+  if (!detail) return [];
+  // Collect usernames from this team + child teams (recursive)
+  const usernames = new Set<string>();
+  function collectMembers(slug: string) {
+    const members = TEAM_MEMBERS_MAP[slug] ?? [];
+    for (const m of members) usernames.add(m.user.github_username);
+    for (const child of MOCK_TEAMS.filter((t) => t.parent_team_slug === slug)) {
+      collectMembers(child.slug);
+    }
+  }
+  collectMembers(teamSlug);
+  return MOCK_PRS.filter((pr) => pr.author !== null && usernames.has(pr.author));
+}
+
+export function getMockTeamMetrics(teamSlug: string, days = 30): AggregateMetrics {
+  const prs = getMockTeamPRs(teamSlug);
+  return buildAggregateMetrics(prs, days);
+}

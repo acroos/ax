@@ -14,6 +14,8 @@ Location: `server/`
 | `Organization` | `organizations` | Team container (slug, name, is_personal) |
 | `OrgMembership` | `org_memberships` | User-org join with role (owner, admin, member) |
 | `GitHubInstallation` | `github_installations` | GitHub App installation per org |
+| `Team` | `teams` | Team within an org (name, slug, optional parent_team) |
+| `TeamMembership` | `team_memberships` | Org-membership-to-team join (validates org match) |
 
 Every user gets a personal org on first login. Non-personal orgs require an approved waitlist entry.
 
@@ -51,6 +53,8 @@ See [Authentication](authentication.md) for how these are used across modes.
 
 **User** automatically processes pending invites on creation — if someone was invited by GitHub username before they signed up, the invite is accepted on first login.
 
+**Team** belongs to an organization with an optional parent team (self-referential FK). Child teams cascade-delete with their parent. Key methods: `descendant_team_ids` (recursive CTE for the full subtree), `member_github_usernames` (all members including descendants), `direct_member_count`. TeamMembership links to `OrgMembership` (not User directly) and validates the org matches. Organization has_many :teams, OrgMembership has_many :team_memberships/:teams, User has `teams_in(org)`.
+
 **Repo** is identified canonically by `(organization_id, github_owner, github_repo)`. The `path` field is informational and non-unique. PushService looks up repos by `github_owner/github_repo` within the user's orgs, falling back to `path` for legacy compatibility. On first push, repos are auto-assigned to the user's personal org.
 
 ## API Endpoints
@@ -85,6 +89,23 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `GET/PUT/DELETE` | `/api/v1/orgs/:slug/members[/:id]` | List, update role, remove members |
 | `GET/POST/DELETE` | `/api/v1/orgs/:slug/invites[/:id]` | List, create, revoke invites |
 | `POST` | `/api/v1/invites/:token/accept` | Accept an invite (403 if org at member limit) |
+
+### Teams (Session Token, Pro Plan Required)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/orgs/:slug/teams` | List teams (admins see all, members see only their teams) |
+| `POST` | `/api/v1/orgs/:slug/teams` | Create team (admin only) |
+| `GET` | `/api/v1/orgs/:slug/teams/:team_slug` | Team detail |
+| `PUT` | `/api/v1/orgs/:slug/teams/:team_slug` | Update team (admin only) |
+| `DELETE` | `/api/v1/orgs/:slug/teams/:team_slug` | Destroy with cascade (admin only) |
+| `GET` | `/api/v1/orgs/:slug/teams/:team_slug/prs` | Team-scoped PRs (by member GitHub usernames) |
+| `GET` | `/api/v1/orgs/:slug/teams/:team_slug/metrics` | Team-scoped metrics (reuses MetricsAggregator) |
+| `GET` | `/api/v1/orgs/:slug/teams/:team_slug/members` | List members (admin only) |
+| `POST` | `/api/v1/orgs/:slug/teams/:team_slug/members` | Add member (admin only) |
+| `DELETE` | `/api/v1/orgs/:slug/teams/:team_slug/members/:id` | Remove member (admin only) |
+
+Teams are gated by the `teams` plan capability (free: false, pro: true). Regular members can only access teams they belong to; admins can see and manage all teams. Team-scoped PR and metric endpoints filter by the GitHub usernames of all team members (including descendants for hierarchical teams).
 
 ### GitHub App Installation (Session Token, Admin Required for Install)
 
@@ -176,6 +197,8 @@ Computes windowed aggregate metrics for the overview page. Used by both `Organiz
 
 Metric slug → column mapping is maintained in `METRIC_COLUMNS`. Empty days in the sparkline are null (the dashboard renders gaps). Empty prior window returns null for `prior` (dashboard suppresses the delta).
 
+MetricsAggregator is also used by `TeamsController#metrics` with a PR scope filtered to team members' GitHub usernames.
+
 ### MetricsComputer (`app/services/metrics_computer.rb`)
 Computes metrics derived from fetched data and correlated sessions:
 - `ci_success_rate`: fraction of commits with `ci_passed = true`
@@ -227,6 +250,20 @@ Process Stripe webhook events (same pattern as GitHub handlers). `ProcessStripeW
 | `InvoicePaymentFailed` | `invoice.payment_failed` | Log warning (hook point for notifications) |
 
 The Stripe API version is pinned in `config/initializers/stripe.rb` (default `2026-03-25.dahlia`, overridable via `STRIPE_API_VERSION`). Keep this in sync with the version configured on the Stripe dashboard webhook endpoint. Bumping it requires reviewing every Stripe object access in these handlers — for example, `current_period_start` / `current_period_end` were moved off `Subscription` onto each subscription item in `2025-04-30.basil`.
+
+## Concerns
+
+### PrSerialization (`app/controllers/concerns/pr_serialization.rb`)
+Extracted shared PR JSON serialization logic used by `OrganizationsController`, `ReposController`, and `TeamsController`. Provides `serialize_prs_with_metrics(prs)` to avoid duplicating the PR-to-JSON mapping across controllers.
+
+## Authorization — Team Helpers
+
+`BaseController` provides team-related authorization helpers:
+
+- `find_team!` — Looks up team by slug within the current org. Members can only access teams they belong to; admins can access all teams.
+- `find_team_as_admin!` — Same lookup but requires admin role.
+- `team_member?` — Checks if the current user is a member of the given team.
+- `require_teams_feature!` — Before-action guard that returns 403 if the org's plan does not include the `teams` capability.
 
 ## Webhook Handling
 
@@ -321,6 +358,9 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 | `app/services/webhook_handlers/*.rb` | Event processing (11 handlers + base: 6 PR lifecycle + 5 installation lifecycle) |
 | `app/controllers/api/v1/base_controller.rb` | Auth helpers (API key + session) |
 | `app/controllers/api/v1/push_controller.rb` | Push endpoint |
+| `app/controllers/api/v1/teams_controller.rb` | Team CRUD + team-scoped PRs/metrics |
+| `app/controllers/api/v1/team_memberships_controller.rb` | Team member management |
+| `app/controllers/concerns/pr_serialization.rb` | Shared PR JSON serialization |
 | `app/controllers/api/v1/repos_controller.rb` | Data read endpoints |
 | `app/controllers/api/v1/github_installations_controller.rb` | Install URL + installation state API |
 | `app/controllers/github_app/installations_controller.rb` | GitHub App setup callback handler |
@@ -328,6 +368,8 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 | `app/services/github_app/jwt_generator.rb` | GitHub App JWT signing |
 | `app/services/github_app/installation_token.rb` | Installation access token minting + caching |
 | `app/services/github_app/client.rb` | Octokit wrapper for installation-scoped API calls |
+| `app/models/team.rb` | Team model (hierarchy, descendant queries, member usernames) |
+| `app/models/team_membership.rb` | Team-to-org-membership join with org validation |
 | `app/models/pr_metrics.rb` | Scoped write protection (GitHub fields locked, session fields open) |
 | `app/services/session_pr_correlation_service.rb` | Branch-match session-to-PR correlation |
 | `app/jobs/process_git_hub_webhook_job.rb` | Webhook dispatcher |
