@@ -29,9 +29,9 @@ export default async function LandingPage() {
             Are your AI coding workflows actually working?
           </h1>
           <p className="mt-5 max-w-[560px] text-[17px] leading-relaxed text-muted-foreground">
-            AX measures what matters — cost per PR, iteration depth, CI success,
-            and more metrics that tell you if your agentic coding is getting
-            better.
+            AX measures what matters — token cost per pull request, iteration
+            depth, build success rate, and more — to tell you if your agentic
+            coding is getting better.
           </p>
           <div className="mt-8 flex items-center gap-3">
             <Button size="lg" asChild>
