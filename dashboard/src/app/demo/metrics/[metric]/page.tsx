@@ -13,7 +13,13 @@ import { RangeToggle, type Range } from "@/components/range-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PRWithMetrics } from "@/lib/db";
-import { MOCK_PRS } from "@/lib/mock/data";
+import { MOCK_PRS, MOCK_REPOS } from "@/lib/mock/data";
+import { RepoFilter } from "@/components/repo-filter";
+
+const DEMO_REPOS = MOCK_REPOS.filter(
+  (r): r is typeof r & { github_owner: string; github_repo: string } =>
+    r.github_owner !== null && r.github_repo !== null,
+);
 import {
   formatMetricValue,
   getMetricDef,
@@ -275,8 +281,9 @@ export default async function DemoMetricDetailPage({
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {values.length} PR{values.length !== 1 && "s"} with data in past{" "}
-          {range}
+          <RepoFilter repos={DEMO_REPOS} current={repoId} />
+          {" "}&middot; {values.length} PR{values.length !== 1 && "s"} with data
+          in past {range}
           {allValues.length > values.length && (
             <span className="text-muted-foreground/60">
               {" "}

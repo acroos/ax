@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { listPRsWithMetricsAsync, getPRSize } from "@/lib/db";
+import { listPRsWithMetricsAsync, listReposAsync, getPRSize } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
+import { RepoFilter } from "@/components/repo-filter";
 import { Skeleton, SkeletonTableBody } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { StateBadge } from "@/components/state-badge";
@@ -44,6 +45,7 @@ export default async function OrgPRsPage({
   const repoId = repo ? parseInt(repo, 10) : undefined;
 
   const prsPromise = listPRsWithMetricsAsync(repoId, slug);
+  const reposPromise = listReposAsync(slug).catch(() => []);
 
   return (
     <div>
@@ -52,7 +54,11 @@ export default async function OrgPRsPage({
           Pull Requests
         </h1>
         <Suspense fallback={<Skeleton className="mt-1 h-4 w-32" />}>
-          <PRCount promise={prsPromise} />
+          <PRSubtitle
+            prsPromise={prsPromise}
+            reposPromise={reposPromise}
+            repoId={repoId}
+          />
         </Suspense>
       </div>
 
@@ -100,19 +106,38 @@ export default async function OrgPRsPage({
   );
 }
 
-async function PRCount({ promise }: { promise: Promise<PRWithMetrics[]> }) {
-  let count: number | null = null;
-  try {
-    const prs = await promise;
-    count = prs.length;
-  } catch {
-    // Error is surfaced by the table body's error boundary below.
-  }
+type RepoLite = {
+  id: number;
+  github_owner: string | null;
+  github_repo: string | null;
+};
+
+async function PRSubtitle({
+  prsPromise,
+  reposPromise,
+  repoId,
+}: {
+  prsPromise: Promise<PRWithMetrics[]>;
+  reposPromise: Promise<RepoLite[]>;
+  repoId: number | undefined;
+}) {
+  const [allRepos, prResult] = await Promise.all([
+    reposPromise,
+    prsPromise.then((prs) => prs.length).catch(() => null),
+  ]);
+  const repos = allRepos.filter(
+    (r): r is RepoLite & { github_owner: string; github_repo: string } =>
+      r.github_owner !== null && r.github_repo !== null,
+  );
   return (
     <p className="mt-1 text-[13px] text-muted-foreground">
-      {count === null
-        ? "Unable to load pull requests"
-        : `${count} pull request${count !== 1 ? "s" : ""}`}
+      <RepoFilter repos={repos} current={repoId} />
+      {prResult !== null && (
+        <>
+          {" "}
+          &middot; {prResult} pull request{prResult !== 1 ? "s" : ""}
+        </>
+      )}
     </p>
   );
 }

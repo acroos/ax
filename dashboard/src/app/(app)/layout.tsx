@@ -2,22 +2,29 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { headers } from "next/headers";
 import {
-  BookOpen,
-  CreditCard,
+  ChevronUp,
   GitPullRequest,
   Home,
   Settings,
+  CreditCard,
   Users,
 } from "lucide-react";
 
-import { listReposAsync, listTeamsAsync } from "@/lib/db";
-import type { Team } from "@/lib/db";
+import { listTeamsAsync, getGithubInstallation } from "@/lib/db";
+import type { Team, GithubInstallationResponse } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { OrgSwitcher } from "@/components/org-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -36,11 +43,6 @@ import {
 } from "@/components/ui/sidebar";
 import { MARKETING_SEGMENTS } from "@/lib/routes";
 
-type RepoLite = {
-  id: number;
-  github_owner: string | null;
-  github_repo: string | null;
-};
 
 // Extract the first path segment as an org slug, but only if it looks like
 // an org slug (lowercase, alphanumeric with hyphens) and isn't a known
@@ -91,7 +93,7 @@ function SidebarSkeletonContents() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 2 }).map((_, i) => (
                 <SidebarMenuItem key={i}>
                   <SidebarMenuSkeleton showIcon />
                 </SidebarMenuItem>
@@ -110,21 +112,21 @@ async function AppSidebar() {
   // params, so we read it here.
   const hdrs = await headers();
   const pathname = hdrs.get("x-pathname");
-  const activeRepoFilter = hdrs.get("x-repo-filter");
   const pathOrgSlug = parseOrgSlug(pathname);
-
-  const reposPromise: Promise<RepoLite[]> = pathOrgSlug
-    ? listReposAsync(pathOrgSlug).catch(() => [])
-    : Promise.resolve([]);
 
   const teamsPromise: Promise<Team[]> = pathOrgSlug
     ? listTeamsAsync(pathOrgSlug).catch(() => [])
     : Promise.resolve([]);
 
-  const [user, repos, teams] = await Promise.all([
+  const installationPromise: Promise<GithubInstallationResponse | null> =
+    pathOrgSlug
+      ? getGithubInstallation(pathOrgSlug).catch(() => null)
+      : Promise.resolve(null);
+
+  const [user, teams, installation] = await Promise.all([
     getCurrentUser(),
-    reposPromise,
     teamsPromise,
+    installationPromise,
   ]);
 
   // Fall back to the user's first org when the current path has no slug
@@ -133,7 +135,9 @@ async function AppSidebar() {
   const base = orgSlug ? `/${orgSlug}` : "";
   const overviewHref = base || "/";
 
-  const filteredRepos = repos.filter((r) => r.github_owner && r.github_repo);
+  // User role for current org — controls visibility of admin-only items
+  const userRole = installation?.user_role ?? "member";
+  const isAdminOrOwner = userRole === "admin" || userRole === "owner";
 
   // Teams are only available for Pro-plan orgs
   const currentOrg = user?.organizations.find((o) => o.slug === orgSlug);
@@ -156,9 +160,6 @@ async function AppSidebar() {
   const navItems = [
     { href: overviewHref, label: "Overview", icon: Home },
     { href: `${base}/prs`, label: "Pull Requests", icon: GitPullRequest },
-    { href: `${base}/settings`, label: "Org Settings", icon: Settings },
-    { href: `${base}/billing`, label: "Billing", icon: CreditCard },
-    { href: "/docs", label: "Docs", icon: BookOpen },
   ];
 
   return (
@@ -237,56 +238,62 @@ async function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {filteredRepos.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Filter by Repo</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {[
-                  { id: null, label: "All repositories", href: overviewHref },
-                  ...filteredRepos.map((r) => ({
-                    id: String(r.id),
-                    label: `${r.github_owner}/${r.github_repo}`,
-                    href: `${overviewHref}?repo=${r.id}`,
-                  })),
-                ].map((item) => (
-                  <SidebarMenuItem key={item.id ?? "all"}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={(activeRepoFilter ?? null) === item.id}
-                      tooltip={item.label}
-                    >
-                      <Link href={item.href}>
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
 
       <SidebarFooter>
         {user && (
           <div className="flex items-center gap-2 px-2">
-            <Avatar size="sm">
-              {user.avatar_url && <AvatarImage src={user.avatar_url} alt="" />}
-              <AvatarFallback>
-                {(user.display_name || user.github_username || "?")
-                  .charAt(0)
-                  .toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <span className="flex-1 truncate text-sm text-sidebar-foreground">
-              {user.display_name || user.github_username}
-            </span>
-            <Button variant="ghost" size="icon-sm" asChild>
-              <Link href="/settings" aria-label="Account settings">
-                <Settings />
-              </Link>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex flex-1 items-center gap-2 rounded-md py-1 text-left transition-colors hover:bg-accent">
+                <Avatar size="sm">
+                  {user.avatar_url && (
+                    <AvatarImage src={user.avatar_url} alt="" />
+                  )}
+                  <AvatarFallback>
+                    {(user.display_name || user.github_username || "?")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="flex-1 truncate text-sm text-sidebar-foreground">
+                  {user.display_name || user.github_username}
+                </span>
+                <ChevronUp className="size-4 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                align="start"
+                className="w-[--radix-dropdown-menu-trigger-width]"
+              >
+                <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">
+                  {user.display_name || user.github_username}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">Account Settings</Link>
+                </DropdownMenuItem>
+                {isAdminOrOwner && base && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href={`${base}/settings`}>
+                        <Settings className="mr-2 size-4" />
+                        Org Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`${base}/billing`}>
+                        <CreditCard className="mr-2 size-4" />
+                        Billing
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/docs">Docs</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <ThemeToggle />
           </div>
         )}

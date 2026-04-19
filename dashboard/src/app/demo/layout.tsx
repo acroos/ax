@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, GitPullRequest, Home, Users } from "lucide-react";
+import { GitPullRequest, Home, Users } from "lucide-react";
 
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -19,15 +19,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { MOCK_REPOS, MOCK_TEAMS } from "@/lib/mock/data";
+import { MOCK_TEAMS } from "@/lib/mock/data";
 
 const NAV_ITEMS = [
   { href: "/demo", label: "Overview", icon: Home },
   { href: "/demo/prs", label: "Pull Requests", icon: GitPullRequest },
-  { href: "/docs", label: "Docs", icon: BookOpen },
 ];
-
-const DEMO_REPOS = MOCK_REPOS.filter((r) => r.github_owner && r.github_repo);
 
 function SidebarBrand() {
   return (
@@ -105,33 +102,6 @@ function DemoSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {DEMO_REPOS.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Filter by Repo</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="All repositories">
-                    <Link href="/demo">
-                      <span className="truncate">All repositories</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                {DEMO_REPOS.map((r) => (
-                  <SidebarMenuItem key={r.id}>
-                    <SidebarMenuButton asChild tooltip={`${r.github_owner}/${r.github_repo}`}>
-                      <Link href={`/demo?repo=${r.id}`}>
-                        <span className="truncate">
-                          {r.github_owner}/{r.github_repo}
-                        </span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
       </SidebarContent>
 
       <SidebarFooter>
@@ -141,12 +111,18 @@ function DemoSidebar() {
           </Badge>
           <ThemeToggle />
         </div>
-        <div className="px-2 py-1">
+        <div className="flex items-center justify-between px-2 py-1">
           <Link
             href="/login"
             className="text-xs text-primary transition-colors hover:underline"
           >
             Sign in to use AX →
+          </Link>
+          <Link
+            href="/docs"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Docs
           </Link>
         </div>
       </SidebarFooter>

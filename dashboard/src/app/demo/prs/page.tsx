@@ -1,8 +1,14 @@
-import { MOCK_PRS } from "@/lib/mock/data";
+import { MOCK_PRS, MOCK_REPOS } from "@/lib/mock/data";
 import { getPRSize } from "@/lib/db";
+import { RepoFilter } from "@/components/repo-filter";
 import { StateBadge } from "@/components/state-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+
+const DEMO_REPOS = MOCK_REPOS.filter(
+  (r): r is typeof r & { github_owner: string; github_repo: string } =>
+    r.github_owner !== null && r.github_repo !== null,
+);
 import {
   Table,
   TableBody,
@@ -21,8 +27,16 @@ function HeaderWithTip({ label, tip }: { label: string; tip: string }) {
   );
 }
 
-export default function DemoPRsPage() {
-  const prs = MOCK_PRS;
+export default async function DemoPRsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ repo?: string }>;
+}) {
+  const { repo } = await searchParams;
+  const repoId = repo ? parseInt(repo, 10) : undefined;
+  const prs = repoId
+    ? MOCK_PRS.filter((p) => p.repo_id === repoId)
+    : MOCK_PRS;
 
   return (
     <div>
@@ -31,7 +45,8 @@ export default function DemoPRsPage() {
           Pull Requests
         </h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {prs.length} pull request{prs.length !== 1 ? "s" : ""}
+          <RepoFilter repos={DEMO_REPOS} current={repoId} />
+          {" "}&middot; {prs.length} pull request{prs.length !== 1 ? "s" : ""}
         </p>
       </div>
 

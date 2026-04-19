@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { getAggregateMetricsAsync, listReposAsync } from "@/lib/db";
 import type { AggregateMetrics, SparklinePoint } from "@/lib/db";
 import { METRIC_DEFS } from "@/lib/metric-defs";
+import { RepoFilter } from "@/components/repo-filter";
 import { Skeleton, SkeletonMetricCategory } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { SectionDivider } from "@/components/section-divider";
@@ -109,11 +110,11 @@ export default async function OrgOverviewPage({
     ? (rangeParam as Range)
     : "30d";
 
-  // Kick off both fetches in parallel — do NOT await here. Each child
+  // Kick off all fetches in parallel — do NOT await here. Each child
   // component awaits what it needs; React dedupes multiple awaits on the
   // same promise into a single fetch.
   const metricsPromise = getAggregateMetricsAsync(repoId, slug, range);
-  const repoLabelPromise = resolveRepoLabel(slug, repoId);
+  const reposPromise = listReposAsync(slug).catch(() => []);
 
   return (
     <div>
@@ -126,7 +127,8 @@ export default async function OrgOverviewPage({
         </div>
         <Suspense fallback={<Skeleton className="mt-1 h-4 w-64" />}>
           <OverviewSubtitle
-            repoLabelPromise={repoLabelPromise}
+            reposPromise={reposPromise}
+            repoId={repoId}
             metricsPromise={metricsPromise}
             range={range}
           />
@@ -156,43 +158,40 @@ export default async function OrgOverviewPage({
   );
 }
 
-async function resolveRepoLabel(
-  slug: string,
-  repoId: number | undefined,
-): Promise<string> {
-  if (!repoId) return "All Repositories";
-  try {
-    const repos = await listReposAsync(slug);
-    const match = repos.find((r) => r.id === repoId);
-    if (match) return `${match.github_owner}/${match.github_repo}`;
-    return "All Repositories";
-  } catch {
-    return "All Repositories";
-  }
-}
+type RepoLite = {
+  id: number;
+  github_owner: string | null;
+  github_repo: string | null;
+};
 
 // Subtitle depends on both promises. If the metrics fetch fails we still
-// render the repo label (no PR count) rather than crashing the whole header.
+// render the repo filter (no PR count) rather than crashing the whole header.
 async function OverviewSubtitle({
-  repoLabelPromise,
+  reposPromise,
+  repoId,
   metricsPromise,
   range,
 }: {
-  repoLabelPromise: Promise<string>;
+  reposPromise: Promise<RepoLite[]>;
+  repoId: number | undefined;
   metricsPromise: Promise<AggregateMetrics>;
   range: Range;
 }) {
-  const repoLabel = await repoLabelPromise;
+  const allRepos = await reposPromise;
+  const repos = allRepos.filter(
+    (r): r is RepoLite & { github_owner: string; github_repo: string } =>
+      r.github_owner !== null && r.github_repo !== null,
+  );
   let metrics: AggregateMetrics | null = null;
   try {
     metrics = await metricsPromise;
   } catch {
     // Metrics body's error boundary will show "No data yet"; leave the
-    // subtitle reading just the repo label.
+    // subtitle reading just the repo filter.
   }
   return (
     <p className="mt-1 text-[13px] text-muted-foreground">
-      <span className="font-medium text-foreground">{repoLabel}</span>
+      <RepoFilter repos={repos} current={repoId} />
       {metrics !== null && (
         <>
           {" "}
