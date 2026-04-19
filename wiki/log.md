@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-19 — Simplify SectionDivider
+
+**Pages updated:** dashboard
+**What changed:** Simplified SectionDivider from axis-rule-and-dot motif (left tick + horizontal + dot + serif label + rule + right tick) to a minimal dot + sans-serif label + rule. Removed end ticks and extra horizontal element. Changed label from `font-serif` to sans-serif (default). **Why:** Reduce visual noise — the ticks added complexity without aiding readability. Sans-serif labels match the rest of the UI better.
+
+---
+
 ## 2026-04-18 — Sidebar navigation restructuring
 
 **Pages updated:** dashboard
