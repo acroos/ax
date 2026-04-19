@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, GitPullRequest, Home } from "lucide-react";
+import { BookOpen, GitPullRequest, Home, Users } from "lucide-react";
 
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -19,7 +19,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { MOCK_REPOS } from "@/lib/mock/data";
+import { MOCK_REPOS, MOCK_TEAMS } from "@/lib/mock/data";
 
 const NAV_ITEMS = [
   { href: "/demo", label: "Overview", icon: Home },
@@ -69,6 +69,38 @@ function DemoSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Teams</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="All Teams">
+                  <Link href="/demo/teams">
+                    <Users />
+                    <span>All Teams</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {MOCK_TEAMS.map((t) => {
+                const parentName = t.parent_team_slug
+                  ? MOCK_TEAMS.find((p) => p.slug === t.parent_team_slug)?.name
+                  : null;
+                return (
+                  <SidebarMenuItem key={t.slug}>
+                    <SidebarMenuButton asChild tooltip={t.name}>
+                      <Link href={`/demo/teams/${t.slug}`}>
+                        <span className="truncate">
+                          {parentName ? `${parentName} > ${t.name}` : t.name}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

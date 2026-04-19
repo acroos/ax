@@ -311,12 +311,18 @@ export default async function DemoOverviewPage({
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex gap-6">
         <Link
           href={`/demo/prs`}
           className="text-[13px] text-primary transition-colors hover:underline"
         >
           View all pull requests →
+        </Link>
+        <Link
+          href={`/demo/teams`}
+          className="text-[13px] text-primary transition-colors hover:underline"
+        >
+          Browse teams →
         </Link>
       </div>
     </div>
