@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Users, GitBranch } from "lucide-react";
-import { listTeamsAsync } from "@/lib/db";
+import { listTeamsAsync, getGithubInstallation } from "@/lib/db";
 import type { Team } from "@/lib/db";
 import { Card, CardContent } from "@/components/ui/card";
+import { CreateTeamButton } from "./create-team-button";
 
 export default async function TeamsIndexPage({
   params,
@@ -10,28 +11,45 @@ export default async function TeamsIndexPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const teams = await listTeamsAsync(slug);
+  const [teams, installation] = await Promise.all([
+    listTeamsAsync(slug),
+    getGithubInstallation(slug).catch(() => null),
+  ]);
+
+  const userRole = installation?.user_role ?? "member";
+  const isAdmin = userRole === "admin" || userRole === "owner";
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-          Teams
-        </h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          {teams.length} team{teams.length !== 1 && "s"}
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+            Teams
+          </h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {teams.length} team{teams.length !== 1 && "s"}
+          </p>
+        </div>
+        {isAdmin && teams.length > 0 && (
+          <CreateTeamButton slug={slug} teams={teams} />
+        )}
       </div>
 
       {teams.length === 0 ? (
         <div className="flex h-[60vh] items-center justify-center">
           <div className="space-y-3 text-center">
+            <Users className="mx-auto size-10 text-muted-foreground/50" />
             <h2 className="text-lg font-medium text-foreground">
               No teams yet
             </h2>
             <p className="text-sm text-muted-foreground">
-              Teams can be created in org settings.
+              Create a team to group members and view scoped metrics.
             </p>
+            {isAdmin && (
+              <div className="pt-2">
+                <CreateTeamButton slug={slug} teams={teams} />
+              </div>
+            )}
           </div>
         </div>
       ) : (

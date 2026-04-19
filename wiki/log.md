@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-19 — Add "Create Team" button to teams index page
+
+**Pages updated:** (none — no wiki page changes needed)
+**What changed:** The teams index page (`/{slug}/teams`) now shows a "Create Team" button for admin/owner users. When there are zero teams, the empty state displays the button prominently with an icon and actionable copy instead of directing users to org settings. When teams exist, the button appears in the page header. A new `CreateTeamButton` client component handles the dialog and API call. Demo app updated to match.
+
+---
+
 ## 2026-04-19 — Add "My Dashboard" personal view
 
 **Pages updated:** dashboard, rails-server

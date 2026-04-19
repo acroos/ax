@@ -1,18 +1,25 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Users, Plus } from "lucide-react";
 import { MOCK_TEAMS } from "@/lib/mock/data";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export default function DemoTeamsPage() {
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-          Teams
-        </h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          {MOCK_TEAMS.length} teams in Acme Engineering
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+            Teams
+          </h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {MOCK_TEAMS.length} teams in Acme Engineering
+          </p>
+        </div>
+        <Button size="sm">
+          <Plus className="mr-1 size-4" />
+          Create Team
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
