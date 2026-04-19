@@ -6,6 +6,5 @@ export const MARKETING_SEGMENTS = [
   "docs",
   "plans",
   "setup",
-  "changelog",
   "terms",
 ] as const;

@@ -16,7 +16,6 @@ const NAV_LINKS = [
   { href: "/docs", label: "Docs" },
   { href: "/plans", label: "Plans" },
   { href: "/setup", label: "Setup" },
-  { href: "/changelog", label: "Changelog" },
 ];
 
 export default function MarketingLayout({
