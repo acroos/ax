@@ -52,9 +52,11 @@ function MetricCard({
             {delta}
           </div>
         )}
-        {sparkline && sparkline.length > 0 && (
-          <Sparkline data={sparkline} className="mt-4 h-16 w-full" />
-        )}
+        <div className="mt-4 h-16 w-full">
+          {sparkline && sparkline.length > 0 && (
+            <Sparkline data={sparkline} className="h-full w-full" />
+          )}
+        </div>
         {detail && (
           <div className="mt-2 text-[12px] text-muted-foreground">{detail}</div>
         )}
