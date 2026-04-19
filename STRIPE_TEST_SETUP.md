@@ -46,7 +46,7 @@ Add these four vars to the Rails server on Railway:
 STRIPE_SECRET_KEY=sk_test_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
 STRIPE_PRO_PRICE_ID=price_xxx
-DASHBOARD_URL=https://ax-metrics.vercel.app
+DASHBOARD_URL=https://www.axmetrics.dev
 ```
 
 Then run the migration if it hasn't run automatically:
@@ -57,7 +57,7 @@ rails db:migrate
 
 ## 7. Test the flow
 
-1. Go to `https://ax-metrics.vercel.app/{your-org}/billing`
+1. Go to `https://www.axmetrics.dev/{your-org}/billing`
 2. Click **Upgrade to Pro**
 3. On the Stripe Checkout page, use test card `4242 4242 4242 4242` with any future expiry, any CVC, any ZIP
 4. Complete payment — you'll be redirected back with a success banner

@@ -82,7 +82,7 @@ The OAuth flow connects the dashboard user to their GitHub identity.
 
 ### Cross-Origin Handoff
 
-The Rails server and dashboard run on different origins (e.g., `ax.up.railway.app` and `ax-metrics.vercel.app`). The server cannot set cookies on the dashboard's domain directly.
+The Rails server and dashboard run on different origins (e.g., `ax.up.railway.app` and `www.axmetrics.dev`). The server cannot set cookies on the dashboard's domain directly.
 
 Current approach (stopgap): the session token is passed via URL query parameter in step 7. The `/auth/accept` route on the dashboard reads the token, sets it as an HttpOnly cookie, and redirects — so the token does not persist in browser history.
 

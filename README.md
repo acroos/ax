@@ -29,7 +29,7 @@ AX is a managed service with three components:
 |-----------|-------------|
 | 🔧 **Go CLI** | Parses Claude Code session data from your machine and pushes it to the server. Installs hooks so this happens automatically. |
 | 🚂 **Rails API** | Ingests session data and GitHub webhooks, computes all metrics server-side, manages orgs and auth. |
-| 📈 **Next.js Dashboard** | Web UI at `https://ax-metrics.vercel.app` for viewing metrics, comparing developers, and managing your team. |
+| 📈 **Next.js Dashboard** | Web UI at `https://www.axmetrics.dev` for viewing metrics, comparing developers, and managing your team. |
 
 Data flows in two ways:
 1. **Claude Code sessions** → CLI parses local session files and pushes to the API
@@ -57,7 +57,7 @@ cd ax/cli && just build
 
 ### 2. Sign in to the dashboard
 
-Open [`ax-metrics.vercel.app`](https://ax-metrics.vercel.app) and sign in with GitHub. You'll get an API key on the onboarding page.
+Open [`www.axmetrics.dev`](https://www.axmetrics.dev) and sign in with GitHub. You'll get an API key on the onboarding page.
 
 ### 3. Connect the CLI
 
@@ -73,7 +73,7 @@ That's it! This validates your key, saves config to `~/.ax/config.json`, and ins
 ax push --repo .
 ```
 
-After this, the hook handles it automatically. View your results at `https://ax-metrics.vercel.app/{your-org-slug}`.
+After this, the hook handles it automatically. View your results at `https://www.axmetrics.dev/{your-org-slug}`.
 
 👉 See the [Setup Guide](docs/setup.md) for the full walkthrough including GitHub App installation and team invites.
 

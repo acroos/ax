@@ -209,7 +209,7 @@ Create a single GitHub App with the settings below. These values are manual and 
 | Field | Value |
 |---|---|
 | Name | `AX Metrics` (or similar) |
-| Homepage URL | `https://ax-metrics.vercel.app` |
+| Homepage URL | `https://www.axmetrics.dev` |
 | Setup URL | `https://ax.up.railway.app/github/installations/callback` |
 | Redirect after install | checked; use the Setup URL |
 | Webhook URL | `https://ax.up.railway.app/webhooks/github` |
