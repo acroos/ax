@@ -11,6 +11,12 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+### 2026-04-19 — FCP optimization: edge redirect, deferred top loader, CSS inlining
+- **dashboard.md**: Updated proxy description (was referencing `src/middleware.ts`, now correctly `src/proxy.ts`). Added `_ax_last_org` cookie edge-redirect behavior. Updated navigation progress bar entry — `nextjs-toploader` is now dynamically imported via `src/components/top-loader.tsx` with `ssr: false`.
+- **Files changed**: `src/proxy.ts` (edge redirect for auth'd users), `src/app/layout.tsx` (deferred top loader), `src/components/top-loader.tsx` (new client wrapper), `next.config.ts` (poweredByHeader, optimizePackageImports, inlineCss).
+
+---
+
 ## 2026-04-19 — Add "Create Team" button to teams index page
 
 **Pages updated:** (none — no wiki page changes needed)
