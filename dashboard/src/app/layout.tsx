@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import NextTopLoader from "nextjs-toploader";
 
 import { ThemeProvider } from "@/components/theme-provider";
@@ -43,6 +44,7 @@ export default function RootLayout({
           />
           {children}
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
