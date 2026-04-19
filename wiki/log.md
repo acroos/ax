@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-19 — Add "My Dashboard" personal view
+
+**Pages updated:** dashboard, rails-server
+**What changed:** Added user-scoped "My Dashboard" view (`/{slug}/me`) with overview, PR list, and metric detail pages that show only the current user's data. Added Rails API endpoints (`/api/v1/orgs/:slug/me/prs` and `/me/metrics`) in new `MeController`, following the team-scoped pattern. Added `listMyPRsAsync()` and `getMyMetricsAsync()` to the dashboard data layer. Added "My Dashboard" nav link to sidebar between Overview and Pull Requests. **Why:** Users need to view their own metrics separately from org/team aggregates.
+
+---
+
 ## 2026-04-19 — Simplify SectionDivider
 
 **Pages updated:** dashboard
