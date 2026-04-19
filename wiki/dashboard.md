@@ -102,7 +102,7 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 ### Loading states
 - **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonTableBody`, `SkeletonPageHeader`, `SkeletonChartPanel`. Shared building blocks for route-level loading UIs and in-page Suspense fallbacks.
 - **Route-level `loading.tsx`** — Every page under `/(app)` has a sibling `loading.tsx` that Next.js renders instantly on navigation (before the page's async data awaits resolve). Each skeleton mirrors the real page's layout. Files: `[slug]/loading.tsx`, `[slug]/prs/loading.tsx`, `[slug]/metrics/[metric]/loading.tsx`, `[slug]/settings/loading.tsx`, `[slug]/billing/loading.tsx`, `prs/[id]/loading.tsx`, `settings/loading.tsx`.
-- **Navigation progress bar** — `nextjs-toploader` is mounted in `src/app/layout.tsx` (2px, `var(--color-primary)` so it follows the theme, no spinner). Shows at the top of the viewport during any `<Link>` navigation to give continuous "something is happening" feedback.
+- **Navigation progress bar** — `nextjs-toploader` is dynamically imported via `src/components/top-loader.tsx` (client component, `ssr: false`). Deferred from the critical render path to improve FCP — it only activates on subsequent navigations, not the first page load. Configured at 2px height with `var(--color-primary)`, no spinner.
 - **`SectionErrorBoundary`** (`src/components/section-error-boundary.tsx`) — Client-side class component that catches errors thrown from an async Suspense child and renders a fallback in place of that section only. Used to scope API failures to a single card/table instead of taking down the whole page.
 
 ### Streaming pattern (in-page Suspense)
@@ -202,9 +202,9 @@ Key files:
 - `src/lib/auth.ts` — `getCurrentUser()`
 - `src/app/auth/accept/route.ts` — Cross-origin cookie handoff
 - `src/app/api/v1/[...path]/route.ts` — API proxy for client components
-- `src/middleware.ts` — Auth enforcement (redirects unauthenticated users to `/login`)
+- `src/proxy.ts` — Edge proxy (Next.js 16 convention). Auth enforcement, `x-pathname` header injection, and `_ax_last_org` cookie for fast landing page redirects.
 
-The middleware enforces auth on all routes. Public paths are excluded: `/login`, `/invite`, `/auth`, `/docs`, `/_next`.
+The proxy enforces auth on all routes. Public paths are excluded: `/login`, `/invite`, `/auth`, `/docs`, `/_next`. Authenticated users visiting `/` with a `_ax_last_org` cookie get an edge redirect (no serverless function hit).
 
 ## Configuration
 
