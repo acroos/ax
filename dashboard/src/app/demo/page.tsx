@@ -6,11 +6,17 @@ import {
 } from "@/lib/mock/data";
 import type { SparklinePoint } from "@/lib/db";
 import { METRIC_DEFS } from "@/lib/metric-defs";
+import { RepoFilter } from "@/components/repo-filter";
 import { SectionDivider } from "@/components/section-divider";
 import { Sparkline } from "@/components/sparkline";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClientTooltip } from "@/components/client-tooltip";
 import { RangeToggle, type Range } from "@/components/range-toggle";
+
+const DEMO_REPOS = MOCK_REPOS.filter(
+  (r): r is typeof r & { github_owner: string; github_repo: string } =>
+    r.github_owner !== null && r.github_repo !== null,
+);
 
 const METRIC_INFO = Object.fromEntries(METRIC_DEFS.map((d) => [d.slug, d]));
 const VALID_RANGES: Range[] = ["7d", "30d", "90d"];
@@ -126,13 +132,6 @@ export default async function DemoOverviewPage({
     ? getMockAggregatesForRepo(repoId, days)
     : getMockAggregatesForDays(days);
 
-  const repoLabel = repoId
-    ? (() => {
-        const r = MOCK_REPOS.find((r) => r.id === repoId);
-        return r ? `${r.github_owner}/${r.github_repo}` : "All Repositories";
-      })()
-    : "All Repositories";
-
   const m = (slug: string) => data.metrics[slug]?.current ?? null;
   const prior = (slug: string) => data.metrics[slug]?.prior ?? null;
   const spark = (slug: string) => data.metrics[slug]?.sparkline;
@@ -154,7 +153,7 @@ export default async function DemoOverviewPage({
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          <span className="font-medium text-foreground">{repoLabel}</span>
+          <RepoFilter repos={DEMO_REPOS} current={repoId} />
           {" "}&middot; {data.totalPRs} finalized PR
           {data.totalPRs !== 1 && "s"} in past {range}
         </p>

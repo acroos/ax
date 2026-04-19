@@ -16,7 +16,8 @@ import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { PRWithMetrics } from "@/lib/db";
-import { listPRsWithMetricsAsync } from "@/lib/db";
+import { listPRsWithMetricsAsync, listReposAsync } from "@/lib/db";
+import { RepoFilter } from "@/components/repo-filter";
 import {
   formatMetricValue,
   getMetricDef,
@@ -261,6 +262,7 @@ export default async function MetricDetailPage({
   const prsPromise = listPRsWithMetricsAsync(repoId, slug).catch(
     () => [] as PRWithMetrics[],
   );
+  const reposPromise = listReposAsync(slug).catch(() => []);
 
   return (
     <div>
@@ -285,7 +287,13 @@ export default async function MetricDetailPage({
           <RangeToggle current={range} />
         </div>
         <Suspense fallback={<Skeleton className="mt-1 h-4 w-40" />}>
-          <DataCountSubtitle promise={prsPromise} def={def} range={range} />
+          <DataCountSubtitle
+            promise={prsPromise}
+            reposPromise={reposPromise}
+            repoId={repoId}
+            def={def}
+            range={range}
+          />
         </Suspense>
       </div>
 
@@ -332,21 +340,37 @@ export default async function MetricDetailPage({
 // Async islands
 // ---------------------------------------------------------------------------
 
+type RepoLite = {
+  id: number;
+  github_owner: string | null;
+  github_repo: string | null;
+};
+
 async function DataCountSubtitle({
   promise,
+  reposPromise,
+  repoId,
   def,
   range,
 }: {
   promise: Promise<PRWithMetrics[]>;
+  reposPromise: Promise<RepoLite[]>;
+  repoId: number | undefined;
   def: MetricDefEntry;
   range: Range;
 }) {
-  const prs = await promise;
+  const [prs, allRepos] = await Promise.all([promise, reposPromise]);
+  const repos = allRepos.filter(
+    (r): r is RepoLite & { github_owner: string; github_repo: string } =>
+      r.github_owner !== null && r.github_repo !== null,
+  );
   const allValues = extractPRValues(prs, def);
   const values = filterByRange(allValues, range);
   return (
     <p className="mt-1 text-[13px] text-muted-foreground">
-      {values.length} PR{values.length !== 1 && "s"} with data in past {range}
+      <RepoFilter repos={repos} current={repoId} />
+      {" "}&middot; {values.length} PR{values.length !== 1 && "s"} with data in
+      past {range}
       {allValues.length > values.length && (
         <span className="text-muted-foreground/60">
           {" "}

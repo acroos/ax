@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-18 — Sidebar navigation restructuring
+
+**Pages updated:** dashboard
+**What changed:** Restructured sidebar navigation to reduce clutter and separate concerns. Removed Org Settings, Billing, and Docs from the main nav — they now live in a user dropdown menu in the sidebar footer (Org Settings and Billing only visible for admin/owner roles, determined via `getGithubInstallation`). Removed "Filter by Repo" from the sidebar entirely — repo filtering is now an inline `RepoFilter` dropdown component (`src/components/repo-filter.tsx`) rendered in page subtitle areas (overview, PRs, metric detail) using the `?repo=` query param. Sidebar now contains only: logo, OrgSwitcher, Overview, Pull Requests, Teams (Pro orgs), and the user footer. Demo sidebar updated to match. **Why:** The sidebar was mixing navigation, filtering, admin settings, and external links in one flat list, creating cognitive load. With Teams added, this became worse. The restructuring organizes by frequency of use — high-frequency nav items in the sidebar, low-frequency admin items in a menu, filtering in the content area where it contextually belongs.
+
+---
+
 ## 2026-04-18 — Teams within organizations
 
 **Pages updated:** data-model, rails-server, dashboard
