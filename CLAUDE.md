@@ -56,17 +56,9 @@ just dashboard-dev    # Development server on :3333
 just dashboard-build  # Production build
 ```
 
-## Key Commands
+## Demo App
 
-```bash
-# Setup
-ax init --api-key <key>             # Validate API key, save config, install hooks
-ax init --uninstall                 # Remove all AX hooks
-
-# Data ingestion
-ax push --repo .                    # Push session data for current repo
-ax push --all                       # Discover all repos and bulk push sessions
-```
+The /demo app should _exactly_ (wherever possible) match the real app's functionality.  Any changes to functionality or UI _must_ come with matching changes to the demo app.
 
 ## Dashboard UI
 
