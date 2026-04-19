@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 import { MOCK_PRS, MOCK_REPOS } from "@/lib/mock/data";
 import { getPRSize } from "@/lib/db";
 import { RepoFilter } from "@/components/repo-filter";

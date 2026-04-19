@@ -1,5 +1,6 @@
 // --- API client ---
 // The dashboard always fetches from the Rails API (managed mode).
+import { cookies } from "next/headers";
 import { isMock, mockFetchAPI } from "./mock";
 
 const API_URL = process.env.AX_API_URL;
@@ -20,7 +21,6 @@ export async function fetchAPI<T>(
   // Forward the session token as an explicit header.
   // We do not use a Cookie header because Rails' cookie-jar semantics are
   // unreliable for raw (unsigned) values forwarded from another origin.
-  const { cookies } = await import("next/headers");
   try {
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get("_ax_session")?.value;
@@ -195,10 +195,11 @@ export interface GithubInstallationResponse {
 
 export async function getGithubInstallation(
   orgSlug: string,
+  opts?: { revalidate?: number | false },
 ): Promise<GithubInstallationResponse> {
   return fetchAPI<GithubInstallationResponse>(
     orgApiPath(orgSlug, "/github_installation"),
-    { revalidate: false },
+    { revalidate: opts?.revalidate ?? 60 },
   );
 }
 

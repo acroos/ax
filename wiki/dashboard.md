@@ -202,9 +202,30 @@ Key files:
 - `src/lib/auth.ts` — `getCurrentUser()`
 - `src/app/auth/accept/route.ts` — Cross-origin cookie handoff
 - `src/app/api/v1/[...path]/route.ts` — API proxy for client components
-- `src/proxy.ts` — Edge proxy (Next.js 16 convention). Auth enforcement, `x-pathname` header injection, and `_ax_last_org` cookie for fast landing page redirects.
+- `src/proxy.ts` — Edge proxy (Next.js 16 convention). Auth enforcement (redirects unauthenticated users to `/login`), `x-pathname` header injection, and `_ax_last_org` cookie for fast landing page redirects.
 
 The proxy enforces auth on all routes. Public paths are excluded: `/login`, `/invite`, `/auth`, `/docs`, `/_next`. Authenticated users visiting `/` with a `_ax_last_org` cookie get an edge redirect (no serverless function hit).
+
+## Performance
+
+### Edge Runtime
+
+Most app pages use `export const runtime = "edge"` for near-zero cold starts (~5ms vs ~500ms for Node.js serverless). This dramatically improves TTFB, especially under low traffic.
+
+**Edge-compatible pages:** All `(app)` pages except the 3 metric detail pages (`[slug]/metrics/[metric]`, `[slug]/me/metrics/[metric]`, `[slug]/teams/[team]/metrics/[metric]`) which use `fs` to read markdown docs from disk.
+
+**When adding new pages:** Default to `export const runtime = "edge"` unless the page imports `fs`, `path`, or other Node.js-only APIs.
+
+### Vercel Region
+
+Serverless functions (the metric detail pages that can't use Edge) are pinned to `sfo1` via `vercel.json` `"regions"` to colocate with the Railway API server in us-west.
+
+### Fetch Caching
+
+API fetches default to `revalidate: 60` (60s stale-while-revalidate). Notable exceptions:
+- `getGithubInstallation()` — cached at 60s by default; the settings page bypasses the cache (`revalidate: false`) when returning from GitHub App installation (`?installed=true`).
+- Mutations (`POST`/`PUT`/`DELETE`) — always `cache: "no-store"`.
+- `getBilling()` — always `revalidate: false` (fresh data).
 
 ## Configuration
 
@@ -239,5 +260,5 @@ The proxy enforces auth on all routes. Public paths are excluded: `/login`, `/in
 | `src/app/[slug]/teams/` | Team overview, PR list, and metric detail pages |
 | `src/app/[slug]/me/` | My Dashboard: overview, PR list, and metric detail pages (scoped to current user) |
 | `src/app/[slug]/settings/invites-section.tsx` | Invite management client component |
-| `src/middleware.ts` | Auth enforcement |
+| `src/proxy.ts` | Auth enforcement |
 | `next.config.ts` | Build config |

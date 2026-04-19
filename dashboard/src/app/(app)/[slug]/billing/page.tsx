@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { fetchAPI, orgApiPath, getBilling } from "@/lib/db";

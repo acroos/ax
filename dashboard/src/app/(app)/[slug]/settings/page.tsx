@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { fetchAPI, orgApiPath, getGithubInstallation } from "@/lib/db";
@@ -41,7 +43,13 @@ export default async function OrgSettingsPage({
   const query = await searchParams;
 
   // Kick off all three fetches in parallel — shared across cards below.
-  const installationPromise = getGithubInstallation(slug).catch(() => null);
+  // Bypass the cache when returning from GitHub App installation so the
+  // settings page always shows the latest installation state.
+  const justInstalled = query.installed === "true" || query.installed === "false";
+  const installationPromise = getGithubInstallation(
+    slug,
+    justInstalled ? { revalidate: false } : undefined,
+  ).catch(() => null);
   const membersPromise = fetchSafe<MembersResponse>(
     orgApiPath(slug, "/members"),
   );
