@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import NextTopLoader from "nextjs-toploader";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -43,6 +44,7 @@ export default function RootLayout({
           />
           {children}
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
