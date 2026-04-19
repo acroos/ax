@@ -10,7 +10,6 @@ import { RepoFilter } from "@/components/repo-filter";
 import { SectionDivider } from "@/components/section-divider";
 import { Sparkline } from "@/components/sparkline";
 import { Card, CardContent } from "@/components/ui/card";
-import { ClientTooltip } from "@/components/client-tooltip";
 import { RangeToggle, type Range } from "@/components/range-toggle";
 
 const DEMO_REPOS = MOCK_REPOS.filter(
@@ -41,11 +40,11 @@ function MetricCard({
 }) {
   const card = (
     <Card
-      className={`gap-0 p-5 transition-colors ${
+      className={`group gap-0 p-5 transition-colors ${
         href ? "hover:border-primary/30 hover:bg-accent/40 cursor-pointer" : ""
       }`}
     >
-      <CardContent className="p-0">
+      <CardContent className="relative p-0">
         <div className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
           {label}
         </div>
@@ -63,28 +62,23 @@ function MetricCard({
         {detail && (
           <div className="mt-2 text-[12px] text-muted-foreground">{detail}</div>
         )}
+        {tooltip && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-card from-60% to-transparent pt-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            <p className="text-[12px] leading-relaxed text-muted-foreground/70">
+              {tooltip}
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 
-  const tipped = tooltip ? (
-    <ClientTooltip
-      content={<p>{tooltip}</p>}
-      side="top"
-      className="max-w-[280px]"
-    >
-      {card}
-    </ClientTooltip>
-  ) : (
-    card
-  );
-
   return href ? (
     <Link href={href} className="block">
-      {tipped}
+      {card}
     </Link>
   ) : (
-    tipped
+    card
   );
 }
 
