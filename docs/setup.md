@@ -32,7 +32,7 @@ Before you begin, make sure you have:
 
 ## Step 1 — Sign in to the dashboard 🔑
 
-Open [`ax-metrics.vercel.app`](https://ax-metrics.vercel.app) and click
+Open [`www.axmetrics.dev`](https://www.axmetrics.dev) and click
 **Sign in with GitHub**. You'll be bounced through GitHub's OAuth consent
 screen (scopes: `read:user` and `user:email`), then back to the dashboard.
 
@@ -55,7 +55,7 @@ Your API key is how the CLI authenticates with AX. It's displayed on the
 onboarding page right after you sign in, and you can always find it at:
 
 ```
-https://ax-metrics.vercel.app/settings
+https://www.axmetrics.dev/settings
 ```
 
 > ⚠️ **Copy it now!** Keys are stored server-side as bcrypt hashes. The raw
@@ -136,7 +136,7 @@ Installing the AX GitHub App unlocks the best parts of the system:
 
 ### How to install
 
-1. Go to `https://ax-metrics.vercel.app/{your-org-slug}/settings`.
+1. Go to `https://www.axmetrics.dev/{your-org-slug}/settings`.
 2. In the **GitHub App** card, click **Install GitHub App** (admins only).
 3. GitHub's consent screen appears — choose your org and select which repos
    AX can access ("All repositories" or a subset).
@@ -173,7 +173,7 @@ historical data and metrics.
 
 ## Step 6 — View results on the dashboard 📈
 
-Open `https://ax-metrics.vercel.app/{your-org-slug}`. On first sign-in your
+Open `https://www.axmetrics.dev/{your-org-slug}`. On first sign-in your
 org slug is your GitHub username.
 
 **Here's what you'll find:**
@@ -243,7 +243,7 @@ repos not covered by the GitHub App installation.
 Two things to check:
 
 1. **`AX_API_URL` on the dashboard deploy.** The Next.js app at
-   `https://ax-metrics.vercel.app` reads `AX_API_URL` to know where to send
+   `https://www.axmetrics.dev` reads `AX_API_URL` to know where to send
    auth requests. It should be set to `https://ax.up.railway.app`. If it
    defaults to `http://localhost:3000`, the OAuth redirect will fail on
    production. Check the Vercel environment variables for the project.
@@ -263,7 +263,7 @@ Two things to check:
 The API key stored in `~/.ax/config.json` is missing, wrong, or has been
 rotated out from under you. Fix it by:
 
-1. Going to [`ax-metrics.vercel.app/settings`](https://ax-metrics.vercel.app/settings).
+1. Going to [`www.axmetrics.dev/settings`](https://www.axmetrics.dev/settings).
 2. Clicking **Rotate API Key**. Copy the new key immediately — it's only
    shown once.
 3. Re-running `ax init --api-key <new-key>`. This overwrites

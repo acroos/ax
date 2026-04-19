@@ -7,7 +7,7 @@ AX is a managed service that measures developer experience for agentic coding wo
 AX has three components:
 - **Go CLI** — Thin client that parses Claude Code session data and pushes it to the server. Installs hooks for automatic data collection.
 - **Rails API** (`ax.up.railway.app`) — Backend service handling data ingestion, GitHub webhooks, metric computation, auth, and multi-tenant org management.
-- **Next.js Dashboard** (`ax-metrics.vercel.app`) — Web UI for viewing metrics and managing orgs.
+- **Next.js Dashboard** (`axmetrics.dev`) — Web UI for viewing metrics and managing orgs.
 
 ## Wiki — Read This First
 

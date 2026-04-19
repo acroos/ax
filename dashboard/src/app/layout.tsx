@@ -8,7 +8,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://ax-metrics.vercel.app",
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.axmetrics.dev",
   ),
   title: { default: "AX — Agentic Coding Metrics", template: "%s · AX" },
   description: "Measure how effectively you work with AI coding agents",
