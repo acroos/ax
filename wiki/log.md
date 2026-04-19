@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-19 — TTFB performance optimization (Edge Runtime, caching, region alignment)
+
+**Pages updated:** `wiki/dashboard.md` (added Performance section, fixed `src/middleware.ts` → `src/proxy.ts` reference)
+**What changed:** Added `export const runtime = "edge"` to all app pages that don't use Node.js APIs (12 pages + 7 demo pages) to eliminate serverless cold starts. Changed `getGithubInstallation()` default caching from `revalidate: false` to `revalidate: 60` (settings page bypasses cache when returning from GitHub App install). Fixed `fetchAPI` to use static import for `next/headers` cookies instead of dynamic `await import()`. Set Vercel function region to `sfo1` in `vercel.json` to colocate with Railway us-west. The 3 metric detail pages remain on Node.js runtime because they use `fs` to read markdown docs.
+
+---
+
 ## 2026-04-19 — Add "Create Team" button to teams index page
 
 **Pages updated:** (none — no wiki page changes needed)

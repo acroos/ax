@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 import Link from "next/link";
 import { Users, GitBranch } from "lucide-react";
 import { listTeamsAsync, getGithubInstallation } from "@/lib/db";

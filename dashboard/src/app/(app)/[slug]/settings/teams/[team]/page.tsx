@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";

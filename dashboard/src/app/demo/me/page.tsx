@@ -1,3 +1,5 @@
+export const runtime = "edge";
+
 import Link from "next/link";
 import { getMockMyMetrics } from "@/lib/mock/data";
 import type { SparklinePoint } from "@/lib/db";
