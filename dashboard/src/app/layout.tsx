@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import NextTopLoader from "nextjs-toploader";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 
 import { ThemeProvider } from "@/components/theme-provider";
+import { TopLoader } from "@/components/top-loader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,14 +35,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <NextTopLoader
-            color="var(--color-primary)"
-            height={2}
-            shadow="0 0 10px var(--color-primary), 0 0 5px var(--color-primary)"
-            showSpinner={false}
-            easing="ease"
-            speed={200}
-          />
+          <TopLoader />
           {children}
         </ThemeProvider>
         <SpeedInsights />
