@@ -272,7 +272,10 @@ async function AppSidebar() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/settings">Account Settings</Link>
+                  <Link href="/settings">
+                    <User className="mr-2 size-4" />
+                    Account Settings
+                  </Link>
                 </DropdownMenuItem>
                 {isAdminOrOwner && base && (
                   <>
