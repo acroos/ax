@@ -12,7 +12,7 @@ Location: `dashboard/`
 |-------|------|---------------|
 | `/` | Root | Redirects to default org or login |
 | `/login` | Login | GitHub OAuth sign-in |
-| `/onboarding` | Onboarding | Multi-step guided setup: welcome, API key reveal, CLI install, done |
+| `/onboarding` | Onboarding | Two-path guided setup. **Admin path** (5 steps): welcome, GitHub App install, API key + CLI, invite team, all-set landing. **Member path** (3 steps, `?role=member&org=<slug>`): welcome, API key + CLI, all-set landing. Rendered in its own `(onboarding)` route group without the sidebar. |
 | `/prs/[id]` | PR Detail | All metrics for one PR, grouped by category |
 | `/docs` | Docs Index | Grid of all metric documentation pages, plus link to data collection disclosure |
 | `/docs/data-collection` | Data Collection | What data AX collects, sends, and stores (rendered from `docs/data-collection.md`) |
@@ -229,7 +229,9 @@ The middleware enforces auth on all routes. Public paths are excluded: `/login`,
 | `src/app/settings/api-key-section.tsx` | API key reveal + rotate client component |
 | `src/app/settings/logout-button.tsx` | Logout button client component |
 | `src/app/auth/logout/route.ts` | Logout route handler (destroys session, clears cookie) |
-| `src/app/onboarding/onboarding-steps.tsx` | Multi-step onboarding client component |
+| `src/app/(onboarding)/onboarding/page.tsx` | Onboarding server component (auth, role detection) |
+| `src/app/(onboarding)/onboarding/onboarding-steps.tsx` | Multi-step onboarding client component (admin/member paths) |
+| `src/app/(onboarding)/onboarding/actions.ts` | Server actions for GitHub App install URL and invite creation |
 | `src/app/[slug]/settings/github-app-card.tsx` | GitHub App installation card (3-state: missing/active/suspended, connected repos list, syncing indicator, reinstall flow) |
 | `src/app/[slug]/settings/members-section.tsx` | Member management client component |
 | `src/app/[slug]/settings/teams-section.tsx` | Team create/delete management (admin, Pro only) |

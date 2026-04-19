@@ -215,11 +215,20 @@ function OverviewMetricsSkeleton() {
 function NoDataState() {
   return (
     <div className="flex h-[60vh] items-center justify-center">
-      <div className="space-y-3 text-center">
-        <h2 className="text-lg font-medium text-foreground">No data yet</h2>
-        <p className="text-sm text-muted-foreground">
-          Connect a repository to start tracking metrics.
+      <div className="max-w-sm space-y-4 text-center">
+        <h2 className="font-serif text-lg font-medium text-foreground">
+          No data yet
+        </h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Connect a repository to start tracking metrics. Once pull requests are
+          merged or closed, your dashboard will come to life.
         </p>
+        <Link
+          href="/docs"
+          className="inline-block text-sm text-primary transition-colors hover:underline"
+        >
+          Explore the metrics while you wait &rarr;
+        </Link>
       </div>
     </div>
   );
@@ -228,13 +237,20 @@ function NoDataState() {
 function NoFinalizedPRsState() {
   return (
     <div className="flex h-[60vh] items-center justify-center">
-      <div className="space-y-3 text-center">
-        <h2 className="text-lg font-medium text-foreground">
+      <div className="max-w-sm space-y-4 text-center">
+        <h2 className="font-serif text-lg font-medium text-foreground">
           No finalized PRs yet
         </h2>
-        <p className="text-sm text-muted-foreground">
-          Metrics appear once pull requests are merged or closed.
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Metrics appear once pull requests are merged or closed. Check back in a
+          few minutes if you have recent PR activity.
         </p>
+        <Link
+          href="/docs"
+          className="inline-block text-sm text-primary transition-colors hover:underline"
+        >
+          Learn about the metrics while you wait &rarr;
+        </Link>
       </div>
     </div>
   );

@@ -11,6 +11,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-19 — Two-path onboarding flow (AUS-135)
+
+**Pages updated:** dashboard
+**What changed:** Redesigned onboarding into two distinct paths. **Admin path** (new user signup): 5-step wizard — welcome, GitHub App install (opens in new tab), API key + CLI install, invite team members, and an "all set" landing with docs link. **Member path** (invite acceptance): 3-step wizard — welcome, API key + CLI install, all-set landing. Moved onboarding from `(app)` route group to its own `(onboarding)` route group so it renders full-screen without the sidebar. Changed invite acceptance (`/invite/[token]`) to redirect to `/onboarding?org=<slug>&role=member` instead of directly to the org dashboard. Improved empty states on the org overview page (`NoDataState`, `NoFinalizedPRsState`) with warmer copy and docs links.
+
+---
+
 ## 2026-04-19 — Simplify SectionDivider
 
 **Pages updated:** dashboard

@@ -62,7 +62,12 @@ export async function GET(
   }
 
   const data = (await apiRes.json()) as { org_slug: string };
-  const res = NextResponse.redirect(new URL(`/${data.org_slug}`, req.url));
+  const res = NextResponse.redirect(
+    new URL(
+      `/onboarding?org=${encodeURIComponent(data.org_slug)}&role=member`,
+      req.url,
+    ),
+  );
   res.cookies.delete("pending_invite");
   return res;
 }

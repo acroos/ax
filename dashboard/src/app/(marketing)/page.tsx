@@ -11,6 +11,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Sparkline } from "@/components/sparkline";
+import type { SparklinePoint } from "@/lib/db";
+
+/* Static sparkline data for preview metric cards */
+const sp = (values: number[]): SparklinePoint[] =>
+  values.map((v, i) => ({ t: String(i), v }));
+
+const SPARKLINES = {
+  ciSuccess: sp([
+    0.78, 0.82, 0.85, 0.8, 0.88, 0.83, 0.86, 0.79, 0.84, 0.82, 0.87, 0.83,
+  ]),
+  postOpen: sp([2, 1, 1, 2, 1, 0, 2, 1, 1, 3, 1, 1]),
+  tokenCost: sp([
+    1.52, 1.18, 1.35, 0.94, 1.62, 1.22, 1.08, 1.45, 1.3, 1.15, 1.38, 1.28,
+  ]),
+  cacheHit: sp([
+    0.68, 0.71, 0.74, 0.7, 0.73, 0.69, 0.75, 0.72, 0.71, 0.76, 0.73, 0.72,
+  ]),
+  autonomy: sp([6.5, 7.0, 7.4, 6.8, 7.3, 7.1, 7.6, 6.9, 7.2, 7.5, 7.0, 7.2]),
+  sidechain: sp([
+    0.15, 0.13, 0.1, 0.14, 0.11, 0.13, 0.09, 0.12, 0.14, 0.11, 0.1, 0.12,
+  ]),
+};
 
 export default async function LandingPage() {
   const user = await getCurrentUser();
@@ -36,7 +59,7 @@ export default async function LandingPage() {
           </p>
           <div className="mt-8 flex items-center gap-3">
             <Button size="lg" asChild>
-              <Link href="/login">Get Started</Link>
+              <Link href="/demo">Explore Demo</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <Link href="/docs">View Docs</Link>
@@ -45,66 +68,82 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Dashboard preview */}
-      <section className="border-t border-border bg-muted/40">
-        <div className="mx-auto max-w-[1100px] px-6 py-16">
-          <Link
-            href="/demo"
-            className="group relative block overflow-hidden rounded-xl border border-border shadow-lg transition-shadow hover:shadow-xl"
-          >
-            <img
-              src="/dashboard-preview.png"
-              alt="AX dashboard showing metric cards across Output Quality, Prompt Efficiency, and Agent Behavior categories"
-              className="w-full"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-foreground/0 transition-colors group-hover:bg-foreground/60">
-              <span className="translate-y-2 text-lg font-semibold text-background opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
-                Try the interactive demo &rarr;
-              </span>
-            </div>
-          </Link>
-        </div>
-      </section>
+      {/* Output Quality */}
+      <FeatureSection
+        eyebrow="Output Quality"
+        heading="Is the code your agent produces good?"
+        body="CI success, post-open commits, review cycle time, and line revisit rate."
+        metrics={[
+          "Post-Open Commits",
+          "CI Success Rate",
+          "Line Revisit Rate",
+          "Review Cycle Time",
+        ]}
+        cards={[
+          {
+            label: "CI Success Rate",
+            value: "83%",
+            detail: "First-run pass rate",
+            sparkline: SPARKLINES.ciSuccess,
+          },
+          {
+            label: "Avg Post-Open Commits",
+            value: "1.4",
+            detail: "Lower is better",
+            sparkline: SPARKLINES.postOpen,
+          },
+        ]}
+      />
 
-      {/* What you get */}
-      <section className="border-t border-border">
-        <div className="mx-auto max-w-[1100px] px-6 py-20">
-          <p className="mb-3 text-[13px] font-medium uppercase tracking-wider text-muted-foreground">
-            11 metrics across 3 categories
-          </p>
-          <h2 className="mb-12 max-w-[480px] font-serif text-[26px] font-semibold leading-snug text-foreground">
-            Understand every dimension of your AI coding workflow
-          </h2>
+      {/* Prompt Efficiency */}
+      <FeatureSection
+        eyebrow="Prompt Efficiency"
+        heading="Are you getting results with fewer interactions and less cost?"
+        body="Token spend, iteration depth, and cache utilization."
+        metrics={[
+          "Iteration Depth",
+          "Token Cost per PR",
+          "Cache Hit Rate",
+          "Unmerged Token Spend",
+        ]}
+        cards={[
+          {
+            label: "Avg Token Cost",
+            value: "$1.28",
+            detail: "Per pull request",
+            sparkline: SPARKLINES.tokenCost,
+          },
+          {
+            label: "Avg Cache Hit Rate",
+            value: "72%",
+            detail: "Prompt cache utilization",
+            sparkline: SPARKLINES.cacheHit,
+          },
+        ]}
+        reverse
+      />
 
-          <div className="grid grid-cols-3 gap-4">
-            <MetricCategory
-              title="Output Quality"
-              description="Is the code your agent produces good? CI success, post-open commits, review cycle time, and line revisit rate."
-              metrics={[
-                "Post-Open Commits",
-                "CI Success Rate",
-                "Line Revisit Rate",
-                "Review Cycle Time",
-              ]}
-            />
-            <MetricCategory
-              title="Prompt Efficiency"
-              description="Are you getting results with fewer interactions and less cost? Token spend, iteration depth, and cache utilization."
-              metrics={[
-                "Iteration Depth",
-                "Token Cost per PR",
-                "Cache Hit Rate",
-                "Unmerged Token Spend",
-              ]}
-            />
-            <MetricCategory
-              title="Agent Behavior"
-              description="How well is the agent navigating problems? Backtracking, redundant reads, and autonomy."
-              metrics={["Sidechain Rate", "Re-Read Rate", "Autonomy Score"]}
-            />
-          </div>
-        </div>
-      </section>
+      {/* Agent Behavior */}
+      <FeatureSection
+        eyebrow="Agent Behavior"
+        heading="How well is the agent navigating problems?"
+        body="Backtracking, redundant reads, and autonomy."
+        metrics={["Sidechain Rate", "Re-Read Rate", "Autonomy Score"]}
+        cards={[
+          {
+            label: "Avg Autonomy Score",
+            value: "7.2",
+            detail: "Agent independence ratio",
+            sparkline: SPARKLINES.autonomy,
+          },
+          {
+            label: "Avg Sidechain Rate",
+            value: "12%",
+            detail: "Dead-end reasoning paths",
+            sparkline: SPARKLINES.sidechain,
+          },
+        ]}
+      />
 
       {/* How it works */}
       <section className="border-t border-border">
@@ -161,31 +200,81 @@ export default async function LandingPage() {
   );
 }
 
-function MetricCategory({
-  title,
-  description,
+function FeatureSection({
+  eyebrow,
+  heading,
+  body,
   metrics,
+  cards,
+  reverse = false,
 }: {
-  title: string;
-  description: string;
+  eyebrow: string;
+  heading: string;
+  body: string;
   metrics: string[];
+  cards: {
+    label: string;
+    value: string;
+    detail: string;
+    sparkline: SparklinePoint[];
+  }[];
+  reverse?: boolean;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-[15px]">{title}</CardTitle>
-        <CardDescription className="text-[13px] leading-relaxed">
-          {description}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-1.5">
-          {metrics.map((m) => (
-            <Badge key={m} variant="secondary" className="font-normal">
-              {m}
-            </Badge>
+    <section className="border-t border-border">
+      <div
+        className={`mx-auto flex max-w-[1100px] items-center gap-16 px-6 py-20 ${reverse ? "flex-row-reverse" : ""}`}
+      >
+        <div className="flex-1">
+          <p className="mb-3 text-[13px] font-medium uppercase tracking-wider text-muted-foreground">
+            {eyebrow}
+          </p>
+          <h2 className="mb-4 max-w-[400px] font-serif text-[26px] font-semibold leading-snug text-foreground">
+            {heading}
+          </h2>
+          <p className="mb-6 max-w-[400px] text-[15px] leading-relaxed text-muted-foreground">
+            {body}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {metrics.map((m) => (
+              <Badge key={m} variant="secondary" className="font-normal">
+                {m}
+              </Badge>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-1 flex-col gap-3">
+          {cards.map((card) => (
+            <PreviewCard key={card.label} {...card} />
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function PreviewCard({
+  label,
+  value,
+  detail,
+  sparkline,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  sparkline: SparklinePoint[];
+}) {
+  return (
+    <Card className="gap-0 p-5">
+      <CardContent className="p-0">
+        <div className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </div>
+        <div className="mb-1 font-serif text-[28px] font-medium leading-none tracking-tight text-foreground [font-variant-numeric:lining-nums_tabular-nums]">
+          {value}
+        </div>
+        <Sparkline data={sparkline} className="mt-4 h-12 w-full" />
+        <div className="mt-2 text-[12px] text-muted-foreground">{detail}</div>
       </CardContent>
     </Card>
   );
