@@ -26,7 +26,7 @@ export default async function LandingPage() {
       <section className="mx-auto max-w-[1100px] px-6 pt-24 pb-20">
         <div className="max-w-[680px]">
           <h1 className="font-serif text-[40px] font-semibold leading-[1.15] tracking-[-0.02em] text-foreground">
-            Are your AI coding workflows actually working?
+            Are your AI coding workflows working?
           </h1>
           <p className="mt-5 max-w-[560px] text-[17px] leading-relaxed text-muted-foreground">
             AX measures what matters — cost per PR, iteration depth, CI success,
@@ -78,7 +78,7 @@ export default async function LandingPage() {
           <div className="grid grid-cols-3 gap-4">
             <MetricCategory
               title="Output Quality"
-              description="Is the code your agent produces actually good? CI success, post-open commits, review cycle time, and line revisit rate."
+              description="Is the code your agent produces good? CI success, post-open commits, review cycle time, and line revisit rate."
               metrics={[
                 "Post-Open Commits",
                 "CI Success Rate",

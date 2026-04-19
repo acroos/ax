@@ -2,7 +2,7 @@
 
 **You're shipping PRs with Claude Code. But are they getting better?**
 
-AX measures what matters: cost per PR, iteration depth, CI success, and other metrics that tell you whether your AI coding workflow is actually working.
+AX measures what matters: cost per PR, iteration depth, CI success, and other metrics that tell you whether your AI coding workflow is working.
 
 ---
 
