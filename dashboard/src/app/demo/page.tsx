@@ -24,7 +24,6 @@ const RANGE_DAYS: Record<Range, number> = { "7d": 7, "30d": 30, "90d": 90 };
 function MetricCard({
   label,
   value,
-  detail,
   tooltip,
   href,
   delta,
@@ -32,7 +31,6 @@ function MetricCard({
 }: {
   label: string;
   value: string;
-  detail?: string;
   tooltip?: string;
   href?: string;
   delta?: string;
@@ -61,9 +59,6 @@ function MetricCard({
             <Sparkline data={sparkline} className="h-full w-full" />
           )}
         </div>
-        {detail && (
-          <div className="mt-2 text-[12px] text-muted-foreground">{detail}</div>
-        )}
         {tooltip && (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-card from-60% to-transparent pt-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
             <p className="text-[12px] leading-relaxed text-muted-foreground/70">
@@ -169,7 +164,6 @@ export default async function DemoOverviewPage({
               range,
             )}
             sparkline={spark("post-open-commits")}
-            detail="Lower is better"
             href={metricHref("post-open-commits")}
             {...tip("post-open-commits")}
           />
@@ -183,7 +177,6 @@ export default async function DemoOverviewPage({
               range,
             )}
             sparkline={spark("ci-success-rate")}
-            detail="First-run pass rate"
             href={metricHref("ci-success-rate")}
             {...tip("ci-success-rate")}
           />
@@ -197,7 +190,6 @@ export default async function DemoOverviewPage({
               range,
             )}
             sparkline={spark("line-revisit-rate")}
-            detail="Cross-PR file overlap"
             href={metricHref("line-revisit-rate")}
             {...tip("line-revisit-rate")}
           />
@@ -218,7 +210,6 @@ export default async function DemoOverviewPage({
               range,
             )}
             sparkline={spark("iteration-depth")}
-            detail="Human-agent turn pairs"
             href={metricHref("iteration-depth")}
             {...tip("iteration-depth")}
           />
@@ -232,11 +223,6 @@ export default async function DemoOverviewPage({
               range,
             )}
             sparkline={spark("token-cost-per-pr")}
-            detail={
-              data.sessionDataCount > 0
-                ? `${data.sessionDataCount} of ${data.totalPRs} PRs with session data`
-                : undefined
-            }
             href={metricHref("token-cost-per-pr")}
             {...tip("token-cost-per-pr")}
           />
@@ -250,7 +236,6 @@ export default async function DemoOverviewPage({
               range,
             )}
             sparkline={spark("cache-hit-rate")}
-            detail="Prompt cache utilization"
             href={metricHref("cache-hit-rate")}
             {...tip("cache-hit-rate")}
           />
@@ -271,7 +256,6 @@ export default async function DemoOverviewPage({
               range,
             )}
             sparkline={spark("sidechain-rate")}
-            detail="Dead-end reasoning paths"
             href={metricHref("sidechain-rate")}
             {...tip("sidechain-rate")}
           />
@@ -285,7 +269,6 @@ export default async function DemoOverviewPage({
               range,
             )}
             sparkline={spark("re-read-rate")}
-            detail="File read redundancy"
             href={metricHref("re-read-rate")}
             {...tip("re-read-rate")}
           />
@@ -299,7 +282,6 @@ export default async function DemoOverviewPage({
               range,
             )}
             sparkline={spark("autonomy-score")}
-            detail="Agent independence ratio"
             href={metricHref("autonomy-score")}
             {...tip("autonomy-score")}
           />
