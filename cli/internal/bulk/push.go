@@ -12,6 +12,7 @@ import (
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/parsers"
 	"github.com/austinroos/ax/internal/push"
+	"github.com/austinroos/ax/internal/state"
 	"github.com/austinroos/ax/internal/ui"
 	"github.com/mattn/go-isatty"
 )
@@ -279,9 +280,16 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 		RepoPath:  repo.ProjectPaths[0],
 	}
 
-	// Parse all sessions.
+	// Filter to only new sessions
+	repoState, err := state.Load(repo.OwnerRepo)
+	if err != nil {
+		repoState = &state.RepoState{}
+	}
+	sessionFiles := state.FilterNewSessionFiles(repo.SessionFiles, repoState.PushedSet())
+
+	// Parse new sessions.
 	var sessions []api.SessionData
-	for _, sf := range repo.SessionFiles {
+	for _, sf := range sessionFiles {
 		session, err := parsers.ParseSession(sf)
 		if err != nil {
 			continue
@@ -319,6 +327,7 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 
 	chunks := ChunkSessions(sessions)
 	sent := 0
+	var pushedIDs []string
 
 	for ci, chunk := range chunks {
 		payload := &api.PushPayload{
@@ -341,8 +350,17 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 			})
 		} else {
 			sent += len(chunk)
+			for _, s := range chunk {
+				pushedIDs = append(pushedIDs, s.ID)
+			}
 		}
 		progress.update(idx, statusPushing, sent)
+	}
+
+	// Update state with successfully pushed session IDs
+	if len(pushedIDs) > 0 {
+		repoState.AddPushed(pushedIDs)
+		_ = state.Save(repo.OwnerRepo, repoState) // best-effort
 	}
 
 	result.SessionsSent = sent

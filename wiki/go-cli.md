@@ -10,8 +10,9 @@ All CLI code lives under `cli/`. Entry point: `cli/cmd/ax/main.go` (Cobra-based)
 |---------|---------|
 | `ax init --api-key <key>` | Set up AX: validate server, save config, install Claude Code hooks |
 | `ax init --uninstall` | Remove all AX hooks |
-| `ax push --repo .` | Parse and push session data for a single repo |
-| `ax push --all` | Discover all repos and push sessions for each (bulk backfill/retry) |
+| `ax push --repo .` | Parse and push new session data for a single repo |
+| `ax push --repo . --force` | Re-send all sessions, ignoring push history |
+| `ax push --all` | Discover all repos and push new sessions for each |
 
 ## Package Structure
 
@@ -27,6 +28,7 @@ cli/
     parsers/     Session data parsing + GitHub/git data types
     pricing/     Model-specific token cost tables
     push/        HTTP client for AX server
+    state/       Push state tracking (which sessions already sent)
     ui/          Terminal output: spinners, colors, banners (lipgloss)
   Justfile       Build commands (just build, just test, etc.)
 ```
@@ -70,6 +72,18 @@ Returns `ParsedSession` structs. Also discovers sessions from Claude Code worktr
 
 The server upserts sessions by ID, so re-pushing is safe — no data duplication.
 
+## Push State Tracking (`cli/internal/state/`)
+
+Both `ax push --repo` and `ax push --all` track which sessions have already been pushed to avoid re-sending. State is stored per-repo at `~/.ax/state/<owner>-<repo>.json` as a set of pushed session IDs.
+
+On each push, only sessions not already in the state file are parsed and sent. After a successful push, the state file is updated with the newly pushed IDs. This reduces hook-triggered pushes from O(all sessions) to O(1 new session).
+
+- `Load(ownerRepo)` — Read state, returns empty state if file missing
+- `Save(ownerRepo, state)` — Write state to disk
+- `FilterNewSessionFiles(files, pushedSet)` — Return only files not in pushed set
+
+Use `ax push --force` to bypass state and re-send all sessions.
+
 ## Push Client (`cli/internal/push/client.go`)
 - `Push(payload)` → `POST /api/v1/push` with Bearer token
 - `Ping()` → validates API key via `GET /api/v1/ping`
@@ -107,5 +121,6 @@ Pure function metric calculators, kept as a Go library. These are being ported t
 | `cli/internal/parsers/claude_sessions.go` | ~350 | Session JSONL parsing |
 | `cli/internal/hooks/hooks.go` | ~200 | Claude Code hook management |
 | `cli/internal/push/client.go` | ~140 | HTTP client for server API |
+| `cli/internal/state/state.go` | ~110 | Push state tracking per repo |
 | `cli/internal/metrics/output_quality.go` | ~130 | Output quality metric calculators |
 | `cli/internal/metrics/planning.go` | ~140 | Plan analysis |

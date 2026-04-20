@@ -17,6 +17,7 @@ import (
 	"github.com/austinroos/ax/internal/hooks"
 	"github.com/austinroos/ax/internal/parsers"
 	"github.com/austinroos/ax/internal/push"
+	"github.com/austinroos/ax/internal/state"
 	"github.com/austinroos/ax/internal/ui"
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
@@ -184,6 +185,7 @@ func newPushCmd() *cobra.Command {
 	var repoPath string
 	var apiKey string
 	var all bool
+	var force bool
 
 	cmd := &cobra.Command{
 		Use:   "push",
@@ -248,6 +250,22 @@ You can override with --api-key.`,
 				return nil
 			}
 
+			// Filter to only new sessions unless --force is set
+			ownerRepo := owner + "/" + repo
+			var repoState *state.RepoState
+			if !force {
+				repoState, err = state.Load(ownerRepo)
+				if err != nil {
+					repoState = &state.RepoState{}
+				}
+				sessionFiles = state.FilterNewSessionFiles(sessionFiles, repoState.PushedSet())
+			}
+
+			if len(sessionFiles) == 0 {
+				ui.CompleteBanner("No new sessions to push")
+				return nil
+			}
+
 			// Parse sessions and build payload
 			payload := &api.PushPayload{
 				RepoPath: path,
@@ -256,12 +274,14 @@ You can override with --api-key.`,
 			}
 
 			var parsed int
+			var pushedIDs []string
 			for _, sf := range sessionFiles {
 				session, err := parsers.ParseSession(sf)
 				if err != nil {
 					continue
 				}
 				parsed++
+				pushedIDs = append(pushedIDs, session.ID)
 				payload.Sessions = append(payload.Sessions, api.SessionData{
 					ID:                       session.ID,
 					Branch:                   session.Branch,
@@ -290,8 +310,15 @@ You can override with --api-key.`,
 				return err
 			}
 
+			// Update state with successfully pushed session IDs
+			if repoState == nil {
+				repoState = &state.RepoState{}
+			}
+			repoState.AddPushed(pushedIDs)
+			_ = state.Save(ownerRepo, repoState) // best-effort; push already succeeded
+
 			ui.CompleteBanner(fmt.Sprintf("Pushed to %s", ui.URL.Render(serverURL)))
-			ui.MetricRow("Repo", ui.Highlight.Render(owner+"/"+repo))
+			ui.MetricRow("Repo", ui.Highlight.Render(ownerRepo))
 			ui.MetricRow("Sessions", fmt.Sprintf("%d parsed, %d sent", parsed, resp.Entities["sessions"]))
 			return nil
 		},
@@ -300,6 +327,7 @@ You can override with --api-key.`,
 	cmd.Flags().StringVar(&repoPath, "repo", "", "Path to the git repository (defaults to current directory)")
 	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key (overrides config)")
 	cmd.Flags().BoolVar(&all, "all", false, "Push sessions for all discovered repos")
+	cmd.Flags().BoolVar(&force, "force", false, "Re-send all sessions, ignoring push history")
 
 	return cmd
 }

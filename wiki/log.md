@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — Push state tracking to avoid re-sending sessions
+
+**Pages updated:** `wiki/go-cli.md`
+**What changed:** Added `cli/internal/state/` package that tracks pushed session IDs per repo at `~/.ax/state/<owner>-<repo>.json`. Both `ax push --repo` and `ax push --all` now filter to only new sessions before parsing and sending. Added `--force` flag to bypass state and re-send everything. Updated commands table, package structure, and key files.
+
+---
+
 ## 2026-04-20 — Fix Stripe billing edge cases
 
 **Pages updated:** `wiki/rails-server.md`
