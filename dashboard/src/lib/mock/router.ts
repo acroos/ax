@@ -152,6 +152,8 @@ function mockMutationResponse(urlPath: string, method: string): unknown {
     return { id: 1, slug: "platform", name: "Platform", parent_team_slug: null, member_count: 2, child_team_count: 1 };
   if (urlPath.match(/\/teams$/) && method === "POST")
     return { id: 99, slug: "new-team", name: "New Team", parent_team_slug: null, member_count: 0, child_team_count: 0 };
+  if (urlPath.match(/\/orgs\/[^/]+$/) && method === "DELETE")
+    return {};
   if (urlPath.includes("/account") && method === "DELETE")
     return {};
   return {};

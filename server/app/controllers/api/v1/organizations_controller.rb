@@ -4,8 +4,9 @@ module Api
       include PrSerialization
 
       before_action :require_session_auth!
-      before_action :find_org!, only: [ :show, :update, :prs, :metrics ]
+      before_action :find_org!, only: [ :show, :update, :destroy, :prs, :metrics ]
       before_action :find_org_as_admin!, only: [ :update ]
+      before_action :require_owner!, only: [ :destroy ]
 
       def index
         orgs = current_user.organizations
@@ -36,6 +37,16 @@ module Api
         render json: { slug: @org.slug, name: @org.name }
       end
 
+      def destroy
+        if @org.is_personal
+          render json: { error: "Cannot delete personal organization" }, status: :unprocessable_content
+          return
+        end
+
+        @org.destroy!
+        head :no_content
+      end
+
       def prs
         prs = Pr
           .joins(:repo)
@@ -56,6 +67,10 @@ module Api
       end
 
       private
+
+      def require_owner!
+        head :forbidden unless current_user.role_in(@org) == "owner"
+      end
 
       def org_params
         params.permit(:slug, :name)

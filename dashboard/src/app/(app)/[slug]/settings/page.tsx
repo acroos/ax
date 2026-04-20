@@ -8,6 +8,7 @@ import { MembersSection, type Member } from "./members-section";
 import { InvitesSection, type Invite } from "./invites-section";
 import { GitHubAppCard } from "./github-app-card";
 import { TeamsSection } from "./teams-section";
+import { DeleteOrgSection } from "./delete-org-section";
 import { listTeamsAsync, type Team } from "@/lib/db";
 import { Skeleton } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
@@ -117,6 +118,18 @@ export default async function OrgSettingsPage({
           />
         </Suspense>
       </SectionErrorBoundary>
+
+      {!currentOrg?.is_personal && (
+        <SectionErrorBoundary fallback={null}>
+          <Suspense fallback={null}>
+            <AsyncDeleteOrgSection
+              slug={slug}
+              orgName={currentOrg?.name ?? slug}
+              membersPromise={membersPromise}
+            />
+          </Suspense>
+        </SectionErrorBoundary>
+      )}
     </div>
   );
 }
@@ -230,4 +243,19 @@ async function AsyncTeamsSection({
   const [members, teams] = await Promise.all([membersPromise, teamsPromise]);
   const isAdmin = resolveIsAdmin(members, null);
   return <TeamsSection teams={teams} isAdmin={isAdmin} slug={slug} />;
+}
+
+async function AsyncDeleteOrgSection({
+  slug,
+  orgName,
+  membersPromise,
+}: {
+  slug: string;
+  orgName: string;
+  membersPromise: Promise<MembersResponse | null>;
+}) {
+  const members = await membersPromise;
+  const role = members?.current_user_role ?? "member";
+  if (role !== "owner") return null;
+  return <DeleteOrgSection slug={slug} orgName={orgName} />;
 }
