@@ -237,10 +237,10 @@ async function PRHeader({
             {pr.changed_files !== 1 && "s"}
           </span>
         </span>
-        {pr.metrics?.finalized_at && (
+        {(pr.merged_at || pr.closed_at) && (
           <span>
-            Finalized{" "}
-            {new Date(pr.metrics.finalized_at).toLocaleDateString("en-US", {
+            {pr.state === "merged" ? "Merged" : "Closed"}{" "}
+            {new Date((pr.merged_at ?? pr.closed_at)!).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",

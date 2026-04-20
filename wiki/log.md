@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-19 — Date PRs by merge/close date instead of finalized_at
+
+**Pages updated:** `wiki/metrics.md` (MetricsAggregator description)
+**What changed:** `MetricsAggregator` now windows and buckets PRs by `COALESCE(prs.merged_at, prs.closed_at)` instead of `finalized_at`. `finalized_at` is an internal processing timestamp that can differ from the actual PR terminal date (e.g., during backfill or reconciliation). Dashboard metric detail pages and PR detail page also updated to use `merged_at`/`closed_at` instead of `finalized_at` for date display. Added `closed_at` to the dashboard `PR` TypeScript interface.
+
+---
+
 ## 2026-04-19 — TTFB performance optimization (Edge Runtime, caching, region alignment)
 
 **Pages updated:** `wiki/dashboard.md` (added Performance section, fixed `src/middleware.ts` → `src/proxy.ts` reference)

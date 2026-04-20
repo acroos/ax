@@ -46,7 +46,7 @@ function percentile(sorted: number[], p: number): number {
 }
 
 function getTimestamp(pr: PRWithMetrics): number | null {
-  const dateStr = pr.metrics?.finalized_at ?? pr.merged_at ?? pr.created_at;
+  const dateStr = pr.merged_at ?? pr.closed_at ?? pr.created_at;
   if (!dateStr) return null;
   return new Date(dateStr).getTime();
 }

@@ -198,10 +198,10 @@ Only runs if the repo has a GitHub App installation. Skips gracefully otherwise.
 ### MetricsAggregator (`app/services/metrics_aggregator.rb`)
 Computes windowed aggregate metrics for the overview page. Used by both `OrganizationsController#metrics` and `ReposController#metrics`.
 
-1. Takes a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`)
-2. Splits into current window (last 7 days by `finalized_at`) and prior window (7 days before that)
+1. Takes a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`, must join `prs`)
+2. Splits into current window and prior window by PR merge/close date (`COALESCE(prs.merged_at, prs.closed_at)`)
 3. Computes `AVG` for all 9 PR-level metrics in each window
-4. Builds daily sparkline buckets via `DATE(finalized_at)` grouping within the current window
+4. Builds daily sparkline buckets grouped by merge/close date within the current window
 5. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`
 
 Metric slug → column mapping is maintained in `METRIC_COLUMNS`. Empty days in the sparkline are null (the dashboard renders gaps). Empty prior window returns null for `prior` (dashboard suppresses the delta).
