@@ -150,6 +150,12 @@ Filters PRs by `current_user.github_username` as the author, following the same 
 | `POST` | `/webhooks/github` | GitHub webhook receiver (HMAC validated) |
 | `POST` | `/webhooks/stripe` | Stripe webhook receiver (Stripe signature validated) |
 
+### Account Management (Session Token)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `DELETE` | `/api/v1/account` | Delete account, anonymize authored data (409 if sole owner of non-personal org) |
+
 ### Other
 
 | Method | Path | Purpose |
@@ -213,6 +219,14 @@ Computes metrics derived from fetched data and correlated sessions:
 - `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`: computed from correlated session aggregates
 
 Called by PrMerged and PrClosed handlers after GithubDataFetcher populates the data.
+
+### AccountDeletionService (`app/services/account_deletion_service.rb`)
+GDPR Article 17 (Right to Erasure). Handles full user account deletion:
+1. Validates user is not the sole owner of any non-personal org (raises `SoleOwnerError` with org list)
+2. Anonymizes authored PRs, commits, and sessions (replaces username with "deleted-user")
+3. Reassigns `created_by` on non-personal orgs to another member
+4. Destroys the personal org (cascades repos, data)
+5. Destroys the user (cascades org_memberships, api_keys, user_sessions)
 
 ### OrgService (`app/services/org_service.rb`)
 Creates orgs, assigns owner membership, marks waitlist entry as "joined".

@@ -88,6 +88,9 @@ Rails.application.routes.draw do
         post :rotate
         get :reveal
       end
+
+      # Account management
+      resource :account, only: [ :destroy ]
     end
   end
 end
