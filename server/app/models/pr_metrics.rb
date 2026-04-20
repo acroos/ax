@@ -7,7 +7,6 @@ class PrMetrics < ApplicationRecord
 
   GITHUB_DERIVED_FIELDS = %w[
     post_open_commits line_revisit_rate
-    first_review_at review_cycle_time_minutes
   ].freeze
 
   SESSION_DERIVED_FIELDS = %w[

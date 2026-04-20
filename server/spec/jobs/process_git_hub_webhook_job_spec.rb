@@ -102,19 +102,6 @@ RSpec.describe ProcessGitHubWebhookJob do
       described_class.new.perform("pull_request", pr_payload.to_json)
     end
 
-    it "passes installation to review handlers" do
-      review_payload = {
-        action: "submitted",
-        installation: { id: 55555 },
-        review: { state: "APPROVED" },
-        pull_request: { number: 1 },
-        repository: { owner: { login: "octocat" }, name: "hello-world" }
-      }
-
-      expect_any_instance_of(WebhookHandlers::ReviewSubmitted).to receive(:call)
-      described_class.new.perform("pull_request_review", review_payload.to_json)
-    end
-
     it "passes installation to check_suite handlers" do
       cs_payload = {
         action: "completed",

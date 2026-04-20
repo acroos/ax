@@ -95,12 +95,6 @@ function fmtCost(n: number | null): string {
   return `$${n.toFixed(2)}`;
 }
 
-function fmtDuration(n: number | null): string {
-  if (n === null) return "\u2014";
-  if (n < 60) return `${Math.round(n)} min`;
-  return `${(n / 60).toFixed(1)} hr`;
-}
-
 // Page renders the shell synchronously (title, view-all link) and streams
 // the subtitle and metrics body via Suspense. Both promises are kicked off
 // in parallel at the top so they fetch concurrently instead of sequentially.
@@ -215,7 +209,7 @@ async function OverviewSubtitle({
 function OverviewMetricsSkeleton() {
   return (
     <>
-      <SkeletonMetricCategory count={4} />
+      <SkeletonMetricCategory count={3} />
       <SkeletonMetricCategory count={3} />
       <SkeletonMetricCategory count={3} />
     </>
@@ -310,7 +304,7 @@ async function OverviewMetricsBody({
       {/* Output Quality */}
       <div className="mb-8">
         <SectionDivider label="Output Quality" />
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <MetricCard
             label="Avg Post-Open Commits"
             value={fmt(m("post-open-commits"))}
@@ -337,15 +331,6 @@ async function OverviewMetricsBody({
             detail="Cross-PR file overlap"
             href={metricHref("line-revisit-rate")}
             {...tip("line-revisit-rate")}
-          />
-          <MetricCard
-            label="Avg Review Cycle Time"
-            value={fmtDuration(m("review-cycle-time"))}
-            delta={fmtDelta(m("review-cycle-time"), prior("review-cycle-time"), fmtDuration, range)}
-            sparkline={spark("review-cycle-time")}
-            detail="Time to first review"
-            href={metricHref("review-cycle-time")}
-            {...tip("review-cycle-time")}
           />
         </div>
       </div>

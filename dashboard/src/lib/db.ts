@@ -114,8 +114,6 @@ export interface PRMetrics {
   post_open_commits: number | null;
   ci_success_rate: number | null;
   line_revisit_rate: number | null;
-  review_cycle_time_minutes: number | null;
-  first_review_at: string | null;
   token_cost_usd: number | null;
   cache_hit_rate: number | null;
   sidechain_rate: number | null;
@@ -357,7 +355,6 @@ const METRIC_FIELDS: Array<{ slug: string; field: keyof PRMetrics }> = [
   { slug: "sidechain-rate", field: "sidechain_rate" },
   { slug: "re-read-rate", field: "re_read_rate" },
   { slug: "autonomy-score", field: "autonomy_score" },
-  { slug: "review-cycle-time", field: "review_cycle_time_minutes" },
 ];
 
 export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics {

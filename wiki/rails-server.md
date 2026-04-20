@@ -293,7 +293,6 @@ The `resolve_webhook_secret` method in `WebhooksController`:
 | `PrSynchronized` | Commits pushed | Recalculate `post_open_commits` |
 | `PrMerged` | PR merged | Fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize all metrics (immutable) |
 | `PrClosed` | PR closed (not merged) | Fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize as abandoned |
-| `ReviewSubmitted` | Review posted | Capture review cycle time on first human review |
 | `CiCompleted` | Check suite finished | Update `ci_success_rate` |
 
 #### Installation Lifecycle
@@ -343,8 +342,7 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 **BackfillRepoJob** (queue: `:default`)
 - Single-repo backfill. Triggered by: BackfillInstallationJob, PushService (post-push), InstallationRepositories webhook, ReconcileReposJob
 - Fetches PRs from the GitHub API for the last N days (default 90, configurable via `GITHUB_APP_BACKFILL_DAYS`)
-- Reuses existing webhook handlers (`PrOpened`, `PrMerged`, `PrClosed`, `ReviewSubmitted`) via `Backfillable` concern
-- Backfills PR reviews from GitHub API before finalization so review cycle time is captured
+- Reuses existing webhook handlers (`PrOpened`, `PrMerged`, `PrClosed`) via `Backfillable` concern
 - Per-PR errors are caught and logged without aborting the backfill
 - Runs `SessionPrCorrelationService` after backfill to link existing sessions to newly created PRs
 - Retries on `Octokit::TooManyRequests` (8 attempts, polynomial backoff) and `Octokit::ServerError` (3 attempts)

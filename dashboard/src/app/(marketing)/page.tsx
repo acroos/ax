@@ -72,12 +72,11 @@ export default async function LandingPage() {
       <FeatureSection
         eyebrow="Output Quality"
         heading="Is the code your agent produces good?"
-        body="CI success, post-open commits, review cycle time, and line revisit rate."
+        body="CI success, post-open commits, and line revisit rate."
         metrics={[
           "Post-Open Commits",
           "CI Success Rate",
           "Line Revisit Rate",
-          "Review Cycle Time",
         ]}
         cards={[
           {

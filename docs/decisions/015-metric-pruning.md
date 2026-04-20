@@ -36,9 +36,9 @@ Removal covers: DB columns on `pr_metrics` and `sessions`, the `plan_analyses` t
 
 ## Kept
 
-The product now tracks **10 PR-level metrics** across **three categories**:
+The product now tracks **9 PR-level metrics** across **three categories**:
 
-**Output Quality:** Post-Open Commits, CI Success Rate, Line Revisit Rate, Review Cycle Time
+**Output Quality:** Post-Open Commits, CI Success Rate, Line Revisit Rate
 
 **Prompt Efficiency:** Iteration Depth, Token Cost per PR, Cache Hit Rate
 
@@ -49,4 +49,5 @@ The product now tracks **10 PR-level metrics** across **three categories**:
 - Supersedes the specific ADR-001 metrics listed above. ADR-001's framing (four dimensions) is now three dimensions.
 - CLI `SessionData` payload no longer includes `bash_errors`, `bash_successes`, or `planned_files`. Old CLIs pushing those fields will have them ignored by the strong-params filter.
 - Historical `pr_metrics` data for removed columns is dropped — the migration is irreversible.
-- Marketing copy and wiki counts updated to reflect 10 metrics / 3 categories.
+- Review Cycle Time was subsequently removed (not agent-quality signal — it measures team review latency, not agent output).
+- Marketing copy and wiki counts updated to reflect 9 metrics / 3 categories.

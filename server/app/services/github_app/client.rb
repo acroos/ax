@@ -13,10 +13,6 @@ module GithubApp
       end
     end
 
-    def list_pull_reviews(owner:, repo:, number:)
-      client.pull_request_reviews("#{owner}/#{repo}", number)
-    end
-
     def list_check_suites(owner:, repo:, ref:)
       client.check_suites_for_ref("#{owner}/#{repo}", ref)
     end

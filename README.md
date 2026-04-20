@@ -9,7 +9,7 @@ AX measures what matters: cost per PR, iteration depth, CI success, and other me
 ## 📊 What You Can Measure
 
 **🏗️ Output Quality** — Is the agent producing clean, mergeable work?
-> Post-open commits · CI success rate · line revisit rate · review cycle time
+> Post-open commits · CI success rate · line revisit rate
 
 **💬 Prompt Efficiency** — How efficiently are you directing the agent?
 > Iteration depth · token cost per PR · cache hit rate

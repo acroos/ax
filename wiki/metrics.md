@@ -1,6 +1,6 @@
 # Metrics
 
-AX computes 10 PR-level metrics across 3 categories. Full metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but aggregate statistics (averages, trend lines) use settled PRs only.
+AX computes 9 PR-level metrics across 3 categories. Full metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but aggregate statistics (averages, trend lines) use settled PRs only.
 
 Each metric has detailed documentation in `docs/metrics/` and is viewable in the dashboard at `/docs/[slug]`.
 
@@ -17,7 +17,6 @@ Measures the quality of code produced by the agent-human collaboration and the f
 | Post-Open Commits | int | GitHub | Commits pushed after PR was opened. Lower = cleaner first draft. |
 | CI Success Rate | float | GitHub | Fraction of commits on the PR that passed all CI check suites. Per-commit CI status (`ci_passed`) is stored on the `commits` table, fetched via `list_check_suites` per commit SHA. At finalization, completed suites are evaluated immediately; in-progress suites are deferred to webhooks and the `ReconcileCiDataJob`. |
 | Line Revisit Rate | float | GitHub | Files in this PR that were also changed in other PRs finalized within the last 7 days. Higher = unstable areas. |
-| Review Cycle Time | int | GitHub Webhooks | Minutes from PR open to first human review. Lower = faster feedback loop. |
 
 ### Prompt Efficiency
 
@@ -74,7 +73,7 @@ PR opened
 
 ### Scoped write protection
 - **CI-derived** (updatable after finalization): `ci_success_rate` — computed from per-commit `ci_passed` values. Updated via `update_column` by `CiCompleted` webhook handler (uses the commit's PR association, not the webhook payload's `pull_requests` array) and by `ReconcileCiDataJob` (runs every 6 hours) to handle late-arriving check suite results.
-- **GitHub-derived** (locked after finalization): `post_open_commits`, `line_revisit_rate`, `first_review_at`, `review_cycle_time_minutes`
+- **GitHub-derived** (locked after finalization): `post_open_commits`, `line_revisit_rate`
 - **Session-derived** (always updatable via `update_session_metrics!`): `iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`
 
 ### Where is finalization enforced?
@@ -91,6 +90,6 @@ PR opened
 ## Metric Storage
 
 ### PostgreSQL (`pr_metrics` table)
-One row per PR. All 10 PR-level metrics as columns plus `metrics_finalized` (bool) and `finalized_at` (timestamp).
+One row per PR. All 9 PR-level metrics as columns plus `metrics_finalized` (bool) and `finalized_at` (timestamp).
 
 See [Data Model](data-model.md) for full schema.
