@@ -262,3 +262,7 @@ API fetches default to `revalidate: 60` (60s stale-while-revalidate). Notable ex
 | `src/app/[slug]/settings/invites-section.tsx` | Invite management client component |
 | `src/proxy.ts` | Auth enforcement |
 | `next.config.ts` | Build config |
+
+## Analytics & Privacy
+
+The dashboard loads `@vercel/analytics` and `@vercel/speed-insights` unconditionally in `layout.tsx`. Both are **cookie-free** and collect no personally identifiable information (PII). Under GDPR, no consent banner or opt-out mechanism is required. See [Vercel Analytics Privacy Policy](https://vercel.com/docs/analytics/privacy-policy) for details.

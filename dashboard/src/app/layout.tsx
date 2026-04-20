@@ -38,6 +38,9 @@ export default function RootLayout({
           <TopLoader />
           {children}
         </ThemeProvider>
+        {/* GDPR: Vercel Analytics and Speed Insights are cookie-free and do not
+            collect PII. No consent banner is required. See:
+            https://vercel.com/docs/analytics/privacy-policy */}
         <SpeedInsights />
         <Analytics />
       </body>
