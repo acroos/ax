@@ -12,7 +12,6 @@ import type {
   AggregateMetrics,
   SparklinePoint,
   MetricAggregate,
-  RepoLevelMetrics,
   TimelinePoint,
   BillingInfo,
   GithubInstallationResponse,
@@ -308,16 +307,6 @@ export function getMockAggregatesForRepo(repoId: number, days = 30): AggregateMe
     ).length,
   };
 }
-
-// ---------------------------------------------------------------------------
-// Mock repo-level metrics
-// ---------------------------------------------------------------------------
-
-export const MOCK_REPO_METRICS: RepoLevelMetrics = {
-  unmergedCostUSD: 24.5,
-  totalCostUSD: 312.8,
-  unmergedRate: 0.078,
-};
 
 // ---------------------------------------------------------------------------
 // Mock timeline

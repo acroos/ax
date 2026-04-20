@@ -4,8 +4,8 @@ module Api
       include PrSerialization
 
       before_action :require_session_auth!
-      before_action :find_org!, only: [ :index, :prs, :metrics, :timeline, :repo_metrics ]
-      before_action :find_repo!, only: [ :prs, :metrics, :timeline, :repo_metrics ]
+      before_action :find_org!, only: [ :index, :prs, :metrics, :timeline ]
+      before_action :find_repo!, only: [ :prs, :metrics, :timeline ]
 
       def index
         repos = @org.repos.select(
@@ -27,14 +27,7 @@ module Api
           .joins(:pr)
           .where(prs: { repo_id: @repo.id }, metrics_finalized: true)
 
-        result = MetricsAggregator.new(scope, window_days: parsed_range).call
-
-        repo_met = ::RepoMetrics.where(repo: @repo).order(computed_at: :desc).first
-        result[:unmergedCostUSD] = repo_met&.unmerged_cost_usd
-        result[:totalCostUSD]    = repo_met&.total_cost_usd
-        result[:unmergedRate]    = repo_met&.unmerged_rate
-
-        render json: result
+        render json: MetricsAggregator.new(scope, window_days: parsed_range).call
       end
 
       def timeline
@@ -54,16 +47,6 @@ module Api
             ci_success_rate: m&.ci_success_rate.nil? ? nil : (m.ci_success_rate * 100),
             token_cost_usd: m&.token_cost_usd
           }
-        }
-      end
-
-      def repo_metrics
-        metrics = ::RepoMetrics.where(repo: @repo).order(computed_at: :desc).first
-
-        render json: {
-          unmergedCostUSD: metrics&.unmerged_cost_usd,
-          totalCostUSD: metrics&.total_cost_usd,
-          unmergedRate: metrics&.unmerged_rate
         }
       end
 

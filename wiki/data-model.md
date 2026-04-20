@@ -132,25 +132,6 @@ Unique on (pr_id, filename).
 
 See [Metrics — Finalization](metrics.md#finalization) for immutability rules.
 
-### repo_metrics
-Repo-level aggregates, computed per period.
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | bigint | PK |
-| repo_id | bigint | FK → repos |
-| period_start | timestamp | |
-| period_end | timestamp | |
-| period_type | text | Currently always "all" |
-| total_sessions | integer | |
-| total_tokens | integer | |
-| total_cost_usd | real | |
-| unmerged_tokens | integer | Tokens on never-merged PRs |
-| unmerged_cost_usd | real | Dollar waste |
-| unmerged_rate | real | unmerged_cost / total_cost |
-
-Unique on (repo_id, period_start, period_type).
-
 ## Identity & Auth Tables
 
 ### users

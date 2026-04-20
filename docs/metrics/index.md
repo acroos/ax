@@ -23,10 +23,9 @@ AX tracks 10 metrics across three categories to give you the picture of how your
 | 5 | [Iteration Depth](./iteration-depth.md) | Prompt Efficiency | Count of back-and-forth turn pairs (user to agent) per task | Session data | 2 |
 | 6 | [Token Cost per PR](./token-cost-per-pr.md) | Prompt Efficiency | Dollar cost of tokens consumed across sessions correlated to a PR | Session data, Pricing module | 2 |
 | 7 | [Cache Hit Rate](./cache-hit-rate.md) | Prompt Efficiency | Ratio of cache-read tokens to total input tokens | Session data | 2 |
-| 8 | [Unmerged Token Spend](./unmerged-token-spend.md) | Prompt Efficiency | Total dollar cost of tokens on unmerged or uncorrelated work (repo-level) | Session data, PR merge status | 2 |
-| 9 | [Sidechain Rate](./sidechain-rate.md) | Agent Behavior | Fraction of messages on sidechain branches (backtracking) | Session data | 2 |
-| 10 | [Re-Read Rate](./re-read-rate.md) | Agent Behavior | Total file reads divided by unique files read | Session data | 2 |
-| 11 | [Autonomy Score](./autonomy-score.md) | Agent Behavior | Ratio of assistant to human messages | Session data | 2 |
+| 8 | [Sidechain Rate](./sidechain-rate.md) | Agent Behavior | Fraction of messages on sidechain branches (backtracking) | Session data | 2 |
+| 9 | [Re-Read Rate](./re-read-rate.md) | Agent Behavior | Total file reads divided by unique files read | Session data | 2 |
+| 10 | [Autonomy Score](./autonomy-score.md) | Agent Behavior | Ratio of assistant to human messages | Session data | 2 |
 
 ---
 
@@ -42,7 +41,7 @@ Metrics calculated from git history, the GitHub API, and GitHub webhook events. 
 
 Metrics that use Claude Code session logs (messages, tool calls, token usage). These light up once you connect the CLI with `ax init`.
 
-**Metrics:** Iteration Depth, Token Cost per PR, Cache Hit Rate, Unmerged Token Spend, Sidechain Rate, Re-Read Rate, Autonomy Score
+**Metrics:** Iteration Depth, Token Cost per PR, Cache Hit Rate, Sidechain Rate, Re-Read Rate, Autonomy Score
 
 ---
 

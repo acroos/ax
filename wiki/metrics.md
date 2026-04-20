@@ -1,6 +1,6 @@
 # Metrics
 
-AX computes 10 PR-level metrics across 3 categories, plus one repo-level aggregate (Unmerged Token Spend). Full metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but aggregate statistics (averages, trend lines) use settled PRs only.
+AX computes 10 PR-level metrics across 3 categories. Full metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but aggregate statistics (averages, trend lines) use settled PRs only.
 
 Each metric has detailed documentation in `docs/metrics/` and is viewable in the dashboard at `/docs/[slug]`.
 
@@ -38,12 +38,6 @@ Measures how the agent performed during the coding session.
 | Sidechain Rate | float | Sessions | Fraction of messages on sidechain branches (backtracking). Lower = fewer dead-end paths. |
 | Re-Read Rate | float | Sessions | `total_file_reads / unique_files_read` — 1.0 = no re-reads, higher = redundant reading. |
 | Autonomy Score | float | Sessions | `assistant_messages / human_messages` — higher = agent works more independently. |
-
-### Repo-Level
-
-| Metric | Type | Source | What it measures |
-|--------|------|--------|------------------|
-| Unmerged Token Spend | float | Sessions | Dollar cost of tokens spent on PRs that were never merged. Waste rate. |
 
 ## Computation
 
@@ -98,8 +92,5 @@ PR opened
 
 ### PostgreSQL (`pr_metrics` table)
 One row per PR. All 10 PR-level metrics as columns plus `metrics_finalized` (bool) and `finalized_at` (timestamp).
-
-### Repo-level metrics (`repo_metrics` table)
-Aggregated by period. Contains total_sessions, total_tokens, total_cost_usd, unmerged_tokens, unmerged_cost_usd, unmerged_rate.
 
 See [Data Model](data-model.md) for full schema.

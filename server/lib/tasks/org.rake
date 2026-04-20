@@ -50,9 +50,6 @@ namespace :org do
       deleted = CodingSession.where(repo_id: repo_ids).delete_all
       puts "  Deleted #{deleted} sessions"
 
-      deleted = RepoMetrics.where(repo_id: repo_ids).delete_all
-      puts "  Deleted #{deleted} repo metrics"
-
       deleted = WatchedRepo.where(repo_id: repo_ids).delete_all
       puts "  Deleted #{deleted} watched repos"
 

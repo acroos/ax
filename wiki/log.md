@@ -4,10 +4,10 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
-## 2026-04-19 — Expose all 11 metrics on overview pages
+## 2026-04-19 — Expose all 10 metrics on overview pages + remove Unmerged Token Spend
 
-**Pages updated:** `wiki/dashboard.md` (updated Suspense boundaries table for org overview and me page)
-**What changed:** Added Review Cycle Time card to the Output Quality section on all 6 overview pages (org, me, team, and their demo equivalents). Output Quality grid changed from `grid-cols-3` to `grid-cols-4`. Added Unmerged Token Spend as a "Repo-Level" section on the org overview (shown when repo-level data is available) and demo overview. Added `review-cycle-time` to Rails `MetricsAggregator::METRIC_COLUMNS`, dashboard `METRIC_FIELDS`, and mock `SPARKLINE_CONFIGS`. Extended `AggregateMetrics` type with optional `unmergedCostUSD`, `totalCostUSD`, `unmergedRate` fields. Updated skeleton counts on me and team pages from 3 to 4 for the first category.
+**Pages updated:** `wiki/dashboard.md`, `wiki/metrics.md`, `wiki/data-model.md`, `wiki/rails-server.md`, `wiki/index.md`
+**What changed:** Added Review Cycle Time card to the Output Quality section on all 6 overview pages (org, me, team, and their demo equivalents). Output Quality grid changed from `grid-cols-3` to `grid-cols-4`. Added `review-cycle-time` to Rails `MetricsAggregator::METRIC_COLUMNS`, dashboard `METRIC_FIELDS`, and mock `SPARKLINE_CONFIGS`. Updated skeleton counts on me and team pages from 3 to 4 for the first category. Removed Unmerged Token Spend metric entirely: deleted `RepoMetrics` model, `repo_metrics` table (via migration), `repo-metrics` API endpoint, `RepoLevelMetrics` TypeScript type, `RepoMetricsData` Go struct, metric doc, and all references across wiki, docs, README, CLAUDE.md, and ADR-015.
 
 ---
 

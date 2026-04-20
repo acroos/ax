@@ -72,7 +72,6 @@ Rails.application.routes.draw do
             get :prs
             get :metrics
             get :timeline
-            get "repo-metrics", to: "repos#repo_metrics"
           end
         end
       end

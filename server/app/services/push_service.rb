@@ -14,7 +14,6 @@ class PushService
       sessions: 0,
       session_prs: 0,
       pr_metrics: 0,
-      repo_metrics: 0
     }
 
     repo = nil
@@ -31,7 +30,6 @@ class PushService
       counts[:commits] = upsert_commits(repo, pr_map)
       counts[:session_prs] = upsert_session_prs(pr_map)
       counts[:pr_metrics] = upsert_pr_metrics(pr_map)
-      counts[:repo_metrics] = upsert_repo_metrics(repo)
     end
 
     # After transaction commits, trigger async backfill or correlation
@@ -192,27 +190,6 @@ class PushService
       count += 1
     end
     count
-  end
-
-  def upsert_repo_metrics(repo)
-    rm = @params[:repo_metrics]
-    return 0 unless rm.present?
-
-    metrics = ::RepoMetrics.find_or_initialize_by(
-      repo: repo,
-      period_start: rm[:period_start],
-      period_type: rm[:period_type]
-    )
-    metrics.update!(
-      period_end: rm[:period_end],
-      total_sessions: rm[:total_sessions] || 0,
-      total_tokens: rm[:total_tokens] || 0,
-      total_cost_usd: rm[:total_cost_usd] || 0,
-      unmerged_tokens: rm[:unmerged_tokens] || 0,
-      unmerged_cost_usd: rm[:unmerged_cost_usd] || 0,
-      unmerged_rate: rm[:unmerged_rate]
-    )
-    1
   end
 
   def trigger_post_push(repo)

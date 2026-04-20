@@ -147,15 +147,6 @@ export interface AggregateMetrics {
   totalPRs: number;
   sessionDataCount: number;
   metrics: Record<string, MetricAggregate>;
-  unmergedCostUSD?: number | null;
-  totalCostUSD?: number | null;
-  unmergedRate?: number | null;
-}
-
-export interface RepoLevelMetrics {
-  unmergedCostUSD: number | null;
-  totalCostUSD: number | null;
-  unmergedRate: number | null;
 }
 
 export interface TimelinePoint {
@@ -353,19 +344,6 @@ export async function getAggregateMetricsAsync(
   }
   const prs = await listPRsWithMetricsAsync(repoId, orgSlug);
   return computeAggregatesFromPRs(prs);
-}
-
-export async function getRepoLevelMetricsAsync(
-  repoId?: number,
-  orgSlug?: string,
-): Promise<RepoLevelMetrics> {
-  if (repoId) {
-    const apiPath = orgSlug
-      ? orgApiPath(orgSlug, `/repos/${repoId}/repo-metrics`)
-      : `/api/v1/repos/${repoId}/repo-metrics`;
-    return fetchAPI<RepoLevelMetrics>(apiPath);
-  }
-  return { unmergedCostUSD: null, totalCostUSD: null, unmergedRate: null };
 }
 
 const METRIC_FIELDS: Array<{ slug: string; field: keyof PRMetrics }> = [

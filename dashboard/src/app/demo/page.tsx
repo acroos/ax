@@ -5,7 +5,6 @@ import {
   getMockAggregatesForDays,
   getMockAggregatesForRepo,
   MOCK_REPOS,
-  MOCK_REPO_METRICS,
 } from "@/lib/mock/data";
 import type { SparklinePoint } from "@/lib/db";
 import { METRIC_DEFS } from "@/lib/metric-defs";
@@ -325,19 +324,6 @@ export default async function DemoOverviewPage({
             detail="Agent independence ratio"
             href={metricHref("autonomy-score")}
             {...tip("autonomy-score")}
-          />
-        </div>
-      </div>
-
-      {/* Unmerged Token Spend (repo-level) */}
-      <div className="mb-8">
-        <SectionDivider label="Repo-Level" />
-        <div className="grid grid-cols-3 gap-3">
-          <MetricCard
-            label="Unmerged Token Spend"
-            value={fmtCost(MOCK_REPO_METRICS.unmergedCostUSD)}
-            detail={MOCK_REPO_METRICS.unmergedRate != null ? `${fmtPct(MOCK_REPO_METRICS.unmergedRate)} of total spend` : undefined}
-            tooltip="Dollar cost of tokens spent on PRs that were never merged — tracks waste from abandoned work."
           />
         </div>
       </div>

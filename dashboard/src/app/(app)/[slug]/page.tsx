@@ -418,20 +418,6 @@ async function OverviewMetricsBody({
         </div>
       </div>
 
-      {/* Unmerged Token Spend (repo-level) */}
-      {data.unmergedCostUSD != null && (
-        <div className="mb-8">
-          <SectionDivider label="Repo-Level" />
-          <div className="grid grid-cols-3 gap-3">
-            <MetricCard
-              label="Unmerged Token Spend"
-              value={fmtCost(data.unmergedCostUSD)}
-              detail={data.unmergedRate != null ? `${fmtPct(data.unmergedRate)} of total spend` : undefined}
-              tooltip="Dollar cost of tokens spent on PRs that were never merged — tracks waste from abandoned work."
-            />
-          </div>
-        </div>
-      )}
     </>
   );
 }
