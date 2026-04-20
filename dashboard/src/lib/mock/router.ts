@@ -9,7 +9,6 @@ import {
   MOCK_PRS,
   MOCK_REPOS,
   MOCK_AGGREGATES,
-  MOCK_REPO_METRICS,
   MOCK_TIMELINE,
   MOCK_BILLING,
   MOCK_INSTALLATION,
@@ -59,7 +58,6 @@ export function mockFetchAPI<T>(
     const sub = repoScoped[2];
     if (sub === "prs") return MOCK_PRS.filter((p) => p.repo_id === repoId) as T;
     if (sub === "metrics") return getMockAggregatesForRepo(repoId, days) as T;
-    if (sub === "repo-metrics") return MOCK_REPO_METRICS as T;
     if (sub === "timeline")
       return MOCK_TIMELINE.filter((t) => {
         const pr = MOCK_PRS.find((p) => p.number === t.prNumber);

@@ -150,12 +150,6 @@ export interface AggregateMetrics {
   metrics: Record<string, MetricAggregate>;
 }
 
-export interface RepoLevelMetrics {
-  unmergedCostUSD: number | null;
-  totalCostUSD: number | null;
-  unmergedRate: number | null;
-}
-
 export interface TimelinePoint {
   prNumber: number;
   title: string;
@@ -353,19 +347,6 @@ export async function getAggregateMetricsAsync(
   return computeAggregatesFromPRs(prs);
 }
 
-export async function getRepoLevelMetricsAsync(
-  repoId?: number,
-  orgSlug?: string,
-): Promise<RepoLevelMetrics> {
-  if (repoId) {
-    const apiPath = orgSlug
-      ? orgApiPath(orgSlug, `/repos/${repoId}/repo-metrics`)
-      : `/api/v1/repos/${repoId}/repo-metrics`;
-    return fetchAPI<RepoLevelMetrics>(apiPath);
-  }
-  return { unmergedCostUSD: null, totalCostUSD: null, unmergedRate: null };
-}
-
 const METRIC_FIELDS: Array<{ slug: string; field: keyof PRMetrics }> = [
   { slug: "post-open-commits", field: "post_open_commits" },
   { slug: "ci-success-rate", field: "ci_success_rate" },
@@ -376,6 +357,7 @@ const METRIC_FIELDS: Array<{ slug: string; field: keyof PRMetrics }> = [
   { slug: "sidechain-rate", field: "sidechain_rate" },
   { slug: "re-read-rate", field: "re_read_rate" },
   { slug: "autonomy-score", field: "autonomy_score" },
+  { slug: "review-cycle-time", field: "review_cycle_time_minutes" },
 ];
 
 export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics {

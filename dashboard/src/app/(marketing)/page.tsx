@@ -104,7 +104,6 @@ export default async function LandingPage() {
           "Iteration Depth",
           "Token Cost per PR",
           "Cache Hit Rate",
-          "Unmerged Token Spend",
         ]}
         cards={[
           {

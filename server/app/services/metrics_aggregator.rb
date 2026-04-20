@@ -11,7 +11,8 @@ class MetricsAggregator
     "cache-hit-rate"     => "cache_hit_rate",
     "sidechain-rate"     => "sidechain_rate",
     "re-read-rate"       => "re_read_rate",
-    "autonomy-score"     => "autonomy_score"
+    "autonomy-score"     => "autonomy_score",
+    "review-cycle-time"  => "review_cycle_time_minutes"
   }.freeze
 
   # SQL expression for the date a PR reached terminal state.

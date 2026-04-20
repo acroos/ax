@@ -36,15 +36,13 @@ Removal covers: DB columns on `pr_metrics` and `sessions`, the `plan_analyses` t
 
 ## Kept
 
-The product now tracks **10 PR-level metrics** across **three categories**, plus one repo-level aggregate:
+The product now tracks **10 PR-level metrics** across **three categories**:
 
 **Output Quality:** Post-Open Commits, CI Success Rate, Line Revisit Rate, Review Cycle Time
 
 **Prompt Efficiency:** Iteration Depth, Token Cost per PR, Cache Hit Rate
 
 **Agent Behavior:** Sidechain Rate, Re-Read Rate, Autonomy Score
-
-**Repo-level:** Unmerged Token Spend
 
 ## Consequences
 - Supersedes the "Planning Effectiveness" category from ADR-001 entirely. The plan extraction pipeline (`ExtractPlannedFiles`, `PlanAnalysis` model, `compute_plan_metrics`) is removed.

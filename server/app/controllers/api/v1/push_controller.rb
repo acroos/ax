@@ -42,10 +42,6 @@ module Api
             :pr_number, :iteration_depth, :post_open_commits,
             :ci_success_rate, :line_revisit_rate, :token_cost_usd,
             :metrics_finalized, :finalized_at
-          ],
-          repo_metrics: [
-            :period_start, :period_end, :period_type, :total_sessions, :total_tokens,
-            :total_cost_usd, :unmerged_tokens, :unmerged_cost_usd, :unmerged_rate
           ]
         )
       end

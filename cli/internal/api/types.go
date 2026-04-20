@@ -12,7 +12,6 @@ type PushPayload struct {
 	Sessions    []SessionData    `json:"sessions"`
 	SessionPRs  []SessionPRData  `json:"session_prs,omitempty"`
 	PRMetrics   []PRMetricsData  `json:"pr_metrics,omitempty"`
-	RepoMetrics *RepoMetricsData `json:"repo_metrics,omitempty"`
 }
 
 // PushResponse is returned by the server after processing a push.
@@ -91,15 +90,3 @@ type PRMetricsData struct {
 	FinalizedAt      string   `json:"finalized_at,omitempty"`
 }
 
-// RepoMetricsData represents aggregate metrics for a repo.
-type RepoMetricsData struct {
-	PeriodStart     string  `json:"period_start"`
-	PeriodEnd       string  `json:"period_end"`
-	PeriodType      string  `json:"period_type"`
-	TotalSessions   int     `json:"total_sessions"`
-	TotalTokens     int     `json:"total_tokens"`
-	TotalCostUSD    float64 `json:"total_cost_usd"`
-	UnmergedTokens  int     `json:"unmerged_tokens"`
-	UnmergedCostUSD float64 `json:"unmerged_cost_usd"`
-	UnmergedRate    float64 `json:"unmerged_rate"`
-}

@@ -93,6 +93,11 @@ function fmtCost(n: number | null): string {
   if (n === null) return "\u2014";
   return `$${n.toFixed(2)}`;
 }
+function fmtDuration(n: number | null): string {
+  if (n === null) return "\u2014";
+  if (n < 60) return `${Math.round(n)} min`;
+  return `${(n / 60).toFixed(1)} hr`;
+}
 function fmtDelta(
   current: number | null,
   prior: number | null,
@@ -189,10 +194,11 @@ export default async function DemoTeamOverviewPage({
           {/* Output Quality */}
           <div className="mb-8">
             <SectionDivider label="Output Quality" />
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               <MetricCard label="Avg Post-Open Commits" value={fmt(m("post-open-commits"))} delta={fmtDelta(m("post-open-commits"), prior("post-open-commits"), (n) => fmt(n), range)} sparkline={spark("post-open-commits")} detail="Lower is better" href={metricHref("post-open-commits")} {...tip("post-open-commits")} />
               <MetricCard label="CI Success Rate" value={fmtPct(m("ci-success-rate"))} delta={fmtDelta(m("ci-success-rate"), prior("ci-success-rate"), fmtPct, range)} sparkline={spark("ci-success-rate")} detail="First-run pass rate" href={metricHref("ci-success-rate")} {...tip("ci-success-rate")} />
               <MetricCard label="Avg Line Revisit Rate" value={fmt(m("line-revisit-rate"), 2)} delta={fmtDelta(m("line-revisit-rate"), prior("line-revisit-rate"), (n) => fmt(n, 2), range)} sparkline={spark("line-revisit-rate")} detail="Cross-PR file overlap" href={metricHref("line-revisit-rate")} {...tip("line-revisit-rate")} />
+              <MetricCard label="Avg Review Cycle Time" value={fmtDuration(m("review-cycle-time"))} delta={fmtDelta(m("review-cycle-time"), prior("review-cycle-time"), fmtDuration, range)} sparkline={spark("review-cycle-time")} detail="Time to first review" href={metricHref("review-cycle-time")} {...tip("review-cycle-time")} />
             </div>
           </div>
 

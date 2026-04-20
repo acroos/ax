@@ -42,7 +42,6 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `CodingSession` | `sessions` | Claude Code session (tokens, cost, model, message counts) |
 | `SessionPr` | `session_prs` | Session-to-PR correlation with confidence |
 | `PrMetrics` | `pr_metrics` | 10 PR-level metrics (with finalization lock) |
-| `RepoMetrics` | `repo_metrics` | Repo-level aggregates (unmerged spend, totals) |
 | `WatchedRepo` | `watched_repos` | Polling metadata |
 
 ### Key Model Behaviors
@@ -78,9 +77,8 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `GET` | `/api/v1/orgs/:slug/prs` | All PRs across all org repos (settled + open) |
 | `GET` | `/api/v1/orgs/:slug/metrics` | Windowed aggregate metrics (7-day current + prior) with daily sparkline buckets. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }` via `MetricsAggregator`. |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | All PRs with available metrics |
-| `GET` | `/api/v1/orgs/:slug/repos/:id/metrics` | Windowed aggregate metrics (same shape as org-level) plus repo-level fields (`unmergedCostUSD`, `totalCostUSD`, `unmergedRate`) |
+| `GET` | `/api/v1/orgs/:slug/repos/:id/metrics` | Windowed aggregate metrics (same shape as org-level) |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/timeline` | PR timeline for trend charts |
-| `GET` | `/api/v1/orgs/:slug/repos/:id/repo-metrics` | Repo-level metrics (unmerged spend) |
 
 ### Org Management (Session Token, Admin Required)
 

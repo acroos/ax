@@ -71,18 +71,7 @@ RSpec.describe PushService do
           metrics_finalized: 1,
           finalized_at: "2026-01-02T00:00:00Z"
         }
-      ],
-      repo_metrics: {
-        period_start: "2026-01-01",
-        period_end: "2026-01-31",
-        period_type: "month",
-        total_sessions: 10,
-        total_tokens: 50000,
-        total_cost_usd: 5.0,
-        unmerged_tokens: 5000,
-        unmerged_cost_usd: 0.5,
-        unmerged_rate: 0.1
-      }
+      ]
     }
   end
 
@@ -96,7 +85,6 @@ RSpec.describe PushService do
       expect(result[:sessions]).to eq(1)
       expect(result[:session_prs]).to eq(1)
       expect(result[:pr_metrics]).to eq(1)
-      expect(result[:repo_metrics]).to eq(1)
     end
 
     it "creates the repo with correct attributes" do

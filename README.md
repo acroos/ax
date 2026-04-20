@@ -12,7 +12,7 @@ AX measures what matters: cost per PR, iteration depth, CI success, and other me
 > Post-open commits · CI success rate · line revisit rate · review cycle time
 
 **💬 Prompt Efficiency** — How efficiently are you directing the agent?
-> Iteration depth · token cost per PR · cache hit rate · unmerged token spend
+> Iteration depth · token cost per PR · cache hit rate
 
 **🤖 Agent Behavior** — How well does the agent operate on its own?
 > Sidechain rate · re-read rate · autonomy score

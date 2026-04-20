@@ -77,7 +77,7 @@ See ADR-015 for the rationale behind both decisions.
 All architectural decisions are documented in `docs/decisions/`. Reference these when working in the related area:
 
 - [001 — Metrics Selection](docs/decisions/001-metrics-selection.md): Original metric set. Partially superseded by ADR-015.
-- [015 — Metric Pruning](docs/decisions/015-metric-pruning.md): 10 metrics across 3 categories (+ Unmerged Token Spend at repo level). Check this before adding or changing metrics.
+- [015 — Metric Pruning](docs/decisions/015-metric-pruning.md): 10 metrics across 3 categories. Check this before adding or changing metrics.
 - [002 — Form Factor](docs/decisions/002-form-factor.md): CLI + web dashboard. Don't build a plugin-only solution.
 - [003 — Target Scope](docs/decisions/003-target-scope.md): **Superseded by ADR-014.** Originally: local → team → managed service path.
 - [004 — CLI Language](docs/decisions/004-cli-language.md): Go for CLI, TypeScript for dashboard only.
@@ -85,7 +85,7 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [006 — UX Philosophy](docs/decisions/006-ux-philosophy.md): Inline metric context, plain-language summaries, restrained chrome, honest about ambiguity. **Amended by ADR-015** — palette and mode defaults changed; principles still apply.
 - [007 — Dashboard Packaging](docs/decisions/007-dashboard-packaging.md): **Superseded by ADR-014.** Originally: embedded static build via `go:embed`.
 - [008 — Distribution](docs/decisions/008-distribution-strategy.md): Homebrew tap + GoReleaser. Relevant when setting up releases.
-- [009 — Token Cost Metrics](docs/decisions/009-token-cost-metrics.md): Token Cost per PR and Unmerged Token Spend. Dollar-cost metrics with model-specific pricing.
+- [009 — Token Cost Metrics](docs/decisions/009-token-cost-metrics.md): Token Cost per PR. Dollar-cost metrics with model-specific pricing.
 - [010 — GitHub Event Ingestion](docs/decisions/010-github-event-ingestion.md): GitHub webhooks + metric finalization lifecycle. Metrics only computed for terminal (merged/closed) PRs.
 - [011 — Team Server](docs/decisions/011-team-server.md): Original Go server design. **Superseded by Rails migration** — see `plans/rails-migration.md`.
 - [012 — Event Service](docs/decisions/012-event-service.md): Platform-agnostic webhook receiver. **Reimplemented in Rails** — see `server/app/services/webhook_handlers/`.
