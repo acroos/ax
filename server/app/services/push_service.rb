@@ -104,6 +104,13 @@ class PushService
     count = 0
     Array(@params[:sessions]).each do |session_data|
       session = CodingSession.find_or_initialize_by(id: session_data[:id])
+
+      # Prevent cross-repo session ID collision: skip sessions owned by another repo
+      if session.persisted? && session.repo_id != repo.id
+        Rails.logger.warn("Session ID collision: #{session_data[:id]} already belongs to repo #{session.repo_id}, skipping for repo #{repo.id}")
+        next
+      end
+
       session.update!(
         repo: repo,
         branch: session_data[:branch],
