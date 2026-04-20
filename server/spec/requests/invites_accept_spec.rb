@@ -21,7 +21,7 @@ RSpec.describe "Invites accept API", type: :request do
 
   it "accepts a valid pending invite and returns the org slug" do
     organization.update!(plan: "pro")
-    invite = create(:invite, organization: organization, invited_by: inviter)
+    invite = create(:invite, organization: organization, invited_by: inviter, github_username: user.github_username)
     post accept_path(invite.token), headers: headers
 
     expect(response).to have_http_status(:ok)
@@ -43,7 +43,7 @@ RSpec.describe "Invites accept API", type: :request do
 
   it "returns 403 when org has reached its member limit" do
     # Free plan: max_members is 1, owner already takes that slot
-    invite = create(:invite, organization: organization, invited_by: inviter)
+    invite = create(:invite, organization: organization, invited_by: inviter, github_username: user.github_username)
 
     expect {
       post accept_path(invite.token), headers: headers
@@ -57,12 +57,25 @@ RSpec.describe "Invites accept API", type: :request do
 
   it "allows invite acceptance when org is on pro plan" do
     organization.update!(plan: "pro")
-    invite = create(:invite, organization: organization, invited_by: inviter)
+    invite = create(:invite, organization: organization, invited_by: inviter, github_username: user.github_username)
 
     post accept_path(invite.token), headers: headers
 
     expect(response).to have_http_status(:ok)
     expect(user.reload.member_of?(organization)).to be true
+  end
+
+  it "returns 403 when the invite is for a different GitHub user" do
+    invite = create(:invite, organization: organization, invited_by: inviter, github_username: "someone-else")
+
+    expect {
+      post accept_path(invite.token), headers: headers
+    }.not_to change { OrgMembership.count }
+
+    expect(response).to have_http_status(:forbidden)
+    body = JSON.parse(response.body)
+    expect(body["error"]).to include("different GitHub user")
+    expect(invite.reload.status).to eq("pending")
   end
 
   it "returns already_member without creating a duplicate membership if the user is already in the org" do

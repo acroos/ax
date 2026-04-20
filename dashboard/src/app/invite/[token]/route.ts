@@ -53,7 +53,12 @@ export async function GET(
   }
 
   if (!apiRes.ok) {
-    const reason = apiRes.status === 404 ? "expired" : "unknown";
+    const reason =
+      apiRes.status === 404
+        ? "expired"
+        : apiRes.status === 403
+          ? "wrong-user"
+          : "unknown";
     const res = NextResponse.redirect(
       new URL(`/invite/error?reason=${reason}`, req.url),
     );
