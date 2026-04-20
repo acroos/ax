@@ -88,6 +88,11 @@ Rails.application.routes.draw do
         post :rotate
         get :reveal
       end
+
+      # Account management (GDPR: available on all plans)
+      resource :account, only: [] do
+        get :export
+      end
     end
   end
 end
