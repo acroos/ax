@@ -267,6 +267,7 @@ const SPARKLINE_CONFIGS: Record<string, SparklineConfig> = {
   "sidechain-rate": { base: 0.16, trend: -0.05, noise: 0.04, clampMin: 0, clampMax: 1 },
   "re-read-rate": { base: 1.8, trend: -0.2, noise: 0.4, clampMin: 0 },
   "autonomy-score": { base: 6.5, trend: 1.5, noise: 1.2, clampMin: 0 },
+  "review-cycle-time": { base: 180, trend: -30, noise: 60, clampMin: 10 },
 };
 
 function buildAggregateMetrics(prs: PRWithMetrics[], days = 30): AggregateMetrics {

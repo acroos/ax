@@ -117,11 +117,11 @@ Page-by-page streaming topology:
 
 | Page | Shell (synchronous) | Streamed islands |
 |------|---------------------|------------------|
-| `/[slug]` | h1 + "View all PRs" link | Subtitle (repo + count), metrics body (4 category grids, `NoDataState` / `NoFinalizedPRsState` fallbacks) |
+| `/[slug]` | h1 + "View all PRs" link | Subtitle (repo + count), metrics body (4 category grids including Repo-Level for Unmerged Token Spend when repo-filtered, `NoDataState` / `NoFinalizedPRsState` fallbacks) |
 | `/[slug]/prs` | h1 + table header | Subtitle count, `<tbody>` rows, `NoDataBody` fallback |
 | `/[slug]/metrics/[metric]` | Back link + header + doc content (read from disk synchronously) | Data count subtitle, 5 summary stat cards, chart panel, PR table |
 | `/prs/[id]` | Back link | PR header (title + badges + metadata), grouped metric cards, `PRNotFound` fallback |
-| `/[slug]/me` | h1 + "View all my PRs" link | Subtitle (PR count), metrics body (3 category grids, mirrors org overview scoped to current user) |
+| `/[slug]/me` | h1 + "View all my PRs" link | Subtitle (PR count), metrics body (4 category grids — Output Quality has 4 cards including Review Cycle Time, mirrors org overview scoped to current user) |
 | `/[slug]/me/prs` | Back link + h1 + table header | PR count, `<tbody>` rows |
 | `/[slug]/me/metrics/[metric]` | Back link + header + doc content | Data count subtitle, 5 summary stat cards, chart panel, PR table |
 | `/[slug]/teams` | h1 | Teams list |

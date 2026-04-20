@@ -147,6 +147,9 @@ export interface AggregateMetrics {
   totalPRs: number;
   sessionDataCount: number;
   metrics: Record<string, MetricAggregate>;
+  unmergedCostUSD?: number | null;
+  totalCostUSD?: number | null;
+  unmergedRate?: number | null;
 }
 
 export interface RepoLevelMetrics {
@@ -375,6 +378,7 @@ const METRIC_FIELDS: Array<{ slug: string; field: keyof PRMetrics }> = [
   { slug: "sidechain-rate", field: "sidechain_rate" },
   { slug: "re-read-rate", field: "re_read_rate" },
   { slug: "autonomy-score", field: "autonomy_score" },
+  { slug: "review-cycle-time", field: "review_cycle_time_minutes" },
 ];
 
 export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics {

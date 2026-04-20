@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-19 — Expose all 11 metrics on overview pages
+
+**Pages updated:** `wiki/dashboard.md` (updated Suspense boundaries table for org overview and me page)
+**What changed:** Added Review Cycle Time card to the Output Quality section on all 6 overview pages (org, me, team, and their demo equivalents). Output Quality grid changed from `grid-cols-3` to `grid-cols-4`. Added Unmerged Token Spend as a "Repo-Level" section on the org overview (shown when repo-level data is available) and demo overview. Added `review-cycle-time` to Rails `MetricsAggregator::METRIC_COLUMNS`, dashboard `METRIC_FIELDS`, and mock `SPARKLINE_CONFIGS`. Extended `AggregateMetrics` type with optional `unmergedCostUSD`, `totalCostUSD`, `unmergedRate` fields. Updated skeleton counts on me and team pages from 3 to 4 for the first category.
+
+---
+
 ## 2026-04-19 — TTFB performance optimization (Edge Runtime, caching, region alignment)
 
 **Pages updated:** `wiki/dashboard.md` (added Performance section, fixed `src/middleware.ts` → `src/proxy.ts` reference)

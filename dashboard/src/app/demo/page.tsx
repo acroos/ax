@@ -5,6 +5,7 @@ import {
   getMockAggregatesForDays,
   getMockAggregatesForRepo,
   MOCK_REPOS,
+  MOCK_REPO_METRICS,
 } from "@/lib/mock/data";
 import type { SparklinePoint } from "@/lib/db";
 import { METRIC_DEFS } from "@/lib/metric-defs";
@@ -101,6 +102,12 @@ function fmtCost(n: number | null): string {
   return `$${n.toFixed(2)}`;
 }
 
+function fmtDuration(n: number | null): string {
+  if (n === null) return "\u2014";
+  if (n < 60) return `${Math.round(n)} min`;
+  return `${(n / 60).toFixed(1)} hr`;
+}
+
 function fmtDelta(
   current: number | null,
   prior: number | null,
@@ -160,7 +167,7 @@ export default async function DemoOverviewPage({
       {/* Output Quality */}
       <div className="mb-8">
         <SectionDivider label="Output Quality" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           <MetricCard
             label="Avg Post-Open Commits"
             value={fmt(m("post-open-commits"))}
@@ -202,6 +209,20 @@ export default async function DemoOverviewPage({
             detail="Cross-PR file overlap"
             href={metricHref("line-revisit-rate")}
             {...tip("line-revisit-rate")}
+          />
+          <MetricCard
+            label="Avg Review Cycle Time"
+            value={fmtDuration(m("review-cycle-time"))}
+            delta={fmtDelta(
+              m("review-cycle-time"),
+              prior("review-cycle-time"),
+              fmtDuration,
+              range,
+            )}
+            sparkline={spark("review-cycle-time")}
+            detail="Time to first review"
+            href={metricHref("review-cycle-time")}
+            {...tip("review-cycle-time")}
           />
         </div>
       </div>
@@ -304,6 +325,19 @@ export default async function DemoOverviewPage({
             detail="Agent independence ratio"
             href={metricHref("autonomy-score")}
             {...tip("autonomy-score")}
+          />
+        </div>
+      </div>
+
+      {/* Unmerged Token Spend (repo-level) */}
+      <div className="mb-8">
+        <SectionDivider label="Repo-Level" />
+        <div className="grid grid-cols-3 gap-3">
+          <MetricCard
+            label="Unmerged Token Spend"
+            value={fmtCost(MOCK_REPO_METRICS.unmergedCostUSD)}
+            detail={MOCK_REPO_METRICS.unmergedRate != null ? `${fmtPct(MOCK_REPO_METRICS.unmergedRate)} of total spend` : undefined}
+            tooltip="Dollar cost of tokens spent on PRs that were never merged — tracks waste from abandoned work."
           />
         </div>
       </div>
