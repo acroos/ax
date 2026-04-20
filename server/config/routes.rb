@@ -34,6 +34,7 @@ Rails.application.routes.draw do
         member do
           get "/", to: "organizations#show"
           put "/", to: "organizations#update"
+          delete "/", to: "organizations#destroy"
         end
         resource :billing, only: [], controller: "billing" do
           get "/", action: :show
