@@ -46,7 +46,7 @@ RSpec.describe PushService do
           started_at: 1735689600000,
           ended_at: 1735693200000,
           message_count: 10,
-          turn_count: 5,
+          turn_count: 2,
           input_tokens: 5000,
           output_tokens: 3000,
           total_cost_usd: 0.50,
