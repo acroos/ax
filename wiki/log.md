@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — Dashboard test coverage with Vitest
+
+**Pages updated:** `wiki/dashboard.md`
+**What changed:** Added Vitest as the test framework for the dashboard. Created `vitest.config.ts`, added `npm test` script. Extracted duplicated metric utility functions (`percentile`, `extractPRValues`, `filterByRange`, `aggregateByDay`, `computeDistribution`) from both app and demo metric detail pages into `src/lib/metric-utils.ts`. Added 78 unit tests across 3 test files covering `computeAggregatesFromPRs`, `getPRSize`, `orgApiPath`, `formatMetricValue`, `getMetricDef`, and all extracted metric utilities. Added `dashboard-test` CI job. Updated pre-push checks to include `npm test`.
+
+---
+
 ## 2026-04-20 — Accessibility fixes (contrast, reduced-motion, ARIA)
 
 **Pages updated:** `wiki/dashboard.md`

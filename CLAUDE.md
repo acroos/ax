@@ -53,6 +53,7 @@ just server-test  # Run specs
 
 # Dashboard (dashboard/)
 just dashboard-dev    # Development server on :3333
+just dashboard-test   # Run tests
 just dashboard-build  # Production build
 ```
 
@@ -77,6 +78,7 @@ cd server && bin/rails db:test:prepare test
 
 **Dashboard** (from `dashboard/`):
 ```bash
+cd dashboard && npm test
 cd dashboard && npx tsc --noEmit
 cd dashboard && npm run build
 ```

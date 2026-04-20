@@ -167,6 +167,24 @@ jobs:
   # ──────────────────────────────────────────────
   # Next.js Dashboard
   # ──────────────────────────────────────────────
+  dashboard-test:
+    needs: changes
+    if: needs.changes.outputs.dashboard == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - name: Test
+        run: npm test
+
   dashboard-typecheck:
     needs: changes
     if: needs.changes.outputs.dashboard == 'true'

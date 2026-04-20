@@ -235,11 +235,28 @@ API fetches default to `revalidate: 60` (60s stale-while-revalidate). Notable ex
 | `AX_API_KEY` | Optional Bearer token for API requests | unset |
 | `NEXT_STANDALONE` | Enable standalone Docker output | unset |
 
+## Testing
+
+Tests use [Vitest](https://vitest.dev/) (`vitest.config.ts` in `dashboard/`). Run with `npm test`.
+
+### Test files
+
+| File | What it covers |
+|------|----------------|
+| `src/lib/__tests__/db.test.ts` | `computeAggregatesFromPRs`, `getPRSize`, `orgApiPath` |
+| `src/lib/__tests__/metric-defs.test.ts` | `formatMetricValue`, `getMetricDef` |
+| `src/lib/__tests__/metric-utils.test.ts` | `percentile`, `extractPRValues`, `filterByRange`, `aggregateByDay`, `computeDistribution` |
+
+### Shared metric utilities
+
+Pure functions used by both the app and demo metric detail pages are extracted into `src/lib/metric-utils.ts`: `percentile`, `extractPRValues`, `filterByRange`, `aggregateByDay`, `computeDistribution`, and related types (`PRValue`, `DistBucket`). Both `[slug]/metrics/[metric]/page.tsx` and `demo/metrics/[metric]/page.tsx` import from this module.
+
 ## Key Files
 
 | File | Purpose |
 |------|---------|
 | `src/lib/db.ts` | API data layer |
+| `src/lib/metric-utils.ts` | Shared metric computation utilities (distribution bucketing, percentiles, filtering) |
 | `src/lib/auth.ts` | Auth helpers |
 | `src/app/layout.tsx` | Root layout with sidebar |
 | `src/app/page.tsx` | Root page (redirects to org or login) |

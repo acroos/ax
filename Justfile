@@ -55,6 +55,10 @@ dashboard-dev:
 dashboard-mock:
     cd dashboard && npm run dev:mock
 
+# Run dashboard tests
+dashboard-test:
+    cd dashboard && npm test
+
 # Build the dashboard
 dashboard-build:
     cd dashboard && npm run build
@@ -65,6 +69,7 @@ dashboard-build:
 test:
     just cli-test
     just server-test
+    just dashboard-test
 
 # Lint all projects
 lint:
