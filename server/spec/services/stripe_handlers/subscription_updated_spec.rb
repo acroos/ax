@@ -110,10 +110,92 @@ RSpec.describe StripeHandlers::SubscriptionUpdated do
     expect(org.org_memberships.reload.count).to eq(2)
   end
 
-  it "skips when subscription not found" do
+  it "skips when subscription not found and no customer match" do
     data = { id: "sub_unknown", status: "active" }
 
     expect { StripeHandlers::SubscriptionUpdated.new(data).call }.not_to raise_error
+    expect(Subscription.find_by(stripe_subscription_id: "sub_unknown")).to be_nil
+  end
+
+  context "when subscription.updated arrives before checkout.session.completed" do
+    let(:org_with_customer) { create(:organization, plan: "free", stripe_customer_id: "cus_early_123") }
+
+    it "creates a subscription record and applies the update" do
+      data = {
+        id: "sub_early_456",
+        customer: "cus_early_123",
+        status: "active",
+        cancel_at_period_end: false,
+        canceled_at: nil,
+        items: {
+          data: [ {
+            id: "si_early_789",
+            quantity: 3,
+            current_period_start: Time.current.to_i,
+            current_period_end: 1.month.from_now.to_i
+          } ]
+        }
+      }
+
+      # Ensure the org exists before the handler runs
+      org_with_customer
+
+      expect {
+        StripeHandlers::SubscriptionUpdated.new(data).call
+      }.to change(Subscription, :count).by(1)
+
+      sub = Subscription.find_by(stripe_subscription_id: "sub_early_456")
+      expect(sub.organization).to eq(org_with_customer)
+      expect(sub.status).to eq("active")
+      expect(sub.quantity).to eq(3)
+      expect(sub.stripe_subscription_item_id).to eq("si_early_789")
+      expect(org_with_customer.reload.plan).to eq("pro")
+    end
+
+    it "skips creation for canceled subscriptions" do
+      org_with_customer
+
+      data = {
+        id: "sub_canceled_456",
+        customer: "cus_early_123",
+        status: "canceled",
+        cancel_at_period_end: false,
+        canceled_at: Time.current.to_i
+      }
+
+      expect {
+        StripeHandlers::SubscriptionUpdated.new(data).call
+      }.not_to change(Subscription, :count)
+    end
+
+    it "handles race with checkout.session.completed gracefully" do
+      org_with_customer
+
+      # Simulate checkout.session.completed creating the record first
+      existing = create(:subscription,
+        organization: org_with_customer,
+        stripe_subscription_id: "sub_race_456",
+        status: "active",
+        quantity: 1
+      )
+
+      data = {
+        id: "sub_race_456",
+        customer: "cus_early_123",
+        status: "active",
+        cancel_at_period_end: false,
+        canceled_at: nil,
+        items: {
+          data: [ { id: "si_race_789", quantity: 5, current_period_start: Time.current.to_i, current_period_end: 1.month.from_now.to_i } ]
+        }
+      }
+
+      expect {
+        StripeHandlers::SubscriptionUpdated.new(data).call
+      }.not_to change(Subscription, :count)
+
+      expect(existing.reload.quantity).to eq(5)
+    end
   end
 
   it "syncs quantity changes from Stripe" do

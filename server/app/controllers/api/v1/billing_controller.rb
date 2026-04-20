@@ -29,17 +29,21 @@ module Api
       end
 
       def checkout
-        if has_active_subscription?
-          return render json: { error: "Organization already has an active subscription" }, status: :unprocessable_entity
+        url = @org.with_lock do
+          if has_active_subscription?
+            return render json: { error: "Organization already has an active subscription" }, status: :unprocessable_entity
+          end
+
+          session = StripeService.create_checkout_session(
+            @org,
+            success_url: "#{dashboard_url}/#{@org.slug}/billing/success?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url: "#{dashboard_url}/#{@org.slug}/billing?billing=canceled"
+          )
+
+          session.url
         end
 
-        session = StripeService.create_checkout_session(
-          @org,
-          success_url: "#{dashboard_url}/#{@org.slug}/billing/success?session_id={CHECKOUT_SESSION_ID}",
-          cancel_url: "#{dashboard_url}/#{@org.slug}/billing?billing=canceled"
-        )
-
-        render json: { url: session.url }
+        render json: { url: url }
       rescue Stripe::StripeError => e
         render json: { error: e.message }, status: :unprocessable_entity
       end

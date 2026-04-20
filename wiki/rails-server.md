@@ -139,7 +139,7 @@ Filters PRs by `current_user.github_username` as the author, following the same 
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/v1/orgs/:slug/billing` | Plan details, subscription status (incl. `quantity` and `seat_price_cents`), usage counts (any member) |
-| `POST` | `/api/v1/orgs/:slug/billing/checkout` | Create Stripe Checkout session, return URL (admin only). Refuses if a Stripe-side `active`/`trialing`/`past_due` subscription already exists on the customer, even if the local `Subscription` row hasn't been written yet. |
+| `POST` | `/api/v1/orgs/:slug/billing/checkout` | Create Stripe Checkout session, return URL (admin only). Uses `with_lock` on the org to prevent concurrent double-checkout. Refuses if a Stripe-side `active`/`trialing`/`past_due` subscription already exists on the customer, even if the local `Subscription` row hasn't been written yet. |
 | `POST` | `/api/v1/orgs/:slug/billing/portal` | Create Stripe Customer Portal session, return URL (admin only) |
 | `POST` | `/api/v1/orgs/:slug/billing/reconcile?session_id=…` | Synchronously upsert local Subscription/plan from a Stripe Checkout Session (admin only). Called by the dashboard success route so the UI doesn't depend on webhook timing. Idempotent with the `checkout.session.completed` webhook. |
 
@@ -258,7 +258,7 @@ Wraps Stripe API calls for billing operations (class methods):
 Orchestrates seat changes in sync with membership changes. No-ops when the org has no active subscription (free plan).
 
 - `add_seat!(org)` — Increments seat quantity by 1 (with prorations). Called BEFORE membership creation so a Stripe failure rolls back the membership.
-- `remove_seat!(org)` — Decrements seat quantity by 1 (minimum 1, no proration). Called AFTER membership deletion so a Stripe failure doesn't block the removal — the `customer.subscription.updated` webhook will eventually reconcile.
+- `remove_seat!(org)` — Decrements seat quantity by 1 (minimum 1, no proration). Called AFTER membership deletion. Retries once on transient Stripe errors (`APIConnectionError`, `APIError`) before logging and giving up — `ReconcileSubscriptionSeatsJob` will catch any remaining drift.
 
 ### Stripe Webhook Handlers (`app/services/stripe_handlers/`)
 Process Stripe webhook events (same pattern as GitHub handlers). `ProcessStripeWebhookJob` deduplicates via the `processed_stripe_events` table — a single `INSERT ... ON CONFLICT DO NOTHING` on `event_id` ensures each Stripe event is processed exactly once, even across retries or concurrent jobs.
@@ -266,9 +266,9 @@ Process Stripe webhook events (same pattern as GitHub handlers). `ProcessStripeW
 | Handler | Event | Action |
 |---------|-------|--------|
 | `CheckoutCompleted` | `checkout.session.completed` | Create Subscription (with `stripe_subscription_item_id` and `quantity`), set org plan to "pro". Skips entirely if the Stripe sub is already canceled (e.g., a delayed redelivery after manual cleanup). Reused by `BillingController#reconcile` for the synchronous upgrade path. |
-| `SubscriptionUpdated` | `customer.subscription.updated` | Sync status/period/quantity, update org plan based on status. Quantity changes from seat add/remove flow through here. |
+| `SubscriptionUpdated` | `customer.subscription.updated` | Sync status/period/quantity, update org plan based on status. If no local subscription exists (out-of-order delivery), creates one from Stripe data via the `customer` field. Quantity changes from seat add/remove flow through here. |
 | `SubscriptionDeleted` | `customer.subscription.deleted` | Mark canceled, revert org plan to "free" |
-| `InvoicePaymentFailed` | `invoice.payment_failed` | Log warning (hook point for notifications) |
+| `InvoicePaymentFailed` | `invoice.payment_failed` | Marks the org's subscription as `past_due` so the plan status reflects the payment failure without waiting for a separate `subscription.updated` event. |
 
 The Stripe API version is pinned in `config/initializers/stripe.rb` (default `2026-03-25.dahlia`, overridable via `STRIPE_API_VERSION`). Keep this in sync with the version configured on the Stripe dashboard webhook endpoint. Bumping it requires reviewing every Stripe object access in these handlers — for example, `current_period_start` / `current_period_end` were moved off `Subscription` onto each subscription item in `2025-04-30.basil`.
 
@@ -367,6 +367,12 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 - Self-healing: enqueues `BackfillRepoJob` for every repo with an active GitHub App
 - Catches missed webhooks, state drift, and ensures the system converges to GitHub's truth
 
+**ReconcileSubscriptionSeatsJob** (queue: `:default`)
+- Scheduled daily at 5am (via `config/recurring.yml`)
+- Compares each active/trialing subscription's `quantity` to the org's actual member count
+- Adjusts seat quantity via `StripeService.update_seat_count` when drift is detected (prorations on increases, none on decreases)
+- Catches ghost seats from failed `SeatService.remove_seat!` calls (e.g., Stripe timeouts after member deletion)
+
 ## Key Files
 
 | File | Purpose |
@@ -396,6 +402,7 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 | `app/jobs/github_app/backfill_installation_job.rb` | Post-install coordinator (enqueues per-repo backfill) |
 | `app/jobs/backfill_repo_job.rb` | Single-repo backfill from GitHub API + session correlation |
 | `app/jobs/reconcile_repos_job.rb` | Daily reconciliation (self-healing) |
+| `app/jobs/reconcile_subscription_seats_job.rb` | Daily seat count drift reconciliation |
 | `app/jobs/concerns/backfillable.rb` | Shared PR backfill logic (used by BackfillRepoJob) |
 | `config/initializers/plans.rb` | Plan capability definitions (PLANS constant) |
 | `app/services/plan_service.rb` | Capability enforcement layer |
