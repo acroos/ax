@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — SHA-256 digest for API key authentication
+
+**Pages updated:** `wiki/authentication.md`
+**What changed:** Added `key_digest` column (SHA-256, unique index) to `api_keys` table for O(1) API key lookup. `ApiKey.authenticate` now computes a SHA-256 digest and does an indexed lookup instead of iterating all keys with BCrypt. Legacy keys without a digest fall back to BCrypt scan and get backfilled on successful auth. `generate_for` stores the digest alongside the BCrypt hash on creation.
+
+---
+
 ## 2026-04-19 — Remove Review Cycle Time metric
 
 **Pages updated:** `wiki/metrics.md`, `wiki/data-model.md`, `wiki/data-flow.md`
