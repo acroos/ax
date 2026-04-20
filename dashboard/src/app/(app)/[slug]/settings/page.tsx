@@ -2,7 +2,7 @@ export const runtime = "edge";
 
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
-import { fetchAPI, orgApiPath, getGithubInstallation } from "@/lib/db";
+import { fetchAPI, orgApiPath, getGithubInstallation, getBilling, type BillingInfo } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { MembersSection, type Member } from "./members-section";
 import { InvitesSection, type Invite } from "./invites-section";
@@ -55,6 +55,9 @@ export default async function OrgSettingsPage({
     orgApiPath(slug, "/members"),
   );
   const invitesPromise = fetchSafe<Invite[]>(orgApiPath(slug, "/invites"));
+
+  // Billing (needed for seat-cost notice on the invite form)
+  const billingPromise = getBilling(slug).catch(() => null);
 
   // Teams (Pro-only, will 403 on free plan — catch and return empty)
   const currentOrg = user.organizations.find((o) => o.slug === slug);
@@ -115,6 +118,7 @@ export default async function OrgSettingsPage({
             slug={slug}
             membersPromise={membersPromise}
             invitesPromise={invitesPromise}
+            billingPromise={billingPromise}
           />
         </Suspense>
       </SectionErrorBoundary>
@@ -216,18 +220,31 @@ async function AsyncInvitesSection({
   slug,
   membersPromise,
   invitesPromise,
+  billingPromise,
 }: {
   slug: string;
   membersPromise: Promise<MembersResponse | null>;
   invitesPromise: Promise<Invite[] | null>;
+  billingPromise: Promise<BillingInfo | null>;
 }) {
-  const [members, invites] = await Promise.all([
+  const [members, invites, billing] = await Promise.all([
     membersPromise,
     invitesPromise,
+    billingPromise,
   ]);
   const isAdmin = resolveIsAdmin(members, null);
+  const seatPriceCents =
+    billing?.subscription?.status &&
+    ["active", "trialing"].includes(billing.subscription.status)
+      ? billing.subscription.seat_price_cents
+      : null;
   return (
-    <InvitesSection invites={invites ?? []} isAdmin={isAdmin} slug={slug} />
+    <InvitesSection
+      invites={invites ?? []}
+      isAdmin={isAdmin}
+      slug={slug}
+      seatPriceCents={seatPriceCents ?? undefined}
+    />
   );
 }
 
