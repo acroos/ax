@@ -19,3 +19,6 @@ production:
   reconcile_ci_data:
     class: ReconcileCiDataJob
     schedule: every 6 hours
+  cleanup_expired_sessions:
+    class: CleanupExpiredSessionsJob
+    schedule: at 4am every day
