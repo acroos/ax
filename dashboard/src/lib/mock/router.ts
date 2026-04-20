@@ -119,6 +119,15 @@ export function mockFetchAPI<T>(
   if (urlPath === "/api/v1/api_key/reveal")
     return { key: "ax_mock_key_0xdeadbeef1234567890" } as T;
 
+  if (urlPath === "/api/v1/account/export")
+    return {
+      exported_at: new Date().toISOString(),
+      user: { github_username: "demo-user", email: "demo@example.com" },
+      organizations: [{ slug: "acme-corp", role: "owner" }],
+      pull_requests: [],
+      sessions: [],
+    } as T;
+
   // Fallback
   console.warn(`[mock] unhandled GET route: ${urlPath}`);
   return {} as T;
@@ -144,6 +153,8 @@ function mockMutationResponse(urlPath: string, method: string): unknown {
   if (urlPath.match(/\/teams$/) && method === "POST")
     return { id: 99, slug: "new-team", name: "New Team", parent_team_slug: null, member_count: 0, child_team_count: 0 };
   if (urlPath.match(/\/orgs\/[^/]+$/) && method === "DELETE")
+    return {};
+  if (urlPath.includes("/account") && method === "DELETE")
     return {};
   return {};
 }
