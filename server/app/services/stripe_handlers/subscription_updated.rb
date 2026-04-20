@@ -6,6 +6,7 @@ module StripeHandlers
 
     def call
       subscription = Subscription.find_by(stripe_subscription_id: @data[:id])
+      subscription ||= create_from_stripe_data
       return unless subscription
 
       item = @data.dig(:items, :data, 0)
@@ -46,6 +47,35 @@ module StripeHandlers
       epoch = item && item[attr]
       epoch ||= @data[attr] # backwards compat with pre-basil payloads
       epoch ? Time.at(epoch) : nil
+    end
+
+    # When subscription.updated arrives before checkout.session.completed,
+    # no local Subscription record exists yet. Create a minimal one from
+    # the webhook data so the update isn't silently lost.
+    def create_from_stripe_data
+      return if @data[:status] == "canceled"
+
+      customer_id = @data[:customer]
+      return unless customer_id
+
+      org = Organization.find_by(stripe_customer_id: customer_id)
+      return unless org
+
+      item = @data.dig(:items, :data, 0)
+      Subscription.create!(
+        organization: org,
+        stripe_subscription_id: @data[:id],
+        stripe_subscription_item_id: item&.dig(:id),
+        status: @data[:status],
+        quantity: item&.dig(:quantity) || 1,
+        current_period_start: period_time(item, :current_period_start),
+        current_period_end: period_time(item, :current_period_end),
+        cancel_at_period_end: @data[:cancel_at_period_end] || false,
+        canceled_at: @data[:canceled_at] ? Time.at(@data[:canceled_at]) : nil
+      )
+    rescue ActiveRecord::RecordNotUnique
+      # checkout.session.completed raced us — use the record it created
+      Subscription.find_by(stripe_subscription_id: @data[:id])
     end
 
     def plan_for_status(status)

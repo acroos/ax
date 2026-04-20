@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — Fix Stripe billing edge cases
+
+**Pages updated:** `wiki/rails-server.md`
+**What changed:** Fixed four billing edge cases: (1) `SubscriptionUpdated` now creates a minimal subscription record when `subscription.updated` arrives before `checkout.session.completed` (looks up org via `stripe_customer_id`). (2) `BillingController#checkout` wraps the checkout flow in `@org.with_lock` to prevent concurrent double-checkout race conditions. (3) New `ReconcileSubscriptionSeatsJob` runs daily at 5am comparing subscription quantity to actual member count and adjusting; `SeatService.remove_seat!` now retries once on transient Stripe errors. (4) `InvoicePaymentFailed` handler now marks the subscription as `past_due` instead of only logging.
+
+---
+
 ## 2026-04-20 — Dashboard test coverage with Vitest
 
 **Pages updated:** `wiki/dashboard.md`

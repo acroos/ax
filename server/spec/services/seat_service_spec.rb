@@ -90,5 +90,28 @@ RSpec.describe SeatService do
 
       expect(StripeService).not_to have_received(:update_seat_count)
     end
+
+    it "retries once on transient Stripe connection errors" do
+      sub = create(:subscription, organization: org, quantity: 3, status: "active")
+      call_count = 0
+      allow(StripeService).to receive(:update_seat_count) do
+        call_count += 1
+        raise Stripe::APIConnectionError, "timeout" if call_count == 1
+      end
+
+      SeatService.remove_seat!(org.reload)
+
+      expect(StripeService).to have_received(:update_seat_count).twice
+    end
+
+    it "gives up after two consecutive failures without raising" do
+      create(:subscription, organization: org, quantity: 3, status: "active")
+      allow(StripeService).to receive(:update_seat_count)
+        .and_raise(Stripe::APIConnectionError, "timeout")
+
+      expect { SeatService.remove_seat!(org.reload) }.not_to raise_error
+
+      expect(StripeService).to have_received(:update_seat_count).twice
+    end
   end
 end
