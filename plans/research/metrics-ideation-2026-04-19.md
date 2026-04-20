@@ -278,3 +278,32 @@ This reflects the insight that the most valuable metrics measure workflow patter
 3. **How to handle metrics that are "always green" for advanced users?** Some metrics (Subagent Delegation, Iteration Depth) flatten out as teams mature. Consider whether these should auto-hide or move to a "health check" section.
 4. **Code Survival Rate timing:** When does the customer base have enough data density to make this worthwhile?
 5. **Previously pruned metrics:** The 10 metrics removed in ADR-015 should also be reconsidered through this new lens — see next exercise.
+
+---
+
+## Previously Pruned Metrics (ADR-015) — Re-evaluated
+
+These 10 metrics were removed in ADR-015. We re-evaluated them through the lens of "does this help teams understand AI coding effectiveness?"
+
+### Ratings
+
+| Metric | Austin | Claude | Avg | Notes |
+|--------|--------|--------|-----|-------|
+| Plan-to-Implementation Coverage | 4 | 5 | 4.5 | Best of the plan metrics — "did you do what you said you'd do?" |
+| First-Pass Acceptance Rate | 4.5 | 4 | 4.25 | Potentially interesting but review semantics vary by team |
+| Scope Creep Detection | 4 | 4 | 4.0 | Files changed that weren't in the plan — actionable if plan ingestion is solved |
+| Plan Deviation Score | 4 | 4 | 4.0 | Mushier version of Coverage + Scope Creep combined |
+| Context Efficiency | 2 | 2 | 2.0 | Ghost of a good idea, but Peak Context Window % captures it better |
+| Test Coverage of Generated Code | 1 | 1 | 1.0 | Not our lane — Codecov etc. do this better |
+| Diff Churn | 1 | 1 | 1.0 | Designed for human multi-commit workflows, not agentic single-commit patterns |
+| Messages per PR | 1 | 1 | 1.0 | Redundant with Iteration Depth, which is strictly better |
+| Self-Correction Rate | 1 | 1 | 1.0 | Bash success/error counts too coarse; user can't act on it |
+| Error Recovery Efficiency | 1 | 1 | 1.0 | Same problems as Self-Correction Rate |
+
+### Key Takeaways
+
+**The plan metrics (Coverage, Scope Creep, Deviation) are the only ones with potential life.** Their original failure was the extraction mechanism (regex on backtick-wrapped paths in plan files), not the concept. If structured plan ingestion becomes feasible — through Claude Code's plan mode, Linear ticket descriptions, or another structured input — Coverage and Scope Creep are the two worth revisiting. They answer "did you do what you planned?" and "did you do stuff you didn't plan?" respectively.
+
+**Everything else was correctly killed.** The bash-derived metrics (Self-Correction, Error Recovery, Context Efficiency) measured agent internals that users have no lever to pull on. Test Coverage isn't our lane. Diff Churn and Messages per PR don't map to agentic workflows. First-Pass Acceptance is conceptually close to Rubber Stamp Rate but from the opposite direction and blunter.
+
+**Conditional roadmap item:** If/when AX supports structured plan ingestion, revisit Plan-to-Implementation Coverage and Scope Creep Detection as a pair. They could form a "Planning Effectiveness" sub-category, but only with reliable plan parsing — the regex approach should not be retried.
