@@ -61,7 +61,7 @@ function MetricCard({
           <div className="mt-2 text-[12px] text-muted-foreground">{detail}</div>
         )}
         {tooltip && (
-          <div className="pointer-events-none absolute -inset-x-5 -bottom-5 rounded-b-xl bg-gradient-to-t from-card from-60% to-transparent px-5 pb-5 pt-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          <div className="pointer-events-none absolute -inset-x-5 -bottom-5 rounded-b-xl bg-gradient-to-t from-card from-75% to-transparent px-5 pb-5 pt-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
             <p className="text-[12px] leading-relaxed text-muted-foreground/70">
               {tooltip}
             </p>
