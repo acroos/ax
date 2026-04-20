@@ -3,6 +3,16 @@
 import { useState } from "react";
 
 import { CopyButton } from "@/components/copy-button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +36,8 @@ interface Props {
   invites: Invite[];
   isAdmin: boolean;
   slug: string;
+  /** Per-seat price in cents. Present only for Pro orgs with an active subscription. */
+  seatPriceCents?: number;
 }
 
 function timeUntil(dateStr: string): string {
@@ -37,10 +49,16 @@ function timeUntil(dateStr: string): string {
   return `in ${hours}h`;
 }
 
+function formatDollars(cents: number) {
+  const dollars = cents / 100;
+  return Number.isInteger(dollars) ? `$${dollars}` : `$${dollars.toFixed(2)}`;
+}
+
 export function InvitesSection({
   invites: initialInvites,
   isAdmin,
   slug,
+  seatPriceCents,
 }: Props) {
   const [invites, setInvites] = useState(initialInvites);
   const [revoking, setRevoking] = useState<number | null>(null);
@@ -49,6 +67,7 @@ export function InvitesSection({
   const [creating, setCreating] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function handleRevoke(inviteId: number) {
     setRevoking(inviteId);
@@ -64,10 +83,18 @@ export function InvitesSection({
     }
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!username.trim()) return;
 
+    if (seatPriceCents) {
+      setConfirmOpen(true);
+    } else {
+      sendInvite();
+    }
+  }
+
+  async function sendInvite() {
     setCreating(true);
     setError(null);
     setInviteLink(null);
@@ -138,7 +165,7 @@ export function InvitesSection({
             <h3 className="text-xs font-medium text-muted-foreground">
               Invite a member
             </h3>
-            <form onSubmit={handleCreate} className="flex items-end gap-2">
+            <form onSubmit={handleSubmit} className="flex items-end gap-2">
               <div className="flex-1 space-y-1">
                 <Label
                   htmlFor="invite-username"
@@ -201,6 +228,29 @@ export function InvitesSection({
               </div>
             )}
           </div>
+        )}
+
+        {seatPriceCents && (
+          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Add a paid seat?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  When <span className="font-medium text-foreground">@{username.trim()}</span> accepts
+                  this invite, a new seat will be added to your subscription
+                  at {formatDollars(seatPriceCents)}/month (prorated).
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => sendInvite()}
+                >
+                  Send Invite
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </CardContent>
     </Card>
