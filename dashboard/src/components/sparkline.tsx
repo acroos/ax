@@ -1,11 +1,12 @@
 import type { SparklinePoint } from "@/lib/db";
 
 /**
- * Minimal SVG sparkline. Breaks the line on null values (gaps).
+ * Minimal SVG sparkline. Skips null values and connects through them
+ * so the line remains continuous even when days have missing data.
  * Returns null when there's no meaningful data to show.
  *
- * When `showArea` is true, renders a subtle filled area under each
- * contiguous line segment for visual weight at larger sizes.
+ * When `showArea` is true, renders a subtle filled area under the
+ * line for visual weight at larger sizes.
  */
 export function Sparkline({
   data,
@@ -36,49 +37,32 @@ export function Sparkline({
       : padY + (1 - (v - min) / range) * (height - padY * 2);
   const scaleX = (i: number) => (i / (values.length - 1)) * width;
 
-  // Build path segments, breaking on null. Track start/end x for area paths.
-  const lineSegments: string[] = [];
-  const areaSegments: string[] = [];
-  let current = "";
-  let segStartX = 0;
-  let segEndX = 0;
+  // Build a single continuous path, skipping null values.
+  let linePath = "";
+  let startX = 0;
+  let endX = 0;
 
   for (let i = 0; i < values.length; i++) {
     const v = values[i];
-    if (v === null) {
-      if (current) {
-        lineSegments.push(current);
-        if (showArea) {
-          areaSegments.push(
-            `${current} L${segEndX.toFixed(1)},${height} L${segStartX.toFixed(1)},${height} Z`,
-          );
-        }
-        current = "";
-      }
-      continue;
-    }
+    if (v === null) continue;
     const x = scaleX(i);
     const y = scaleY(v);
     const xStr = x.toFixed(1);
     const yStr = y.toFixed(1);
-    if (!current) {
-      segStartX = x;
-      current = `M${xStr},${yStr}`;
+    if (!linePath) {
+      startX = x;
+      linePath = `M${xStr},${yStr}`;
     } else {
-      current += ` L${xStr},${yStr}`;
+      linePath += ` L${xStr},${yStr}`;
     }
-    segEndX = x;
-  }
-  if (current) {
-    lineSegments.push(current);
-    if (showArea) {
-      areaSegments.push(
-        `${current} L${segEndX.toFixed(1)},${height} L${segStartX.toFixed(1)},${height} Z`,
-      );
-    }
+    endX = x;
   }
 
-  if (lineSegments.length === 0) return null;
+  if (!linePath) return null;
+
+  const areaPath = showArea
+    ? `${linePath} L${endX.toFixed(1)},${height} L${startX.toFixed(1)},${height} Z`
+    : "";
 
   return (
     <svg
@@ -87,12 +71,11 @@ export function Sparkline({
       preserveAspectRatio="none"
       aria-hidden
     >
-      {showArea &&
-        areaSegments.map((d, i) => (
-          <path key={`a${i}`} d={d} fill="currentColor" opacity={0.08} />
-        ))}
+      {showArea && areaPath && (
+        <path d={areaPath} fill="currentColor" opacity={0.08} />
+      )}
       <path
-        d={lineSegments.join(" ")}
+        d={linePath}
         fill="none"
         stroke="currentColor"
         strokeWidth={1.5}
