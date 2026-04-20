@@ -11,6 +11,10 @@ module Api
           return render json: { org_slug: invite.organization.slug, already_member: true }
         end
 
+        unless invite.github_username == current_user.github_username
+          return render json: { error: "This invite is for a different GitHub user" }, status: :forbidden
+        end
+
         invite.accept!(current_user)
         render json: { org_slug: invite.organization.slug }
       rescue Invite::MemberLimitReached
