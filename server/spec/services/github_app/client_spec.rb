@@ -48,23 +48,6 @@ RSpec.describe GithubApp::Client do
     end
   end
 
-  describe "#list_pull_reviews" do
-    before do
-      stub_request(:get, %r{api\.github\.com/repos/acme/widget/pulls/42/reviews})
-        .to_return(
-          status: 200,
-          body: [ { id: 1, state: "APPROVED" } ].to_json,
-          headers: { "Content-Type" => "application/json" }
-        )
-    end
-
-    it "returns reviews for the pull request" do
-      reviews = client.list_pull_reviews(owner: "acme", repo: "widget", number: 42)
-      expect(reviews.length).to eq(1)
-      expect(reviews.first[:state]).to eq("APPROVED")
-    end
-  end
-
   describe "#list_check_suites" do
     before do
       stub_request(:get, %r{api\.github\.com/repos/acme/widget/commits/abc123/check-suites})

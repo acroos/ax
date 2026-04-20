@@ -174,8 +174,6 @@ function generatePR(id: number, repoId: number): PRWithMetrics {
         ci_success_rate: rand() > 0.1 ? Math.round(randFloat(0.5, 1.0) * 100) / 100 : null,
         line_revisit_rate: Math.round(randFloat(0.0, 0.5) * 100) / 100,
         iteration_depth: Math.round(randFloat(1, 14)),
-        review_cycle_time_minutes: Math.round(randFloat(15, 1440)),
-        first_review_at: daysAgo(Math.max(0, daysBack - 1)),
         token_cost_usd: hasSessionData ? Math.round(randFloat(0.4, 9.0) * 100) / 100 : null,
         cache_hit_rate: hasSessionData ? Math.round(randFloat(0.25, 0.92) * 100) / 100 : null,
         sidechain_rate: hasSessionData ? Math.round(randFloat(0.02, 0.28) * 100) / 100 : null,
@@ -268,7 +266,6 @@ const SPARKLINE_CONFIGS: Record<string, SparklineConfig> = {
   "sidechain-rate": { base: 0.16, trend: -0.05, noise: 0.04, clampMin: 0, clampMax: 1 },
   "re-read-rate": { base: 1.8, trend: -0.2, noise: 0.4, clampMin: 0 },
   "autonomy-score": { base: 6.5, trend: 1.5, noise: 1.2, clampMin: 0 },
-  "review-cycle-time": { base: 180, trend: -30, noise: 60, clampMin: 10 },
 };
 
 function buildAggregateMetrics(prs: PRWithMetrics[], days = 30): AggregateMetrics {

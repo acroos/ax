@@ -54,18 +54,6 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     tooltip:
       "How often the same files get changed across multiple recent PRs — high churn suggests the agent isn't making durable changes.",
   },
-  {
-    slug: "review-cycle-time",
-    docSlug: "review-cycle-time",
-    field: "review_cycle_time_minutes",
-    label: "Review Cycle Time",
-    category: "Output Quality",
-    valueType: "int",
-    unit: "min",
-    lowerIsBetter: true,
-    tooltip:
-      "How long from PR open to first human review — shorter waits mean faster feedback and less context-switching.",
-  },
 
   // Prompt Efficiency
   {

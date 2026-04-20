@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_18_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_19_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -133,14 +133,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_18_000002) do
     t.datetime "computed_at", default: -> { "now()" }, null: false
     t.datetime "created_at", null: false
     t.datetime "finalized_at"
-    t.datetime "first_review_at"
     t.integer "iteration_depth"
     t.float "line_revisit_rate"
     t.boolean "metrics_finalized", default: false
     t.integer "post_open_commits"
     t.bigint "pr_id", null: false
     t.float "re_read_rate"
-    t.integer "review_cycle_time_minutes"
     t.float "sidechain_rate"
     t.float "token_cost_usd"
     t.datetime "updated_at", null: false

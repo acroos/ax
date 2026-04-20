@@ -120,8 +120,6 @@ Unique on (pr_id, filename).
 | post_open_commits | integer | |
 | ci_success_rate | real | 0.0 to 1.0. Computed from per-commit `ci_passed` values on the `commits` table. Updatable after finalization (not in `GITHUB_DERIVED_FIELDS`). |
 | line_revisit_rate | real | |
-| first_review_at | timestamp | First human review timestamp |
-| review_cycle_time_minutes | integer | Minutes from PR open to first human review |
 | token_cost_usd | real | |
 | cache_hit_rate | real | Cache-read tokens / total input tokens |
 | sidechain_rate | real | Sidechain messages / total messages |

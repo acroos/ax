@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-19 — Remove Review Cycle Time metric
+
+**Pages updated:** `wiki/metrics.md`, `wiki/data-model.md`, `wiki/data-flow.md`
+**What changed:** Removed Review Cycle Time (minutes from PR open to first human review) from the product. It measured team review latency, not agent output quality. Removed: `first_review_at` and `review_cycle_time_minutes` columns from `pr_metrics` (via migration), `ReviewSubmitted` webhook handler and its spec, `backfill_reviews` from `Backfillable` concern, `list_pull_reviews` from `GithubApp::Client`, `pull_request_review` event routing from `ProcessGitHubWebhookJob`, `review-cycle-time` from `MetricsAggregator::METRIC_COLUMNS` and dashboard `METRIC_FIELDS`, metric definition from `metric-defs.ts`, MetricCard from all 6 overview pages (org, me, team, and demo equivalents), PR detail display, mock data generation, marketing copy, and metric doc. Output Quality grid reverted from `grid-cols-4` to `grid-cols-3`. Total metrics: 10 → 9.
+
+---
+
 ## 2026-04-19 — Expose all 10 metrics on overview pages + remove Unmerged Token Spend
 
 **Pages updated:** `wiki/dashboard.md`, `wiki/metrics.md`, `wiki/data-model.md`, `wiki/rails-server.md`, `wiki/index.md`

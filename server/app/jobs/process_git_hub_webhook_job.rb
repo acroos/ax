@@ -7,8 +7,6 @@ class ProcessGitHubWebhookJob < ApplicationJob
     case event_type
     when "pull_request"
       handle_pull_request(payload)
-    when "pull_request_review"
-      handle_review(payload)
     when "check_suite"
       handle_check_suite(payload)
     when "installation"
@@ -59,20 +57,6 @@ class ProcessGitHubWebhookJob < ApplicationJob
         WebhookHandlers::PrClosed.new(pr_data, repo_data, installation: installation).call
       end
     end
-  end
-
-  def handle_review(payload)
-    return unless payload[:action] == "submitted"
-
-    installation = resolve_installation(payload)
-    return if installation == :unknown || installation == :inactive
-
-    WebhookHandlers::ReviewSubmitted.new(
-      payload[:review],
-      payload[:pull_request],
-      payload[:repository],
-      installation: installation
-    ).call
   end
 
   def handle_check_suite(payload)

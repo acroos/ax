@@ -54,16 +54,6 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.review_cycle_time_minutes !== null) {
-    metrics.push({
-      label: "Review Cycle Time",
-      value: `${m.review_cycle_time_minutes} min`,
-      description:
-        "Minutes from PR open to first human review. Lower is a faster feedback loop.",
-      category: "Output Quality",
-    });
-  }
-
   if (m.iteration_depth !== null) {
     metrics.push({
       label: "Iteration Depth",

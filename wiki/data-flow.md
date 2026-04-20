@@ -40,7 +40,6 @@ BackfillRepoJob (per-repo, idempotent):
   → Fetch PRs from GitHub API (last 90 days, configurable)
   → For each PR:
     → Create/update PR record (PrOpened handler)
-    → Fetch reviews → capture review cycle time
     → If merged/closed: fetch files + commits, compute metrics, settle
   → Run SessionPrCorrelationService (match existing sessions to PRs)
 ```
@@ -65,7 +64,6 @@ GitHub Event → POST /webhooks/github → Validate HMAC-SHA256 signature
   pull_request.closed       → Fetch file/commit data from GitHub API
                               → Compute line_revisit_rate, ci_success_rate
                               → Settle metrics (merged or abandoned)
-  pull_request_review       → Capture first review cycle time (human reviews only)
   check_suite.completed     → Update per-commit ci_passed, recompute ci_success_rate
                               (uses commit.pr association, not webhook payload)
 ```
@@ -92,7 +90,7 @@ All PRs are shown in the dashboard regardless of settlement status. Open PRs sho
 
 `PrMetrics` has two field categories with different protection rules:
 
-- **GitHub-derived** (locked after settlement): `post_open_commits`, `line_revisit_rate`, `first_review_at`, `review_cycle_time_minutes`
+- **GitHub-derived** (locked after settlement): `post_open_commits`, `line_revisit_rate`
 - **Session-derived** (always updatable via `update_session_metrics!`): `iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`
 
 This allows late-arriving session data to enrich already-settled PRs, which is the normal case (developers push after PRs merge).
