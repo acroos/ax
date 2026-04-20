@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth";
 import { ApiKeySection } from "./api-key-section";
+import { DeleteAccountSection } from "./delete-account-section";
 import { LogoutButton } from "./logout-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,6 +70,9 @@ export default async function SettingsPage() {
           <LogoutButton />
         </CardContent>
       </Card>
+
+      {/* Delete Account */}
+      <DeleteAccountSection />
     </div>
   );
 }
