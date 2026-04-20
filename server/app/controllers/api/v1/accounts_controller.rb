@@ -3,6 +3,10 @@ module Api
     class AccountsController < BaseController
       before_action :require_session_auth!
 
+      def export
+        render json: PersonalDataExportService.new(current_user).call
+      end
+
       def destroy
         service = AccountDeletionService.new(current_user)
         service.call!
