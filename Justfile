@@ -15,6 +15,10 @@ cli-build:
 cli-test *args:
     cd cli && just test {{args}}
 
+# Vet the CLI (static analysis)
+cli-vet:
+    cd cli && go vet ./...
+
 # Lint the CLI
 cli-lint:
     cd cli && just lint
@@ -41,6 +45,18 @@ server-console:
 server-lint:
     cd server && bin/rubocop
 
+# Run Brakeman security scanner
+server-brakeman:
+    cd server && bin/brakeman --no-pager
+
+# Run bundle-audit for dependency vulnerabilities
+server-audit:
+    cd server && bin/bundler-audit
+
+# Prepare test DB and run server tests
+server-check: server-brakeman server-audit server-lint
+    cd server && bin/rails db:test:prepare && bundle exec rspec
+
 # Run pending migrations
 server-migrate:
     cd server && bin/rails db:migrate
@@ -59,9 +75,16 @@ dashboard-mock:
 dashboard-test:
     cd dashboard && npm test
 
+# Type-check the dashboard
+dashboard-typecheck:
+    cd dashboard && npx tsc --noEmit
+
 # Build the dashboard
 dashboard-build:
     cd dashboard && npm run build
+
+# Run all dashboard checks (test + typecheck + build)
+dashboard-check: dashboard-test dashboard-typecheck dashboard-build
 
 # --- Cross-project ---
 

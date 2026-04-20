@@ -61,29 +61,33 @@ just dashboard-build  # Production build
 
 Run the checks below before pushing. CI runs them per sub-project based on changed paths — run only the sections relevant to your changes.
 
-**Go CLI** (from `cli/`):
+**Go CLI:**
 ```bash
-cd cli && go vet ./...
-cd cli && go test ./...
-cd cli && go build ./...
+just cli-vet
+just cli-test
+just cli-build
 ```
 
-**Rails Server** (from `server/`):
+**Rails Server:**
 ```bash
-cd server && bin/brakeman --no-pager
-cd server && bin/bundler-audit
-cd server && bin/rubocop
-cd server && bin/rails db:test:prepare test
+just server-brakeman
+just server-audit
+just server-lint
+just server-test
 ```
 
-**Dashboard** (from `dashboard/`):
+Or run all four at once: `just server-check`
+
+**Dashboard:**
 ```bash
-cd dashboard && npm test
-cd dashboard && npx tsc --noEmit
-cd dashboard && npm run build
+just dashboard-test
+just dashboard-typecheck
+just dashboard-build
 ```
 
-If you change CI (`.github/workflows/ci.yml`), update this list to match.
+Or run all three at once: `just dashboard-check`
+
+If you change CI (`.github/workflows/ci.yml`), update this list and the Justfile to match.
 
 ## Demo App
 
