@@ -228,6 +228,7 @@ Unique on (team_id, org_membership_id).
 | id | bigint | PK |
 | user_id | bigint | Unique FK → users |
 | key_hash | text | bcrypt hash of `ax_k1_<hex>` |
+| key_digest | text | SHA-256 hex digest for O(1) lookup (unique index) |
 | name | text | |
 | revoked | boolean | |
 | last_used_at | timestamp | |

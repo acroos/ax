@@ -10,7 +10,7 @@ The CLI authenticates with the Rails server using an API key.
 
 **Storage**:
 - Client-side: `~/.ax/config.json` (plaintext)
-- Server-side: `api_keys` table (`key_hash` column, bcrypt)
+- Server-side: `api_keys` table (`key_digest` column, SHA-256 for O(1) lookup; `key_hash` column, bcrypt, retained for legacy fallback)
 
 **Usage**:
 ```
@@ -33,9 +33,10 @@ Authorization: Bearer ax_k1_<hex>
 
 **Validation** (`ApiKey.authenticate`):
 1. Check prefix matches `ax_k1_`
-2. Load all non-revoked keys (there's one per user)
-3. bcrypt compare against each `key_hash`
-4. Return the associated user
+2. Compute SHA-256 digest of the raw key
+3. Look up the non-revoked key by `key_digest` (unique index, O(1))
+4. Fallback: if no digest match, scan keys with `key_digest = NULL` and bcrypt-verify (legacy keys only; backfills the digest on successful match)
+5. Return the associated key
 
 **Used by**: `POST /api/v1/push`, `GET /api/v1/ping`, `GET /api/v1/watch-status`
 

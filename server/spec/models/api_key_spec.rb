@@ -57,5 +57,16 @@ RSpec.describe ApiKey, type: :model do
       expect { ApiKey.authenticate(raw_key) }
         .to change { user.api_key.reload.last_used_at }
     end
+
+    it "backfills digest for legacy keys missing key_digest" do
+      user = create(:user)
+      raw_key = ApiKey.generate_for(user)
+      user.api_key.update_columns(key_digest: nil)
+
+      result = ApiKey.authenticate(raw_key)
+      expect(result).to be_present
+      expect(result.user).to eq(user)
+      expect(result.reload.key_digest).to eq(OpenSSL::Digest::SHA256.hexdigest(raw_key))
+    end
   end
 end

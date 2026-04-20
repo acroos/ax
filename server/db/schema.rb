@@ -10,18 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_19_100001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_20_054628) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
   create_table "api_keys", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "key_digest"
     t.string "key_hash", null: false
     t.datetime "last_used_at"
     t.string "name"
     t.boolean "revoked", default: false, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["key_digest"], name: "index_api_keys_on_key_digest", unique: true
     t.index ["user_id"], name: "index_api_keys_on_user_id"
   end
 
@@ -173,24 +175,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_19_100001) do
     t.string "url"
     t.index ["repo_id", "number"], name: "index_prs_on_repo_id_and_number", unique: true
     t.index ["repo_id"], name: "index_prs_on_repo_id"
-  end
-
-  create_table "repo_metrics", force: :cascade do |t|
-    t.datetime "computed_at", default: -> { "now()" }, null: false
-    t.datetime "created_at", null: false
-    t.string "period_end", null: false
-    t.string "period_start", null: false
-    t.string "period_type", null: false
-    t.bigint "repo_id", null: false
-    t.float "total_cost_usd", default: 0.0
-    t.integer "total_sessions", default: 0
-    t.integer "total_tokens", default: 0
-    t.float "unmerged_cost_usd", default: 0.0
-    t.float "unmerged_rate"
-    t.integer "unmerged_tokens", default: 0
-    t.datetime "updated_at", null: false
-    t.index ["repo_id", "period_start", "period_type"], name: "index_repo_metrics_on_repo_id_and_period_start_and_period_type", unique: true
-    t.index ["repo_id"], name: "index_repo_metrics_on_repo_id"
   end
 
   create_table "repos", force: :cascade do |t|
@@ -477,7 +461,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_19_100001) do
   add_foreign_key "pr_files", "prs"
   add_foreign_key "pr_metrics", "prs"
   add_foreign_key "prs", "repos"
-  add_foreign_key "repo_metrics", "repos"
   add_foreign_key "repos", "github_installations"
   add_foreign_key "repos", "organizations"
   add_foreign_key "session_prs", "prs"
