@@ -1,0 +1,4 @@
+this is not valid json at all
+{"type":"assistant","uuid":"a1","sessionId":"malformed-session","gitBranch":"main","timestamp":"2026-03-05T10:00:05.000Z","isMeta":false,"isSidechain":false,"message":{"role":"assistant","content":[{"type":"text","text":"Hello"}],"model":"claude-sonnet-4-5-20250514","usage":{"input_tokens":100,"output_tokens":50,"cache_creation_input_tokens":0,"cache_read_input_tokens":0},"id":"msg_bad1"}}
+{"type":"assistant","uuid":"a2","truncated
+{"type":"user","uuid":"u1","sessionId":"malformed-session","gitBranch":"main","timestamp":"2026-03-05T10:00:00.000Z","isMeta":false,"isSidechain":false,"message":{"role":"user","content":"Fix the bug"}}
