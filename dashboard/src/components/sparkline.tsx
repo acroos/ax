@@ -7,15 +7,21 @@ import type { SparklinePoint } from "@/lib/db";
  *
  * When `showArea` is true, renders a subtle filled area under the
  * line for visual weight at larger sizes.
+ *
+ * Pass `label` to provide a screen-reader-accessible description of
+ * the metric name; the component computes and announces the trend
+ * direction (up/down/flat) automatically.
  */
 export function Sparkline({
   data,
   className = "",
   showArea = true,
+  label,
 }: {
   data: SparklinePoint[];
   className?: string;
   showArea?: boolean;
+  label?: string;
 }) {
   const values = data.map((d) => d.v);
   const nonNull = values.filter((v): v is number => v !== null);
@@ -64,25 +70,33 @@ export function Sparkline({
     ? `${linePath} L${endX.toFixed(1)},${height} L${startX.toFixed(1)},${height} Z`
     : "";
 
+  // Compute trend direction for screen readers
+  const first = nonNull[0];
+  const last = nonNull[nonNull.length - 1];
+  const trend = last > first ? "trending up" : last < first ? "trending down" : "flat";
+  const ariaLabel = label ? `${label}, ${trend}` : undefined;
+
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className={`text-muted-foreground ${className}`}
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      {showArea && areaPath && (
-        <path d={areaPath} fill="currentColor" opacity={0.08} />
-      )}
-      <path
-        d={linePath}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
+    <span aria-label={ariaLabel} role={ariaLabel ? "img" : undefined}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className={`text-muted-foreground ${className}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        {showArea && areaPath && (
+          <path d={areaPath} fill="currentColor" opacity={0.08} />
+        )}
+        <path
+          d={linePath}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    </span>
   );
 }

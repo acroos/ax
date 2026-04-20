@@ -114,7 +114,7 @@
 
   /* Muted — disabled states, sunk areas, metadata backgrounds */
   --color-muted: var(--color-wellstone);
-  --color-muted-foreground: #6f6454; /* 5.1:1 on parchment · AA normal */
+  --color-muted-foreground: #6a5f4c; /* 5.8:1 on parchment, 5.4:1 on wellstone · AA at 13px */
 
   /* Accent — soft brand tint for selected/hovered states.
      NOT the hero color. Use --primary for filled brand surfaces. */
@@ -324,4 +324,19 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted-foreground);
+}
+
+/* ============================================================
+ * Reduced motion — respect vestibular preferences.
+ * Kills all CSS transitions and animations when the user has
+ * enabled "Reduce motion" in their OS accessibility settings.
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

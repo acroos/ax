@@ -14,8 +14,13 @@ export function CopyButton({ text }: { text: string }) {
   }
 
   return (
-    <Button variant="secondary" size="sm" onClick={handleCopy}>
-      {copied ? "Copied" : "Copy"}
-    </Button>
+    <>
+      <Button variant="secondary" size="sm" onClick={handleCopy}>
+        {copied ? "Copied" : "Copy"}
+      </Button>
+      <span aria-live="polite" className="sr-only">
+        {copied ? "Copied to clipboard" : ""}
+      </span>
+    </>
   );
 }

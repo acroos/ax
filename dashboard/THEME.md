@@ -125,7 +125,7 @@ import { Logo, Mark, Wordmark } from "@/components/logo";
 
 **Don't** invent new status colors. If you need to signal a new concept, talk to the team — the earthy, non-judgmental palette is a brand decision, and adding a "critical red" slot undermines the ethos.
 
-**Do** use `muted-foreground` for timestamps, helper text, units, and metadata. It's been contrast-tuned to pass AA at 13px (5.1:1 light / 6.4:1 dark).
+**Do** use `muted-foreground` for timestamps, helper text, units, and metadata. It's been contrast-tuned to pass AA at 13px (5.8:1 on page bg, 5.4:1 on muted bg in light / 6.4:1 dark).
 
 **Don't** use `stone` or other raw palette grays for text. Semantic tokens are contrast-audited; raw neutrals are not guaranteed to pass AA at small sizes.
 
@@ -158,7 +158,7 @@ All semantic token pairs meet **WCAG AA (4.5:1 for normal text, 3:1 for large te
 | Pair                               | Light    | Dark                                       |
 | ---------------------------------- | -------- | ------------------------------------------ |
 | `foreground` on `background`       | 14.8 : 1 | 14.2 : 1                                   |
-| `muted-foreground` on `background` | 5.1 : 1  | 6.4 : 1                                    |
+| `muted-foreground` on `background` | 5.8 : 1  | 6.4 : 1                                    |
 | `primary-foreground` on `primary`  | 4.8 : 1  | 4.8 : 1                                    |
 | `accent-foreground` on `accent`    | 7.7 : 1  | 5.9 : 1                                    |
 | `ring` on `background`             | 3.0 : 1  | 3.1 : 1 (non-text, UI component threshold) |

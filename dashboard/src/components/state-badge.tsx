@@ -12,10 +12,10 @@ import { Badge } from "@/components/ui/badge";
 export type Tone = "success" | "info" | "notice" | "attention" | "muted";
 
 const TONE_CLASSES: Record<Tone, string> = {
-  success: "bg-success/15 text-success border-success/25",
-  info: "bg-info/15 text-info border-info/25",
-  notice: "bg-notice/15 text-notice border-notice/25",
-  attention: "bg-attention/15 text-attention border-attention/25",
+  success: "bg-success/25 text-success border-success/35",
+  info: "bg-info/25 text-info border-info/35",
+  notice: "bg-notice/25 text-notice border-notice/35",
+  attention: "bg-attention/25 text-attention border-attention/35",
   muted: "bg-muted text-muted-foreground border-border",
 };
 
