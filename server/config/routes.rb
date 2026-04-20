@@ -90,7 +90,7 @@ Rails.application.routes.draw do
       end
 
       # Account management (GDPR: available on all plans)
-      resource :account, only: [] do
+      resource :account, only: [ :destroy ] do
         get :export
       end
     end

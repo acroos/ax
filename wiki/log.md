@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — Account deletion endpoint (GDPR Article 17)
+
+**Pages updated:** `wiki/rails-server.md`
+**What changed:** Added `DELETE /api/v1/account` endpoint with `AccountDeletionService`. Deletes the user, their personal org, sessions, and API keys. Anonymizes authored PRs/commits/sessions (replaces username with "deleted-user"). Blocks deletion if user is sole owner of a non-personal org (returns 409 with org list). Dashboard settings page now includes a "Delete Account" section with confirmation dialog.
+
+---
+
 ## 2026-04-20 — SHA-256 digest for API key authentication
 
 **Pages updated:** `wiki/authentication.md`
