@@ -13,7 +13,7 @@ class PushService
       commits: 0,
       sessions: 0,
       session_prs: 0,
-      pr_metrics: 0,
+      pr_metrics: 0
     }
 
     repo = nil

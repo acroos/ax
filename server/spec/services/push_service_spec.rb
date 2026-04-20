@@ -71,7 +71,7 @@ RSpec.describe PushService do
           metrics_finalized: 1,
           finalized_at: "2026-01-02T00:00:00Z"
         }
-      ],
+      ]
     }
   end
 
