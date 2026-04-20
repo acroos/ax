@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — Accessibility fixes (contrast, reduced-motion, ARIA)
+
+**Pages updated:** `wiki/dashboard.md`
+**What changed:** Added `prefers-reduced-motion` support in `globals.css`. Increased StateBadge tone background opacity from `/15` to `/25` for WCAG AA contrast. Added `role="group"`, `aria-label`, and `aria-pressed` to RangeToggle. Added `aria-label` to RepoFilter trigger. Added `aria-live` region to CopyButton for state change announcements. Added optional `label` prop to Sparkline for screen-reader trend summaries. Added `scope="col"` to TableHead component. Darkened `muted-foreground` from `#6f6454` to `#6a5f4c` for AA compliance at 13px on muted backgrounds. Updated THEME.md contrast ratios to match.
+
+---
+
 ## 2026-04-20 — Account deletion endpoint (GDPR Article 17)
 
 **Pages updated:** `wiki/rails-server.md`

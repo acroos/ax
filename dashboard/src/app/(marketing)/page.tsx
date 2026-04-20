@@ -262,7 +262,7 @@ function PreviewCard({
         <div className="mb-1 font-serif text-[28px] font-medium leading-none tracking-tight text-foreground [font-variant-numeric:lining-nums_tabular-nums]">
           {value}
         </div>
-        <Sparkline data={sparkline} className="mt-4 h-12 w-full" />
+        <Sparkline data={sparkline} className="mt-4 h-12 w-full" label={label} />
       </CardContent>
     </Card>
   );

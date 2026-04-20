@@ -53,7 +53,7 @@ function MetricCard({
         )}
         <div className="mt-4 h-16 w-full">
           {sparkline && sparkline.length > 0 && (
-            <Sparkline data={sparkline} className="h-full w-full" />
+            <Sparkline data={sparkline} className="h-full w-full" label={label} />
           )}
         </div>
         {tooltip && (

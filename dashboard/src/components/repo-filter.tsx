@@ -51,7 +51,10 @@ export function RepoFilter({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex items-center gap-1 font-medium text-foreground transition-colors hover:text-primary">
+      <DropdownMenuTrigger
+        aria-label="Filter by repository"
+        className="inline-flex items-center gap-1 font-medium text-foreground transition-colors hover:text-primary"
+      >
         {currentLabel}
         <ChevronDown className="size-3" />
       </DropdownMenuTrigger>

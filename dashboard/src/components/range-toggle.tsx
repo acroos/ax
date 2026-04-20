@@ -22,11 +22,16 @@ export function RangeToggle({ current }: { current: Range }) {
   }
 
   return (
-    <div className="inline-flex items-center rounded-lg border border-border bg-muted p-0.5">
+    <div
+      role="group"
+      aria-label="Time range"
+      className="inline-flex items-center rounded-lg border border-border bg-muted p-0.5"
+    >
       {RANGES.map((r) => (
         <button
           key={r}
           onClick={() => handleChange(r)}
+          aria-pressed={r === current}
           className={`rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors ${
             r === current
               ? "bg-card text-foreground shadow-xs"
