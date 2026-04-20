@@ -101,6 +101,7 @@ export interface PR {
   state: string | null;
   created_at: string | null;
   merged_at: string | null;
+  closed_at: string | null;
   url: string | null;
   additions: number;
   deletions: number;
