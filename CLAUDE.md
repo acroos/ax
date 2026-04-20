@@ -77,6 +77,7 @@ cd server && bin/rails db:test:prepare test
 
 **Dashboard** (from `dashboard/`):
 ```bash
+cd dashboard && npm test
 cd dashboard && npx tsc --noEmit
 cd dashboard && npm run build
 ```
