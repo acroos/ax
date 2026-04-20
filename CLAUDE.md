@@ -56,6 +56,33 @@ just dashboard-dev    # Development server on :3333
 just dashboard-build  # Production build
 ```
 
+## Pre-push checks
+
+Run the checks below before pushing. CI runs them per sub-project based on changed paths — run only the sections relevant to your changes.
+
+**Go CLI** (from `cli/`):
+```bash
+cd cli && go vet ./...
+cd cli && go test ./...
+cd cli && go build ./...
+```
+
+**Rails Server** (from `server/`):
+```bash
+cd server && bin/brakeman --no-pager
+cd server && bin/bundler-audit
+cd server && bin/rubocop
+cd server && bin/rails db:test:prepare test
+```
+
+**Dashboard** (from `dashboard/`):
+```bash
+cd dashboard && npx tsc --noEmit
+cd dashboard && npm run build
+```
+
+If you change CI (`.github/workflows/ci.yml`), update this list to match.
+
 ## Demo App
 
 The /demo app should _exactly_ (wherever possible) match the real app's functionality.  Any changes to functionality or UI _must_ come with matching changes to the demo app.
