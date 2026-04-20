@@ -156,6 +156,7 @@ function generatePR(id: number, repoId: number): PRWithMetrics {
   const isMerged = rand() > 0.15; // 85% merged
   const createdAt = daysAgo(daysBack);
   const mergedAt = isMerged ? daysAgo(Math.max(0, daysBack - randInt(0, 3))) : null;
+  const closedAt = isMerged ? null : daysAgo(Math.max(0, daysBack - randInt(0, 3)));
   const state = isMerged ? "merged" : "closed";
   const repo = MOCK_REPOS.find((r) => r.id === repoId)!;
   const additions = randInt(5, 800);
@@ -194,6 +195,7 @@ function generatePR(id: number, repoId: number): PRWithMetrics {
     state,
     created_at: createdAt,
     merged_at: mergedAt,
+    closed_at: closedAt,
     url: `https://github.com/${repo.github_owner}/${repo.github_repo}/pull/${100 + id}`,
     additions,
     deletions,

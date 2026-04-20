@@ -204,11 +204,11 @@ RSpec.describe "Teams API", type: :request do
     before do
       create(:team_membership, team: team, org_membership: member_membership)
 
-      team_pr = create(:pr, repo: repo, number: 1, author: member.github_username)
+      team_pr = create(:pr, repo: repo, number: 1, author: member.github_username, state: "merged", merged_at: 1.day.ago)
       create(:pr_metrics, pr: team_pr, metrics_finalized: true, finalized_at: 1.day.ago,
              post_open_commits: 2, iteration_depth: 3)
 
-      other_pr = create(:pr, repo: repo, number: 2, author: "outsider")
+      other_pr = create(:pr, repo: repo, number: 2, author: "outsider", state: "merged", merged_at: 1.day.ago)
       create(:pr_metrics, pr: other_pr, metrics_finalized: true, finalized_at: 1.day.ago,
              post_open_commits: 10, iteration_depth: 20)
     end

@@ -15,8 +15,14 @@ class MetricsAggregator
     "review-cycle-time"  => "review_cycle_time_minutes"
   }.freeze
 
+  # SQL expression for the date a PR reached terminal state.
+  # Uses the PR's merge/close date (not finalized_at, which is an internal
+  # processing timestamp). All callers must join the prs table.
+  TERMINAL_DATE_SQL = "COALESCE(prs.merged_at, prs.closed_at)".freeze
+
   # @param base_scope [ActiveRecord::Relation] a PrMetrics scope already
   #   filtered to the correct org/repo and `metrics_finalized: true`.
+  #   Must include a join to the prs table.
   # @param window_days [Integer] 7, 30, or 90 — controls current/prior
   #   comparison windows and sparkline date range.
   def initialize(base_scope, window_days: 30)
@@ -30,8 +36,8 @@ class MetricsAggregator
     current_start = now - @window_days.days
     prior_start   = current_start - @window_days.days
 
-    current_scope = @base_scope.where(finalized_at: current_start..now)
-    prior_scope   = @base_scope.where(finalized_at: prior_start..current_start)
+    current_scope = @base_scope.where("#{TERMINAL_DATE_SQL} BETWEEN ? AND ?", current_start, now)
+    prior_scope   = @base_scope.where("#{TERMINAL_DATE_SQL} BETWEEN ? AND ?", prior_start, current_start)
 
     current_aggs    = aggregate(current_scope)
     prior_aggs      = aggregate(prior_scope)
@@ -75,8 +81,8 @@ class MetricsAggregator
     avg_selects = METRIC_COLUMNS.values.map { |col| Arel.sql("AVG(#{col}) AS avg_#{col}") }
 
     rows = scope
-      .select(Arel.sql("DATE(finalized_at) AS bucket"), *avg_selects)
-      .group(Arel.sql("DATE(finalized_at)"))
+      .select(Arel.sql("DATE(#{TERMINAL_DATE_SQL}) AS bucket"), *avg_selects)
+      .group(Arel.sql("DATE(#{TERMINAL_DATE_SQL})"))
       .order(Arel.sql("bucket"))
 
     rows_by_date = rows.index_by { |r| r.bucket.to_date }
