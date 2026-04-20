@@ -21,7 +21,6 @@ const RANGE_DAYS: Record<Range, number> = { "7d": 7, "30d": 30, "90d": 90 };
 function MetricCard({
   label,
   value,
-  detail,
   tooltip,
   href,
   delta,
@@ -29,7 +28,6 @@ function MetricCard({
 }: {
   label: string;
   value: string;
-  detail?: string;
   tooltip?: string;
   href?: string;
   delta?: string;
@@ -58,9 +56,6 @@ function MetricCard({
             <Sparkline data={sparkline} className="h-full w-full" />
           )}
         </div>
-        {detail && (
-          <div className="mt-2 text-[12px] text-muted-foreground">{detail}</div>
-        )}
         {tooltip && (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-card from-60% to-transparent pt-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
             <p className="text-[12px] leading-relaxed text-muted-foreground/70">
@@ -190,9 +185,9 @@ export default async function DemoTeamOverviewPage({
           <div className="mb-8">
             <SectionDivider label="Output Quality" />
             <div className="grid grid-cols-3 gap-3">
-              <MetricCard label="Avg Post-Open Commits" value={fmt(m("post-open-commits"))} delta={fmtDelta(m("post-open-commits"), prior("post-open-commits"), (n) => fmt(n), range)} sparkline={spark("post-open-commits")} detail="Lower is better" href={metricHref("post-open-commits")} {...tip("post-open-commits")} />
-              <MetricCard label="CI Success Rate" value={fmtPct(m("ci-success-rate"))} delta={fmtDelta(m("ci-success-rate"), prior("ci-success-rate"), fmtPct, range)} sparkline={spark("ci-success-rate")} detail="First-run pass rate" href={metricHref("ci-success-rate")} {...tip("ci-success-rate")} />
-              <MetricCard label="Avg Line Revisit Rate" value={fmt(m("line-revisit-rate"), 2)} delta={fmtDelta(m("line-revisit-rate"), prior("line-revisit-rate"), (n) => fmt(n, 2), range)} sparkline={spark("line-revisit-rate")} detail="Cross-PR file overlap" href={metricHref("line-revisit-rate")} {...tip("line-revisit-rate")} />
+              <MetricCard label="Avg Post-Open Commits" value={fmt(m("post-open-commits"))} delta={fmtDelta(m("post-open-commits"), prior("post-open-commits"), (n) => fmt(n), range)} sparkline={spark("post-open-commits")} href={metricHref("post-open-commits")} {...tip("post-open-commits")} />
+              <MetricCard label="CI Success Rate" value={fmtPct(m("ci-success-rate"))} delta={fmtDelta(m("ci-success-rate"), prior("ci-success-rate"), fmtPct, range)} sparkline={spark("ci-success-rate")} href={metricHref("ci-success-rate")} {...tip("ci-success-rate")} />
+              <MetricCard label="Avg Line Revisit Rate" value={fmt(m("line-revisit-rate"), 2)} delta={fmtDelta(m("line-revisit-rate"), prior("line-revisit-rate"), (n) => fmt(n, 2), range)} sparkline={spark("line-revisit-rate")} href={metricHref("line-revisit-rate")} {...tip("line-revisit-rate")} />
             </div>
           </div>
 
@@ -200,9 +195,9 @@ export default async function DemoTeamOverviewPage({
           <div className="mb-8">
             <SectionDivider label="Prompt Efficiency" />
             <div className="grid grid-cols-3 gap-3">
-              <MetricCard label="Avg Iteration Depth" value={fmt(m("iteration-depth"), 0)} delta={fmtDelta(m("iteration-depth"), prior("iteration-depth"), (n) => fmt(n, 0), range)} sparkline={spark("iteration-depth")} detail="Human-agent turn pairs" href={metricHref("iteration-depth")} {...tip("iteration-depth")} />
-              <MetricCard label="Avg Token Cost" value={fmtCost(m("token-cost-per-pr"))} delta={fmtDelta(m("token-cost-per-pr"), prior("token-cost-per-pr"), fmtCost, range)} sparkline={spark("token-cost-per-pr")} detail={data.sessionDataCount > 0 ? `${data.sessionDataCount} of ${data.totalPRs} PRs with session data` : undefined} href={metricHref("token-cost-per-pr")} {...tip("token-cost-per-pr")} />
-              <MetricCard label="Avg Cache Hit Rate" value={fmtPct(m("cache-hit-rate"))} delta={fmtDelta(m("cache-hit-rate"), prior("cache-hit-rate"), fmtPct, range)} sparkline={spark("cache-hit-rate")} detail="Prompt cache utilization" href={metricHref("cache-hit-rate")} {...tip("cache-hit-rate")} />
+              <MetricCard label="Avg Iteration Depth" value={fmt(m("iteration-depth"), 0)} delta={fmtDelta(m("iteration-depth"), prior("iteration-depth"), (n) => fmt(n, 0), range)} sparkline={spark("iteration-depth")} href={metricHref("iteration-depth")} {...tip("iteration-depth")} />
+              <MetricCard label="Avg Token Cost" value={fmtCost(m("token-cost-per-pr"))} delta={fmtDelta(m("token-cost-per-pr"), prior("token-cost-per-pr"), fmtCost, range)} sparkline={spark("token-cost-per-pr")} href={metricHref("token-cost-per-pr")} {...tip("token-cost-per-pr")} />
+              <MetricCard label="Avg Cache Hit Rate" value={fmtPct(m("cache-hit-rate"))} delta={fmtDelta(m("cache-hit-rate"), prior("cache-hit-rate"), fmtPct, range)} sparkline={spark("cache-hit-rate")} href={metricHref("cache-hit-rate")} {...tip("cache-hit-rate")} />
             </div>
           </div>
 
@@ -210,9 +205,9 @@ export default async function DemoTeamOverviewPage({
           <div className="mb-8">
             <SectionDivider label="Agent Behavior" />
             <div className="grid grid-cols-3 gap-3">
-              <MetricCard label="Avg Sidechain Rate" value={fmtPct(m("sidechain-rate"))} delta={fmtDelta(m("sidechain-rate"), prior("sidechain-rate"), fmtPct, range)} sparkline={spark("sidechain-rate")} detail="Dead-end reasoning paths" href={metricHref("sidechain-rate")} {...tip("sidechain-rate")} />
-              <MetricCard label="Avg Re-Read Rate" value={fmt(m("re-read-rate"), 2)} delta={fmtDelta(m("re-read-rate"), prior("re-read-rate"), (n) => fmt(n, 2), range)} sparkline={spark("re-read-rate")} detail="File read redundancy" href={metricHref("re-read-rate")} {...tip("re-read-rate")} />
-              <MetricCard label="Avg Autonomy Score" value={fmt(m("autonomy-score"), 1)} delta={fmtDelta(m("autonomy-score"), prior("autonomy-score"), (n) => fmt(n, 1), range)} sparkline={spark("autonomy-score")} detail="Agent independence ratio" href={metricHref("autonomy-score")} {...tip("autonomy-score")} />
+              <MetricCard label="Avg Sidechain Rate" value={fmtPct(m("sidechain-rate"))} delta={fmtDelta(m("sidechain-rate"), prior("sidechain-rate"), fmtPct, range)} sparkline={spark("sidechain-rate")} href={metricHref("sidechain-rate")} {...tip("sidechain-rate")} />
+              <MetricCard label="Avg Re-Read Rate" value={fmt(m("re-read-rate"), 2)} delta={fmtDelta(m("re-read-rate"), prior("re-read-rate"), (n) => fmt(n, 2), range)} sparkline={spark("re-read-rate")} href={metricHref("re-read-rate")} {...tip("re-read-rate")} />
+              <MetricCard label="Avg Autonomy Score" value={fmt(m("autonomy-score"), 1)} delta={fmtDelta(m("autonomy-score"), prior("autonomy-score"), (n) => fmt(n, 1), range)} sparkline={spark("autonomy-score")} href={metricHref("autonomy-score")} {...tip("autonomy-score")} />
             </div>
           </div>
         </>

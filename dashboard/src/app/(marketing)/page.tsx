@@ -82,13 +82,11 @@ export default async function LandingPage() {
           {
             label: "CI Success Rate",
             value: "83%",
-            detail: "First-run pass rate",
             sparkline: SPARKLINES.ciSuccess,
           },
           {
             label: "Avg Post-Open Commits",
             value: "1.4",
-            detail: "Lower is better",
             sparkline: SPARKLINES.postOpen,
           },
         ]}
@@ -108,13 +106,11 @@ export default async function LandingPage() {
           {
             label: "Avg Token Cost",
             value: "$1.28",
-            detail: "Per pull request",
             sparkline: SPARKLINES.tokenCost,
           },
           {
             label: "Avg Cache Hit Rate",
             value: "72%",
-            detail: "Prompt cache utilization",
             sparkline: SPARKLINES.cacheHit,
           },
         ]}
@@ -131,13 +127,11 @@ export default async function LandingPage() {
           {
             label: "Avg Autonomy Score",
             value: "7.2",
-            detail: "Agent independence ratio",
             sparkline: SPARKLINES.autonomy,
           },
           {
             label: "Avg Sidechain Rate",
             value: "12%",
-            detail: "Dead-end reasoning paths",
             sparkline: SPARKLINES.sidechain,
           },
         ]}
@@ -213,7 +207,6 @@ function FeatureSection({
   cards: {
     label: string;
     value: string;
-    detail: string;
     sparkline: SparklinePoint[];
   }[];
   reverse?: boolean;
@@ -254,12 +247,10 @@ function FeatureSection({
 function PreviewCard({
   label,
   value,
-  detail,
   sparkline,
 }: {
   label: string;
   value: string;
-  detail: string;
   sparkline: SparklinePoint[];
 }) {
   return (
@@ -272,7 +263,6 @@ function PreviewCard({
           {value}
         </div>
         <Sparkline data={sparkline} className="mt-4 h-12 w-full" />
-        <div className="mt-2 text-[12px] text-muted-foreground">{detail}</div>
       </CardContent>
     </Card>
   );
