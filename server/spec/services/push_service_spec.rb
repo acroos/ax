@@ -139,6 +139,29 @@ RSpec.describe PushService do
       }.to raise_error(PushService::Error, /not a member/)
     end
 
+    it "skips session if ID already belongs to a different repo" do
+      PushService.new(push_params, user: user).execute
+
+      # Second repo pushing the same session ID
+      other_params = push_params.deep_dup
+      other_params[:repo_path] = "/home/user/otherproject"
+      other_params[:owner] = "owner"
+      other_params[:repo] = "other-repo"
+      other_params[:sessions][0][:branch] = "main"
+      other_params.delete(:prs)
+      other_params.delete(:commits)
+      other_params.delete(:session_prs)
+      other_params.delete(:pr_metrics)
+
+      result = PushService.new(other_params, user: user).execute
+
+      expect(result[:sessions]).to eq(0)
+      expect(CodingSession.count).to eq(1)
+      # Original session remains unchanged
+      session = CodingSession.find("session-001")
+      expect(session.repo.path).to eq("/home/user/myproject")
+    end
+
     it "skips finalized metrics on re-push" do
       PushService.new(push_params, user: user).execute
 
