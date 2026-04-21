@@ -249,7 +249,7 @@ Tests use [Vitest](https://vitest.dev/) (`vitest.config.ts` in `dashboard/`). Ru
 
 ### Shared metric utilities
 
-Pure functions used by both the app and demo metric detail pages are extracted into `src/lib/metric-utils.ts`: `percentile`, `extractPRValues`, `filterByRange`, `aggregateByDay`, `computeDistribution`, and related types (`PRValue`, `DistBucket`). Both `[slug]/metrics/[metric]/page.tsx` and `demo/metrics/[metric]/page.tsx` import from this module.
+Pure functions used by both the app and demo metric detail pages are extracted into `src/lib/metric-utils.ts`: `percentile`, `extractPRValues`, `filterByRange`, `aggregateByDay`, `computeDistribution`, and related types (`PRValue`, `DistBucket`). All metric detail pages import from this module: the org-scoped `[slug]/metrics/[metric]/page.tsx`, the personal `[slug]/me/metrics/[metric]/page.tsx`, the team `[slug]/teams/[team]/metrics/[metric]/page.tsx`, and their demo counterparts (`demo/metrics/[metric]`, `demo/me/metrics/[metric]`, `demo/teams/[team]/metrics/[metric]`).
 
 ## Key Files
 
