@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_21_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -31,7 +31,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
     t.integer "additions", default: 0
     t.string "author"
     t.boolean "ci_passed"
-    t.string "committed_at"
+    t.datetime "committed_at"
     t.datetime "created_at", null: false
     t.integer "deletions", default: 0
     t.integer "files_changed", default: 0
@@ -166,11 +166,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
     t.string "author"
     t.string "branch"
     t.integer "changed_files", default: 0
-    t.string "closed_at"
+    t.datetime "closed_at"
     t.datetime "created_at", null: false
-    t.string "created_at_source"
+    t.datetime "created_at_source"
     t.integer "deletions", default: 0
-    t.string "merged_at"
+    t.datetime "merged_at"
     t.integer "number", null: false
     t.integer "open_commit_count"
     t.string "previous_state"
@@ -221,7 +221,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
     t.integer "cache_read_input_tokens", default: 0
     t.datetime "created_at", null: false
     t.string "cwd"
-    t.bigint "ended_at"
+    t.datetime "ended_at"
     t.integer "files_modified_count", default: 0
     t.integer "files_read_count", default: 0
     t.integer "input_tokens", default: 0
@@ -231,7 +231,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
     t.string "pushed_by"
     t.bigint "repo_id"
     t.integer "sidechain_messages", default: 0, null: false
-    t.bigint "started_at"
+    t.datetime "started_at"
     t.float "total_cost_usd"
     t.integer "total_file_reads", default: 0, null: false
     t.integer "turn_count", default: 0

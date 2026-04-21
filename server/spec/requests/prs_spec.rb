@@ -15,7 +15,7 @@ RSpec.describe "PRs API", type: :request do
   end
 
   describe "GET /api/v1/prs/:id" do
-    let(:pr) { create(:pr, repo: repo, created_at_source: 10.days.ago.iso8601) }
+    let(:pr) { create(:pr, repo: repo, created_at_source: 10.days.ago) }
     let!(:metrics) { create(:pr_metrics, pr: pr, metrics_finalized: true) }
 
     it "requires session auth" do
@@ -41,7 +41,7 @@ RSpec.describe "PRs API", type: :request do
 
     context "history cutoff on free plan" do
       it "returns 403 for PRs older than history_days" do
-        old_pr = create(:pr, repo: repo, created_at_source: 60.days.ago.iso8601)
+        old_pr = create(:pr, repo: repo, created_at_source: 60.days.ago)
         create(:pr_metrics, pr: old_pr, metrics_finalized: true)
 
         get "/api/v1/prs/#{old_pr.id}", headers: session_headers(owner)
@@ -65,7 +65,7 @@ RSpec.describe "PRs API", type: :request do
       before { org.update!(plan: "pro") }
 
       it "allows old PRs" do
-        old_pr = create(:pr, repo: repo, created_at_source: 365.days.ago.iso8601)
+        old_pr = create(:pr, repo: repo, created_at_source: 365.days.ago)
         create(:pr_metrics, pr: old_pr, metrics_finalized: true)
 
         get "/api/v1/prs/#{old_pr.id}", headers: session_headers(owner)
@@ -77,9 +77,9 @@ RSpec.describe "PRs API", type: :request do
       it "respects custom history_days override" do
         org.update!(plan_overrides: { history_days: 7 })
 
-        recent_pr = create(:pr, repo: repo, created_at_source: 5.days.ago.iso8601)
+        recent_pr = create(:pr, repo: repo, created_at_source: 5.days.ago)
         create(:pr_metrics, pr: recent_pr, metrics_finalized: true)
-        old_pr = create(:pr, repo: repo, created_at_source: 10.days.ago.iso8601)
+        old_pr = create(:pr, repo: repo, created_at_source: 10.days.ago)
         create(:pr_metrics, pr: old_pr, metrics_finalized: true)
 
         get "/api/v1/prs/#{recent_pr.id}", headers: session_headers(owner)

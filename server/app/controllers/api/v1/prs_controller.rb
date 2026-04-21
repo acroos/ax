@@ -20,7 +20,7 @@ module Api
         @org = org
         cutoff = history_cutoff
         if cutoff && pr.created_at_source.present?
-          head(:forbidden) and return if pr.created_at_source < cutoff.iso8601
+          head(:forbidden) and return if pr.created_at_source < cutoff
         end
 
         render json: pr_with_metrics(pr)

@@ -179,8 +179,8 @@ class PushService
         id: s[:id],
         repo_id: repo.id,
         branch: s[:branch],
-        started_at: s[:started_at],
-        ended_at: s[:ended_at],
+        started_at: epoch_ms_to_time(s[:started_at]),
+        ended_at: epoch_ms_to_time(s[:ended_at]),
         message_count: s[:message_count] || 0,
         turn_count: s[:turn_count] || 0,
         input_tokens: s[:input_tokens] || 0,
@@ -297,6 +297,12 @@ class PushService
 
     PrMetrics.upsert_all(rows, unique_by: :pr_id, update_only: PR_METRICS_UPDATE_COLUMNS) if rows.any?
     valid_metrics.size
+  end
+
+  # Convert epoch milliseconds (from CLI) to Time. Returns nil for nil/zero.
+  def epoch_ms_to_time(value)
+    return nil if value.nil? || value == 0
+    Time.at(value / 1000.0).utc
   end
 
   def trigger_post_push(repo)
