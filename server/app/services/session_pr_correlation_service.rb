@@ -24,7 +24,7 @@ class SessionPrCorrelationService
       # Find PRs whose lifecycle overlaps this session's time range
       pr = candidates
         .select { |p| session_overlaps_pr?(session, p) }
-        .max_by { |p| parse_timestamp(p.created_at_source)&.to_f || 0 }
+        .max_by { |p| p.created_at_source&.to_f || 0 }
       next unless pr
 
       SessionPr.find_or_create_by!(session_id: session.id, pr_id: pr.id) do |sp|
@@ -34,13 +34,12 @@ class SessionPrCorrelationService
   end
 
   # Returns true if the session's time range overlaps the PR's active period.
-  # Session timestamps are millisecond Unix epochs (bigint).
-  # PR timestamps are ISO8601 strings.
+  # All timestamp columns are now proper datetime — no manual parsing needed.
   def session_overlaps_pr?(session, pr)
-    pr_start = parse_timestamp(pr.created_at_source)
-    pr_end = parse_timestamp(pr.merged_at) || parse_timestamp(pr.closed_at)
-    session_start = epoch_ms_to_time(session.started_at)
-    session_end = epoch_ms_to_time(session.ended_at)
+    pr_start = pr.created_at_source
+    pr_end = pr.merged_at || pr.closed_at
+    session_start = session.started_at
+    session_end = session.ended_at
 
     return false unless pr_start && session_start
 
@@ -51,18 +50,6 @@ class SessionPrCorrelationService
 
     # Standard interval overlap: session started before PR closed AND session ended after PR opened
     (session_start <= pr_end) && (session_end.nil? || session_end >= pr_start)
-  end
-
-  def parse_timestamp(value)
-    return nil if value.blank?
-    Time.parse(value)
-  rescue ArgumentError
-    nil
-  end
-
-  def epoch_ms_to_time(value)
-    return nil if value.nil?
-    Time.at(value / 1000.0)
   end
 
   def recompute_session_metrics

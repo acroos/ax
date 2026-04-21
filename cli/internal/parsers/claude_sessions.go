@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/pricing"
@@ -488,43 +489,12 @@ func parseTimestamp(ts string) int64 {
 	if ts == "" {
 		return 0
 	}
-	// Simple parsing for "2026-03-05T06:52:31.673Z" format
-	// We just need ordering, not exact parsing
-	ts = strings.TrimSuffix(ts, "Z")
-	parts := strings.SplitN(ts, "T", 2)
-	if len(parts) != 2 {
-		return 0
-	}
-	dateParts := strings.Split(parts[0], "-")
-	timeParts := strings.Split(parts[1], ":")
-	if len(dateParts) != 3 || len(timeParts) < 3 {
-		return 0
-	}
-
-	// Approximate unix ms (good enough for ordering)
-	year := atoi(dateParts[0])
-	month := atoi(dateParts[1])
-	day := atoi(dateParts[2])
-	hour := atoi(timeParts[0])
-	min := atoi(timeParts[1])
-
-	secParts := strings.Split(timeParts[2], ".")
-	sec := atoi(secParts[0])
-	ms := 0
-	if len(secParts) > 1 {
-		ms = atoi(secParts[1])
-	}
-
-	// Rough calculation - doesn't need to be exact
-	return int64(((((year-1970)*365+month*30+day)*24+hour)*60+min)*60+sec)*1000 + int64(ms)
-}
-
-func atoi(s string) int {
-	n := 0
-	for _, c := range s {
-		if c >= '0' && c <= '9' {
-			n = n*10 + int(c-'0')
+	t, err := time.Parse(time.RFC3339Nano, ts)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, ts)
+		if err != nil {
+			return 0
 		}
 	}
-	return n
+	return t.UnixMilli()
 }

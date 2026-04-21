@@ -38,7 +38,7 @@ class MetricsComputer
       .joins(:pr)
       .where(prs: { repo_id: @pr.repo_id }, metrics_finalized: true)
       .where.not(pr_id: @pr.id)
-      .where("prs.merged_at >= :lookback OR prs.closed_at >= :lookback", lookback: lookback.iso8601)
+      .where("prs.merged_at >= :lookback OR prs.closed_at >= :lookback", lookback: lookback)
       .pluck(:pr_id)
 
     return 0.0 if other_pr_ids.empty?

@@ -28,7 +28,7 @@ RSpec.describe MetricsComputer do
 
     it "computes revisit rate based on files shared with recently finalized PRs" do
       # Create a recently merged PR that touched src/app.rb
-      older_pr = create(:pr, repo: repo, merged_at: 2.days.ago.iso8601)
+      older_pr = create(:pr, repo: repo, merged_at: 2.days.ago)
       create(:pr_metrics, pr: older_pr, metrics_finalized: true, finalized_at: 2.days.ago)
       create(:pr_file, pr: older_pr, filename: "src/app.rb")
       create(:pr_file, pr: older_pr, filename: "src/old.rb")
@@ -43,7 +43,7 @@ RSpec.describe MetricsComputer do
     end
 
     it "counts multiple revisited files correctly" do
-      older_pr = create(:pr, repo: repo, merged_at: 3.days.ago.iso8601)
+      older_pr = create(:pr, repo: repo, merged_at: 3.days.ago)
       create(:pr_metrics, pr: older_pr, metrics_finalized: true, finalized_at: 3.days.ago)
       create(:pr_file, pr: older_pr, filename: "src/app.rb")
       create(:pr_file, pr: older_pr, filename: "src/utils.rb")
@@ -58,7 +58,7 @@ RSpec.describe MetricsComputer do
     end
 
     it "excludes PRs outside the 7-day lookback window" do
-      old_pr = create(:pr, repo: repo, merged_at: 10.days.ago.iso8601)
+      old_pr = create(:pr, repo: repo, merged_at: 10.days.ago)
       create(:pr_metrics, pr: old_pr, metrics_finalized: true, finalized_at: 10.days.ago)
       create(:pr_file, pr: old_pr, filename: "src/app.rb")
 
@@ -69,7 +69,7 @@ RSpec.describe MetricsComputer do
     end
 
     it "includes closed (not merged) PRs within the lookback window" do
-      closed_pr = create(:pr, repo: repo, state: "closed", closed_at: 3.days.ago.iso8601)
+      closed_pr = create(:pr, repo: repo, state: "closed", closed_at: 3.days.ago)
       create(:pr_metrics, pr: closed_pr, metrics_finalized: true, finalized_at: 3.days.ago)
       create(:pr_file, pr: closed_pr, filename: "src/app.rb")
 

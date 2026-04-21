@@ -4,13 +4,9 @@ RSpec.describe MetricsAggregator do
   let(:org) { create(:organization) }
   let(:repo) { create(:repo, organization: org) }
 
-  def epoch_ms(time)
-    (time.to_f * 1000).to_i
-  end
-
   describe "#call" do
     it "returns PR-derived metrics from finalized pr_metrics" do
-      pr = create(:pr, repo: repo, state: "merged", merged_at: 5.days.ago.iso8601)
+      pr = create(:pr, repo: repo, state: "merged", merged_at: 5.days.ago)
       create(:pr_metrics, pr: pr, metrics_finalized: true,
         post_open_commits: 3, ci_success_rate: 0.9, line_revisit_rate: 0.1)
 
@@ -29,7 +25,7 @@ RSpec.describe MetricsAggregator do
 
     it "returns session-derived metrics from sessions table directly" do
       create(:coding_session, repo: repo,
-        ended_at: epoch_ms(3.days.ago),
+        ended_at: 3.days.ago,
         turn_count: 8,
         total_cost_usd: 2.50,
         input_tokens: 1000, cache_creation_input_tokens: 200, cache_read_input_tokens: 800,
@@ -60,7 +56,7 @@ RSpec.describe MetricsAggregator do
       # Session with no PR (orphan session)
       create(:coding_session, repo: repo,
         branch: "some-branch-with-no-pr",
-        ended_at: epoch_ms(2.days.ago),
+        ended_at: 2.days.ago,
         turn_count: 5,
         total_cost_usd: 1.00)
 
@@ -93,13 +89,13 @@ RSpec.describe MetricsAggregator do
 
     it "generates sparklines with correct date bucketing" do
       create(:coding_session, repo: repo,
-        ended_at: epoch_ms(3.days.ago),
+        ended_at: 3.days.ago,
         turn_count: 10, total_cost_usd: 2.0)
       create(:coding_session, repo: repo,
-        ended_at: epoch_ms(3.days.ago),
+        ended_at: 3.days.ago,
         turn_count: 6, total_cost_usd: 1.0)
       create(:coding_session, repo: repo,
-        ended_at: epoch_ms(1.day.ago),
+        ended_at: 1.day.ago,
         turn_count: 4, total_cost_usd: 3.0)
 
       pr_scope = PrMetrics.joins(pr: :repo)
@@ -123,12 +119,12 @@ RSpec.describe MetricsAggregator do
     it "computes prior period for deltas" do
       # Current period session
       create(:coding_session, repo: repo,
-        ended_at: epoch_ms(2.days.ago),
+        ended_at: 2.days.ago,
         turn_count: 10, total_cost_usd: 3.0)
 
       # Prior period session
       create(:coding_session, repo: repo,
-        ended_at: epoch_ms(10.days.ago),
+        ended_at: 10.days.ago,
         turn_count: 5, total_cost_usd: 1.0)
 
       pr_scope = PrMetrics.joins(pr: :repo)
