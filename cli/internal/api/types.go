@@ -3,15 +3,11 @@ package api
 
 // PushPayload is the data sent from a developer's CLI to the AX server.
 type PushPayload struct {
-	RepoPath    string           `json:"repo_path,omitempty"`
-	RemoteURL   string           `json:"remote_url,omitempty"`
-	Owner       string           `json:"owner"`
-	Repo        string           `json:"repo"`
-	PRs         []PRData         `json:"prs,omitempty"`
-	Commits     []CommitData     `json:"commits,omitempty"`
-	Sessions    []SessionData    `json:"sessions"`
-	SessionPRs  []SessionPRData  `json:"session_prs,omitempty"`
-	PRMetrics   []PRMetricsData  `json:"pr_metrics,omitempty"`
+	RepoPath  string        `json:"repo_path,omitempty"`
+	RemoteURL string        `json:"remote_url,omitempty"`
+	Owner     string        `json:"owner"`
+	Repo      string        `json:"repo"`
+	Sessions  []SessionData `json:"sessions"`
 }
 
 // PushResponse is returned by the server after processing a push.
@@ -19,35 +15,6 @@ type PushResponse struct {
 	OK       bool           `json:"ok"`
 	Entities map[string]int `json:"entities"`
 	Error    string         `json:"error,omitempty"`
-}
-
-// PRData represents a PR in the push payload.
-type PRData struct {
-	Number       int    `json:"number"`
-	Title        string `json:"title,omitempty"`
-	Branch       string `json:"branch,omitempty"`
-	State        string `json:"state,omitempty"`
-	CreatedAt    string `json:"created_at,omitempty"`
-	MergedAt     string `json:"merged_at,omitempty"`
-	ClosedAt     string `json:"closed_at,omitempty"`
-	URL          string `json:"url,omitempty"`
-	Additions    int    `json:"additions"`
-	Deletions    int    `json:"deletions"`
-	ChangedFiles int    `json:"changed_files"`
-}
-
-// CommitData represents a commit in the push payload.
-type CommitData struct {
-	SHA              string `json:"sha"`
-	PRNumber         int    `json:"pr_number,omitempty"`
-	Message          string `json:"message,omitempty"`
-	Author           string `json:"author,omitempty"`
-	CommittedAt      string `json:"committed_at,omitempty"`
-	IsClaudeAuthored bool   `json:"is_claude_authored"`
-	IsPostOpen       bool   `json:"is_post_open"`
-	Additions        int    `json:"additions"`
-	Deletions        int    `json:"deletions"`
-	FilesChanged     int    `json:"files_changed"`
 }
 
 // SessionData represents a Claude Code session in the push payload.
@@ -71,22 +38,4 @@ type SessionData struct {
 	TotalFileReads           int     `json:"total_file_reads"`
 }
 
-// SessionPRData represents a session-to-PR correlation.
-type SessionPRData struct {
-	SessionID  string `json:"session_id"`
-	PRNumber   int    `json:"pr_number"`
-	Confidence string `json:"confidence"`
-}
-
-// PRMetricsData represents computed metrics for a PR.
-type PRMetricsData struct {
-	PRNumber         int      `json:"pr_number"`
-	IterationDepth   *int     `json:"iteration_depth,omitempty"`
-	PostOpenCommits  *int     `json:"post_open_commits,omitempty"`
-	CISuccessRate    *float64 `json:"ci_success_rate,omitempty"`
-	LineRevisitRate  *float64 `json:"line_revisit_rate,omitempty"`
-	TokenCostUSD     *float64 `json:"token_cost_usd,omitempty"`
-	MetricsFinalized int      `json:"metrics_finalized"`
-	FinalizedAt      string   `json:"finalized_at,omitempty"`
-}
 

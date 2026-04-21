@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-21 — Clean up CLI dead code and consolidate duplication
+
+**Pages updated:** `wiki/go-cli.md`
+**What changed:** Removed dead code: empty `agent_behavior.go` stub, unused API types (`PRData`, `CommitData`, `PRMetricsData`, `SessionPRData`) and their `PushPayload` fields, unused GitHub types (`GHPullRequest`, `GHReview`, `HasChangesRequested`). Consolidated `ParsedSession` → `SessionData` conversion into a `ToSessionData()` method on `ParsedSession`. Exported `SpinnerFrames` from `ui` package so `bulk/push.go` uses the shared frames instead of a duplicate.
+
+---
+
 ## 2026-04-21 — Add push input validation (metric ranges, entity limits, content-length)
 
 **Pages updated:** `wiki/rails-server.md`
