@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — Configure Puma clustered mode with workers
+
+**Pages updated:** None (deployment config, not behavioral/architectural change)
+**What changed:** Added `workers ENV.fetch("WEB_CONCURRENCY", 2)`, `preload_app!`, and `on_worker_boot` ActiveRecord reconnection to `server/config/puma.rb`. Previously ran as a single Puma process — CRuby's GVL meant only one thread could execute Ruby at a time, blocking CPU-bound work (BCrypt, MetricsAggregator). Clustered mode forks worker processes that bypass the GVL for true parallelism. Set `WEB_CONCURRENCY=0` in development for single-process mode.
+
+---
+
 ## 2026-04-20 — Add rate limiting to API endpoints
 
 **Pages updated:** `wiki/rails-server.md`
