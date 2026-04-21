@@ -1,23 +1,19 @@
 import { MOCK_PRS, MOCK_REPOS } from "@/lib/mock/data";
-import { getPRSize } from "@/lib/db";
 import { RepoFilter } from "@/components/repo-filter";
-import { StateBadge } from "@/components/state-badge";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-
-const DEMO_REPOS = MOCK_REPOS.filter(
-  (r): r is typeof r & { github_owner: string; github_repo: string } =>
-    r.github_owner !== null && r.github_repo !== null,
-);
 import {
   Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { ClientTooltip } from "@/components/client-tooltip";
+import { DemoPaginatedPRTableBody } from "@/components/demo-paginated-pr-table";
+
+const DEMO_REPOS = MOCK_REPOS.filter(
+  (r): r is typeof r & { github_owner: string; github_repo: string } =>
+    r.github_owner !== null && r.github_repo !== null,
+);
 
 function HeaderWithTip({ label, tip }: { label: string; tip: string }) {
   return (
@@ -81,66 +77,7 @@ export default async function DemoPRsPage({
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {prs.map((pr) => (
-              <TableRow key={pr.id}>
-                <TableCell>
-                  <span className="font-mono text-[13px] text-primary">
-                    #{pr.number}
-                  </span>
-                  {pr.github_owner && (
-                    <div className="mt-0.5 text-[11px] text-muted-foreground">
-                      {pr.github_owner}/{pr.github_repo}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <span className="line-clamp-1 text-[13px] text-foreground">
-                    {pr.title ?? "Untitled"}
-                  </span>
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge variant="outline" className="font-mono">
-                    {getPRSize(pr.additions, pr.deletions)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center justify-center gap-1.5">
-                    <StateBadge state={pr.state} />
-                  </div>
-                </TableCell>
-                <TableCell className="text-center font-mono text-[13px] text-muted-foreground">
-                  {pr.metrics?.post_open_commits ?? "\u2014"}
-                </TableCell>
-                <TableCell className="text-center font-mono text-[13px] text-muted-foreground">
-                  {pr.metrics?.ci_success_rate !== null &&
-                  pr.metrics?.ci_success_rate !== undefined
-                    ? `${Math.round(pr.metrics.ci_success_rate * 100)}%`
-                    : "\u2014"}
-                </TableCell>
-                <TableCell className="text-center font-mono text-[13px] text-muted-foreground">
-                  {pr.metrics?.iteration_depth ?? "\u2014"}
-                </TableCell>
-                <TableCell className="text-right font-mono text-[13px] text-muted-foreground">
-                  {pr.metrics?.token_cost_usd !== null &&
-                  pr.metrics?.token_cost_usd !== undefined
-                    ? `$${pr.metrics.token_cost_usd.toFixed(2)}`
-                    : "\u2014"}
-                </TableCell>
-                <TableCell className="text-center">
-                  {pr.session_count > 0 ? (
-                    <Badge variant="secondary" className="font-mono">
-                      {pr.session_count}
-                    </Badge>
-                  ) : (
-                    <span className="text-[13px] text-muted-foreground">
-                      &#8212;
-                    </span>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+          <DemoPaginatedPRTableBody allPrs={prs} />
         </Table>
       </Card>
     </div>

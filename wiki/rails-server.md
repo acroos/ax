@@ -74,9 +74,9 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `GET` | `/api/v1/orgs/:slug` | Org details |
 | `GET` | `/api/v1/orgs/:slug/repos` | List org repos |
 | `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership + `history_days` cutoff) |
-| `GET` | `/api/v1/orgs/:slug/prs` | All PRs across all org repos (settled + open) |
+| `GET` | `/api/v1/orgs/:slug/prs` | Paginated PRs across all org repos. Supports `?cursor=&per_page=` (default 25, max 100). Returns `{ data: [...], pagination: { next_cursor, has_more, total } }`. |
 | `GET` | `/api/v1/orgs/:slug/metrics` | Windowed aggregate metrics (7-day current + prior) with daily sparkline buckets. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }` via `MetricsAggregator`. |
-| `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | All PRs with available metrics |
+| `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | Paginated PRs for a repo. Same pagination params and response shape as org-level. |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/metrics` | Windowed aggregate metrics (same shape as org-level) |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/timeline` | PR timeline for trend charts |
 
@@ -97,7 +97,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `GET` | `/api/v1/orgs/:slug/teams/:team_slug` | Team detail |
 | `PUT` | `/api/v1/orgs/:slug/teams/:team_slug` | Update team (admin only) |
 | `DELETE` | `/api/v1/orgs/:slug/teams/:team_slug` | Destroy with cascade (admin only) |
-| `GET` | `/api/v1/orgs/:slug/teams/:team_slug/prs` | Team-scoped PRs (by member GitHub usernames) |
+| `GET` | `/api/v1/orgs/:slug/teams/:team_slug/prs` | Paginated team-scoped PRs (by member GitHub usernames). Same pagination params and response shape as org-level. |
 | `GET` | `/api/v1/orgs/:slug/teams/:team_slug/metrics` | Team-scoped metrics (reuses MetricsAggregator) |
 | `GET` | `/api/v1/orgs/:slug/teams/:team_slug/members` | List members (admin only) |
 | `POST` | `/api/v1/orgs/:slug/teams/:team_slug/members` | Add member (admin only) |
@@ -109,7 +109,7 @@ Teams are gated by the `teams` plan capability (free: false, pro: true). Regular
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/api/v1/orgs/:slug/me/prs` | PRs authored by the current user in this org |
+| `GET` | `/api/v1/orgs/:slug/me/prs` | Paginated PRs authored by the current user. Same pagination params and response shape as org-level. |
 | `GET` | `/api/v1/orgs/:slug/me/metrics` | Aggregate metrics for the current user's PRs (reuses MetricsAggregator) |
 
 Filters PRs by `current_user.github_username` as the author, following the same pattern as team-scoped endpoints. Controller: `Api::V1::MeController`.

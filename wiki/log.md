@@ -4,13 +4,19 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — Add cursor-based pagination to PR list endpoints
+
+**Pages updated:** `wiki/rails-server.md`, `wiki/dashboard.md`
+**What changed:** All PR listing endpoints now return paginated responses (`{ data, pagination: { next_cursor, has_more, total } }`) instead of bare arrays. Default page size 25, max 100. Cursor-based pagination via `?cursor=&per_page=` query params. Dashboard PR pages show a "Load more" button when more results are available. Shared `CursorPagination` concern in Rails, `PaginatedPRTableBody` client component in dashboard. Demo pages updated to match.
+
+---
+
 ## 2026-04-20 — Configure Puma clustered mode with workers
 
 **Pages updated:** None (deployment config, not behavioral/architectural change)
 **What changed:** Added `workers ENV.fetch("WEB_CONCURRENCY", 2)`, `preload_app!`, and `on_worker_boot` ActiveRecord reconnection to `server/config/puma.rb`. Previously ran as a single Puma process — CRuby's GVL meant only one thread could execute Ruby at a time, blocking CPU-bound work (BCrypt, MetricsAggregator). Clustered mode forks worker processes that bypass the GVL for true parallelism. Set `WEB_CONCURRENCY=0` in development for single-process mode.
 
 ---
-
 ## 2026-04-20 — Add rate limiting to API endpoints
 
 **Pages updated:** `wiki/rails-server.md`

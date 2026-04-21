@@ -78,9 +78,9 @@ export default async function MetricDetailPage({
   }
 
   const backHref = repoId ? `/${slug}?repo=${repoId}` : `/${slug}`;
-  const prsPromise = listPRsWithMetricsAsync(repoId, slug).catch(
-    () => [] as PRWithMetrics[],
-  );
+  const prsPromise = listPRsWithMetricsAsync(repoId, slug, { per_page: 100 })
+    .then((r) => r.data)
+    .catch(() => [] as PRWithMetrics[]);
   const reposPromise = listReposAsync(slug).catch(() => []);
 
   return (

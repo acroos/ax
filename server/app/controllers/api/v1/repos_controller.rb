@@ -15,11 +15,12 @@ module Api
       end
 
       def prs
-        prs = @repo.prs
+        scope = @repo.prs
           .left_joins(:pr_metrics)
           .includes(:pr_metrics, :session_prs)
+          .order(created_at: :desc, id: :desc)
 
-        render json: prs.map { |pr| pr_with_metrics(pr) }
+        render_paginated_prs(scope)
       end
 
       def metrics

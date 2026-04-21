@@ -256,9 +256,9 @@ export default async function TeamMetricDetailPage({
   }
 
   const backHref = `/${slug}/teams/${teamSlug}`;
-  const prsPromise = listTeamPRsAsync(slug, teamSlug).catch(
-    () => [] as PRWithMetrics[],
-  );
+  const prsPromise = listTeamPRsAsync(slug, teamSlug, { per_page: 100 })
+    .then((r) => r.data)
+    .catch(() => [] as PRWithMetrics[]);
 
   return (
     <div>

@@ -256,9 +256,9 @@ export default async function MyMetricDetailPage({
   }
 
   const backHref = `/${slug}/me`;
-  const prsPromise = listMyPRsAsync(slug).catch(
-    () => [] as PRWithMetrics[],
-  );
+  const prsPromise = listMyPRsAsync(slug, { per_page: 100 })
+    .then((r) => r.data)
+    .catch(() => [] as PRWithMetrics[]);
 
   return (
     <div>

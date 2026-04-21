@@ -53,7 +53,7 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 
 | Function | Returns |
 |----------|---------|
-| `listPRsWithMetricsAsync(repoId?, orgSlug?)` | Finalized PRs with all computed metrics |
+| `listPRsWithMetricsAsync(repoId?, orgSlug?, pagination?)` | Paginated PRs with metrics. Returns `PaginatedPRs` (`{ data, pagination: { next_cursor, has_more, total } }`). Pass `{ cursor, per_page }` for subsequent pages. |
 | `getPRWithMetricsAsync(id)` | Single PR with metrics (hits `/api/v1/prs/:id`) |
 | `computeAggregatesFromPRs(prs)` | Compute aggregate metrics from a PR array (no API call). Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior: null, sparkline: [] } } }` — prior/sparkline are only populated by the server. |
 | `getAggregateMetricsAsync(repoId?, orgSlug?, range?)` | Windowed aggregate metrics. `range` is `"7d"`, `"30d"` (default), or `"90d"` — controls both the current/prior comparison windows and the sparkline date range. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`. |
@@ -64,10 +64,10 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 | `getBilling(orgSlug)` | Plan details, subscription status, usage counts |
 | `listTeams(orgSlug)` | Teams in the org |
 | `getTeam(orgSlug, teamSlug)` | Team detail |
-| `getTeamPRs(orgSlug, teamSlug)` | PRs authored by team members |
+| `listTeamPRsAsync(orgSlug, teamSlug, pagination?)` | Paginated PRs authored by team members. Same `PaginatedPRs` return type. |
 | `getTeamMetrics(orgSlug, teamSlug, range?)` | Windowed aggregate metrics for a team |
 | `getTeamMembers(orgSlug, teamSlug)` | Team members list |
-| `listMyPRsAsync(orgSlug)` | PRs authored by the current user in the org |
+| `listMyPRsAsync(orgSlug, pagination?)` | Paginated PRs authored by the current user. Same `PaginatedPRs` return type. |
 | `getMyMetricsAsync(orgSlug, range?)` | Windowed aggregate metrics for the current user's PRs |
 
 ### API Communication

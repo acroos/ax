@@ -7,14 +7,14 @@ module Api
       before_action :find_org!
 
       def prs
-        prs = Pr
+        scope = Pr
           .joins(:repo)
           .where(repos: { organization_id: @org.id }, author: current_user.github_username)
           .left_joins(:pr_metrics)
           .includes(:pr_metrics, :repo, :session_prs)
-          .order(created_at: :desc)
+          .order(created_at: :desc, id: :desc)
 
-        render json: prs.map { |pr| pr_with_metrics(pr) }
+        render_paginated_prs(scope)
       end
 
       def metrics

@@ -69,14 +69,14 @@ module Api
 
       def prs
         usernames = @team.member_github_usernames
-        prs = Pr
+        scope = Pr
           .joins(:repo)
           .where(repos: { organization_id: @org.id }, author: usernames)
           .left_joins(:pr_metrics)
           .includes(:pr_metrics, :repo, :session_prs)
-          .order(created_at: :desc)
+          .order(created_at: :desc, id: :desc)
 
-        render json: prs.map { |pr| pr_with_metrics(pr) }
+        render_paginated_prs(scope)
       end
 
       def metrics
