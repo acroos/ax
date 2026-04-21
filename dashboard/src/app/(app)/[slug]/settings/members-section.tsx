@@ -3,6 +3,16 @@
 import { useState } from "react";
 
 import { toneClass, type Tone } from "@/components/state-badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +65,10 @@ export function MembersSection({
   const [members, setMembers] = useState(initialMembers);
   const [updating, setUpdating] = useState<number | null>(null);
   const [removing, setRemoving] = useState<number | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<{
+    id: number;
+    username: string;
+  } | null>(null);
 
   async function handleRoleChange(membershipId: number, newRole: string) {
     setUpdating(membershipId);
@@ -76,16 +90,22 @@ export function MembersSection({
     }
   }
 
-  async function handleRemove(membershipId: number, username: string) {
-    if (!confirm(`Remove ${username} from this organization?`)) return;
+  function handleRemove(membershipId: number, username: string) {
+    setPendingRemove({ id: membershipId, username });
+  }
 
-    setRemoving(membershipId);
+  async function confirmRemove() {
+    if (!pendingRemove) return;
+
+    setPendingRemove(null);
+    setRemoving(pendingRemove.id);
     try {
-      const res = await fetch(`/api/v1/orgs/${slug}/members/${membershipId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/v1/orgs/${slug}/members/${pendingRemove.id}`,
+        { method: "DELETE" },
+      );
       if (res.ok) {
-        setMembers((prev) => prev.filter((m) => m.id !== membershipId));
+        setMembers((prev) => prev.filter((m) => m.id !== pendingRemove.id));
       }
     } finally {
       setRemoving(null);
@@ -167,6 +187,31 @@ export function MembersSection({
             </p>
           )}
         </div>
+        <AlertDialog
+          open={!!pendingRemove}
+          onOpenChange={(open) => {
+            if (!open) setPendingRemove(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove member?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove{" "}
+                <span className="font-medium text-foreground">
+                  @{pendingRemove?.username}
+                </span>{" "}
+                from this organization? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep Member</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={confirmRemove}>
+                Remove Member
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
