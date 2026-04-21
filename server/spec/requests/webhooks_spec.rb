@@ -22,6 +22,12 @@ RSpec.describe "Webhooks", type: :request do
   end
 
   it "passes X-GitHub-Delivery header to the job" do
+    secret = "test-secret"
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("GITHUB_APP_WEBHOOK_SECRET").and_return(nil)
+    allow(ENV).to receive(:[]).with("AX_WEBHOOK_GITHUB_SECRET").and_return(secret)
+    signature = "sha256=" + OpenSSL::HMAC.hexdigest("sha256", secret, payload)
+
     expect(ProcessGitHubWebhookJob).to receive(:perform_later)
       .with("pull_request", anything, "delivery-abc-123")
 
@@ -30,13 +36,14 @@ RSpec.describe "Webhooks", type: :request do
       headers: {
         "Content-Type" => "application/json",
         "X-GitHub-Event" => "pull_request",
-        "X-GitHub-Delivery" => "delivery-abc-123"
+        "X-GitHub-Delivery" => "delivery-abc-123",
+        "X-Hub-Signature-256" => signature
       }
 
     expect(response).to have_http_status(:ok)
   end
 
-  it "accepts a webhook without secret configured" do
+  it "rejects a webhook when no secret is configured" do
     post "/webhooks/github",
       params: payload,
       headers: {
@@ -44,7 +51,7 @@ RSpec.describe "Webhooks", type: :request do
         "X-GitHub-Event" => "pull_request"
       }
 
-    expect(response).to have_http_status(:ok)
+    expect(response).to have_http_status(:unauthorized)
   end
 
   it "rejects invalid signature when secret is configured" do
