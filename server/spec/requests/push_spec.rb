@@ -36,6 +36,19 @@ RSpec.describe "Push API", type: :request do
     expect(response).to have_http_status(:unauthorized)
   end
 
+  it "rejects oversized payloads" do
+    stub_const("Api::V1::PushController::MAX_PAYLOAD_SIZE", 1.byte)
+
+    post "/api/v1/push",
+      params: push_payload,
+      headers: { "Authorization" => "Bearer #{raw_key}" },
+      as: :json
+
+    expect(response).to have_http_status(:payload_too_large)
+    body = JSON.parse(response.body)
+    expect(body["ok"]).to be false
+  end
+
   it "accepts a valid push payload" do
     post "/api/v1/push",
       params: push_payload,

@@ -48,7 +48,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 
 **PrFile** stores file paths fetched from the GitHub API at PR finalization. Used by server-side metric computation (line_revisit_rate).
 
-**PrMetrics** has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`. Session-derived fields (token_cost_usd, iteration_depth, cache_hit_rate, etc.) remain updatable via `update_session_metrics!` to support late-arriving session data.
+**PrMetrics** has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`. Session-derived fields (token_cost_usd, iteration_depth, cache_hit_rate, etc.) remain updatable via `update_session_metrics!` to support late-arriving session data. Model validations enforce metric value ranges: rate fields (ci_success_rate, line_revisit_rate, cache_hit_rate, sidechain_rate) must be 0..1; ratio fields (re_read_rate, autonomy_score) and token_cost_usd must be non-negative; integer fields (iteration_depth, post_open_commits) must be non-negative integers.
 
 **User** automatically processes pending invites on creation — if someone was invited by GitHub username before they signed up, the invite is accepted on first login.
 
@@ -62,7 +62,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/api/v1/push` | Receive repo/PR/session/metrics data from CLI (10MB limit) |
+| `POST` | `/api/v1/push` | Receive repo/PR/session/metrics data from CLI (10MB Content-Length required, per-entity limits enforced) |
 | `GET` | `/api/v1/watch-status` | Watched repos list for CLI |
 
 ### Read (Dashboard Authentication — Session Token)
@@ -168,12 +168,14 @@ Filters PRs by `current_user.github_username` as the author, following the same 
 ### PushService (`app/services/push_service.rb`)
 Main ingestion orchestrator. Called by the push controller.
 
-1. Upserts repo by `github_owner/github_repo` (canonical lookup, falls back to path)
-2. Validates user is member of repo's org
-3. Upserts PRs, sessions, commits, correlations, metrics — all in a transaction
-4. Skips updates to already-finalized PR metrics
-5. Returns entity count hash
-6. Post-transaction: triggers `BackfillRepoJob` if repo has GitHub App, otherwise runs `SessionPrCorrelationService`
+1. Validates per-entity limits (max 500 PRs, 1000 sessions, 5000 commits, 1000 session_prs, 500 pr_metrics)
+2. Upserts repo by `github_owner/github_repo` (canonical lookup, falls back to path)
+3. Validates user is member of repo's org
+4. Upserts PRs, sessions, commits, correlations, metrics — all in a transaction
+5. Strips `metrics_finalized` and `finalized_at` from client-supplied pr_metrics (only webhook handlers can finalize)
+6. Skips updates to already-finalized PR metrics
+7. Returns entity count hash
+8. Post-transaction: triggers `BackfillRepoJob` if repo has GitHub App, otherwise runs `SessionPrCorrelationService`
 
 ### SessionPrCorrelationService (`app/services/session_pr_correlation_service.rb`)
 Matches sessions to PRs within a repo by branch name, then computes session-derived metrics.
