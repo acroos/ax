@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/bulk"
@@ -287,6 +288,9 @@ You can override with --api-key.`,
 
 			// Send to server
 			client := push.NewClient(serverURL, apiKey)
+			client.OnRateLimit = func(d time.Duration) {
+				ui.Warnf("Rate limited — retrying in %ds...", int(d.Seconds()))
+			}
 			resp, err := client.Push(payload)
 			if err != nil {
 				return err

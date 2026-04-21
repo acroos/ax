@@ -297,7 +297,7 @@ Extracted shared PR JSON serialization logic used by `OrganizationsController`, 
 | Throttle | Endpoints | Limit | Period | Discriminator |
 |----------|-----------|-------|--------|---------------|
 | `auth/ip` | `/users/`, `/auth/`, `/api/v1/api_key` | 60 req | 1 min | IP |
-| `push/api_key` | `POST /api/v1/push` | 30 req | 1 min | Bearer token |
+| `push/api_key` | `POST /api/v1/push` | 120 req | 1 min | Bearer token |
 | `webhooks/ip` | `POST /webhooks/*` | 120 req | 1 min | IP |
 | `waitlist/ip` | `POST /waitlist` | 10 req | 1 min | IP |
 | `global/ip` | All (after safelists) | 300 req | 1 min | IP |
