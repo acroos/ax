@@ -33,7 +33,7 @@ class WebhooksController < ApplicationController
 
   def valid_github_signature?
     secret = resolve_webhook_secret
-    return true if secret.blank? # Allow unvalidated in development
+    return Rails.env.development? if secret.blank?
 
     signature = request.headers["X-Hub-Signature-256"]
     return false if signature.blank?
