@@ -6,7 +6,8 @@ import (
 	"time"
 )
 
-var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+// SpinnerFrames is the shared set of braille spinner animation frames.
+var SpinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
 // Spinner displays an animated spinner with a message.
 type Spinner struct {
@@ -40,7 +41,7 @@ func (s *Spinner) run() {
 			fmt.Printf("\r\033[K")
 			return
 		case <-ticker.C:
-			frame := Highlight.Render(spinnerFrames[i%len(spinnerFrames)])
+			frame := Highlight.Render(SpinnerFrames[i%len(SpinnerFrames)])
 			fmt.Printf("\r  %s %s", frame, s.msg)
 			i++
 		}

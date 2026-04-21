@@ -282,25 +282,7 @@ You can override with --api-key.`,
 				}
 				parsed++
 				pushedIDs = append(pushedIDs, session.ID)
-				payload.Sessions = append(payload.Sessions, api.SessionData{
-					ID:                       session.ID,
-					Branch:                   session.Branch,
-					StartedAt:                session.StartedAt,
-					EndedAt:                  session.EndedAt,
-					MessageCount:             session.HumanMessages,
-					TurnCount:                session.TurnCount,
-					InputTokens:              session.InputTokens,
-					OutputTokens:             session.OutputTokens,
-					CacheCreationInputTokens: session.CacheCreationInputTokens,
-					CacheReadInputTokens:     session.CacheReadInputTokens,
-					TotalCostUSD:             session.TotalCostUSD,
-					PrimaryModel:             session.PrimaryModel,
-					FilesReadCount:           len(session.FilesRead),
-					FilesModifiedCount:       len(session.FilesModified),
-					AssistantMessageCount:    session.AssistantMessages,
-					SidechainMessages:        session.SidechainMessages,
-					TotalFileReads:           session.TotalFileReads,
-				})
+				payload.Sessions = append(payload.Sessions, session.ToSessionData())
 			}
 
 			// Send to server

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/pricing"
 )
 
@@ -52,6 +53,29 @@ type ParsedSession struct {
 	// New metrics
 	SidechainMessages int // messages on sidechain branches
 	TotalFileReads    int // total Read tool calls (including re-reads)
+}
+
+// ToSessionData converts a ParsedSession to the API push payload format.
+func (s *ParsedSession) ToSessionData() api.SessionData {
+	return api.SessionData{
+		ID:                       s.ID,
+		Branch:                   s.Branch,
+		StartedAt:                s.StartedAt,
+		EndedAt:                  s.EndedAt,
+		MessageCount:             s.HumanMessages,
+		TurnCount:                s.TurnCount,
+		InputTokens:              s.InputTokens,
+		OutputTokens:             s.OutputTokens,
+		CacheCreationInputTokens: s.CacheCreationInputTokens,
+		CacheReadInputTokens:     s.CacheReadInputTokens,
+		TotalCostUSD:             s.TotalCostUSD,
+		PrimaryModel:             s.PrimaryModel,
+		FilesReadCount:           len(s.FilesRead),
+		FilesModifiedCount:       len(s.FilesModified),
+		AssistantMessageCount:    s.AssistantMessages,
+		SidechainMessages:        s.SidechainMessages,
+		TotalFileReads:           s.TotalFileReads,
+	}
 }
 
 // sessionMessage represents a single line in a session JSONL file.

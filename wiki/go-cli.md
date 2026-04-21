@@ -20,7 +20,7 @@ All CLI code lives under `cli/`. Entry point: `cli/cmd/ax/main.go` (Cobra-based)
 cli/
   cmd/ax/        CLI entry point (main.go)
   internal/
-    api/         Push payload types (PushPayload, PushResponse)
+    api/         Push payload types (PushPayload, PushResponse, SessionData)
     bulk/        Repo discovery (from history.jsonl) and bulk push orchestration
     config/      Config management (~/.ax/config.json)
     hooks/       Claude Code hook installation in ~/.claude/settings.json
@@ -107,7 +107,6 @@ Written by `ax init`, read by `ax push`.
 Pure function metric calculators, kept as a Go library. These are being ported to Ruby for server-side computation. The Go versions may be removed once the port is complete.
 
 - `output_quality.go` — PostOpenCommits, FirstPassAccepted, CISuccessRate, HasTestFiles, DiffChurn, LineRevisits
-- `agent_behavior.go` — SelfCorrectionRate, ContextEfficiency, ErrorRecoveryAttempts
 - `prompt_efficiency.go` — MessagesPerPR, IterationDepth, TokenCost
 - `planning.go` — PlanCoverage, PlanDeviation, ScopeCreep
 
