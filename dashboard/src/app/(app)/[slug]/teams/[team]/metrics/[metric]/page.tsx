@@ -288,9 +288,7 @@ export default async function TeamMetricDetailPage({
       </div>
 
       {def.valueType !== "boolean" ? (
-        <SectionErrorBoundary
-          fallback={<DataSectionsSkeleton />}
-        >
+        <SectionErrorBoundary>
           <Suspense fallback={<DataSectionsSkeleton />}>
             <MetricDataSections
               promise={prsPromise}
@@ -302,9 +300,7 @@ export default async function TeamMetricDetailPage({
         </SectionErrorBoundary>
       ) : (
         <div className="mb-6">
-          <SectionErrorBoundary
-            fallback={<SkeletonChartPanel title="Summary" />}
-          >
+          <SectionErrorBoundary>
             <Suspense fallback={<SkeletonChartPanel title="Summary" />}>
               <BooleanPanel promise={prsPromise} def={def} />
             </Suspense>

@@ -46,17 +46,7 @@ export default async function TeamSettingsPage({
         </a>
       </div>
 
-      <SectionErrorBoundary
-        fallback={
-          <Card className="p-6">
-            <CardContent className="p-0">
-              <p className="text-sm text-muted-foreground">
-                Could not load team details.
-              </p>
-            </CardContent>
-          </Card>
-        }
-      >
+      <SectionErrorBoundary>
         <Suspense
           fallback={
             <Card className="p-6">

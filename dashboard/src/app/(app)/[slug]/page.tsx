@@ -132,7 +132,7 @@ export default async function OrgOverviewPage({
         </Suspense>
       </div>
 
-      <SectionErrorBoundary fallback={<NoDataState />}>
+      <SectionErrorBoundary>
         <Suspense fallback={<OverviewMetricsSkeleton />}>
           <OverviewMetricsBody
             promise={metricsPromise}
@@ -208,28 +208,6 @@ function OverviewMetricsSkeleton() {
       <SkeletonMetricCategory count={3} />
       <SkeletonMetricCategory count={3} />
     </>
-  );
-}
-
-function NoDataState() {
-  return (
-    <div className="flex h-[60vh] items-center justify-center">
-      <div className="max-w-sm space-y-4 text-center">
-        <h2 className="font-serif text-lg font-medium text-foreground">
-          No data yet
-        </h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Connect a repository to start tracking metrics. Once pull requests are
-          merged or closed, your dashboard will come to life.
-        </p>
-        <Link
-          href="/docs"
-          className="inline-block text-sm text-primary transition-colors hover:underline"
-        >
-          Explore the metrics while you wait &rarr;
-        </Link>
-      </div>
-    </div>
   );
 }
 

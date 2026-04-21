@@ -141,7 +141,7 @@ export default async function PRDetailPage({
         </Link>
       </div>
 
-      <SectionErrorBoundary fallback={<PRNotFound />}>
+      <SectionErrorBoundary>
         <Suspense fallback={<HeaderSkeleton />}>
           <PRHeader promise={prPromise} />
         </Suspense>
@@ -150,22 +150,6 @@ export default async function PRDetailPage({
           <MetricGroups promise={prPromise} />
         </Suspense>
       </SectionErrorBoundary>
-    </div>
-  );
-}
-
-function PRNotFound() {
-  return (
-    <div className="flex h-[60vh] items-center justify-center">
-      <div className="space-y-3 text-center">
-        <h2 className="text-lg font-medium text-foreground">PR not found</h2>
-        <Link
-          href="/prs"
-          className="text-sm text-primary transition-colors hover:underline"
-        >
-          Back to Pull Requests
-        </Link>
-      </div>
     </div>
   );
 }
