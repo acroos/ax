@@ -43,13 +43,13 @@ Measures how the agent performed during the coding session.
 All metric computation happens server-side in the Rails application.
 
 - **GitHub-sourced metrics** (output quality) are computed from webhook data and GitHub API at PR finalization (merge/close)
-- **Session-dependent metrics** (prompt efficiency, agent behavior) are computed after session data is pushed from the CLI and correlated to PRs
+- **Session-dependent metrics** (prompt efficiency, agent behavior) are computed directly from session data in the `sessions` table. Sessions do not need to be associated with a PR — all pushed session data is included in aggregate metrics.
 
 Server-side computation is split between three services:
 
-- **`MetricsComputer`** — Computes `ci_success_rate` (from per-commit `ci_passed` values on the `commits` table), `line_revisit_rate` (7-day lookback), and session-derived metrics (`cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`)
-- **`SessionPrCorrelationService`** — Aggregates `token_cost_usd` and `iteration_depth` from correlated session data, and calls MetricsComputer to compute all derived metrics
-- **`MetricsAggregator`** — Computes windowed aggregate metrics for the overview page. Takes a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`, must join `prs`), applies a configurable window (7/30/90 days), and returns: `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }`. Current = average over the window; prior = average over the preceding window (for delta computation). PRs are dated by their merge/close date (`COALESCE(prs.merged_at, prs.closed_at)`), not `finalized_at`. Sparkline = daily buckets by merge/close date with `AVG` per metric. Empty days are null (gaps in the sparkline).
+- **`MetricsComputer`** — Computes `ci_success_rate` (from per-commit `ci_passed` values on the `commits` table), `line_revisit_rate` (7-day lookback), and session-derived metrics (`cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`). Used by `SessionPrCorrelationService` to write per-PR session metrics.
+- **`SessionPrCorrelationService`** — Aggregates `token_cost_usd` and `iteration_depth` from correlated session data, and calls MetricsComputer to compute all derived metrics. Writes results to `pr_metrics` for per-PR display.
+- **`MetricsAggregator`** — Computes windowed aggregate metrics for the overview page. Takes two scopes: a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`, must join `prs`) for PR-derived metrics, and a `CodingSession` scope for session-derived metrics. Applies a configurable window (7/30/90 days) and returns: `{ totalPRs, totalSessions, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }`. PR metrics are dated by merge/close date (`COALESCE(prs.merged_at, prs.closed_at)`). Session metrics are dated by session end time (`to_timestamp(sessions.ended_at / 1000.0)`). Current = average over the window; prior = average over the preceding window (for delta computation). Sparkline = daily buckets with `AVG` per metric. Empty days are null (gaps in the sparkline). Session-derived metrics (cache_hit_rate, sidechain_rate, etc.) are computed inline from raw session columns using SQL expressions, not from pre-computed `pr_metrics` values.
 
 The Go `cli/internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
 

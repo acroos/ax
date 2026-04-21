@@ -84,7 +84,7 @@ PR created (via backfill or webhook)
   → GitHub-derived fields locked; session-derived fields remain updatable
 ```
 
-All PRs are shown in the dashboard regardless of settlement status. Open PRs show partial metrics with a "pending" indicator. Aggregate metrics (averages, trend lines) use settled PRs only for accuracy.
+All PRs are shown in the dashboard regardless of settlement status. Open PRs show partial metrics with a "pending" indicator. PR-derived aggregate metrics (averages, trend lines) use settled PRs only for accuracy. Session-derived aggregate metrics are computed directly from the `sessions` table and do not require PR association — all pushed session data appears in the dashboard.
 
 ### Scoped Write Protection
 
@@ -135,6 +135,6 @@ When `ax push` arrives, the server looks up the repo by `github_owner + github_r
 PostgreSQL → Rails API (org-scoped) → fetch() with session token → Next.js server component → rendered page
 ```
 
-The dashboard's data layer (`dashboard/src/lib/db.ts`) provides async functions that fetch from the Rails API. All data endpoints are org-scoped. PR list endpoints return all PRs; aggregate endpoints filter to settled PRs only. The overview aggregate endpoint (`/metrics`) windows to the last 7 days and returns per-metric `{ current, prior, sparkline }` for trend visualization and week-over-week deltas.
+The dashboard's data layer (`dashboard/src/lib/db.ts`) provides async functions that fetch from the Rails API. All data endpoints are org-scoped. PR list endpoints return all PRs; the aggregate `/metrics` endpoint returns PR-derived metrics from settled PRs and session-derived metrics from all sessions (regardless of PR association). The response includes `totalPRs`, `totalSessions`, and per-metric `{ current, prior, sparkline }` for trend visualization and period-over-period deltas. The window defaults to 30 days (configurable to 7 or 90).
 
 See: [Dashboard — Data Layer](dashboard.md#data-layer)

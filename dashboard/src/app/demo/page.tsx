@@ -161,8 +161,12 @@ export default async function DemoOverviewPage({
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
           <RepoFilter repos={DEMO_REPOS} current={repoId} />
-          {" "}&middot; {data.totalPRs} finalized PR
-          {data.totalPRs !== 1 && "s"} in past {range}
+          {" "}&middot; {data.totalSessions} session
+          {data.totalSessions !== 1 && "s"}
+          {data.totalPRs > 0 && (
+            <>, {data.totalPRs} finalized PR
+            {data.totalPRs !== 1 && "s"}</>
+          )} in past {range}
         </p>
       </div>
 

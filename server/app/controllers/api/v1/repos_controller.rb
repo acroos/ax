@@ -24,11 +24,14 @@ module Api
       end
 
       def metrics
-        scope = PrMetrics
+        pr_scope = PrMetrics
           .joins(:pr)
           .where(prs: { repo_id: @repo.id }, metrics_finalized: true)
 
-        render json: MetricsAggregator.new(scope, window_days: parsed_range).call
+        session_scope = CodingSession
+          .where(repo_id: @repo.id)
+
+        render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range).call
       end
 
       def timeline

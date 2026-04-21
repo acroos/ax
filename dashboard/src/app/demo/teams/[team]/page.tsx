@@ -178,20 +178,23 @@ export default async function DemoTeamOverviewPage({
           )}
           {detail.members.length} member
           {detail.members.length !== 1 ? "s" : ""} &middot;{" "}
-          {data.totalPRs} finalized PR
-          {data.totalPRs !== 1 ? "s" : ""} in past {range}
+          {data.totalSessions} session
+          {data.totalSessions !== 1 ? "s" : ""}
+          {data.totalPRs > 0 && (
+            <>, {data.totalPRs} finalized PR
+            {data.totalPRs !== 1 ? "s" : ""}</>
+          )} in past {range}
         </p>
       </div>
 
-      {data.totalPRs === 0 ? (
+      {data.totalPRs === 0 && data.totalSessions === 0 ? (
         <div className="flex h-[60vh] items-center justify-center">
           <div className="space-y-3 text-center">
             <h2 className="text-lg font-medium text-foreground">
-              No finalized PRs yet
+              No data yet
             </h2>
             <p className="text-sm text-muted-foreground">
-              Metrics appear once pull requests by team members are merged or
-              closed.
+              Metrics appear once session data is pushed or pull requests are merged or closed.
             </p>
           </div>
         </div>
