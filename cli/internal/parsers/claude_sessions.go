@@ -172,6 +172,14 @@ func LoadHistory(claudeDir string) (map[string][]HistoryEntry, error) {
 // FindSessionFiles returns all session JSONL files for a given project path.
 // It also discovers sessions from Claude Code worktrees belonging to the same repo
 // (stored under <repo>/.claude/worktrees/<name>/).
+//
+// Claude Code stores sessions in two formats:
+//  1. Top-level JSONL files: <project-dir>/<uuid>.jsonl
+//  2. Directory-based sessions: <project-dir>/<uuid>/subagents/agent-*.jsonl
+//
+// For directory-based sessions (those without a corresponding top-level .jsonl
+// file), the directory path is returned. ParseSession handles both file and
+// directory paths.
 func FindSessionFiles(claudeDir, projectPath string) ([]string, error) {
 	// Claude Code stores project sessions in ~/.claude/projects/<encoded-path>/
 	// Claude Code replaces both "/" and "." with "-" when encoding paths.
@@ -181,9 +189,9 @@ func FindSessionFiles(claudeDir, projectPath string) ([]string, error) {
 	var allMatches []string
 
 	if _, err := os.Stat(projectDir); err == nil {
-		matches, err := filepath.Glob(filepath.Join(projectDir, "*.jsonl"))
+		matches, err := collectSessionPaths(projectDir)
 		if err != nil {
-			return nil, fmt.Errorf("failed to glob session files: %w", err)
+			return nil, fmt.Errorf("failed to find session files: %w", err)
 		}
 		allMatches = append(allMatches, matches...)
 	}
@@ -198,9 +206,9 @@ func FindSessionFiles(claudeDir, projectPath string) ([]string, error) {
 		return nil, fmt.Errorf("failed to glob worktree directories: %w", err)
 	}
 	for _, wtDir := range worktreeDirs {
-		matches, err := filepath.Glob(filepath.Join(wtDir, "*.jsonl"))
+		matches, err := collectSessionPaths(wtDir)
 		if err != nil {
-			return nil, fmt.Errorf("failed to glob worktree session files: %w", err)
+			return nil, fmt.Errorf("failed to find worktree session files: %w", err)
 		}
 		allMatches = append(allMatches, matches...)
 	}
@@ -208,17 +216,98 @@ func FindSessionFiles(claudeDir, projectPath string) ([]string, error) {
 	return allMatches, nil
 }
 
-// ParseSession reads a session JSONL file and extracts aggregated data.
-func ParseSession(filePath string) (*ParsedSession, error) {
-	f, err := os.Open(filePath)
+// collectSessionPaths finds all session paths (files and directories) in a
+// project directory. It returns top-level .jsonl files plus any UUID-named
+// directories that contain subagent data but lack a corresponding .jsonl file.
+func collectSessionPaths(projectDir string) ([]string, error) {
+	// Find top-level .jsonl files (the traditional format).
+	jsonlFiles, err := filepath.Glob(filepath.Join(projectDir, "*.jsonl"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to open session file: %w", err)
+		return nil, err
 	}
-	defer f.Close()
 
-	// Session ID is the filename without extension
-	sessionID := strings.TrimSuffix(filepath.Base(filePath), ".jsonl")
+	// Build a set of session IDs that already have .jsonl files.
+	hasJSONL := make(map[string]bool)
+	for _, f := range jsonlFiles {
+		id := strings.TrimSuffix(filepath.Base(f), ".jsonl")
+		hasJSONL[id] = true
+	}
 
+	// Look for UUID-named directories that have subagent data but no
+	// corresponding .jsonl file.
+	entries, err := os.ReadDir(projectDir)
+	if err != nil {
+		return jsonlFiles, nil // if we can't read the dir, return what we have
+	}
+
+	var results []string
+	results = append(results, jsonlFiles...)
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if hasJSONL[name] || !isSessionUUID(name) {
+			continue
+		}
+		// Check that the directory actually contains subagent JSONL files.
+		subagentFiles, _ := filepath.Glob(filepath.Join(projectDir, name, "subagents", "*.jsonl"))
+		if len(subagentFiles) > 0 {
+			results = append(results, filepath.Join(projectDir, name))
+		}
+	}
+
+	return results, nil
+}
+
+// isSessionUUID returns true if the name looks like a UUID (8-4-4-4-12 hex).
+func isSessionUUID(name string) bool {
+	// Quick length check: standard UUID is 36 chars (32 hex + 4 dashes).
+	if len(name) != 36 {
+		return false
+	}
+	for i, c := range name {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			if c != '-' {
+				return false
+			}
+		} else if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
+// ParseSession reads session data from a JSONL file or a session directory and
+// extracts aggregated data. When path is a directory, all subagent JSONL files
+// within it are parsed and merged into a single session.
+func ParseSession(path string) (*ParsedSession, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat session path: %w", err)
+	}
+
+	var sessionID string
+	var files []string
+
+	if info.IsDir() {
+		sessionID = filepath.Base(path)
+		files, err = filepath.Glob(filepath.Join(path, "subagents", "*.jsonl"))
+		if err != nil || len(files) == 0 {
+			return nil, fmt.Errorf("no session data files in %s", path)
+		}
+	} else {
+		sessionID = strings.TrimSuffix(filepath.Base(path), ".jsonl")
+		files = []string{path}
+	}
+
+	return parseSessionFiles(sessionID, files)
+}
+
+// parseSessionFiles parses one or more JSONL files and merges them into a
+// single ParsedSession.
+func parseSessionFiles(sessionID string, files []string) (*ParsedSession, error) {
 	session := &ParsedSession{
 		ID:        sessionID,
 		ToolCalls: make(map[string]int),
@@ -235,6 +324,55 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 	bashToolIDs := make(map[string]string) // tool_use_id → command
 
 	var lastWasHuman bool
+	var lastErr error
+
+	for _, filePath := range files {
+		err := parseSessionFile(filePath, session, modelCounts, seenMessageIDs,
+			filesReadSet, filesModifiedSet, seenPRURLs, seenCommitSHAs,
+			bashToolIDs, &lastWasHuman)
+		if err != nil {
+			lastErr = err
+		}
+	}
+
+	// Determine primary model
+	maxCount := 0
+	for model, count := range modelCounts {
+		if count > maxCount {
+			maxCount = count
+			session.PrimaryModel = model
+		}
+	}
+
+	// Convert sets to slices
+	for f := range filesReadSet {
+		session.FilesRead = append(session.FilesRead, f)
+	}
+	for f := range filesModifiedSet {
+		session.FilesModified = append(session.FilesModified, f)
+	}
+	for url := range seenPRURLs {
+		session.PRURLs = append(session.PRURLs, url)
+	}
+	for sha := range seenCommitSHAs {
+		session.CommitSHAs = append(session.CommitSHAs, sha)
+	}
+
+	return session, lastErr
+}
+
+// parseSessionFile reads a single JSONL file and accumulates data into the
+// provided session and tracking maps.
+func parseSessionFile(filePath string, session *ParsedSession,
+	modelCounts map[string]int, seenMessageIDs map[string]bool,
+	filesReadSet, filesModifiedSet, seenPRURLs, seenCommitSHAs map[string]bool,
+	bashToolIDs map[string]string, lastWasHuman *bool) error {
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open session file: %w", err)
+	}
+	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024) // 4MB buffer for large messages
@@ -278,8 +416,8 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 			contentStr := string(mc.Content)
 			if isHumanMessage(contentStr) {
 				session.HumanMessages++
-				if !lastWasHuman {
-					lastWasHuman = true
+				if !*lastWasHuman {
+					*lastWasHuman = true
 				}
 			}
 
@@ -303,9 +441,9 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 			session.AssistantMessages++
 
 			// Count turns (human followed by assistant)
-			if lastWasHuman {
+			if *lastWasHuman {
 				session.TurnCount++
-				lastWasHuman = false
+				*lastWasHuman = false
 			}
 
 			// Token usage
@@ -330,30 +468,7 @@ func ParseSession(filePath string) (*ParsedSession, error) {
 		}
 	}
 
-	// Determine primary model
-	maxCount := 0
-	for model, count := range modelCounts {
-		if count > maxCount {
-			maxCount = count
-			session.PrimaryModel = model
-		}
-	}
-
-	// Convert sets to slices
-	for f := range filesReadSet {
-		session.FilesRead = append(session.FilesRead, f)
-	}
-	for f := range filesModifiedSet {
-		session.FilesModified = append(session.FilesModified, f)
-	}
-	for url := range seenPRURLs {
-		session.PRURLs = append(session.PRURLs, url)
-	}
-	for sha := range seenCommitSHAs {
-		session.CommitSHAs = append(session.CommitSHAs, sha)
-	}
-
-	return session, scanner.Err()
+	return scanner.Err()
 }
 
 // isHumanMessage determines if a content string represents a real human message
