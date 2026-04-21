@@ -62,6 +62,7 @@ type repoStatus int
 const (
 	statusPending repoStatus = iota
 	statusPushing
+	statusRateLimited
 	statusDone
 	statusFailed
 )
@@ -72,6 +73,7 @@ type repoProgress struct {
 	status        repoStatus
 	sessionsSent  int
 	sessionsTotal int
+	retryAfter    time.Duration // set when status is statusRateLimited
 }
 
 
@@ -123,7 +125,7 @@ func (ps *progressState) startSpinner() {
 				ps.mu.Lock()
 				ps.frame++
 				for i, r := range ps.repos {
-					if r.status == statusPushing {
+					if r.status == statusPushing || r.status == statusRateLimited {
 						ps.redrawLine(i)
 					}
 				}
@@ -170,6 +172,20 @@ func (ps *progressState) update(idx int, status repoStatus, sent int) {
 	}
 }
 
+// updateRateLimited marks a repo as rate-limited with a retry duration.
+func (ps *progressState) updateRateLimited(idx int, sent int, retryAfter time.Duration) {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
+	ps.repos[idx].status = statusRateLimited
+	ps.repos[idx].sessionsSent = sent
+	ps.repos[idx].retryAfter = retryAfter
+
+	if ps.isTTY {
+		ps.redrawLine(idx)
+	}
+}
+
 // redrawLine moves the cursor to a repo's line, redraws it, and restores cursor position.
 // Must be called with ps.mu held.
 func (ps *progressState) redrawLine(idx int) {
@@ -207,6 +223,12 @@ func (ps *progressState) printLine(idx int) {
 			ui.Highlight.Render(frame),
 			padded,
 			ui.Faint.Render(fmt.Sprintf("pushing (%d/%d)...", r.sessionsSent, r.sessionsTotal)))
+	case statusRateLimited:
+		secs := int(r.retryAfter.Seconds())
+		fmt.Fprintf(ps.w, "\r\033[K  %s %s %s\n",
+			ui.Warning.Render("⏳"),
+			padded,
+			ui.Warning.Render(fmt.Sprintf("rate limited, retrying in %ds (%d/%d)...", secs, r.sessionsSent, r.sessionsTotal)))
 	case statusDone:
 		fmt.Fprintf(ps.w, "\r\033[K  %s %s %s\n",
 			ui.SuccessIcon(),
@@ -279,6 +301,11 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 		RepoPath:  repo.ProjectPaths[0],
 	}
 
+	// Wire up rate-limit callback so the progress display shows wait times.
+	repoClient := client.WithOnRateLimit(func(d time.Duration) {
+		progress.updateRateLimited(idx, result.SessionsSent, d)
+	})
+
 	// Filter to only new sessions
 	repoState, err := state.Load(repo.OwnerRepo)
 	if err != nil {
@@ -316,7 +343,7 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 			Sessions: chunk,
 		}
 
-		_, err := client.Push(payload)
+		_, err := repoClient.Push(payload)
 		if err != nil {
 			ids := make([]string, len(chunk))
 			for i, s := range chunk {

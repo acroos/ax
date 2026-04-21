@@ -90,7 +90,9 @@ Use `ax push --force` to bypass state and re-send all sessions.
 - `Push(payload)` → `POST /api/v1/push` with Bearer token
 - `Ping()` → validates API key via `GET /api/v1/ping`
 - `HealthCheck()` → checks server reachability (no auth required)
-- Retry logic: up to 2 attempts on 5xx errors
+- Retry logic: up to 2 attempts on 5xx errors, up to 3 retries on 429 (rate limit) with `Retry-After` backoff
+- `OnRateLimit` callback notifies callers before each rate-limit sleep
+- `WithOnRateLimit(fn)` returns a client clone with a per-caller callback (used by bulk push for per-repo progress)
 
 ## Configuration (`cli/internal/config/`)
 Config lives at `~/.ax/config.json`:

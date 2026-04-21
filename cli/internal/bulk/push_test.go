@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/push"
@@ -61,6 +62,7 @@ func TestChunkSessions(t *testing.T) {
 }
 
 func TestBulkPush_AllSucceed(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // isolate state from other tests
 	var requestCount atomic.Int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +125,59 @@ func TestBulkPush_AllSucceed(t *testing.T) {
 	}
 }
 
+func TestBulkPush_RateLimitRetrySucceeds(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // isolate state from other tests
+	var requestCount atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := requestCount.Add(1)
+		// Rate-limit the first request, then succeed.
+		if n == 1 {
+			w.Header().Set("Retry-After", "5")
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]any{"error": "rate limited", "retry_after": 5})
+			return
+		}
+		resp := api.PushResponse{OK: true, Entities: map[string]int{"sessions": 0}}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer server.Close()
+
+	client := push.NewClient(server.URL, "test-key")
+	client.SleepFunc = func(d time.Duration) {} // no-op sleep for tests
+
+	tmpDir := t.TempDir()
+	sessFiles := createTempSessions(t, tmpDir, 3)
+
+	repos := []DiscoveredRepo{
+		{
+			Owner: "owner", Repo: "rl-repo", OwnerRepo: "owner/rl-repo",
+			ProjectPaths: []string{"/fake/path"},
+			SessionFiles: sessFiles,
+		},
+	}
+
+	result := BulkPush(&BulkPushConfig{
+		Client:      client,
+		Repos:       repos,
+		Concurrency: 1,
+		Writer:      io.Discard,
+	})
+
+	if result.ReposFailed != 0 {
+		t.Errorf("ReposFailed = %d, want 0 (rate limit should be retried)", result.ReposFailed)
+	}
+	if result.ReposPushed != 1 {
+		t.Errorf("ReposPushed = %d, want 1", result.ReposPushed)
+	}
+	// 1 rate-limited + 1 success = 2 requests
+	if requestCount.Load() != 2 {
+		t.Errorf("server received %d requests, want 2", requestCount.Load())
+	}
+}
+
 func TestBulkPush_ChunkedRequests(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // isolate state from other tests
 	var requestCount atomic.Int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -163,6 +217,7 @@ func TestBulkPush_ChunkedRequests(t *testing.T) {
 }
 
 func TestBulkPush_PartialFailure(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // isolate state from other tests
 	// Fail requests for the bad repo by checking the payload.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)

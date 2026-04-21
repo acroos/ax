@@ -32,10 +32,10 @@ class Rack::Attack
     end
   end
 
-  # Push API: 30 req/min by API key
-  # Uses the raw bearer token as discriminator so even invalid-key brute-force
-  # attempts get throttled.
-  throttle("push/api_key", limit: 30, period: 1.minute) do |req|
+  # Push API: 120 req/min by API key
+  # Higher limit accommodates `ax push --all` which sends many chunked requests
+  # in parallel. The CLI handles 429s with Retry-After backoff as a safety net.
+  throttle("push/api_key", limit: 120, period: 1.minute) do |req|
     if req.path == "/api/v1/push" && req.post?
       req.env["HTTP_AUTHORIZATION"]&.delete_prefix("Bearer ")
     end
