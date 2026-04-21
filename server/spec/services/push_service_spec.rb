@@ -67,9 +67,7 @@ RSpec.describe PushService do
           post_open_commits: 1,
           ci_success_rate: 1.0,
           line_revisit_rate: 0.1,
-          token_cost_usd: 0.50,
-          metrics_finalized: 1,
-          finalized_at: "2026-01-02T00:00:00Z"
+          token_cost_usd: 0.50
         }
       ]
     }
@@ -103,7 +101,6 @@ RSpec.describe PushService do
       expect(pr.title).to eq("Add feature")
       expect(pr.pr_metrics.iteration_depth).to eq(2)
       expect(pr.pr_metrics.token_cost_usd).to eq(0.50)
-      expect(pr.pr_metrics.metrics_finalized).to be true
     end
 
     it "is idempotent on re-push" do
@@ -179,19 +176,46 @@ RSpec.describe PushService do
       expect(result[:repos]).to eq(1)
     end
 
+    it "rejects push exceeding per-entity limits" do
+      oversized_params = push_params.deep_dup
+      oversized_params[:sessions] = (1..1001).map do |i|
+        { id: "session-#{i}", branch: "main", started_at: 1735689600000, ended_at: 1735693200000 }
+      end
+
+      expect {
+        PushService.new(oversized_params, user: user).execute
+      }.to raise_error(PushService::Error, /Too many sessions: 1001 exceeds limit of 1000/)
+    end
+
+    it "strips metrics_finalized from push — only webhook handlers can finalize" do
+      params_with_finalized = push_params.deep_dup
+      params_with_finalized[:pr_metrics][0][:metrics_finalized] = true
+      params_with_finalized[:pr_metrics][0][:finalized_at] = "2026-01-02T00:00:00Z"
+
+      PushService.new(params_with_finalized, user: user).execute
+
+      repo = Repo.find_by(path: "/home/user/myproject")
+      pr = repo.prs.find_by(number: 42)
+      expect(pr.pr_metrics.metrics_finalized).to be false
+      expect(pr.pr_metrics.finalized_at).to be_nil
+    end
+
     it "skips finalized metrics on re-push" do
       PushService.new(push_params, user: user).execute
 
-      # Modify the metrics data
+      # Simulate webhook handler finalizing the metrics
+      repo = Repo.find_by(path: "/home/user/myproject")
+      pr = repo.prs.find_by(number: 42)
+      pr.pr_metrics.update_columns(metrics_finalized: true, finalized_at: Time.current)
+
+      # Re-push with modified metrics
       modified_params = push_params.deep_dup
       modified_params[:pr_metrics][0][:iteration_depth] = 999
 
       PushService.new(modified_params, user: user).execute
 
-      repo = Repo.find_by(path: "/home/user/myproject")
-      pr = repo.prs.find_by(number: 42)
       # Should still be 2 because metrics were finalized
-      expect(pr.pr_metrics.iteration_depth).to eq(2)
+      expect(pr.pr_metrics.reload.iteration_depth).to eq(2)
     end
   end
 end

@@ -1,12 +1,19 @@
 class PushService
   class Error < StandardError; end
 
+  MAX_PRS_PER_PUSH = 500
+  MAX_SESSIONS_PER_PUSH = 1_000
+  MAX_COMMITS_PER_PUSH = 5_000
+  MAX_SESSION_PRS_PER_PUSH = 1_000
+  MAX_PR_METRICS_PER_PUSH = 500
+
   def initialize(params, user:)
     @params = params
     @user = user
   end
 
   def execute
+    validate_entity_limits!
     counts = {
       repos: 0,
       prs: 0,
@@ -39,6 +46,21 @@ class PushService
   end
 
   private
+
+  def validate_entity_limits!
+    check_limit(:prs, MAX_PRS_PER_PUSH)
+    check_limit(:sessions, MAX_SESSIONS_PER_PUSH)
+    check_limit(:commits, MAX_COMMITS_PER_PUSH)
+    check_limit(:session_prs, MAX_SESSION_PRS_PER_PUSH)
+    check_limit(:pr_metrics, MAX_PR_METRICS_PER_PUSH)
+  end
+
+  def check_limit(key, max)
+    count = Array(@params[key]).size
+    if count > max
+      raise Error, "Too many #{key}: #{count} exceeds limit of #{max}"
+    end
+  end
 
   def upsert_repo!
     owner = @params[:owner]
@@ -240,7 +262,7 @@ class PushService
 
   PR_METRICS_UPDATE_COLUMNS = %i[
     iteration_depth post_open_commits ci_success_rate line_revisit_rate
-    token_cost_usd metrics_finalized finalized_at
+    token_cost_usd
   ].freeze
 
   def upsert_pr_metrics(pr_map)
@@ -268,8 +290,6 @@ class PushService
         ci_success_rate: m[:ci_success_rate],
         line_revisit_rate: m[:line_revisit_rate],
         token_cost_usd: m[:token_cost_usd],
-        metrics_finalized: to_bool(m[:metrics_finalized]),
-        finalized_at: m[:finalized_at],
         created_at: now,
         updated_at: now
       }
@@ -285,10 +305,5 @@ class PushService
     else
       SessionPrCorrelationService.new(repo).call
     end
-  end
-
-  def to_bool(value)
-    return nil if value.nil?
-    value == 1 || value == true || value == "1" || value == "true"
   end
 end

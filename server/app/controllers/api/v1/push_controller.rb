@@ -7,7 +7,7 @@ module Api
       MAX_PAYLOAD_SIZE = 10.megabytes
 
       def create
-        if request.content_length && request.content_length > MAX_PAYLOAD_SIZE
+        if !request.content_length || request.content_length > MAX_PAYLOAD_SIZE
           return render json: { ok: false, error: "Payload too large" }, status: :payload_too_large
         end
 
@@ -40,8 +40,7 @@ module Api
           session_prs: [ :session_id, :pr_number, :confidence ],
           pr_metrics: [
             :pr_number, :iteration_depth, :post_open_commits,
-            :ci_success_rate, :line_revisit_rate, :token_cost_usd,
-            :metrics_finalized, :finalized_at
+            :ci_success_rate, :line_revisit_rate, :token_cost_usd
           ]
         )
       end

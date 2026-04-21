@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-21 — Add push input validation (metric ranges, entity limits, content-length)
+
+**Pages updated:** `wiki/rails-server.md`
+**What changed:** Four validation hardening fixes to the push ingestion pipeline: (1) PrMetrics model now validates metric value ranges — rate fields 0..1, ratio fields non-negative, cost non-negative, integer fields non-negative integers. (2) PushService enforces per-entity limits (500 PRs, 1000 sessions, 5000 commits, etc.) and rejects oversized payloads before the transaction. (3) Content-Length check now fails safe — missing header rejects the request instead of bypassing the size check. (4) `metrics_finalized` and `finalized_at` stripped from push params — only webhook handlers can finalize metrics.
+
+---
+
 ## 2026-04-20 — Add cursor-based pagination to PR list endpoints
 
 **Pages updated:** `wiki/rails-server.md`, `wiki/dashboard.md`

@@ -3,6 +3,23 @@ class PrMetrics < ApplicationRecord
 
   validates :pr_id, uniqueness: true
 
+  # Rate fields (fractions, must be 0..1)
+  validates :ci_success_rate, numericality: { in: 0..1 }, allow_nil: true
+  validates :line_revisit_rate, numericality: { in: 0..1 }, allow_nil: true
+  validates :cache_hit_rate, numericality: { in: 0..1 }, allow_nil: true
+  validates :sidechain_rate, numericality: { in: 0..1 }, allow_nil: true
+
+  # Ratio fields (can exceed 1, must be non-negative)
+  validates :re_read_rate, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :autonomy_score, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+
+  # Non-negative numeric fields
+  validates :token_cost_usd, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+
+  # Non-negative integer fields
+  validates :iteration_depth, numericality: { greater_than_or_equal_to: 0, only_integer: true }, allow_nil: true
+  validates :post_open_commits, numericality: { greater_than_or_equal_to: 0, only_integer: true }, allow_nil: true
+
   before_update :prevent_settled_github_update
 
   GITHUB_DERIVED_FIELDS = %w[
