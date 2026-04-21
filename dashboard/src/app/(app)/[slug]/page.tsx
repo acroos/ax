@@ -299,7 +299,7 @@ async function OverviewMetricsBody({
       {/* Output Quality */}
       <div className="mb-8">
         <SectionDivider label="Output Quality" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <MetricCard
             label="Avg Post-Open Commits"
             value={fmt(m("post-open-commits"))}
@@ -330,7 +330,7 @@ async function OverviewMetricsBody({
       {/* Prompt Efficiency */}
       <div className="mb-8">
         <SectionDivider label="Prompt Efficiency" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <MetricCard
             label="Avg Iteration Depth"
             value={fmt(m("iteration-depth"), 0)}
@@ -361,7 +361,7 @@ async function OverviewMetricsBody({
       {/* Agent Behavior */}
       <div className="mb-8">
         <SectionDivider label="Agent Behavior" />
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <MetricCard
             label="Avg Sidechain Rate"
             value={fmtPct(m("sidechain-rate"))}
