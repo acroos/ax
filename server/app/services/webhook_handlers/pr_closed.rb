@@ -14,20 +14,26 @@ module WebhookHandlers
       pr.update!(state: "closed", closed_at: @pr_data[:closed_at])
       return if pr_finalized?(pr)
 
-      # Lock early to prevent redundant GitHub API calls from concurrent webhooks.
-      # The first thread to acquire the lock fetches and finalizes; the second
-      # sees metrics.finalized? and returns immediately.
-      metrics = ensure_pr_metrics(pr)
-      metrics.with_lock do
-        return if metrics.finalized?
+      # Advisory lock prevents redundant GitHub API calls from concurrent webhooks
+      # without holding a transaction open during network I/O (which would risk
+      # deadlocks with PushService writing to the same commits/prs rows).
+      with_finalization_lock(pr) do
+        return if pr_finalized?(pr)
 
         GithubDataFetcher.new(pr).call
         computed = MetricsComputer.new(pr).call
 
-        attrs = computed.compact
-        attrs[:metrics_finalized] = true
-        attrs[:finalized_at] = metrics.finalized_at || Time.current
-        metrics.update!(attrs)
+        ActiveRecord::Base.transaction do
+          metrics = ensure_pr_metrics(pr)
+          metrics.with_lock do
+            return if metrics.finalized?
+
+            attrs = computed.compact
+            attrs[:metrics_finalized] = true
+            attrs[:finalized_at] = metrics.finalized_at || Time.current
+            metrics.update!(attrs)
+          end
+        end
       end
     rescue => e
       Rails.logger.error("[finalization] Failed for PR ##{pr.number}: #{e.class}: #{e.message}")

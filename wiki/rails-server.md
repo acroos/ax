@@ -309,8 +309,8 @@ The `resolve_webhook_secret` method in `WebhooksController`:
 |---------|---------|--------|
 | `PrOpened` | PR opened | Create PR record, initialize empty PrMetrics, correlate with existing sessions |
 | `PrSynchronized` | Commits pushed | Recalculate `post_open_commits` |
-| `PrMerged` | PR merged | Lock PrMetrics row, fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize all metrics (immutable). Lock prevents redundant GitHub API calls from concurrent webhooks. |
-| `PrClosed` | PR closed (not merged) | Lock PrMetrics row, fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize as abandoned. Same locking pattern as PrMerged. |
+| `PrMerged` | PR merged | Advisory-lock on PR, fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize all metrics (immutable). Advisory lock prevents redundant GitHub API calls from concurrent webhooks without holding a transaction open during network I/O. |
+| `PrClosed` | PR closed (not merged) | Advisory-lock on PR, fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize as abandoned. Same locking pattern as PrMerged. |
 | `CiCompleted` | Check suite finished | Update `ci_success_rate` |
 
 #### Installation Lifecycle
@@ -330,6 +330,7 @@ All handlers inherit from `Base`, which provides:
 - `find_pr` / `find_or_create_pr` — PR record lookup/upsert
 - `ensure_pr_metrics` — Create PrMetrics if missing
 - `pr_finalized?` — Guard against updating finalized records
+- `with_finalization_lock(pr)` — Session-level PostgreSQL advisory lock (namespace 1) keyed on PR ID. Used by PrMerged/PrClosed to serialize finalization without holding a transaction open during GitHub API calls (avoids deadlocks with PushService)
 
 All PR/review/CI handlers accept an optional `installation:` keyword argument, set by the job dispatcher.
 
