@@ -89,10 +89,20 @@ class PushService
     repo
   end
 
+  PR_UPDATE_COLUMNS = %i[
+    title branch state created_at_source merged_at closed_at
+    url additions deletions changed_files
+  ].freeze
+
   def upsert_prs(repo, pr_map)
-    Array(@params[:prs]).each do |pr_data|
-      pr = Pr.find_or_initialize_by(repo: repo, number: pr_data[:number])
-      pr.update!(
+    pr_data_list = Array(@params[:prs])
+    return if pr_data_list.empty?
+
+    now = Time.current
+    rows = pr_data_list.map do |pr_data|
+      {
+        repo_id: repo.id,
+        number: pr_data[:number],
         title: pr_data[:title],
         branch: pr_data[:branch],
         state: pr_data[:state],
@@ -102,109 +112,171 @@ class PushService
         url: pr_data[:url],
         additions: pr_data[:additions] || 0,
         deletions: pr_data[:deletions] || 0,
-        changed_files: pr_data[:changed_files] || 0
-      )
-      pr_map[pr_data[:number].to_i] = pr
+        changed_files: pr_data[:changed_files] || 0,
+        created_at: now,
+        updated_at: now
+      }
+    end
+
+    Pr.upsert_all(rows, unique_by: %i[repo_id number], update_only: PR_UPDATE_COLUMNS)
+
+    numbers = pr_data_list.map { |d| d[:number].to_i }
+    Pr.where(repo_id: repo.id, number: numbers).each do |pr|
+      pr_map[pr.number] = pr
     end
   end
+
+  SESSION_UPDATE_COLUMNS = %i[
+    repo_id branch started_at ended_at message_count turn_count
+    input_tokens output_tokens cache_creation_input_tokens cache_read_input_tokens
+    total_cost_usd primary_model files_read_count files_modified_count
+    assistant_message_count sidechain_messages total_file_reads
+  ].freeze
 
   def upsert_sessions(repo)
-    count = 0
-    Array(@params[:sessions]).each do |session_data|
-      session = CodingSession.find_or_initialize_by(id: session_data[:id])
+    session_data_list = Array(@params[:sessions])
+    return 0 if session_data_list.empty?
 
-      # Prevent cross-repo session ID collision: skip sessions owned by another repo
-      if session.persisted? && session.repo_id != repo.id
-        Rails.logger.warn("Session ID collision: #{session_data[:id]} already belongs to repo #{session.repo_id}, skipping for repo #{repo.id}")
-        next
-      end
+    # Prevent cross-repo session ID collision: skip sessions owned by another repo
+    session_ids = session_data_list.map { |s| s[:id] }
+    colliding_ids = CodingSession.where(id: session_ids)
+                                  .where.not(repo_id: repo.id)
+                                  .pluck(:id)
+                                  .to_set
 
-      session.update!(
-        repo: repo,
-        branch: session_data[:branch],
-        started_at: session_data[:started_at],
-        ended_at: session_data[:ended_at],
-        message_count: session_data[:message_count] || 0,
-        turn_count: session_data[:turn_count] || 0,
-        input_tokens: session_data[:input_tokens] || 0,
-        output_tokens: session_data[:output_tokens] || 0,
-        cache_creation_input_tokens: session_data[:cache_creation_input_tokens] || 0,
-        cache_read_input_tokens: session_data[:cache_read_input_tokens] || 0,
-        total_cost_usd: session_data[:total_cost_usd],
-        primary_model: session_data[:primary_model],
-        files_read_count: session_data[:files_read_count] || 0,
-        files_modified_count: session_data[:files_modified_count] || 0,
-        assistant_message_count: session_data[:assistant_message_count] || 0,
-        sidechain_messages: session_data[:sidechain_messages] || 0,
-        total_file_reads: session_data[:total_file_reads] || 0
-      )
-      count += 1
+    colliding_ids.each do |id|
+      Rails.logger.warn("Session ID collision: #{id} already belongs to another repo, skipping for repo #{repo.id}")
     end
-    count
+
+    valid_sessions = session_data_list.reject { |s| colliding_ids.include?(s[:id]) }
+    return 0 if valid_sessions.empty?
+
+    now = Time.current
+    rows = valid_sessions.map do |s|
+      {
+        id: s[:id],
+        repo_id: repo.id,
+        branch: s[:branch],
+        started_at: s[:started_at],
+        ended_at: s[:ended_at],
+        message_count: s[:message_count] || 0,
+        turn_count: s[:turn_count] || 0,
+        input_tokens: s[:input_tokens] || 0,
+        output_tokens: s[:output_tokens] || 0,
+        cache_creation_input_tokens: s[:cache_creation_input_tokens] || 0,
+        cache_read_input_tokens: s[:cache_read_input_tokens] || 0,
+        total_cost_usd: s[:total_cost_usd],
+        primary_model: s[:primary_model],
+        files_read_count: s[:files_read_count] || 0,
+        files_modified_count: s[:files_modified_count] || 0,
+        assistant_message_count: s[:assistant_message_count] || 0,
+        sidechain_messages: s[:sidechain_messages] || 0,
+        total_file_reads: s[:total_file_reads] || 0,
+        created_at: now,
+        updated_at: now
+      }
+    end
+
+    CodingSession.upsert_all(rows, unique_by: :id, update_only: SESSION_UPDATE_COLUMNS)
+    valid_sessions.size
   end
 
+  COMMIT_UPDATE_COLUMNS = %i[
+    repo_id pr_id session_id message author committed_at
+    is_claude_authored is_post_open additions deletions files_changed
+  ].freeze
+
   def upsert_commits(repo, pr_map)
-    count = 0
-    Array(@params[:commits]).each do |commit_data|
-      pr = pr_map[commit_data[:pr_number].to_i]
-      commit = Commit.find_or_initialize_by(sha: commit_data[:sha])
-      commit.update!(
-        repo: repo,
-        pr: pr,
-        session_id: commit_data[:session_id],
-        message: commit_data[:message],
-        author: commit_data[:author],
-        committed_at: commit_data[:committed_at],
-        is_claude_authored: commit_data[:is_claude_authored] || false,
-        is_post_open: commit_data[:is_post_open] || false,
-        additions: commit_data[:additions] || 0,
-        deletions: commit_data[:deletions] || 0,
-        files_changed: commit_data[:files_changed] || 0
-      )
-      count += 1
+    commit_data_list = Array(@params[:commits])
+    return 0 if commit_data_list.empty?
+
+    now = Time.current
+    rows = commit_data_list.map do |c|
+      pr = pr_map[c[:pr_number].to_i]
+      {
+        sha: c[:sha],
+        repo_id: repo.id,
+        pr_id: pr&.id,
+        session_id: c[:session_id],
+        message: c[:message],
+        author: c[:author],
+        committed_at: c[:committed_at],
+        is_claude_authored: c[:is_claude_authored] || false,
+        is_post_open: c[:is_post_open] || false,
+        additions: c[:additions] || 0,
+        deletions: c[:deletions] || 0,
+        files_changed: c[:files_changed] || 0,
+        created_at: now,
+        updated_at: now
+      }
     end
-    count
+
+    Commit.upsert_all(rows, unique_by: :sha, update_only: COMMIT_UPDATE_COLUMNS)
+    commit_data_list.size
   end
 
   def upsert_session_prs(pr_map)
-    count = 0
-    Array(@params[:session_prs]).each do |sp_data|
-      pr = pr_map[sp_data[:pr_number].to_i]
+    sp_data_list = Array(@params[:session_prs])
+    return 0 if sp_data_list.empty?
+
+    now = Time.current
+    rows = sp_data_list.filter_map do |sp|
+      pr = pr_map[sp[:pr_number].to_i]
       next unless pr
 
-      session_pr = SessionPr.find_or_initialize_by(session_id: sp_data[:session_id], pr: pr)
-      session_pr.update!(confidence: sp_data[:confidence])
-      count += 1
+      {
+        session_id: sp[:session_id],
+        pr_id: pr.id,
+        confidence: sp[:confidence],
+        created_at: now,
+        updated_at: now
+      }
     end
-    count
+    return 0 if rows.empty?
+
+    SessionPr.upsert_all(rows, unique_by: %i[session_id pr_id], update_only: %i[confidence])
+    rows.size
   end
 
+  PR_METRICS_UPDATE_COLUMNS = %i[
+    iteration_depth post_open_commits ci_success_rate line_revisit_rate
+    token_cost_usd metrics_finalized finalized_at
+  ].freeze
+
   def upsert_pr_metrics(pr_map)
-    count = 0
-    Array(@params[:pr_metrics]).each do |metrics_data|
-      pr = pr_map[metrics_data[:pr_number].to_i]
-      next unless pr
+    metrics_data_list = Array(@params[:pr_metrics])
+    return 0 if metrics_data_list.empty?
 
-      metrics = PrMetrics.find_or_initialize_by(pr: pr)
+    valid_metrics = metrics_data_list.select { |m| pr_map[m[:pr_number].to_i] }
+    return 0 if valid_metrics.empty?
 
-      # Skip if already finalized
-      if metrics.persisted? && metrics.finalized?
-        count += 1
-        next
-      end
+    # Skip already-finalized PRs (replicates prevent_settled_github_update callback)
+    pr_ids = valid_metrics.map { |m| pr_map[m[:pr_number].to_i].id }
+    finalized_pr_ids = PrMetrics.where(pr_id: pr_ids, metrics_finalized: true)
+                                .pluck(:pr_id)
+                                .to_set
 
-      metrics.update!(
-        iteration_depth: metrics_data[:iteration_depth],
-        post_open_commits: metrics_data[:post_open_commits],
-        ci_success_rate: metrics_data[:ci_success_rate],
-        line_revisit_rate: metrics_data[:line_revisit_rate],
-        token_cost_usd: metrics_data[:token_cost_usd],
-        metrics_finalized: to_bool(metrics_data[:metrics_finalized]),
-        finalized_at: metrics_data[:finalized_at]
-      )
-      count += 1
+    now = Time.current
+    rows = valid_metrics.filter_map do |m|
+      pr = pr_map[m[:pr_number].to_i]
+      next if finalized_pr_ids.include?(pr.id)
+
+      {
+        pr_id: pr.id,
+        iteration_depth: m[:iteration_depth],
+        post_open_commits: m[:post_open_commits],
+        ci_success_rate: m[:ci_success_rate],
+        line_revisit_rate: m[:line_revisit_rate],
+        token_cost_usd: m[:token_cost_usd],
+        metrics_finalized: to_bool(m[:metrics_finalized]),
+        finalized_at: m[:finalized_at],
+        created_at: now,
+        updated_at: now
+      }
     end
-    count
+
+    PrMetrics.upsert_all(rows, unique_by: :pr_id, update_only: PR_METRICS_UPDATE_COLUMNS) if rows.any?
+    valid_metrics.size
   end
 
   def trigger_post_push(repo)
