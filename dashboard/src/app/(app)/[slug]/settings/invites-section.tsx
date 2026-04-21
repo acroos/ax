@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -38,6 +39,21 @@ interface Props {
   slug: string;
   /** Per-seat price in cents. Present only for Pro orgs with an active subscription. */
   seatPriceCents?: number;
+}
+
+interface InviteResult {
+  username: string;
+  link?: string;
+  error?: string;
+}
+
+const BATCH_SIZE = 3;
+
+function parseUsernames(input: string): string[] {
+  return input
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 function timeUntil(dateStr: string): string {
@@ -65,9 +81,12 @@ export function InvitesSection({
   const [username, setUsername] = useState("");
   const [role, setRole] = useState("member");
   const [creating, setCreating] = useState(false);
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [results, setResults] = useState<InviteResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const usernames = parseUsernames(username);
 
   async function handleRevoke(inviteId: number) {
     setRevoking(inviteId);
@@ -85,41 +104,69 @@ export function InvitesSection({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!username.trim()) return;
+    if (usernames.length === 0) return;
 
     if (seatPriceCents) {
       setConfirmOpen(true);
     } else {
-      sendInvite();
+      sendInvites();
     }
   }
 
-  async function sendInvite() {
-    setCreating(true);
-    setError(null);
-    setInviteLink(null);
-
+  async function createOneInvite(ghUsername: string): Promise<InviteResult> {
     try {
       const res = await fetch(`/api/v1/orgs/${slug}/invites`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ github_username: username.trim(), role }),
+        body: JSON.stringify({ github_username: ghUsername, role }),
       });
-
       if (res.ok) {
         const data = await res.json();
-        setInviteLink(data.link);
-        setUsername("");
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error || "Failed to create invite");
+        return { username: ghUsername, link: data.link };
       }
+      const data = await res.json().catch(() => null);
+      return { username: ghUsername, error: data?.error || "Failed to create invite" };
     } catch {
-      setError("Network error");
-    } finally {
-      setCreating(false);
+      return { username: ghUsername, error: "Network error" };
     }
   }
+
+  async function sendInvites() {
+    setCreating(true);
+    setError(null);
+    setResults([]);
+
+    const names = usernames;
+    const total = names.length;
+    setProgress({ done: 0, total });
+
+    const allResults: InviteResult[] = [];
+
+    for (let i = 0; i < total; i += BATCH_SIZE) {
+      const batch = names.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(batch.map(createOneInvite));
+      allResults.push(...batchResults);
+      setProgress({ done: Math.min(i + BATCH_SIZE, total), total });
+    }
+
+    setResults(allResults);
+    setProgress(null);
+
+    const failures = allResults.filter((r) => r.error);
+    if (failures.length === total) {
+      setError("All invites failed");
+    } else if (failures.length > 0) {
+      setError(`${failures.length} of ${total} invites failed`);
+    }
+
+    if (failures.length < total) {
+      setUsername("");
+    }
+    setCreating(false);
+  }
+
+  const successResults = results.filter((r) => r.link);
+  const failedResults = results.filter((r) => r.error);
 
   return (
     <Card className="p-6">
@@ -163,7 +210,7 @@ export function InvitesSection({
         {isAdmin && (
           <div className="space-y-3 border-t border-border pt-4">
             <h3 className="text-xs font-medium text-muted-foreground">
-              Invite a member
+              Invite members
             </h3>
             <form onSubmit={handleSubmit} className="flex items-end gap-2">
               <div className="flex-1 space-y-1">
@@ -171,14 +218,14 @@ export function InvitesSection({
                   htmlFor="invite-username"
                   className="text-[11px] text-muted-foreground"
                 >
-                  GitHub username
+                  GitHub usernames (comma-separated)
                 </Label>
                 <Input
                   id="invite-username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="octocat"
+                  placeholder="octocat, mona, hubot"
                   className="h-8 text-xs"
                 />
               </div>
@@ -206,25 +253,59 @@ export function InvitesSection({
               <Button
                 type="submit"
                 size="sm"
-                disabled={creating || !username.trim()}
+                disabled={creating || usernames.length === 0}
               >
-                {creating ? "Sending..." : "Send Invite"}
+                {creating
+                  ? "Sending..."
+                  : usernames.length > 1
+                    ? `Send ${usernames.length} Invites`
+                    : "Send Invite"}
               </Button>
             </form>
 
+            {progress && (
+              <div className="space-y-1.5">
+                <Progress value={(progress.done / progress.total) * 100} />
+                <p className="text-[11px] text-muted-foreground">
+                  Sending invites... {progress.done}/{progress.total}
+                </p>
+              </div>
+            )}
+
             {error && <p className="text-xs text-destructive">{error}</p>}
 
-            {inviteLink && (
+            {successResults.length > 0 && (
               <div className="space-y-2 rounded-lg bg-muted p-3">
                 <p className="text-xs text-muted-foreground">
-                  Invite created. Share this link:
+                  {successResults.length === 1
+                    ? "Invite created. Share this link:"
+                    : `${successResults.length} invites created. Share these links:`}
                 </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 select-all break-all font-mono text-xs text-foreground">
-                    {inviteLink}
-                  </code>
-                  <CopyButton text={inviteLink} />
-                </div>
+                {successResults.map((r) => (
+                  <div key={r.username} className="space-y-0.5">
+                    {successResults.length > 1 && (
+                      <p className="text-[11px] font-medium text-foreground">
+                        @{r.username}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 select-all break-all font-mono text-xs text-foreground">
+                        {r.link}
+                      </code>
+                      <CopyButton text={r.link!} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {failedResults.length > 0 && (
+              <div className="space-y-1 rounded-lg bg-destructive/5 p-3">
+                {failedResults.map((r) => (
+                  <p key={r.username} className="text-xs text-destructive">
+                    @{r.username}: {r.error}
+                  </p>
+                ))}
               </div>
             )}
           </div>
@@ -234,19 +315,40 @@ export function InvitesSection({
           <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Add a paid seat?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  When <span className="font-medium text-foreground">@{username.trim()}</span> accepts
-                  this invite, a new seat will be added to your subscription
-                  at {formatDollars(seatPriceCents)}/month (prorated).
+                <AlertDialogTitle>
+                  {usernames.length > 1
+                    ? `Add ${usernames.length} paid seats?`
+                    : "Add a paid seat?"}
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div>
+                    {usernames.length > 1 ? (
+                      <>
+                        <p>
+                          When these {usernames.length} members accept their invites,
+                          new seats will be added to your subscription
+                          at {formatDollars(seatPriceCents)}/seat/month (prorated).
+                        </p>
+                        <p className="mt-2 font-medium text-foreground">
+                          Total: {formatDollars(seatPriceCents * usernames.length)}/month
+                        </p>
+                      </>
+                    ) : (
+                      <p>
+                        When <span className="font-medium text-foreground">@{usernames[0]}</span> accepts
+                        this invite, a new seat will be added to your subscription
+                        at {formatDollars(seatPriceCents)}/month (prorated).
+                      </p>
+                    )}
+                  </div>
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => sendInvite()}
-                >
-                  Send Invite
+                <AlertDialogAction onClick={() => sendInvites()}>
+                  {usernames.length > 1
+                    ? `Send ${usernames.length} Invites`
+                    : "Send Invite"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
