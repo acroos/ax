@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { isMock, mockUser } from "./mock";
-
-const API_URL = process.env.AX_API_URL || "http://localhost:3000";
+import { fetchAPI } from "./db";
 
 export interface CurrentUser {
   id: number;
@@ -20,19 +19,16 @@ export interface CurrentUser {
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (isMock) return mockUser;
   try {
+    // Short-circuit when there's no session — avoids a wasted round-trip.
     const cookieStore = await cookies();
     const sessionToken = cookieStore.get("_ax_session")?.value;
     if (!sessionToken) return null;
 
-    const res = await fetch(`${API_URL}/auth/me`, {
-      headers: {
-        "X-Ax-Session": sessionToken,
-      },
-      next: { revalidate: 60 },
-    } as RequestInit);
-
-    if (!res.ok) return null;
-    return (await res.json()) as CurrentUser;
+    // Delegate to fetchAPI so this request shares the same connection pool,
+    // keep-alive headers, and auth/timing instrumentation as all other API
+    // calls. fetchAPI throws on non-OK responses; the catch below converts
+    // that to null (unauthenticated).
+    return await fetchAPI<CurrentUser>("/auth/me");
   } catch {
     return null;
   }

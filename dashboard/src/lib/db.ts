@@ -3,8 +3,9 @@
 import { cookies } from "next/headers";
 import { isMock, mockFetchAPI } from "./mock";
 
-const API_URL = process.env.AX_API_URL;
+const API_URL = process.env.AX_API_URL || "http://localhost:3000";
 const API_KEY = process.env.AX_API_KEY || "";
+const isDev = process.env.NODE_ENV === "development";
 
 export async function fetchAPI<T>(
   urlPath: string,
@@ -14,6 +15,10 @@ export async function fetchAPI<T>(
   const url = `${API_URL}${urlPath}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    // Explicitly request persistent connections. Node.js (undici) and Edge
+    // runtimes default to keep-alive, but being explicit guards against
+    // intermediary proxies that might strip the default.
+    "Connection": "keep-alive",
   };
   if (API_KEY) {
     headers["Authorization"] = `Bearer ${API_KEY}`;
@@ -39,11 +44,18 @@ export async function fetchAPI<T>(
     ? { cache: "no-store" as const }
     : { next: { revalidate: init?.revalidate ?? 60 } };
 
+  const start = isDev ? performance.now() : 0;
   const res = await fetch(url, {
     headers,
     method: init?.method,
     ...cacheOpts,
   } as RequestInit);
+  if (isDev) {
+    const ms = (performance.now() - start).toFixed(0);
+    const method = init?.method || "GET";
+    const cached = noCache ? "" : " (cacheable)";
+    console.log(`[fetchAPI] ${method} ${urlPath} → ${res.status} in ${ms}ms${cached}`);
+  }
   if (!res.ok) {
     if (res.status === 429) {
       throw new Error("Too many requests. Please try again shortly.");

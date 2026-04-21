@@ -35,6 +35,10 @@ async function proxy(
       ? await request.text()
       : undefined;
 
+  // Explicitly request persistent connections so the proxy benefits from
+  // HTTP keep-alive when forwarding to the Rails API.
+  headers["Connection"] = "keep-alive";
+
   const res = await fetch(target, {
     method: request.method,
     headers,
