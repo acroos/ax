@@ -6,11 +6,24 @@ module GithubApp
     # No session auth required — the signed state token (issued moments earlier
     # by the API controller) is the authorization proof.
     def callback
+      installation_id = params[:installation_id]&.to_i
+
+      if params[:state].present?
+        handle_install_with_state(installation_id)
+      else
+        handle_update_without_state(installation_id)
+      end
+    end
+
+    private
+
+    # Initial install flow — state token proves the user came from the AX dashboard
+    # and tells us which org to associate the installation with.
+    def handle_install_with_state(installation_id)
       decoded = GithubApp::StateToken.verify(params[:state])
       org = Organization.find_by!(slug: decoded[:org])
       installer = User.find(decoded[:user])
 
-      installation_id = params[:installation_id]&.to_i
       return redirect_with_error(org, "missing_installation_id") unless installation_id&.positive?
 
       remote = fetch_installation_details(installation_id)
@@ -41,7 +54,31 @@ module GithubApp
       redirect_to dashboard_url("/login?error=invalid_state"), allow_other_host: true
     end
 
-    private
+    # Update flow — user modified repos on GitHub directly, so there's no state
+    # token. Look up the existing installation to find the org.
+    def handle_update_without_state(installation_id)
+      installation = GithubInstallation.find_by(github_installation_id: installation_id)
+      return redirect_to dashboard_url("/login?error=invalid_state"), allow_other_host: true unless installation
+
+      org = installation.organization
+
+      remote = fetch_installation_details(installation_id)
+      return redirect_with_error(org, "github_api_error") unless remote
+
+      installation.update!(
+        account_login: remote[:account][:login],
+        account_type: remote[:account][:type],
+        target_type: remote[:target_type],
+        repository_selection: remote[:repository_selection],
+        permissions: remote[:permissions].to_h,
+        events: remote[:events] || [],
+        status: "active"
+      )
+
+      GithubApp::BackfillInstallationJob.perform_later(installation.id)
+
+      redirect_to dashboard_url("/#{org.slug}/settings?installed=true"), allow_other_host: true
+    end
 
     def fetch_installation_details(installation_id)
       jwt = GithubApp::JwtGenerator.generate

@@ -200,4 +200,48 @@ RSpec.describe "GitHub App Installation Callback", type: :request do
     expect(existing.status).to eq("active")
     expect(existing.account_login).to eq("test-org")
   end
+
+  context "without state (repo update via GitHub settings)" do
+    it "updates the existing installation and redirects to org settings" do
+      existing = create(:github_installation,
+        organization: organization,
+        github_installation_id: 99999,
+        installed_by: owner,
+        account_login: "test-org",
+        repository_selection: "all"
+      )
+
+      updated_response = github_installation_response.merge(repository_selection: "selected")
+
+      stub_request(:get, %r{api\.github\.com/app/installations/99999})
+        .to_return(status: 200, body: updated_response.to_json, headers: { "Content-Type" => "application/json" })
+
+      get "/github/installations/callback", params: { installation_id: 99999, setup_action: "update" }
+
+      expect(response).to redirect_to("http://localhost:3333/#{organization.slug}/settings?installed=true")
+
+      existing.reload
+      expect(existing.repository_selection).to eq("selected")
+      expect(existing.status).to eq("active")
+    end
+
+    it "redirects with error when installation is not found" do
+      get "/github/installations/callback", params: { installation_id: 99999, setup_action: "update" }
+      expect(response).to redirect_to("http://localhost:3333/login?error=invalid_state")
+    end
+
+    it "redirects with error when GitHub API fails" do
+      create(:github_installation,
+        organization: organization,
+        github_installation_id: 99999,
+        installed_by: owner
+      )
+
+      stub_request(:get, %r{api\.github\.com/app/installations/99999})
+        .to_return(status: 404, body: { message: "Not Found" }.to_json, headers: { "Content-Type" => "application/json" })
+
+      get "/github/installations/callback", params: { installation_id: 99999, setup_action: "update" }
+      expect(response).to redirect_to("http://localhost:3333/#{organization.slug}/settings?installed=false&error=github_api_error")
+    end
+  end
 end
