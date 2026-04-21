@@ -140,7 +140,7 @@ export default async function TeamOverviewPage({
         </Suspense>
       </div>
 
-      <SectionErrorBoundary fallback={<NoDataState />}>
+      <SectionErrorBoundary>
         <Suspense fallback={<OverviewMetricsSkeleton />}>
           <TeamMetricsBody
             metricsPromise={metricsPromise}
@@ -160,13 +160,13 @@ export default async function TeamOverviewPage({
         </Link>
       </div>
 
-      <SectionErrorBoundary fallback={null}>
+      <SectionErrorBoundary>
         <Suspense fallback={null}>
           <TeamMembersSection teamPromise={teamPromise} />
         </Suspense>
       </SectionErrorBoundary>
 
-      <SectionErrorBoundary fallback={null}>
+      <SectionErrorBoundary>
         <Suspense fallback={null}>
           <ChildTeamsSection teamPromise={teamPromise} slug={slug} />
         </Suspense>
@@ -239,19 +239,6 @@ function OverviewMetricsSkeleton() {
       <SkeletonMetricCategory count={3} />
       <SkeletonMetricCategory count={3} />
     </>
-  );
-}
-
-function NoDataState() {
-  return (
-    <div className="flex h-[60vh] items-center justify-center">
-      <div className="space-y-3 text-center">
-        <h2 className="text-lg font-medium text-foreground">No data yet</h2>
-        <p className="text-sm text-muted-foreground">
-          Metrics appear once team members have finalized pull requests.
-        </p>
-      </div>
-    </div>
   );
 }
 

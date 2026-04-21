@@ -59,7 +59,7 @@ export default async function BillingPage({
         </div>
       )}
 
-      <SectionErrorBoundary fallback={<BillingError />}>
+      <SectionErrorBoundary>
         <Suspense fallback={<BillingSkeleton />}>
           <BillingSection
             slug={slug}
@@ -94,18 +94,6 @@ function BillingSkeleton() {
             </div>
           ))}
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function BillingError() {
-  return (
-    <Card className="p-6">
-      <CardContent className="p-0">
-        <p className="text-sm text-muted-foreground">
-          Unable to load billing information. Please try again.
-        </p>
       </CardContent>
     </Card>
   );

@@ -78,7 +78,7 @@ export default async function OrgSettingsPage({
         </p>
       </div>
 
-      <SectionErrorBoundary fallback={<SettingsCardSkeleton rows={3} />}>
+      <SectionErrorBoundary>
         <Suspense fallback={<SettingsCardSkeleton rows={3} />}>
           <AsyncGitHubAppCard
             slug={slug}
@@ -90,7 +90,7 @@ export default async function OrgSettingsPage({
         </Suspense>
       </SectionErrorBoundary>
 
-      <SectionErrorBoundary fallback={<SettingsCardSkeleton rows={4} />}>
+      <SectionErrorBoundary>
         <Suspense fallback={<SettingsCardSkeleton rows={4} />}>
           <AsyncMembersSection
             slug={slug}
@@ -101,7 +101,7 @@ export default async function OrgSettingsPage({
       </SectionErrorBoundary>
 
       {isProPlan && (
-        <SectionErrorBoundary fallback={<SettingsCardSkeleton rows={3} />}>
+        <SectionErrorBoundary>
           <Suspense fallback={<SettingsCardSkeleton rows={3} />}>
             <AsyncTeamsSection
               slug={slug}
@@ -112,7 +112,7 @@ export default async function OrgSettingsPage({
         </SectionErrorBoundary>
       )}
 
-      <SectionErrorBoundary fallback={<SettingsCardSkeleton rows={2} />}>
+      <SectionErrorBoundary>
         <Suspense fallback={<SettingsCardSkeleton rows={2} />}>
           <AsyncInvitesSection
             slug={slug}
@@ -124,7 +124,7 @@ export default async function OrgSettingsPage({
       </SectionErrorBoundary>
 
       {!currentOrg?.is_personal && (
-        <SectionErrorBoundary fallback={null}>
+        <SectionErrorBoundary>
           <Suspense fallback={null}>
             <AsyncDeleteOrgSection
               slug={slug}

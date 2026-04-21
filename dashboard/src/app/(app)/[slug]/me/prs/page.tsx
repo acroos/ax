@@ -59,46 +59,46 @@ export default async function MyPRsPage({
         </Suspense>
       </div>
 
-      <Card className="gap-0 overflow-hidden p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>PR</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead className="text-center">Size</TableHead>
-              <TableHead className="text-center">State</TableHead>
-              <TableHead className="text-center">
-                <HeaderWithTip
-                  label="Post-Open"
-                  tip="Commits after PR opened"
-                />
-              </TableHead>
-              <TableHead className="text-center">
-                <HeaderWithTip label="CI" tip="CI checks passing rate" />
-              </TableHead>
-              <TableHead className="text-center">
-                <HeaderWithTip label="Depth" tip="Human-agent turn pairs" />
-              </TableHead>
-              <TableHead className="text-right">
-                <HeaderWithTip label="Cost" tip="Token cost in dollars" />
-              </TableHead>
-              <TableHead className="text-center">
-                <HeaderWithTip
-                  label="Sessions"
-                  tip="Agent sessions linked to this PR"
-                />
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <SectionErrorBoundary fallback={<NoDataBody />}>
+      <SectionErrorBoundary>
+        <Card className="gap-0 overflow-hidden p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>PR</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead className="text-center">Size</TableHead>
+                <TableHead className="text-center">State</TableHead>
+                <TableHead className="text-center">
+                  <HeaderWithTip
+                    label="Post-Open"
+                    tip="Commits after PR opened"
+                  />
+                </TableHead>
+                <TableHead className="text-center">
+                  <HeaderWithTip label="CI" tip="CI checks passing rate" />
+                </TableHead>
+                <TableHead className="text-center">
+                  <HeaderWithTip label="Depth" tip="Human-agent turn pairs" />
+                </TableHead>
+                <TableHead className="text-right">
+                  <HeaderWithTip label="Cost" tip="Token cost in dollars" />
+                </TableHead>
+                <TableHead className="text-center">
+                  <HeaderWithTip
+                    label="Sessions"
+                    tip="Agent sessions linked to this PR"
+                  />
+                </TableHead>
+              </TableRow>
+            </TableHeader>
             <Suspense
               fallback={<SkeletonTableBody rows={10} columns={COLUMN_COUNT} />}
             >
               <PRTableBody promise={prsPromise} />
             </Suspense>
-          </SectionErrorBoundary>
-        </Table>
-      </Card>
+          </Table>
+        </Card>
+      </SectionErrorBoundary>
     </div>
   );
 }
@@ -117,23 +117,6 @@ async function PRCount({ promise }: { promise: Promise<PRWithMetrics[]> }) {
         ? "Unable to load pull requests"
         : `${count} pull request${count !== 1 ? "s" : ""}`}
     </p>
-  );
-}
-
-function NoDataBody() {
-  return (
-    <TableBody>
-      <TableRow>
-        <TableCell colSpan={COLUMN_COUNT} className="px-4 py-16 text-center">
-          <h2 className="mb-1 text-sm font-medium text-foreground">
-            No data yet
-          </h2>
-          <p className="text-[13px] text-muted-foreground">
-            Metrics appear once your pull requests are merged or closed.
-          </p>
-        </TableCell>
-      </TableRow>
-    </TableBody>
   );
 }
 

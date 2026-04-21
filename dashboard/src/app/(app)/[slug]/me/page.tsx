@@ -133,7 +133,7 @@ export default async function MyOverviewPage({
         </Suspense>
       </div>
 
-      <SectionErrorBoundary fallback={<NoDataState />}>
+      <SectionErrorBoundary>
         <Suspense fallback={<OverviewMetricsSkeleton />}>
           <MyMetricsBody
             metricsPromise={metricsPromise}
@@ -187,19 +187,6 @@ function OverviewMetricsSkeleton() {
       <SkeletonMetricCategory count={3} />
       <SkeletonMetricCategory count={3} />
     </>
-  );
-}
-
-function NoDataState() {
-  return (
-    <div className="flex h-[60vh] items-center justify-center">
-      <div className="space-y-3 text-center">
-        <h2 className="text-lg font-medium text-foreground">No data yet</h2>
-        <p className="text-sm text-muted-foreground">
-          Metrics appear once your pull requests are merged or closed.
-        </p>
-      </div>
-    </div>
   );
 }
 
