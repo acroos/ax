@@ -181,6 +181,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
     t.datetime "updated_at", null: false
     t.string "url"
     t.index "COALESCE(merged_at, closed_at)", name: "index_prs_on_terminal_date"
+    t.index ["author"], name: "index_prs_on_author"
     t.index ["closed_at"], name: "index_prs_on_closed_at"
     t.index ["merged_at"], name: "index_prs_on_merged_at"
     t.index ["repo_id", "number"], name: "index_prs_on_repo_id_and_number", unique: true
