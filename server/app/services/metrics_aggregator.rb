@@ -43,9 +43,8 @@ class MetricsAggregator
   # processing timestamp). All callers must join the prs table.
   TERMINAL_DATE_SQL = "COALESCE(prs.merged_at, prs.closed_at)".freeze
 
-  # SQL expression for converting session ended_at (epoch ms bigint) to a
-  # proper timestamp for date windowing and bucketing.
-  SESSION_DATE_SQL = "to_timestamp(sessions.ended_at / 1000.0)".freeze
+  # SQL expression for session end date (used for windowing and bucketing).
+  SESSION_DATE_SQL = "sessions.ended_at".freeze
 
   SESSION_BUCKET_SQL = "DATE(#{SESSION_DATE_SQL})".freeze
 
