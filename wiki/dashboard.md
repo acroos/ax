@@ -99,6 +99,13 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 - **SectionDivider** (`src/components/section-divider.tsx`) — Minimal section header on overview pages. Clay dot (`bg-primary`), sans-serif label in uppercase, and a single horizontal rule in `muted-foreground`. Threads the brand through the page without overusing clay.
 - **Sparkline** (`src/components/sparkline.tsx`) — Hand-rolled SVG sparkline for inline trend visualization. Takes `SparklinePoint[]` data, breaks the line on null values (gaps), returns null when fewer than 2 data points. Optional `label` prop adds a screen-reader-accessible description with auto-computed trend direction (up/down/flat). No external charting dependency. Used in overview metric cards.
 
+### Shared page components
+These components are rendered by both `/(app)` and `/demo` routes with different data sources, eliminating duplication between the two route trees:
+- **MetricCard** + formatters (`src/components/metric-card.tsx`) — Metric card with serif value, delta pill, sparkline, and hover tooltip overlay. Exports formatting utilities `fmt`, `fmtPct`, `fmtCost`, `fmtDelta`. Used by `OverviewMetricsGrid`.
+- **OverviewMetricsGrid** (`src/components/overview-metrics-grid.tsx`) — The 3-category × 3-card grid (Output Quality, Prompt Efficiency, Agent Behavior) used on overview and team detail pages. Accepts `metrics` (resolved `Record<string, MetricAggregate>`), `range`, and a `metricHref` builder function. App pages pass `/${slug}/metrics/${slug}`, demo pages pass `/demo/metrics/${slug}`.
+- **PRTableHeader** (`src/components/pr-table-header.tsx`) — The 9-column table header with tooltip-wrapped column labels. Used by all 4 PR table pages (org PRs, team PRs, and their demo counterparts).
+- **MetricDetailBody** + **BooleanPanel** (`src/components/metric-detail-content.tsx`) — Stats cards (count, avg, P10/P50/P90 with deltas), trend chart, distribution histogram, and notable PRs list. Accepts `values`, `allValues`, `def`, `range`, and an optional `prHref` function (app pages link to `/${slug}/prs/${prId}`, demo pages render plain divs). `BooleanPanel` wraps `BooleanMetricSummary` for boolean metrics.
+
 ### Loading states
 - **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonTableBody`, `SkeletonPageHeader`, `SkeletonChartPanel`. Shared building blocks for route-level loading UIs and in-page Suspense fallbacks.
 - **Route-level `loading.tsx`** — Every page under `/(app)` has a sibling `loading.tsx` that Next.js renders instantly on navigation (before the page's async data awaits resolve). Each skeleton mirrors the real page's layout. Files: `[slug]/loading.tsx`, `[slug]/prs/loading.tsx`, `[slug]/metrics/[metric]/loading.tsx`, `[slug]/settings/loading.tsx`, `[slug]/billing/loading.tsx`, `prs/[id]/loading.tsx`, `settings/loading.tsx`.
@@ -257,6 +264,10 @@ Pure functions used by both the app and demo metric detail pages are extracted i
 |------|---------|
 | `src/lib/db.ts` | API data layer |
 | `src/lib/metric-utils.ts` | Shared metric computation utilities (distribution bucketing, percentiles, filtering) |
+| `src/components/metric-card.tsx` | Shared MetricCard component + formatting utilities (fmt, fmtPct, fmtCost, fmtDelta) |
+| `src/components/overview-metrics-grid.tsx` | Shared 3×3 metric category grid (Output Quality, Prompt Efficiency, Agent Behavior) |
+| `src/components/pr-table-header.tsx` | Shared 9-column PR table header with tooltip column labels |
+| `src/components/metric-detail-content.tsx` | Shared metric detail body (stats, trend, distribution, notable PRs, boolean panel) |
 | `src/lib/auth.ts` | Auth helpers |
 | `src/app/layout.tsx` | Root layout with sidebar |
 | `src/app/page.tsx` | Root page (redirects to org or login) |
