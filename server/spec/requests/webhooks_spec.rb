@@ -21,6 +21,21 @@ RSpec.describe "Webhooks", type: :request do
     }.to_json
   end
 
+  it "passes X-GitHub-Delivery header to the job" do
+    expect(ProcessGitHubWebhookJob).to receive(:perform_later)
+      .with("pull_request", anything, "delivery-abc-123")
+
+    post "/webhooks/github",
+      params: payload,
+      headers: {
+        "Content-Type" => "application/json",
+        "X-GitHub-Event" => "pull_request",
+        "X-GitHub-Delivery" => "delivery-abc-123"
+      }
+
+    expect(response).to have_http_status(:ok)
+  end
+
   it "accepts a webhook without secret configured" do
     post "/webhooks/github",
       params: payload,

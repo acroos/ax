@@ -14,23 +14,25 @@ module WebhookHandlers
       pr.update!(state: "closed", closed_at: @pr_data[:closed_at])
       return if pr_finalized?(pr)
 
-      # Phase 1: Fetch from GitHub (network I/O, no transaction).
-      # PrFile/Commit writes here are idempotent — safe outside a transaction.
-      GithubDataFetcher.new(pr).call
+      # Advisory lock prevents redundant GitHub API calls from concurrent webhooks
+      # without holding a transaction open during network I/O (which would risk
+      # deadlocks with PushService writing to the same commits/prs rows).
+      with_finalization_lock(pr) do
+        return if pr_finalized?(pr)
 
-      # Phase 2: Compute metrics (reads from DB, no writes).
-      computed = MetricsComputer.new(pr).call
+        GithubDataFetcher.new(pr).call
+        computed = MetricsComputer.new(pr).call
 
-      # Phase 3: Write metrics + finalize (DB-only transaction, single update).
-      ActiveRecord::Base.transaction do
-        metrics = ensure_pr_metrics(pr)
-        metrics.with_lock do
-          return if metrics.finalized?
+        ActiveRecord::Base.transaction do
+          metrics = ensure_pr_metrics(pr)
+          metrics.with_lock do
+            return if metrics.finalized?
 
-          attrs = computed.compact
-          attrs[:metrics_finalized] = true
-          attrs[:finalized_at] = metrics.finalized_at || Time.current
-          metrics.update!(attrs)
+            attrs = computed.compact
+            attrs[:metrics_finalized] = true
+            attrs[:finalized_at] = metrics.finalized_at || Time.current
+            metrics.update!(attrs)
+          end
         end
       end
     rescue => e

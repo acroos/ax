@@ -1,6 +1,59 @@
 require "rails_helper"
 
 RSpec.describe ProcessGitHubWebhookJob do
+  describe "idempotency" do
+    let!(:installation) { create(:github_installation, github_installation_id: 55555, status: "active") }
+    let(:delivery_id) { "ghd_#{SecureRandom.hex(8)}" }
+    let(:payload) do
+      {
+        action: "opened",
+        installation: { id: 55555 },
+        pull_request: {
+          number: 1, title: "Test", state: "open", commits: 1,
+          head: { ref: "feat" }, created_at: "2026-01-01T00:00:00Z",
+          merged_at: nil, closed_at: nil,
+          html_url: "https://github.com/octocat/hello-world/pull/1",
+          additions: 5, deletions: 1, changed_files: 1,
+          user: { login: "octocat" }
+        },
+        repository: { owner: { login: "octocat" }, name: "hello-world" }
+      }.to_json
+    end
+
+    it "processes a new event and records it" do
+      expect_any_instance_of(WebhookHandlers::PrOpened).to receive(:call)
+
+      described_class.new.perform("pull_request", payload, delivery_id)
+
+      expect(ProcessedGithubEvent.exists?(event_id: delivery_id)).to be true
+    end
+
+    it "skips an already-processed event" do
+      ProcessedGithubEvent.create!(event_id: delivery_id)
+
+      expect(WebhookHandlers::PrOpened).not_to receive(:new)
+
+      described_class.new.perform("pull_request", payload, delivery_id)
+    end
+
+    it "is safe when the same event is performed twice" do
+      expect_any_instance_of(WebhookHandlers::PrOpened).to receive(:call).once
+
+      described_class.new.perform("pull_request", payload, delivery_id)
+      described_class.new.perform("pull_request", payload, delivery_id)
+
+      expect(ProcessedGithubEvent.where(event_id: delivery_id).count).to eq(1)
+    end
+
+    it "processes events without a delivery ID (backward compatibility)" do
+      expect_any_instance_of(WebhookHandlers::PrOpened).to receive(:call)
+
+      described_class.new.perform("pull_request", payload)
+
+      expect(ProcessedGithubEvent.count).to eq(0)
+    end
+  end
+
   describe "installation event routing" do
     let!(:installation) { create(:github_installation, github_installation_id: 12345) }
 

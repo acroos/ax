@@ -53,15 +53,7 @@ class PushService
 
     repo ||= Repo.new
 
-    if repo.new_record?
-      target_org = repo.organization || @user.personal_org
-      if target_org
-        plan = PlanService.for(target_org)
-        unless plan.within_limit?(:max_repos, target_org.repos.count)
-          raise Error, "Plan limit reached: your #{plan.plan_name} plan allows #{plan.capability(:max_repos)} repos. Upgrade at #{ENV.fetch('DASHBOARD_URL', 'http://localhost:3333')}/#{target_org.slug}/billing"
-        end
-      end
-    end
+    was_new_record = repo.new_record?
 
     if repo.organization_id.present?
       unless @user.member_of?(repo.organization)
@@ -78,6 +70,22 @@ class PushService
       github_repo: repo_name,
       last_synced_at: Time.current
     )
+
+    # Verify plan limit after insert to prevent concurrent pushes from exceeding limits.
+    # Locking the org serializes concurrent repo creations within the same transaction.
+    if was_new_record
+      target_org = repo.organization
+      if target_org
+        target_org.lock!
+        plan = PlanService.for(target_org)
+        # repos.count includes the just-inserted repo; subtract 1 to get the
+        # pre-insert count that within_limit? expects (checks count < max).
+        unless plan.within_limit?(:max_repos, target_org.repos.count - 1)
+          raise Error, "Plan limit reached: your #{plan.plan_name} plan allows #{plan.capability(:max_repos)} repos. Upgrade at #{ENV.fetch('DASHBOARD_URL', 'http://localhost:3333')}/#{target_org.slug}/billing"
+        end
+      end
+    end
+
     repo
   end
 

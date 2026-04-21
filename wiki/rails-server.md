@@ -288,7 +288,11 @@ Extracted shared PR JSON serialization logic used by `OrganizationsController`, 
 
 ## Webhook Handling
 
-GitHub webhooks arrive at `POST /webhooks/github`. The controller validates the `X-Hub-Signature-256` header using per-installation webhook secrets (falling back to `GITHUB_APP_WEBHOOK_SECRET` or `AX_WEBHOOK_GITHUB_SECRET`), then enqueues `ProcessGitHubWebhookJob` for async processing.
+GitHub webhooks arrive at `POST /webhooks/github`. The controller validates the `X-Hub-Signature-256` header using per-installation webhook secrets (falling back to `GITHUB_APP_WEBHOOK_SECRET` or `AX_WEBHOOK_GITHUB_SECRET`), captures the `X-GitHub-Delivery` header, and enqueues `ProcessGitHubWebhookJob` for async processing.
+
+### Deduplication
+
+`ProcessGitHubWebhookJob` deduplicates via the `processed_github_events` table — a single `INSERT ... ON CONFLICT DO NOTHING` on `event_id` (the `X-GitHub-Delivery` header) ensures each webhook is processed exactly once, even across GitHub's at-least-once redeliveries or concurrent jobs. Same pattern as `ProcessStripeWebhookJob` / `processed_stripe_events`. Jobs enqueued without a delivery ID (backward compatibility) skip the dedup check.
 
 ### Signature Validation
 
@@ -305,8 +309,8 @@ The `resolve_webhook_secret` method in `WebhooksController`:
 |---------|---------|--------|
 | `PrOpened` | PR opened | Create PR record, initialize empty PrMetrics, correlate with existing sessions |
 | `PrSynchronized` | Commits pushed | Recalculate `post_open_commits` |
-| `PrMerged` | PR merged | Fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize all metrics (immutable) |
-| `PrClosed` | PR closed (not merged) | Fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize as abandoned |
+| `PrMerged` | PR merged | Advisory-lock on PR, fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize all metrics (immutable). Advisory lock prevents redundant GitHub API calls from concurrent webhooks without holding a transaction open during network I/O. |
+| `PrClosed` | PR closed (not merged) | Advisory-lock on PR, fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize as abandoned. Same locking pattern as PrMerged. |
 | `CiCompleted` | Check suite finished | Update `ci_success_rate` |
 
 #### Installation Lifecycle
@@ -326,6 +330,7 @@ All handlers inherit from `Base`, which provides:
 - `find_pr` / `find_or_create_pr` — PR record lookup/upsert
 - `ensure_pr_metrics` — Create PrMetrics if missing
 - `pr_finalized?` — Guard against updating finalized records
+- `with_finalization_lock(pr)` — Session-level PostgreSQL advisory lock (namespace 1) keyed on PR ID. Used by PrMerged/PrClosed to serialize finalization without holding a transaction open during GitHub API calls (avoids deadlocks with PushService)
 
 All PR/review/CI handlers accept an optional `installation:` keyword argument, set by the job dispatcher.
 

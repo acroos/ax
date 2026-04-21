@@ -47,5 +47,16 @@ module WebhookHandlers
     def ensure_pr_metrics(pr)
       PrMetrics.find_or_create_by!(pr: pr)
     end
+
+    # Session-level advisory lock keyed on PR ID. Prevents concurrent finalization
+    # without holding a transaction open (avoiding deadlocks with PushService).
+    # Namespace 1 distinguishes finalization locks from any future advisory lock usage.
+    def with_finalization_lock(pr)
+      conn = ActiveRecord::Base.connection
+      conn.execute("SELECT pg_advisory_lock(1, #{pr.id.to_i})")
+      yield
+    ensure
+      conn.execute("SELECT pg_advisory_unlock(1, #{pr.id.to_i})")
+    end
   end
 end
