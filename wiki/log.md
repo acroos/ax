@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — Add scoped metric detail routes to demo
+
+**Pages updated:** `wiki/dashboard.md`
+**What changed:** Added demo metric detail routes for personal (`/demo/me/metrics/[metric]`) and team (`/demo/teams/[team]/metrics/[metric]`) scopes. Previously, metric cards on `/demo/me` and `/demo/teams/[team]` linked to the global `/demo/metrics/[metric]` route. Now they link to scoped routes that filter data to the user's or team's PRs, matching the real app's routing structure. Updated shared metric utilities documentation to list all six metric detail pages.
+
+---
+
 ## 2026-04-20 — Push state tracking to avoid re-sending sessions
 
 **Pages updated:** `wiki/go-cli.md`
