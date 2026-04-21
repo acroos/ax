@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_20_060000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_20_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -180,6 +180,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_060000) do
     t.string "title"
     t.datetime "updated_at", null: false
     t.string "url"
+    t.index "COALESCE(merged_at, closed_at)", name: "index_prs_on_terminal_date"
+    t.index ["author"], name: "index_prs_on_author"
+    t.index ["closed_at"], name: "index_prs_on_closed_at"
+    t.index ["merged_at"], name: "index_prs_on_merged_at"
     t.index ["repo_id", "number"], name: "index_prs_on_repo_id_and_number", unique: true
     t.index ["repo_id"], name: "index_prs_on_repo_id"
   end
