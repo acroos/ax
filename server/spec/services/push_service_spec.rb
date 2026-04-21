@@ -103,6 +103,25 @@ RSpec.describe PushService do
       expect(pr.pr_metrics.token_cost_usd).to eq(0.50)
     end
 
+    it "sets pushed_by to the pushing user's github_username" do
+      PushService.new(push_params, user: user).execute
+
+      session = CodingSession.find("session-001")
+      expect(session.pushed_by).to eq(user.github_username)
+    end
+
+    it "updates pushed_by on re-push" do
+      PushService.new(push_params, user: user).execute
+
+      other_user = create(:user, github_username: "other-dev")
+      create(:org_membership, user: other_user, organization: org, role: "member")
+
+      PushService.new(push_params, user: other_user).execute
+
+      session = CodingSession.find("session-001")
+      expect(session.pushed_by).to eq("other-dev")
+    end
+
     it "is idempotent on re-push" do
       PushService.new(push_params, user: user).execute
       result = PushService.new(push_params, user: user).execute

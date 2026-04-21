@@ -138,6 +138,24 @@ RSpec.describe MetricsAggregator do
       expect(result[:metrics]["iteration-depth"][:prior]).to be_within(0.1).of(5.0)
     end
 
+    it "scopes sessions by pushed_by for user-level metrics" do
+      create(:coding_session, repo: repo, ended_at: 2.days.ago,
+        pushed_by: "alice", turn_count: 10, total_cost_usd: 3.0)
+      create(:coding_session, repo: repo, ended_at: 2.days.ago,
+        pushed_by: "bob", turn_count: 4, total_cost_usd: 1.0)
+
+      pr_scope = PrMetrics.joins(pr: :repo)
+        .where(repos: { organization_id: org.id }, metrics_finalized: true)
+      session_scope = CodingSession.joins(:repo)
+        .where(repos: { organization_id: org.id })
+        .where(pushed_by: "alice")
+
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
+
+      expect(result[:totalSessions]).to eq(1)
+      expect(result[:metrics]["iteration-depth"][:current]).to be_within(0.01).of(10.0)
+    end
+
     it "raises ArgumentError for invalid window_days" do
       pr_scope = PrMetrics.none
       session_scope = CodingSession.none

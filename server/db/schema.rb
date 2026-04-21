@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_21_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_21_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -236,6 +236,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_21_000001) do
     t.integer "total_file_reads", default: 0, null: false
     t.integer "turn_count", default: 0
     t.datetime "updated_at", null: false
+    t.index ["pushed_by"], name: "index_sessions_on_pushed_by"
     t.index ["repo_id"], name: "index_sessions_on_repo_id"
   end
 
