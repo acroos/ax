@@ -15,13 +15,13 @@ RSpec.describe "Rate limiting", type: :request, rack_attack: true do
     end
   end
 
-  describe "push API throttle (30 req/min by API key)" do
+  describe "push API throttle (120 req/min by API key)" do
     let(:user) { create(:user) }
     let!(:raw_key) { ApiKey.generate_for(user) }
     let(:headers) { { "Authorization" => "Bearer #{raw_key}" } }
 
     it "throttles by API key after exceeding the limit" do
-      31.times do
+      121.times do
         post "/api/v1/push", params: { repo_path: "/x" }, headers: headers, as: :json
       end
 
@@ -32,7 +32,7 @@ RSpec.describe "Rate limiting", type: :request, rack_attack: true do
       user2 = create(:user)
       raw_key2 = ApiKey.generate_for(user2)
 
-      31.times do
+      121.times do
         post "/api/v1/push", params: { repo_path: "/x" }, headers: headers, as: :json
       end
       expect(response).to have_http_status(:too_many_requests)
