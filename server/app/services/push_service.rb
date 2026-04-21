@@ -152,7 +152,7 @@ class PushService
     repo_id branch started_at ended_at message_count turn_count
     input_tokens output_tokens cache_creation_input_tokens cache_read_input_tokens
     total_cost_usd primary_model files_read_count files_modified_count
-    assistant_message_count sidechain_messages total_file_reads
+    assistant_message_count sidechain_messages total_file_reads pushed_by
   ].freeze
 
   def upsert_sessions(repo)
@@ -194,6 +194,7 @@ class PushService
         assistant_message_count: s[:assistant_message_count] || 0,
         sidechain_messages: s[:sidechain_messages] || 0,
         total_file_reads: s[:total_file_reads] || 0,
+        pushed_by: @user.github_username,
         created_at: now,
         updated_at: now
       }
