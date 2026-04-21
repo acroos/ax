@@ -286,6 +286,41 @@ Extracted shared PR JSON serialization logic used by `OrganizationsController`, 
 - `team_member?` — Checks if the current user is a member of the given team.
 - `require_teams_feature!` — Before-action guard that returns 403 if the org's plan does not include the `teams` capability.
 
+## Rate Limiting
+
+`Rack::Attack` middleware throttles requests to protect against abuse and brute-force attacks. Configured in `config/initializers/rack_attack.rb`.
+
+### Throttle Rules
+
+| Throttle | Endpoints | Limit | Period | Discriminator |
+|----------|-----------|-------|--------|---------------|
+| `auth/ip` | `/users/`, `/auth/`, `/api/v1/api_key` | 60 req | 1 min | IP |
+| `push/api_key` | `POST /api/v1/push` | 30 req | 1 min | Bearer token |
+| `webhooks/ip` | `POST /webhooks/*` | 120 req | 1 min | IP |
+| `waitlist/ip` | `POST /waitlist` | 10 req | 1 min | IP |
+| `global/ip` | All (after safelists) | 300 req | 1 min | IP |
+
+### Safelists
+
+- Health checks (`/up`, `/api/v1/health`) are never throttled
+- Localhost is safelisted in development
+
+### Cache Store
+
+- Production: `Rails.cache` (Solid Cache, DB-backed)
+- Development/Test: `ActiveSupport::Cache::MemoryStore`
+
+### 429 Response Format
+
+```json
+{
+  "error": "Rate limit exceeded. Retry after 42 seconds.",
+  "retry_after": 42
+}
+```
+
+Includes a `Retry-After` HTTP header. The dashboard detects 429 responses and shows "Too many requests. Please try again shortly."
+
 ## Webhook Handling
 
 GitHub webhooks arrive at `POST /webhooks/github`. The controller validates the `X-Hub-Signature-256` header using per-installation webhook secrets (falling back to `GITHUB_APP_WEBHOOK_SECRET` or `AX_WEBHOOK_GITHUB_SECRET`), captures the `X-GitHub-Delivery` header, and enqueues `ProcessGitHubWebhookJob` for async processing.
@@ -409,6 +444,7 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 | `app/jobs/reconcile_repos_job.rb` | Daily reconciliation (self-healing) |
 | `app/jobs/reconcile_subscription_seats_job.rb` | Daily seat count drift reconciliation |
 | `app/jobs/concerns/backfillable.rb` | Shared PR backfill logic (used by BackfillRepoJob) |
+| `config/initializers/rack_attack.rb` | Rate limiting rules and 429 response |
 | `config/initializers/plans.rb` | Plan capability definitions (PLANS constant) |
 | `app/services/plan_service.rb` | Capability enforcement layer |
 | `app/services/stripe_service.rb` | Stripe API wrapper |

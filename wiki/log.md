@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — Add rate limiting to API endpoints
+
+**Pages updated:** `wiki/rails-server.md`
+**What changed:** Added Rack::Attack middleware with tiered rate limiting. Five throttle rules: auth (60/min by IP), push (30/min by API key), webhooks (120/min by IP), waitlist (10/min by IP), global (300/min by IP). Health checks are safelisted. Uses Solid Cache in production, MemoryStore in dev/test. Dashboard fetchAPI now surfaces 429 errors with a user-friendly message.
+
+---
+
 ## 2026-04-20 — Fix concurrency race conditions in finalization and plan limits
 
 **Pages updated:** `wiki/rails-server.md`, `wiki/data-model.md`
