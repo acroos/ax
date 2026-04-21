@@ -185,6 +185,172 @@ func TestFindSessionFilesWorktreeOnly(t *testing.T) {
 	}
 }
 
+func TestFindSessionFilesDirectoryOnly(t *testing.T) {
+	claudeDir := t.TempDir()
+	projectsDir := filepath.Join(claudeDir, "projects")
+
+	repoPath := "/Users/dev/spray-wall"
+	encodedPath := "-Users-dev-spray-wall"
+
+	projDir := filepath.Join(projectsDir, encodedPath)
+
+	// Create a session as a UUID directory with subagent files (no top-level .jsonl).
+	sessionID := "580d904d-96af-4905-865b-70a8d476d203"
+	subagentDir := filepath.Join(projDir, sessionID, "subagents")
+	if err := os.MkdirAll(subagentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subagentDir, "agent-abc.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := FindSessionFiles(claudeDir, repoPath)
+	if err != nil {
+		t.Fatalf("FindSessionFiles failed: %v", err)
+	}
+
+	if len(files) != 1 {
+		t.Fatalf("expected 1 session path, got %d: %v", len(files), files)
+	}
+	if filepath.Base(files[0]) != sessionID {
+		t.Errorf("expected session dir %q, got %q", sessionID, filepath.Base(files[0]))
+	}
+}
+
+func TestFindSessionFilesMixed(t *testing.T) {
+	claudeDir := t.TempDir()
+	projectsDir := filepath.Join(claudeDir, "projects")
+
+	repoPath := "/Users/dev/myproject"
+	encodedPath := "-Users-dev-myproject"
+
+	projDir := filepath.Join(projectsDir, encodedPath)
+	if err := os.MkdirAll(projDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Session 1: traditional .jsonl file.
+	if err := os.WriteFile(filepath.Join(projDir, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Session 2: directory-only (no .jsonl).
+	session2 := "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+	subDir := filepath.Join(projDir, session2, "subagents")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, "agent-x.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := FindSessionFiles(claudeDir, repoPath)
+	if err != nil {
+		t.Fatalf("FindSessionFiles failed: %v", err)
+	}
+
+	if len(files) != 2 {
+		t.Fatalf("expected 2 session paths (1 file + 1 dir), got %d: %v", len(files), files)
+	}
+}
+
+func TestFindSessionFilesSkipsDirectoryWithJSONL(t *testing.T) {
+	claudeDir := t.TempDir()
+	projectsDir := filepath.Join(claudeDir, "projects")
+
+	repoPath := "/Users/dev/myproject"
+	encodedPath := "-Users-dev-myproject"
+
+	projDir := filepath.Join(projectsDir, encodedPath)
+	if err := os.MkdirAll(projDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	sessionID := "cccccccc-cccc-cccc-cccc-cccccccccccc"
+
+	// Create both a .jsonl file and a directory for the same session.
+	if err := os.WriteFile(filepath.Join(projDir, sessionID+".jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	subDir := filepath.Join(projDir, sessionID, "subagents")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, "agent-y.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := FindSessionFiles(claudeDir, repoPath)
+	if err != nil {
+		t.Fatalf("FindSessionFiles failed: %v", err)
+	}
+
+	// Only the .jsonl file should be returned, not the directory.
+	if len(files) != 1 {
+		t.Fatalf("expected 1 session path (only .jsonl), got %d: %v", len(files), files)
+	}
+	if filepath.Ext(files[0]) != ".jsonl" {
+		t.Errorf("expected .jsonl file, got %q", files[0])
+	}
+}
+
+func TestFindSessionFilesIgnoresNonUUIDDirs(t *testing.T) {
+	claudeDir := t.TempDir()
+	projectsDir := filepath.Join(claudeDir, "projects")
+
+	repoPath := "/Users/dev/myproject"
+	encodedPath := "-Users-dev-myproject"
+
+	projDir := filepath.Join(projectsDir, encodedPath)
+	if err := os.MkdirAll(projDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a non-UUID directory (e.g. "memory") with JSONL files inside.
+	nonUUID := filepath.Join(projDir, "memory", "subagents")
+	if err := os.MkdirAll(nonUUID, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nonUUID, "agent-z.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	files, err := FindSessionFiles(claudeDir, repoPath)
+	if err != nil {
+		t.Fatalf("FindSessionFiles failed: %v", err)
+	}
+
+	if len(files) != 0 {
+		t.Fatalf("expected 0 session paths (non-UUID dir should be ignored), got %d: %v", len(files), files)
+	}
+}
+
+func TestIsSessionUUID(t *testing.T) {
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{"580d904d-96af-4905-865b-70a8d476d203", true},
+		{"00000000-0000-0000-0000-000000000000", true},
+		{"ABCDEF01-2345-6789-abcd-ef0123456789", true},
+		{"memory", false},
+		{"subagents", false},
+		{"session1.jsonl", false},
+		{"580d904d96af4905865b70a8d476d203", false}, // no dashes
+		{"580d904d-96af-4905-865b-70a8d476d20", false}, // too short
+		{"580d904d-96af-4905-865b-70a8d476d2030", false}, // too long
+		{"580d904d-96af-4905-865b-70a8d476d20g", false}, // invalid hex
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isSessionUUID(tt.name); got != tt.want {
+				t.Errorf("isSessionUUID(%q) = %v, want %v", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
 // --- ParseSession ---
 
 func TestParseSessionNormal(t *testing.T) {
@@ -319,6 +485,77 @@ func TestParseSessionSignalExtraction(t *testing.T) {
 	// Both Bash tool calls tracked
 	if session.ToolCalls["Bash"] != 2 {
 		t.Errorf("ToolCalls[Bash] = %d, want 2", session.ToolCalls["Bash"])
+	}
+}
+
+func TestParseSessionDirectory(t *testing.T) {
+	// Create a session directory with subagent JSONL files.
+	dir := t.TempDir()
+	sessionID := "580d904d-96af-4905-865b-70a8d476d203"
+	sessionDir := filepath.Join(dir, sessionID)
+	subagentDir := filepath.Join(sessionDir, "subagents")
+	if err := os.MkdirAll(subagentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Copy normal_session.jsonl as a subagent file.
+	src, err := os.ReadFile(testdataPath(t, "normal_session.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subagentDir, "agent-abc123.jsonl"), src, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	session, err := ParseSession(sessionDir)
+	if err != nil {
+		t.Fatalf("ParseSession (directory) failed: %v", err)
+	}
+
+	// Session ID should come from the directory name, not the file.
+	if session.ID != sessionID {
+		t.Errorf("ID = %q, want %q", session.ID, sessionID)
+	}
+	if session.HumanMessages != 2 {
+		t.Errorf("HumanMessages = %d, want 2", session.HumanMessages)
+	}
+	if session.AssistantMessages != 3 {
+		t.Errorf("AssistantMessages = %d, want 3", session.AssistantMessages)
+	}
+}
+
+func TestParseSessionDirectoryMultipleFiles(t *testing.T) {
+	// Create a session directory with two subagent JSONL files.
+	dir := t.TempDir()
+	sessionID := "12345678-1234-1234-1234-123456789abc"
+	sessionDir := filepath.Join(dir, sessionID)
+	subagentDir := filepath.Join(sessionDir, "subagents")
+	if err := os.MkdirAll(subagentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	src, err := os.ReadFile(testdataPath(t, "normal_session.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Write two subagent files with the same content.
+	for _, name := range []string{"agent-aaa.jsonl", "agent-bbb.jsonl"} {
+		if err := os.WriteFile(filepath.Join(subagentDir, name), src, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	session, err := ParseSession(sessionDir)
+	if err != nil {
+		t.Fatalf("ParseSession (multi-file directory) failed: %v", err)
+	}
+
+	// Tokens should accumulate across both files (message dedup applies by ID).
+	// normal_session.jsonl has 3 assistant messages with IDs msg_001, msg_002, msg_003.
+	// Second file has the same IDs, so they get deduplicated.
+	if session.AssistantMessages != 3 {
+		t.Errorf("AssistantMessages = %d, want 3 (deduped across files)", session.AssistantMessages)
 	}
 }
 

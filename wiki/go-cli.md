@@ -34,7 +34,9 @@ cli/
 ```
 
 ## Session Parser (`cli/internal/parsers/claude_sessions.go`)
-Reads Claude Code session files from `~/.claude/projects/<encoded-path>/*.jsonl`.
+Reads Claude Code session data from `~/.claude/projects/<encoded-path>/`. Supports two storage formats:
+1. **Top-level JSONL files**: `<uuid>.jsonl` — the traditional format
+2. **Directory-based sessions**: `<uuid>/subagents/agent-*.jsonl` — used when no top-level `.jsonl` exists (e.g. subagent-only sessions)
 
 Extracts per session:
 - Message counts (human/assistant), token usage (input, output, cache)
