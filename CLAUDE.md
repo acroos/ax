@@ -29,7 +29,7 @@ Start at [`wiki/index.md`](wiki/index.md) to find the right page. Key pages:
 
 **Workflow:** Wiki page → identify the specific files you need → read only those files. Do not do broad codebase exploration when the wiki already tells you where to look.
 
-**Keeping the wiki current:** When you make a code change that alters behavior, adds or removes features, changes architecture, modifies data flow, or would surprise someone reading the current wiki — update the relevant wiki pages and append an entry to `wiki/log.md`. Err on the side of updating. A bit of noise in the log is far better than an outdated wiki. The only changes that don't need a wiki update are purely cosmetic (typos, formatting) or internal refactors that don't change any observable behavior or structure.
+**Keeping the wiki current:** When you make a code change that alters behavior, adds or removes features, changes architecture, modifies data flow, or would surprise someone reading the current wiki — update the relevant wiki pages. Err on the side of updating. A bit of noise is far better than an outdated wiki. The only changes that don't need a wiki update are purely cosmetic (typos, formatting) or internal refactors that don't change any observable behavior or structure.
 
 ## Build & Test
 
