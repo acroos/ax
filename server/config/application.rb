@@ -45,6 +45,9 @@ module Server
     config.middleware.use ActionDispatch::Cookies
     config.middleware.use ActionDispatch::Session::CookieStore, key: "_ax_server_session"
 
+    # Rate limiting (runs after Rack::Cors so OPTIONS preflights aren't throttled)
+    config.middleware.use Rack::Attack
+
     # Use Sidekiq for background jobs
     config.active_job.queue_adapter = :sidekiq
   end

@@ -45,6 +45,9 @@ export async function fetchAPI<T>(
     ...cacheOpts,
   } as RequestInit);
   if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error("Too many requests. Please try again shortly.");
+    }
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<T>;
