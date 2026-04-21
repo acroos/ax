@@ -172,8 +172,12 @@ async function MySubtitle({
     <p className="mt-1 text-[13px] text-muted-foreground">
       {metrics !== null && (
         <>
-          {metrics.totalPRs} finalized PR
-          {metrics.totalPRs !== 1 && "s"} in past {range}
+          {metrics.totalSessions} session
+          {metrics.totalSessions !== 1 && "s"}
+          {metrics.totalPRs > 0 && (
+            <>, {metrics.totalPRs} finalized PR
+            {metrics.totalPRs !== 1 && "s"}</>
+          )} in past {range}
         </>
       )}
     </p>
@@ -190,15 +194,15 @@ function OverviewMetricsSkeleton() {
   );
 }
 
-function NoFinalizedPRsState() {
+function NoDataState() {
   return (
     <div className="flex h-[60vh] items-center justify-center">
       <div className="space-y-3 text-center">
         <h2 className="text-lg font-medium text-foreground">
-          No finalized PRs yet
+          No data yet
         </h2>
         <p className="text-sm text-muted-foreground">
-          Metrics appear once your pull requests are merged or closed.
+          Metrics appear once you push session data or your pull requests are merged or closed.
         </p>
       </div>
     </div>
@@ -215,7 +219,7 @@ async function MyMetricsBody({
   range: Range;
 }) {
   const data = await metricsPromise;
-  if (data.totalPRs === 0) return <NoFinalizedPRsState />;
+  if (data.totalPRs === 0 && data.totalSessions === 0) return <NoDataState />;
 
   const m = (metricSlug: string) => data.metrics[metricSlug]?.current ?? null;
   const prior = (metricSlug: string) => data.metrics[metricSlug]?.prior ?? null;

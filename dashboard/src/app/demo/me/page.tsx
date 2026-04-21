@@ -143,19 +143,23 @@ export default async function DemoMyOverviewPage({
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {data.totalPRs} finalized PR
-          {data.totalPRs !== 1 && "s"} in past {range}
+          {data.totalSessions} session
+          {data.totalSessions !== 1 && "s"}
+          {data.totalPRs > 0 && (
+            <>, {data.totalPRs} finalized PR
+            {data.totalPRs !== 1 && "s"}</>
+          )} in past {range}
         </p>
       </div>
 
-      {data.totalPRs === 0 ? (
+      {data.totalPRs === 0 && data.totalSessions === 0 ? (
         <div className="flex h-[60vh] items-center justify-center">
           <div className="space-y-3 text-center">
             <h2 className="text-lg font-medium text-foreground">
-              No finalized PRs yet
+              No data yet
             </h2>
             <p className="text-sm text-muted-foreground">
-              Metrics appear once your pull requests are merged or closed.
+              Metrics appear once you push session data or your pull requests are merged or closed.
             </p>
           </div>
         </div>

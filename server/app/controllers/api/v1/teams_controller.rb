@@ -81,13 +81,18 @@ module Api
 
       def metrics
         usernames = @team.member_github_usernames
-        scope = PrMetrics
+        pr_scope = PrMetrics
           .joins(pr: :repo)
           .where(repos: { organization_id: @org.id })
           .where(prs: { author: usernames })
           .where(metrics_finalized: true)
 
-        render json: MetricsAggregator.new(scope, window_days: parsed_range).call
+        session_scope = CodingSession
+          .joins(:repo)
+          .where(repos: { organization_id: @org.id })
+          .where(pushed_by: usernames)
+
+        render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range).call
       end
 
       private

@@ -285,7 +285,7 @@ function buildAggregateMetrics(prs: PRWithMetrics[], days = 30): AggregateMetric
     metrics[slug] = agg;
   }
 
-  return { totalPRs, sessionDataCount, metrics };
+  return { totalPRs, totalSessions: sessionDataCount, sessionDataCount, metrics };
 }
 
 export const MOCK_AGGREGATES: AggregateMetrics = buildAggregateMetrics(MOCK_PRS);

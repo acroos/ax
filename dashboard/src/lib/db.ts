@@ -168,6 +168,7 @@ export interface MetricAggregate {
 
 export interface AggregateMetrics {
   totalPRs: number;
+  totalSessions: number;
   sessionDataCount: number;
   metrics: Record<string, MetricAggregate>;
 }
@@ -418,7 +419,7 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
     };
   }
 
-  return { totalPRs, sessionDataCount, metrics };
+  return { totalPRs, totalSessions: sessionDataCount, sessionDataCount, metrics };
 }
 
 // --- Utility functions (re-exported from pr-utils for convenience) ---
