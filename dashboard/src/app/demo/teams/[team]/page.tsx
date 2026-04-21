@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useId } from "react";
 import {
   getMockTeamMetrics,
   getMockTeamDetail,
@@ -33,46 +34,61 @@ function MetricCard({
   delta?: string;
   sparkline?: SparklinePoint[];
 }) {
-  const card = (
-    <Card
-      className={`group gap-0 p-5 transition-colors ${
-        href ? "hover:border-primary/30 hover:bg-accent/40 cursor-pointer" : ""
-      }`}
-    >
-      <CardContent className="relative p-0">
-        <div className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-          {label}
+  const descriptionId = useId();
+
+  const cardContent = (
+    <CardContent className="relative p-0">
+      <div className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div className="mb-1 font-serif text-[28px] font-medium leading-none tracking-tight text-foreground [font-variant-numeric:lining-nums_tabular-nums]">
+        {value}
+      </div>
+      {delta && (
+        <div className="mt-1 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          {delta}
         </div>
-        <div className="mb-1 font-serif text-[28px] font-medium leading-none tracking-tight text-foreground [font-variant-numeric:lining-nums_tabular-nums]">
-          {value}
-        </div>
-        {delta && (
-          <div className="mt-1 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-            {delta}
-          </div>
+      )}
+      <div className="mt-4 h-16 w-full">
+        {sparkline && sparkline.length > 0 && (
+          <Sparkline data={sparkline} className="h-full w-full" label={label} />
         )}
-        <div className="mt-4 h-16 w-full">
-          {sparkline && sparkline.length > 0 && (
-            <Sparkline data={sparkline} className="h-full w-full" label={label} />
-          )}
+      </div>
+      {tooltip && (
+        <div
+          id={descriptionId}
+          className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-card from-60% to-transparent pt-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+        >
+          <p className="text-[12px] leading-relaxed text-muted-foreground/70">
+            {tooltip}
+          </p>
         </div>
-        {tooltip && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-card from-60% to-transparent pt-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-            <p className="text-[12px] leading-relaxed text-muted-foreground/70">
-              {tooltip}
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </CardContent>
   );
 
-  return href ? (
-    <Link href={href} className="block">
-      {card}
-    </Link>
-  ) : (
-    card
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="group block"
+        aria-describedby={tooltip ? descriptionId : undefined}
+      >
+        <Card className="gap-0 p-5 transition-colors hover:border-primary/30 hover:bg-accent/40 cursor-pointer">
+          {cardContent}
+        </Card>
+      </Link>
+    );
+  }
+
+  return (
+    <Card
+      className="group gap-0 p-5 transition-colors"
+      tabIndex={0}
+      aria-describedby={tooltip ? descriptionId : undefined}
+    >
+      {cardContent}
+    </Card>
   );
 }
 
