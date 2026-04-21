@@ -1,7 +1,20 @@
 module PrSerialization
   extend ActiveSupport::Concern
+  include CursorPagination
 
   private
+
+  def render_paginated_prs(scope)
+    result = paginate(scope)
+    render json: {
+      data: result[:records].map { |pr| pr_with_metrics(pr) },
+      pagination: {
+        next_cursor: result[:next_cursor],
+        has_more: result[:has_more],
+        total: result[:total]
+      }
+    }
+  end
 
   def pr_with_metrics(pr)
     m = pr.pr_metrics

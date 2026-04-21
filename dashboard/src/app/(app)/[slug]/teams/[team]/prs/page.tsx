@@ -4,22 +4,19 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ChevronLeft } from "lucide-react";
 
-import { listTeamPRsAsync, getTeamAsync, getPRSize } from "@/lib/db";
-import type { PRWithMetrics } from "@/lib/db";
+import { listTeamPRsAsync, getTeamAsync } from "@/lib/db";
+import type { PaginatedPRs } from "@/lib/db";
 import { Skeleton, SkeletonTableBody } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
-import { StateBadge } from "@/components/state-badge";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { ClientTooltip } from "@/components/client-tooltip";
+import { PaginatedPRTableBody } from "@/components/paginated-pr-table";
 
 const COLUMN_COUNT = 9;
 
@@ -95,7 +92,7 @@ export default async function TeamPRsPage({
             <Suspense
               fallback={<SkeletonTableBody rows={10} columns={COLUMN_COUNT} />}
             >
-              <PRTableBody promise={prsPromise} />
+              <PRTableBody promise={prsPromise} slug={slug} teamSlug={teamSlug} />
             </Suspense>
           </Table>
         </Card>
@@ -117,95 +114,37 @@ async function TeamPRsTitle({
   );
 }
 
-async function PRCount({ promise }: { promise: Promise<PRWithMetrics[]> }) {
-  let count: number | null = null;
+async function PRCount({ promise }: { promise: Promise<PaginatedPRs> }) {
+  let total: number | null = null;
   try {
-    const prs = await promise;
-    count = prs.length;
+    const result = await promise;
+    total = result.pagination.total;
   } catch {
     // Error is surfaced by the table body's error boundary below.
   }
   return (
     <p className="mt-1 text-[13px] text-muted-foreground">
-      {count === null
+      {total === null
         ? "Unable to load pull requests"
-        : `${count} pull request${count !== 1 ? "s" : ""}`}
+        : `${total} pull request${total !== 1 ? "s" : ""}`}
     </p>
   );
 }
 
-async function PRTableBody({ promise }: { promise: Promise<PRWithMetrics[]> }) {
-  const prs = await promise;
+async function PRTableBody({
+  promise,
+  slug,
+  teamSlug,
+}: {
+  promise: Promise<PaginatedPRs>;
+  slug: string;
+  teamSlug: string;
+}) {
+  const result = await promise;
   return (
-    <TableBody>
-      {prs.map((pr) => (
-        <TableRow key={pr.id}>
-          <TableCell>
-            <Link
-              href={`/prs/${pr.id}`}
-              className="font-mono text-[13px] text-primary transition-colors hover:underline"
-            >
-              #{pr.number}
-            </Link>
-            {pr.github_owner && (
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {pr.github_owner}/{pr.github_repo}
-              </div>
-            )}
-          </TableCell>
-          <TableCell>
-            <Link
-              href={`/prs/${pr.id}`}
-              className="line-clamp-1 text-[13px] text-foreground transition-colors hover:text-primary"
-            >
-              {pr.title ?? "Untitled"}
-            </Link>
-          </TableCell>
-          <TableCell className="text-center">
-            <Badge variant="outline" className="font-mono">
-              {getPRSize(pr.additions, pr.deletions)}
-            </Badge>
-          </TableCell>
-          <TableCell>
-            <div className="flex items-center justify-center gap-1.5">
-              <StateBadge state={pr.state} />
-              {pr.metrics && !pr.metrics.metrics_finalized && (
-                <span
-                  className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-notice"
-                  title="Metrics pending"
-                />
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="text-center font-mono text-[13px] text-muted-foreground">
-            {pr.metrics?.post_open_commits ?? "\u2014"}
-          </TableCell>
-          <TableCell className="text-center font-mono text-[13px] text-muted-foreground">
-            {pr.metrics?.ci_success_rate !== null &&
-            pr.metrics?.ci_success_rate !== undefined
-              ? `${Math.round(pr.metrics.ci_success_rate * 100)}%`
-              : "\u2014"}
-          </TableCell>
-          <TableCell className="text-center font-mono text-[13px] text-muted-foreground">
-            {pr.metrics?.iteration_depth ?? "\u2014"}
-          </TableCell>
-          <TableCell className="text-right font-mono text-[13px] text-muted-foreground">
-            {pr.metrics?.token_cost_usd !== null &&
-            pr.metrics?.token_cost_usd !== undefined
-              ? `$${pr.metrics.token_cost_usd.toFixed(2)}`
-              : "\u2014"}
-          </TableCell>
-          <TableCell className="text-center">
-            {pr.session_count > 0 ? (
-              <Badge variant="secondary" className="font-mono">
-                {pr.session_count}
-              </Badge>
-            ) : (
-              <span className="text-[13px] text-muted-foreground">&#8212;</span>
-            )}
-          </TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
+    <PaginatedPRTableBody
+      initialData={result}
+      fetchPath={`orgs/${slug}/teams/${teamSlug}/prs`}
+    />
   );
 }

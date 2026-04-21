@@ -191,7 +191,8 @@ RSpec.describe "Teams API", type: :request do
       get "/api/v1/orgs/#{org.slug}/teams/frontend/prs", headers: session_headers(member)
 
       expect(response).to have_http_status(:ok)
-      prs = JSON.parse(response.body)
+      body = JSON.parse(response.body)
+      prs = body["data"]
       expect(prs.length).to eq(1)
       expect(prs[0]["author"]).to eq(member.github_username)
     end

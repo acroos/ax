@@ -5,6 +5,7 @@
  */
 
 import { NextResponse } from "next/server";
+import type { PRWithMetrics, PaginatedPRs } from "@/lib/db";
 import {
   MOCK_PRS,
   MOCK_REPOS,
@@ -33,6 +34,43 @@ function stripQueryString(urlPath: string): string {
   return urlPath.split("?")[0];
 }
 
+function parsePaginationParams(urlPath: string): { cursor: string | null; perPage: number } {
+  const cursorMatch = urlPath.match(/[?&]cursor=([^&]+)/);
+  const perPageMatch = urlPath.match(/[?&]per_page=(\d+)/);
+  return {
+    cursor: cursorMatch ? decodeURIComponent(cursorMatch[1]) : null,
+    perPage: perPageMatch ? Math.min(parseInt(perPageMatch[1], 10), 100) : 25,
+  };
+}
+
+function paginateMockPRs(allPrs: PRWithMetrics[], urlPath: string): PaginatedPRs {
+  // Sort by created_at DESC (newest first), like Rails
+  const sorted = [...allPrs].sort((a, b) => {
+    const ta = a.created_at ?? "";
+    const tb = b.created_at ?? "";
+    if (ta !== tb) return tb.localeCompare(ta);
+    return b.id - a.id;
+  });
+
+  const { cursor, perPage } = parsePaginationParams(urlPath);
+  let startIdx = 0;
+  if (cursor) {
+    // cursor is the id of the last item on the previous page
+    const cursorId = parseInt(cursor, 10);
+    const cursorPos = sorted.findIndex((p) => p.id === cursorId);
+    startIdx = cursorPos >= 0 ? cursorPos + 1 : 0;
+  }
+
+  const page = sorted.slice(startIdx, startIdx + perPage);
+  const hasMore = startIdx + perPage < sorted.length;
+  const nextCursor = hasMore ? String(page[page.length - 1].id) : null;
+
+  return {
+    data: page,
+    pagination: { next_cursor: nextCursor, has_more: hasMore, total: sorted.length },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Server-side router (used by fetchAPI in db.ts)
 // ---------------------------------------------------------------------------
@@ -56,7 +94,7 @@ export function mockFetchAPI<T>(
   if (repoScoped) {
     const repoId = parseInt(repoScoped[1], 10);
     const sub = repoScoped[2];
-    if (sub === "prs") return MOCK_PRS.filter((p) => p.repo_id === repoId) as T;
+    if (sub === "prs") return paginateMockPRs(MOCK_PRS.filter((p) => p.repo_id === repoId), urlPath) as T;
     if (sub === "metrics") return getMockAggregatesForRepo(repoId, days) as T;
     if (sub === "timeline")
       return MOCK_TIMELINE.filter((t) => {
@@ -72,7 +110,7 @@ export function mockFetchAPI<T>(
   if (teamScoped) {
     const teamSlug = teamScoped[1];
     const sub = teamScoped[2];
-    if (sub === "prs") return getMockTeamPRs(teamSlug) as T;
+    if (sub === "prs") return paginateMockPRs(getMockTeamPRs(teamSlug), urlPath) as T;
     if (sub === "metrics") return getMockTeamMetrics(teamSlug, days) as T;
     if (sub === "members") {
       const detail = getMockTeamDetail(teamSlug);
@@ -97,7 +135,8 @@ export function mockFetchAPI<T>(
   if (orgScoped) {
     const sub = orgScoped[1];
     if (sub === "repos") return MOCK_REPOS as T;
-    if (sub === "prs") return MOCK_PRS as T;
+    if (sub === "prs") return paginateMockPRs(MOCK_PRS, urlPath) as T;
+    if (sub === "me/prs") return paginateMockPRs(MOCK_PRS.filter((p) => p.author === "austinroos"), urlPath) as T;
     if (sub === "metrics") return getMockAggregatesForDays(days) as T;
     if (sub === "billing") return MOCK_BILLING as T;
     if (sub === "github_installation") return MOCK_INSTALLATION as T;
@@ -166,9 +205,11 @@ function mockMutationResponse(urlPath: string, method: string): unknown {
 export function mockApiRoute(
   method: string,
   path: string,
-  _request: Request,
+  request: Request,
 ): NextResponse {
-  const urlPath = `/api/v1/${path}`;
+  // Preserve query string for pagination params
+  const url = new URL(request.url);
+  const urlPath = `/api/v1/${path}${url.search}`;
 
   if (method !== "GET") {
     const body = mockMutationResponse(urlPath, method);

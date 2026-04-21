@@ -134,6 +134,15 @@ export interface PRWithMetrics extends PR {
   session_count: number;
 }
 
+export interface PaginatedPRs {
+  data: PRWithMetrics[];
+  pagination: {
+    next_cursor: string | null;
+    has_more: boolean;
+    total: number;
+  };
+}
+
 export interface SparklinePoint {
   t: string;
   v: number | null;
@@ -260,9 +269,11 @@ export async function getTeamMetricsAsync(
 export async function listTeamPRsAsync(
   orgSlug: string,
   teamSlug: string,
-): Promise<PRWithMetrics[]> {
-  return fetchAPI<PRWithMetrics[]>(
-    orgApiPath(orgSlug, `/teams/${teamSlug}/prs`),
+  pagination?: { cursor?: string; per_page?: number },
+): Promise<PaginatedPRs> {
+  const qs = buildPaginationQuery(pagination);
+  return fetchAPI<PaginatedPRs>(
+    orgApiPath(orgSlug, `/teams/${teamSlug}/prs`) + qs,
   );
 }
 
@@ -289,8 +300,22 @@ export async function getMyMetricsAsync(
 
 export async function listMyPRsAsync(
   orgSlug: string,
-): Promise<PRWithMetrics[]> {
-  return fetchAPI<PRWithMetrics[]>(orgApiPath(orgSlug, "/me/prs"));
+  pagination?: { cursor?: string; per_page?: number },
+): Promise<PaginatedPRs> {
+  const qs = buildPaginationQuery(pagination);
+  return fetchAPI<PaginatedPRs>(orgApiPath(orgSlug, "/me/prs") + qs);
+}
+
+// --- Pagination helper ---
+
+function buildPaginationQuery(
+  pagination?: { cursor?: string; per_page?: number },
+): string {
+  if (!pagination) return "";
+  const parts: string[] = [];
+  if (pagination.cursor) parts.push(`cursor=${encodeURIComponent(pagination.cursor)}`);
+  if (pagination.per_page) parts.push(`per_page=${pagination.per_page}`);
+  return parts.length ? `?${parts.join("&")}` : "";
 }
 
 // --- Data functions ---
@@ -316,17 +341,19 @@ export async function getPRWithMetricsAsync(
 export async function listPRsWithMetricsAsync(
   repoId?: number,
   orgSlug?: string,
-): Promise<PRWithMetrics[]> {
+  pagination?: { cursor?: string; per_page?: number },
+): Promise<PaginatedPRs> {
+  const qs = buildPaginationQuery(pagination);
   if (repoId) {
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/prs`)
       : `/api/v1/repos/${repoId}/prs`;
-    return fetchAPI<PRWithMetrics[]>(apiPath);
+    return fetchAPI<PaginatedPRs>(apiPath + qs);
   }
   if (orgSlug) {
-    return fetchAPI<PRWithMetrics[]>(orgApiPath(orgSlug, "/prs"));
+    return fetchAPI<PaginatedPRs>(orgApiPath(orgSlug, "/prs") + qs);
   }
-  return [];
+  return { data: [], pagination: { next_cursor: null, has_more: false, total: 0 } };
 }
 
 export async function getAggregateMetricsAsync(
@@ -344,8 +371,8 @@ export async function getAggregateMetricsAsync(
   if (orgSlug) {
     return fetchAPI<AggregateMetrics>(orgApiPath(orgSlug, "/metrics") + rangeParam);
   }
-  const prs = await listPRsWithMetricsAsync(repoId, orgSlug);
-  return computeAggregatesFromPRs(prs);
+  const result = await listPRsWithMetricsAsync(repoId, orgSlug);
+  return computeAggregatesFromPRs(result.data);
 }
 
 const METRIC_FIELDS: Array<{ slug: string; field: keyof PRMetrics }> = [
@@ -382,18 +409,9 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
   return { totalPRs, sessionDataCount, metrics };
 }
 
-// --- Utility functions (no DB/API needed) ---
+// --- Utility functions (re-exported from pr-utils for convenience) ---
 
-export type PRSize = "XS" | "S" | "M" | "L" | "XL";
-
-export function getPRSize(additions: number, deletions: number): PRSize {
-  const total = additions + deletions;
-  if (total <= 10) return "XS";
-  if (total <= 100) return "S";
-  if (total <= 500) return "M";
-  if (total <= 1000) return "L";
-  return "XL";
-}
+export { getPRSize, type PRSize } from "./pr-utils";
 
 export async function getTimelineAsync(
   repoId?: number,
@@ -405,8 +423,8 @@ export async function getTimelineAsync(
       : `/api/v1/repos/${repoId}/timeline`;
     return fetchAPI<TimelinePoint[]>(apiPath);
   }
-  const prs = await listPRsWithMetricsAsync(repoId, orgSlug);
-  return buildTimeline(prs);
+  const result = await listPRsWithMetricsAsync(repoId, orgSlug);
+  return buildTimeline(result.data);
 }
 
 function buildTimeline(prs: PRWithMetrics[]): TimelinePoint[] {
