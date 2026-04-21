@@ -31,6 +31,22 @@ threads threads_count, threads_count
 # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
 port ENV.fetch("PORT", 3000)
 
+# Specifies the number of `workers` to boot in clustered mode.
+# Workers are forked web server processes. Each worker gets its own copy of the
+# application and its own thread pool, bypassing CRuby's GVL for true parallel
+# request handling. Defaults to 2 for production; set WEB_CONCURRENCY=0 for
+# single-process mode in development.
+workers ENV.fetch("WEB_CONCURRENCY", 2)
+
+# Preload the application before forking workers. This takes advantage of
+# copy-on-write process behavior so workers use less memory.
+preload_app!
+
+# Re-establish ActiveRecord connections after each worker forks.
+on_worker_boot do
+  ActiveRecord::Base.establish_connection
+end
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
