@@ -8,26 +8,11 @@ import { RepoFilter } from "@/components/repo-filter";
 import { Skeleton, SkeletonTableBody } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ClientTooltip } from "@/components/client-tooltip";
+import { Table } from "@/components/ui/table";
+import { PRTableHeader } from "@/components/pr-table-header";
 import { PaginatedPRTableBody } from "@/components/paginated-pr-table";
 
 const COLUMN_COUNT = 9;
-
-// Column-header label with a hover tooltip. Alignment is the parent
-// TableHead's job; this component only provides the trigger.
-function HeaderWithTip({ label, tip }: { label: string; tip: string }) {
-  return (
-    <ClientTooltip content={tip}>
-      <span className="cursor-default">{label}</span>
-    </ClientTooltip>
-  );
-}
 
 // Shell renders synchronously: h1, subtitle (with a small Suspense for the
 // PR count), and the full table with its header. The tbody streams in.
@@ -63,35 +48,7 @@ export default async function OrgPRsPage({
       <SectionErrorBoundary>
         <Card className="gap-0 overflow-hidden p-0">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>PR</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead className="text-center">Size</TableHead>
-                <TableHead className="text-center">State</TableHead>
-                <TableHead className="text-center">
-                  <HeaderWithTip
-                    label="Post-Open"
-                    tip="Commits after PR opened"
-                  />
-                </TableHead>
-                <TableHead className="text-center">
-                  <HeaderWithTip label="CI" tip="CI checks passing rate" />
-                </TableHead>
-                <TableHead className="text-center">
-                  <HeaderWithTip label="Depth" tip="Human-agent turn pairs" />
-                </TableHead>
-                <TableHead className="text-right">
-                  <HeaderWithTip label="Cost" tip="Token cost in dollars" />
-                </TableHead>
-                <TableHead className="text-center">
-                  <HeaderWithTip
-                    label="Sessions"
-                    tip="Agent sessions linked to this PR"
-                  />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
+            <PRTableHeader />
             <Suspense
               fallback={<SkeletonTableBody rows={10} columns={COLUMN_COUNT} />}
             >
