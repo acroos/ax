@@ -17,7 +17,7 @@ module Api
       def prs
         prs = @repo.prs
           .left_joins(:pr_metrics)
-          .includes(:pr_metrics)
+          .includes(:pr_metrics, :session_prs)
 
         render json: prs.map { |pr| pr_with_metrics(pr) }
       end

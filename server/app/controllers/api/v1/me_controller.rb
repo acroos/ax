@@ -11,7 +11,7 @@ module Api
           .joins(:repo)
           .where(repos: { organization_id: @org.id }, author: current_user.github_username)
           .left_joins(:pr_metrics)
-          .includes(:pr_metrics, :repo)
+          .includes(:pr_metrics, :repo, :session_prs)
           .order(created_at: :desc)
 
         render json: prs.map { |pr| pr_with_metrics(pr) }
