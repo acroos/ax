@@ -48,7 +48,7 @@ module Server
     # Rate limiting (runs after Rack::Cors so OPTIONS preflights aren't throttled)
     config.middleware.use Rack::Attack
 
-    # Use Sidekiq for background jobs
-    config.active_job.queue_adapter = :sidekiq
+    # Use Solid Queue (database-backed) for background jobs
+    config.active_job.queue_adapter = :solid_queue
   end
 end

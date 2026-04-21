@@ -37,9 +37,6 @@ gem "rack-attack"
 # Structured single-line logging for production
 gem "lograge"
 
-# Background job processing
-gem "sidekiq"
-
 # Authentication
 gem "devise"
 gem "omniauth-github", "~> 2.0"
