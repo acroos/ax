@@ -4,6 +4,13 @@ Append-only record of wiki changes. Newest entries first.
 
 ---
 
+## 2026-04-20 — Fix concurrency race conditions in finalization and plan limits
+
+**Pages updated:** `wiki/rails-server.md`, `wiki/data-model.md`
+**What changed:** PrMerged/PrClosed handlers now acquire a row lock on PrMetrics before the GitHub API fetch, preventing redundant API calls from concurrent webhooks. PushService verifies plan repo limits after insert with org row lock to prevent concurrent pushes from exceeding limits. GitHub webhooks now deduplicated via `processed_github_events` table (same pattern as Stripe), using the `X-GitHub-Delivery` header captured by the controller.
+
+---
+
 ## 2026-04-20 — Push state tracking to avoid re-sending sessions
 
 **Pages updated:** `wiki/go-cli.md`

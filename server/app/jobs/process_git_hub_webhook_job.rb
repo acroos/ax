@@ -1,7 +1,13 @@
 class ProcessGitHubWebhookJob < ApplicationJob
   queue_as :webhooks
 
-  def perform(event_type, payload_json)
+  def perform(event_type, payload_json, delivery_id = nil)
+    # Deduplicate using X-GitHub-Delivery header (same pattern as Stripe).
+    # Default nil preserves backward compatibility for jobs enqueued before deploy.
+    if delivery_id
+      return if ProcessedGithubEvent.insert({ event_id: delivery_id }, unique_by: :event_id).rows.empty?
+    end
+
     payload = JSON.parse(payload_json, symbolize_names: true)
 
     case event_type

@@ -5,9 +5,10 @@ class WebhooksController < ApplicationController
     end
 
     event_type = request.headers["X-GitHub-Event"]
+    delivery_id = request.headers["X-GitHub-Delivery"]
     payload = request.raw_post
 
-    ProcessGitHubWebhookJob.perform_later(event_type, payload)
+    ProcessGitHubWebhookJob.perform_later(event_type, payload, delivery_id)
 
     render json: { ok: true }
   end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_20_054628) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_20_060000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -145,6 +145,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_20_054628) do
     t.float "token_cost_usd"
     t.datetime "updated_at", null: false
     t.index ["pr_id"], name: "index_pr_metrics_on_pr_id", unique: true
+  end
+
+  create_table "processed_github_events", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_id"], name: "index_processed_github_events_on_event_id", unique: true
   end
 
   create_table "processed_stripe_events", force: :cascade do |t|

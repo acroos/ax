@@ -183,6 +183,15 @@ Idempotency guard for Stripe webhook processing. One row per Stripe event ID, in
 | event_id | text | Stripe event ID (unique index) |
 | created_at | timestamp | |
 
+### processed_github_events
+Idempotency guard for GitHub webhook processing. One row per `X-GitHub-Delivery` ID, inserted via upsert before handling. Same pattern as `processed_stripe_events`.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | bigint | PK |
+| event_id | text | GitHub delivery ID (unique index) |
+| created_at | timestamp | |
+
 ### org_memberships
 
 | Column | Type | Notes |
