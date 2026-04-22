@@ -226,7 +226,7 @@ async function MyMetricsBody({
   const spark = (metricSlug: string) => data.metrics[metricSlug]?.sparkline;
 
   const metricHref = (metricSlug: string) =>
-    `/${slug}/me/metrics/${metricSlug}`;
+    `/${slug}/me/metrics/${metricSlug}?range=${range}`;
   const tip = (metricSlug: string) => {
     const def = METRIC_INFO[metricSlug];
     return def ? { tooltip: def.tooltip } : {};

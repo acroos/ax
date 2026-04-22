@@ -189,7 +189,7 @@ async function TeamMetricsBody({
     <OverviewMetricsGrid
       metrics={data.metrics}
       range={range}
-      metricHref={(metricSlug) => `/${slug}/teams/${teamSlug}/metrics/${metricSlug}`}
+      metricHref={(metricSlug) => `/${slug}/teams/${teamSlug}/metrics/${metricSlug}?range=${range}`}
     />
   );
 }

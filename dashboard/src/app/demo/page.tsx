@@ -32,7 +32,10 @@ export default async function DemoOverviewPage({
     ? getMockAggregatesForRepo(repoId, days)
     : getMockAggregatesForDays(days);
 
-  const repoQuery = repoId ? `?repo=${repoId}` : "";
+  const query = new URLSearchParams();
+  if (repoId) query.set("repo", String(repoId));
+  query.set("range", range);
+  const qs = query.toString();
 
   return (
     <div>
@@ -57,7 +60,7 @@ export default async function DemoOverviewPage({
       <OverviewMetricsGrid
         metrics={data.metrics}
         range={range}
-        metricHref={(slug) => `/demo/metrics/${slug}${repoQuery}`}
+        metricHref={(slug) => `/demo/metrics/${slug}?${qs}`}
       />
 
       <div className="mt-6 flex gap-6">

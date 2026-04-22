@@ -23,7 +23,7 @@ Location: `dashboard/`
 
 | Route | Page | What it shows |
 |-------|------|---------------|
-| `/{slug}` | Org Overview | Aggregate metrics grouped by category with section dividers (AX motif). Cards use a "stacked narrative" layout: serif metric value, delta pill, hero sparkline (h-16), then detail text. A 7d/30d/90d range toggle (`?range=` query param, default 30d) controls the comparison window, sparkline date range, and delta period. Clickable cards link to drill-down pages. |
+| `/{slug}` | Org Overview | Aggregate metrics grouped by category with section dividers (AX motif). Cards use a "stacked narrative" layout: serif metric value, delta pill, hero sparkline (h-16), then detail text. A 7d/30d/90d range toggle (`?range=` query param, always present) controls the comparison window, sparkline date range, and delta period. Clickable cards link to drill-down pages, preserving both `range` and `repo` query params. |
 | `/{slug}/metrics/[metric]` | Metric Detail | Per-PR breakdown for a single metric: bar chart, summary stats, sortable table, and documentation |
 | `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics and session count column |
 | `/{slug}/settings` | Org Settings | GitHub App installation card (status, connected repos, install/reinstall), members list (role management, removal), and invites (create, list, revoke) |

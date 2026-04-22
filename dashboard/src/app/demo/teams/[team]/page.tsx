@@ -90,7 +90,7 @@ export default async function DemoTeamOverviewPage({
         <OverviewMetricsGrid
           metrics={data.metrics}
           range={range}
-          metricHref={(slug) => `/demo/teams/${teamSlug}/metrics/${slug}`}
+          metricHref={(slug) => `/demo/teams/${teamSlug}/metrics/${slug}?range=${range}`}
         />
       )}
 
