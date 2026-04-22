@@ -2,6 +2,7 @@ module Api
   module V1
     class MeController < BaseController
       include PrSerialization
+      include SessionSerialization
 
       before_action :require_session_auth!
       before_action :find_org!
@@ -15,6 +16,15 @@ module Api
           .order(created_at: :desc, id: :desc)
 
         render_paginated_prs(scope)
+      end
+
+      def sessions
+        scope = CodingSession
+          .joins(:repo)
+          .where(repos: { organization_id: @org.id })
+          .where(pushed_by: current_user.github_username)
+
+        render_sessions(scope)
       end
 
       def metrics

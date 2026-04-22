@@ -262,8 +262,7 @@ class PushService
   end
 
   PR_METRICS_UPDATE_COLUMNS = %i[
-    iteration_depth post_open_commits ci_success_rate line_revisit_rate
-    token_cost_usd
+    post_open_commits ci_success_rate line_revisit_rate
   ].freeze
 
   def upsert_pr_metrics(pr_map)
@@ -286,11 +285,9 @@ class PushService
 
       {
         pr_id: pr.id,
-        iteration_depth: m[:iteration_depth],
         post_open_commits: m[:post_open_commits],
         ci_success_rate: m[:ci_success_rate],
         line_revisit_rate: m[:line_revisit_rate],
-        token_cost_usd: m[:token_cost_usd],
         created_at: now,
         updated_at: now
       }

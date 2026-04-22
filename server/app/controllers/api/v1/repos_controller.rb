@@ -2,10 +2,11 @@ module Api
   module V1
     class ReposController < BaseController
       include PrSerialization
+      include SessionSerialization
 
       before_action :require_session_auth!
-      before_action :find_org!, only: [ :index, :prs, :metrics, :timeline ]
-      before_action :find_repo!, only: [ :prs, :metrics, :timeline ]
+      before_action :find_org!, only: [ :index, :prs, :sessions, :metrics, :timeline ]
+      before_action :find_repo!, only: [ :prs, :sessions, :metrics, :timeline ]
 
       def index
         repos = @org.repos.select(
@@ -21,6 +22,11 @@ module Api
           .order(created_at: :desc, id: :desc)
 
         render_paginated_prs(scope)
+      end
+
+      def sessions
+        scope = CodingSession.where(repo_id: @repo.id)
+        render_sessions(scope)
       end
 
       def metrics

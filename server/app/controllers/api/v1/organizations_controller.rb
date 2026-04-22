@@ -2,9 +2,10 @@ module Api
   module V1
     class OrganizationsController < BaseController
       include PrSerialization
+      include SessionSerialization
 
       before_action :require_session_auth!
-      before_action :find_org!, only: [ :show, :update, :destroy, :prs, :metrics ]
+      before_action :find_org!, only: [ :show, :update, :destroy, :prs, :sessions, :metrics ]
       before_action :find_org_as_admin!, only: [ :update ]
       before_action :require_owner!, only: [ :destroy ]
 
@@ -56,6 +57,14 @@ module Api
           .order(created_at: :desc, id: :desc)
 
         render_paginated_prs(scope)
+      end
+
+      def sessions
+        scope = CodingSession
+          .joins(:repo)
+          .where(repos: { organization_id: @org.id })
+
+        render_sessions(scope)
       end
 
       def metrics

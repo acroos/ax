@@ -54,7 +54,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.iteration_depth !== null) {
+  if (m.iteration_depth != null) {
     metrics.push({
       label: "Iteration Depth",
       value: String(m.iteration_depth),
@@ -64,7 +64,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.token_cost_usd !== null) {
+  if (m.token_cost_usd != null) {
     metrics.push({
       label: "Token Cost",
       value: `$${m.token_cost_usd.toFixed(2)}`,
@@ -74,7 +74,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.cache_hit_rate !== null) {
+  if (m.cache_hit_rate != null) {
     metrics.push({
       label: "Cache Hit Rate",
       value: `${Math.round(m.cache_hit_rate * 100)}%`,
@@ -84,7 +84,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.sidechain_rate !== null) {
+  if (m.sidechain_rate != null) {
     metrics.push({
       label: "Sidechain Rate",
       value: `${Math.round(m.sidechain_rate * 100)}%`,
@@ -94,7 +94,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.re_read_rate !== null) {
+  if (m.re_read_rate != null) {
     metrics.push({
       label: "Re-Read Rate",
       value: m.re_read_rate.toFixed(2),
@@ -104,7 +104,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.autonomy_score !== null) {
+  if (m.autonomy_score != null) {
     metrics.push({
       label: "Autonomy Score",
       value: m.autonomy_score.toFixed(1),

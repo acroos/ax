@@ -37,15 +37,9 @@ module PrSerialization
       session_count: pr.session_prs.size,
       metrics: m ? {
         pr_number: pr.number,
-        iteration_depth: m.iteration_depth,
         post_open_commits: m.post_open_commits,
         ci_success_rate: m.ci_success_rate,
         line_revisit_rate: m.line_revisit_rate,
-        token_cost_usd: m.token_cost_usd,
-        cache_hit_rate: m.cache_hit_rate,
-        sidechain_rate: m.sidechain_rate,
-        re_read_rate: m.re_read_rate,
-        autonomy_score: m.autonomy_score,
         metrics_finalized: m.metrics_finalized,
         finalized_at: m.finalized_at
       } : nil

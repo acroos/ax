@@ -12,13 +12,16 @@ import {
   percentile,
   aggregateByDay,
   computeDistribution,
+  isPRValue,
+  type MetricValue,
   type PRValue,
+  type SessionValue,
   type DistBucket,
 } from "@/lib/metric-utils";
 import type { Range } from "@/components/range-toggle";
 
 // ---------------------------------------------------------------------------
-// MetricDetailBody — stats, trend chart, distribution, notable PRs
+// MetricDetailBody — stats, trend chart, distribution, notable items
 // ---------------------------------------------------------------------------
 
 export function MetricDetailBody({
@@ -28,8 +31,8 @@ export function MetricDetailBody({
   range,
   prHref,
 }: {
-  values: PRValue[];
-  allValues: PRValue[];
+  values: MetricValue[];
+  allValues: MetricValue[];
   def: MetricDefEntry;
   range: Range;
   prHref?: (prId: number) => string;
@@ -78,11 +81,20 @@ export function MetricDetailBody({
 
   const byValue = [...values].sort((a, b) => b.value - a.value);
   const highest = byValue.slice(0, 3);
-  const highestIds = new Set(highest.map((p) => p.prId));
+  const isSessionMetric = def.source === "session";
+  const notableLabel = isSessionMetric ? "Notable Sessions" : "Notable PRs";
+
+  // For notable lowest, exclude items already in highest
+  const highestIds = new Set(
+    highest.map((v) => isPRValue(v) ? v.prId : (v as SessionValue).sessionId),
+  );
   const lowest = byValue
     .slice(-3)
     .reverse()
-    .filter((p) => !highestIds.has(p.prId));
+    .filter((v) => {
+      const id = isPRValue(v) ? v.prId : (v as SessionValue).sessionId;
+      return !highestIds.has(id);
+    });
 
   const stats: { label: string; value: string; delta?: string }[] = [
     { label: "Count", value: String(values.length) },
@@ -146,7 +158,7 @@ export function MetricDetailBody({
         </CardContent>
       </Card>
 
-      {/* Distribution + Notable PRs */}
+      {/* Distribution + Notable Items */}
       <div className="mb-6 grid grid-cols-2 gap-3">
         <Card className="p-5">
           <CardContent className="p-0">
@@ -159,9 +171,9 @@ export function MetricDetailBody({
         <Card className="p-5">
           <CardContent className="p-0">
             <h2 className="mb-4 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
-              Notable PRs
+              {notableLabel}
             </h2>
-            <NotablePRs
+            <NotableItems
               highest={highest}
               lowest={lowest}
               def={def}
@@ -244,17 +256,17 @@ function Distribution({ data }: { data: DistBucket[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Notable PRs
+// Notable Items — renders PRs as links, sessions as plain text
 // ---------------------------------------------------------------------------
 
-function NotablePRs({
+function NotableItems({
   highest,
   lowest,
   def,
   prHref,
 }: {
-  highest: PRValue[];
-  lowest: PRValue[];
+  highest: MetricValue[];
+  lowest: MetricValue[];
   def: MetricDefEntry;
   prHref?: (prId: number) => string;
 }) {
@@ -273,7 +285,7 @@ function NotablePRs({
           <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Highest
           </div>
-          <PRList entries={highest} def={def} prHref={prHref} />
+          <ItemList entries={highest} def={def} prHref={prHref} />
         </div>
       )}
       {lowest.length > 0 && (
@@ -281,7 +293,7 @@ function NotablePRs({
           <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Lowest
           </div>
-          <PRList entries={lowest} def={def} prHref={prHref} />
+          <ItemList entries={lowest} def={def} prHref={prHref} />
         </div>
       )}
     </div>
@@ -289,53 +301,71 @@ function NotablePRs({
 }
 
 // ---------------------------------------------------------------------------
-// PRList — renders as links when prHref is provided, plain divs otherwise
+// ItemList — renders PRs with links, sessions as plain rows
 // ---------------------------------------------------------------------------
 
-function PRList({
+function ItemList({
   entries,
   def,
   prHref,
 }: {
-  entries: PRValue[];
+  entries: MetricValue[];
   def: MetricDefEntry;
   prHref?: (prId: number) => string;
 }) {
   return (
     <div className="space-y-0.5">
-      {entries.map((pr) => {
-        const content = (
-          <>
-            <span className="shrink-0 font-medium text-primary">
-              #{pr.prNumber}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-muted-foreground">
-              {pr.title}
-            </span>
-            <span className="shrink-0 font-mono text-foreground">
-              {formatMetricValue(pr.value, def)}
-            </span>
-          </>
-        );
+      {entries.map((item) => {
+        if (isPRValue(item)) {
+          const content = (
+            <>
+              <span className="shrink-0 font-medium text-primary">
+                #{item.prNumber}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                {item.title}
+              </span>
+              <span className="shrink-0 font-mono text-foreground">
+                {formatMetricValue(item.value, def)}
+              </span>
+            </>
+          );
 
-        if (prHref) {
+          if (prHref) {
+            return (
+              <Link
+                key={item.prId}
+                href={prHref(item.prId)}
+                className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] transition-colors hover:bg-accent"
+              >
+                {content}
+              </Link>
+            );
+          }
+
           return (
-            <Link
-              key={pr.prId}
-              href={prHref(pr.prId)}
-              className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] transition-colors hover:bg-accent"
+            <div
+              key={item.prId}
+              className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px]"
             >
               {content}
-            </Link>
+            </div>
           );
         }
 
+        // Session item
+        const session = item as SessionValue;
         return (
           <div
-            key={pr.prId}
+            key={session.sessionId}
             className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px]"
           >
-            {content}
+            <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">
+              {session.label}
+            </span>
+            <span className="shrink-0 font-mono text-foreground">
+              {formatMetricValue(session.value, def)}
+            </span>
           </div>
         );
       })}

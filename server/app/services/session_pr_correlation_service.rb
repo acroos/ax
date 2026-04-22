@@ -5,7 +5,6 @@ class SessionPrCorrelationService
 
   def call
     correlate_sessions_to_prs
-    recompute_session_metrics
   end
 
   private
@@ -50,32 +49,5 @@ class SessionPrCorrelationService
 
     # Standard interval overlap: session started before PR closed AND session ended after PR opened
     (session_start <= pr_end) && (session_end.nil? || session_end >= pr_start)
-  end
-
-  def recompute_session_metrics
-    prs = Pr.where(repo_id: @repo.id)
-            .joins(:session_prs)
-            .distinct
-
-    prs.find_each do |pr|
-      linked_sessions = pr.coding_sessions
-      next if linked_sessions.empty?
-
-      metrics = PrMetrics.find_or_create_by!(pr: pr)
-      computed = MetricsComputer.new(pr).call
-
-      session_attrs = {
-        token_cost_usd: linked_sessions.sum(:total_cost_usd),
-        iteration_depth: linked_sessions.maximum(:turn_count),
-        cache_hit_rate: computed[:cache_hit_rate],
-        sidechain_rate: computed[:sidechain_rate],
-        re_read_rate: computed[:re_read_rate],
-        autonomy_score: computed[:autonomy_score]
-      }
-
-      # Use update_session_metrics! which bypasses the GitHub-field lock,
-      # allowing session enrichment even on settled PRs.
-      metrics.update_session_metrics!(session_attrs)
-    end
   end
 end

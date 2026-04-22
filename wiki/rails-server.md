@@ -41,14 +41,14 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `Commit` | `commits` | Git commit (sha as PK, claude-authored flag, post-open flag) |
 | `CodingSession` | `sessions` | Claude Code session (tokens, cost, model, message counts) |
 | `SessionPr` | `session_prs` | Session-to-PR correlation with confidence |
-| `PrMetrics` | `pr_metrics` | 10 PR-level metrics (with finalization lock) |
+| `PrMetrics` | `pr_metrics` | PR-level GitHub-derived metrics (with finalization lock) |
 | `WatchedRepo` | `watched_repos` | Polling metadata |
 
 ### Key Model Behaviors
 
 **PrFile** stores file paths fetched from the GitHub API at PR finalization. Used by server-side metric computation (line_revisit_rate).
 
-**PrMetrics** has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`. Session-derived fields (token_cost_usd, iteration_depth, cache_hit_rate, etc.) remain updatable via `update_session_metrics!` to support late-arriving session data. Model validations enforce metric value ranges: rate fields (ci_success_rate, line_revisit_rate, cache_hit_rate, sidechain_rate) must be 0..1; ratio fields (re_read_rate, autonomy_score) and token_cost_usd must be non-negative; integer fields (iteration_depth, post_open_commits) must be non-negative integers.
+**PrMetrics** has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`. Only stores GitHub-derived fields (`post_open_commits`, `ci_success_rate`, `line_revisit_rate`). Session-derived metrics are no longer stored here — they are computed on-the-fly from the `sessions` table. Model validations enforce metric value ranges: rate fields (ci_success_rate, line_revisit_rate) must be 0..1; post_open_commits must be a non-negative integer.
 
 **User** automatically processes pending invites on creation — if someone was invited by GitHub username before they signed up, the invite is accepted on first login.
 
@@ -73,10 +73,12 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `POST` | `/api/v1/orgs` | Create organization (requires approved waitlist) |
 | `GET` | `/api/v1/orgs/:slug` | Org details |
 | `GET` | `/api/v1/orgs/:slug/repos` | List org repos |
-| `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership + `history_days` cutoff) |
+| `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership + `history_days` cutoff). Session-derived metrics (iteration_depth, token_cost_usd, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score) are computed on-the-fly from linked sessions. |
 | `GET` | `/api/v1/orgs/:slug/prs` | Paginated PRs across all org repos. Supports `?cursor=&per_page=` (default 25, max 100). Returns `{ data: [...], pagination: { next_cursor, has_more, total } }`. |
 | `GET` | `/api/v1/orgs/:slug/metrics` | Windowed aggregate metrics (7-day current + prior) with daily sparkline buckets. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }` via `MetricsAggregator`. |
+| `GET` | `/api/v1/orgs/:slug/sessions` | Paginated sessions with per-session computed metrics. Returns `PaginatedSessions`. |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/prs` | Paginated PRs for a repo. Same pagination params and response shape as org-level. |
+| `GET` | `/api/v1/orgs/:slug/repos/:id/sessions` | Paginated sessions for a repo with per-session computed metrics. |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/metrics` | Windowed aggregate metrics (same shape as org-level) |
 | `GET` | `/api/v1/orgs/:slug/repos/:id/timeline` | PR timeline for trend charts |
 
@@ -98,6 +100,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `PUT` | `/api/v1/orgs/:slug/teams/:team_slug` | Update team (admin only) |
 | `DELETE` | `/api/v1/orgs/:slug/teams/:team_slug` | Destroy with cascade (admin only) |
 | `GET` | `/api/v1/orgs/:slug/teams/:team_slug/prs` | Paginated team-scoped PRs (by member GitHub usernames). Same pagination params and response shape as org-level. |
+| `GET` | `/api/v1/orgs/:slug/teams/:team_slug/sessions` | Paginated sessions pushed by team members with per-session computed metrics. |
 | `GET` | `/api/v1/orgs/:slug/teams/:team_slug/metrics` | Team-scoped metrics (reuses MetricsAggregator) |
 | `GET` | `/api/v1/orgs/:slug/teams/:team_slug/members` | List members (admin only) |
 | `POST` | `/api/v1/orgs/:slug/teams/:team_slug/members` | Add member (admin only) |
@@ -110,6 +113,7 @@ Teams are gated by the `teams` plan capability (free: false, pro: true). Regular
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/api/v1/orgs/:slug/me/prs` | Paginated PRs authored by the current user. Same pagination params and response shape as org-level. |
+| `GET` | `/api/v1/orgs/:slug/me/sessions` | Paginated sessions pushed by the current user with per-session computed metrics. |
 | `GET` | `/api/v1/orgs/:slug/me/metrics` | Aggregate metrics for the current user's PRs (reuses MetricsAggregator) |
 
 Filters PRs by `current_user.github_username` as the author, following the same pattern as team-scoped endpoints. Controller: `Api::V1::MeController`.
@@ -178,13 +182,12 @@ Main ingestion orchestrator. Called by the push controller.
 8. Post-transaction: triggers `BackfillRepoJob` if repo has GitHub App, otherwise runs `SessionPrCorrelationService`
 
 ### SessionPrCorrelationService (`app/services/session_pr_correlation_service.rb`)
-Matches sessions to PRs within a repo by branch name, then computes session-derived metrics.
+Matches sessions to PRs within a repo by branch name and temporal overlap.
 
 1. Finds all sessions and PRs for the repo with non-null branches
-2. Matches by branch name → creates `SessionPr` records (confidence: `"branch_match"`)
-3. For each PR with linked sessions: aggregates `token_cost_usd` and `iteration_depth`, plus derived metrics (`cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`) via MetricsComputer
-4. Uses `update_session_metrics!` to enrich even settled PRs
-5. Idempotent — safe to run repeatedly
+2. Matches by branch name + temporal overlap (`session_overlaps_pr?`) → creates `SessionPr` records (confidence: `"branch_match"`)
+3. Does **not** compute or write session-derived metrics to `pr_metrics` — only creates join records
+4. Idempotent — safe to run repeatedly
 
 ### AuthService (`app/services/auth_service.rb`)
 Handles OAuth and onboarding:
@@ -202,23 +205,22 @@ Also computes and updates the PR's `additions`, `deletions`, and `changed_files`
 Only runs if the repo has a GitHub App installation. Skips gracefully otherwise.
 
 ### MetricsAggregator (`app/services/metrics_aggregator.rb`)
-Computes windowed aggregate metrics for the overview page. Used by both `OrganizationsController#metrics` and `ReposController#metrics`.
+Computes windowed aggregate metrics for the overview page. Used by `OrganizationsController#metrics`, `ReposController#metrics`, `TeamsController#metrics`, and `MeController#metrics`.
 
-1. Takes a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`, must join `prs`)
-2. Splits into current window and prior window by PR merge/close date (`COALESCE(prs.merged_at, prs.closed_at)`)
-3. Computes `AVG` for all 9 PR-level metrics in each window
-4. Builds daily sparkline buckets grouped by merge/close date within the current window
-5. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`
+1. Takes two scopes: a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`, must join `prs`) for PR-derived metrics, and a `CodingSession` scope for session-derived metrics
+2. Splits each scope into current window and prior window — PRs by merge/close date (`COALESCE(prs.merged_at, prs.closed_at)`), sessions by end time (`sessions.ended_at`)
+3. Computes `AVG` for PR metrics from `PR_METRIC_COLUMNS` (post_open_commits, ci_success_rate, line_revisit_rate) and for session metrics from `SESSION_METRIC_EXPRESSIONS` (iteration_depth, token_cost_usd, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score) — session metrics are computed inline via SQL expressions on raw session columns, not from pre-computed values
+4. Builds daily sparkline buckets for each metric within the current window
+5. Returns `{ totalPRs, totalSessions, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`
 
-Metric slug → column mapping is maintained in `METRIC_COLUMNS`. Empty days in the sparkline are null (the dashboard renders gaps). Empty prior window returns null for `prior` (dashboard suppresses the delta).
-
-MetricsAggregator is also used by `TeamsController#metrics` with a PR scope filtered to team members' GitHub usernames.
+Empty days in the sparkline are null (the dashboard renders gaps). Empty prior window returns null for `prior` (dashboard suppresses the delta).
 
 ### MetricsComputer (`app/services/metrics_computer.rb`)
-Computes metrics derived from fetched data and correlated sessions:
+Computes GitHub-derived metrics for a PR:
 - `ci_success_rate`: fraction of commits with `ci_passed = true`
 - `line_revisit_rate`: fraction of files also changed in other finalized PRs in the same repo (7-day lookback)
-- `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`: computed from correlated session aggregates
+
+Session-derived metrics (cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score) are no longer computed here — they are computed on-the-fly from the `sessions` table by `MetricsAggregator` and `PrsController`.
 
 Called by PrMerged and PrClosed handlers after GithubDataFetcher populates the data.
 
@@ -278,6 +280,9 @@ The Stripe API version is pinned in `config/initializers/stripe.rb` (default `20
 
 ### PrSerialization (`app/controllers/concerns/pr_serialization.rb`)
 Extracted shared PR JSON serialization logic used by `OrganizationsController`, `ReposController`, and `TeamsController`. Provides `serialize_prs_with_metrics(prs)` to avoid duplicating the PR-to-JSON mapping across controllers.
+
+### SessionSerialization (`app/controllers/concerns/session_serialization.rb`)
+Extracted shared session list serialization. Provides `render_sessions(scope)` which selects session columns plus computed metric aliases (using the same SQL expressions as `MetricsAggregator::SESSION_METRIC_EXPRESSIONS`), paginates, and returns `{ data: [...], pagination: { ... } }`. Each session includes a `metrics` object with `iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, and `autonomy_score`. Used by `OrganizationsController#sessions`, `ReposController#sessions`, `TeamsController#sessions`, `MeController#sessions`, and `PrsController`.
 
 ## Authorization — Team Helpers
 
@@ -346,8 +351,8 @@ The `resolve_webhook_secret` method in `WebhooksController`:
 |---------|---------|--------|
 | `PrOpened` | PR opened | Create PR record, initialize empty PrMetrics, correlate with existing sessions |
 | `PrSynchronized` | Commits pushed | Recalculate `post_open_commits` |
-| `PrMerged` | PR merged | Advisory-lock on PR, fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize all metrics (immutable). Advisory lock prevents redundant GitHub API calls from concurrent webhooks without holding a transaction open during network I/O. |
-| `PrClosed` | PR closed (not merged) | Advisory-lock on PR, fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate, finalize as abandoned. Same locking pattern as PrMerged. |
+| `PrMerged` | PR merged | Advisory-lock on PR, fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate (via MetricsComputer), finalize GitHub-derived metrics (immutable). Advisory lock prevents redundant GitHub API calls from concurrent webhooks without holding a transaction open during network I/O. |
+| `PrClosed` | PR closed (not merged) | Advisory-lock on PR, fetch file/commit data from GitHub API, compute line_revisit_rate/ci_success_rate (via MetricsComputer), finalize as abandoned. Same locking pattern as PrMerged. |
 | `CiCompleted` | Check suite finished | Update `ci_success_rate` |
 
 #### Installation Lifecycle
@@ -429,6 +434,7 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 | `app/controllers/api/v1/me_controller.rb` | Current user's PRs and metrics within an org |
 | `app/controllers/api/v1/team_memberships_controller.rb` | Team member management |
 | `app/controllers/concerns/pr_serialization.rb` | Shared PR JSON serialization |
+| `app/controllers/concerns/session_serialization.rb` | Shared session list serialization with computed metrics |
 | `app/controllers/api/v1/repos_controller.rb` | Data read endpoints |
 | `app/controllers/api/v1/github_installations_controller.rb` | Install URL + installation state API |
 | `app/controllers/github_app/installations_controller.rb` | GitHub App setup callback handler |

@@ -125,17 +125,46 @@ export interface PR {
 
 export interface PRMetrics {
   pr_id: number;
-  iteration_depth: number | null;
   post_open_commits: number | null;
   ci_success_rate: number | null;
   line_revisit_rate: number | null;
+  // Session-derived fields are computed on-the-fly for PR detail only
+  iteration_depth?: number | null;
+  token_cost_usd?: number | null;
+  cache_hit_rate?: number | null;
+  sidechain_rate?: number | null;
+  re_read_rate?: number | null;
+  autonomy_score?: number | null;
+  metrics_finalized: boolean;
+  finalized_at: string | null;
+}
+
+export interface SessionMetrics {
+  iteration_depth: number | null;
   token_cost_usd: number | null;
   cache_hit_rate: number | null;
   sidechain_rate: number | null;
   re_read_rate: number | null;
   autonomy_score: number | null;
-  metrics_finalized: boolean;
-  finalized_at: string | null;
+}
+
+export interface SessionWithMetrics {
+  id: string;
+  started_at: string | null;
+  ended_at: string | null;
+  branch: string | null;
+  pushed_by: string | null;
+  primary_model: string | null;
+  metrics: SessionMetrics;
+}
+
+export interface PaginatedSessions {
+  data: SessionWithMetrics[];
+  pagination: {
+    next_cursor: string | null;
+    has_more: boolean;
+    total: number;
+  };
 }
 
 export interface PRWithMetrics extends PR {
@@ -319,6 +348,48 @@ export async function listMyPRsAsync(
   return fetchAPI<PaginatedPRs>(orgApiPath(orgSlug, "/me/prs") + qs);
 }
 
+// --- Session list functions ---
+
+export async function listSessionsAsync(
+  repoId?: number,
+  orgSlug?: string,
+  pagination?: { per_page?: number },
+): Promise<PaginatedSessions> {
+  const qs = pagination?.per_page ? `?per_page=${pagination.per_page}` : "";
+  if (repoId && orgSlug) {
+    return fetchAPI<PaginatedSessions>(
+      orgApiPath(orgSlug, `/repos/${repoId}/sessions`) + qs,
+    );
+  }
+  if (orgSlug) {
+    return fetchAPI<PaginatedSessions>(
+      orgApiPath(orgSlug, "/sessions") + qs,
+    );
+  }
+  return { data: [], pagination: { next_cursor: null, has_more: false, total: 0 } };
+}
+
+export async function listMySessionsAsync(
+  orgSlug: string,
+  pagination?: { per_page?: number },
+): Promise<PaginatedSessions> {
+  const qs = pagination?.per_page ? `?per_page=${pagination.per_page}` : "";
+  return fetchAPI<PaginatedSessions>(
+    orgApiPath(orgSlug, "/me/sessions") + qs,
+  );
+}
+
+export async function listTeamSessionsAsync(
+  orgSlug: string,
+  teamSlug: string,
+  pagination?: { per_page?: number },
+): Promise<PaginatedSessions> {
+  const qs = pagination?.per_page ? `?per_page=${pagination.per_page}` : "";
+  return fetchAPI<PaginatedSessions>(
+    orgApiPath(orgSlug, `/teams/${teamSlug}/sessions`) + qs,
+  );
+}
+
 // --- Pagination helper ---
 
 function buildPaginationQuery(
@@ -388,16 +459,12 @@ export async function getAggregateMetricsAsync(
   return computeAggregatesFromPRs(result.data);
 }
 
+// Only PR-derived metrics are available on the PR list response.
+// Session-derived metrics come from the sessions API.
 const METRIC_FIELDS: Array<{ slug: string; field: keyof PRMetrics }> = [
   { slug: "post-open-commits", field: "post_open_commits" },
   { slug: "ci-success-rate", field: "ci_success_rate" },
   { slug: "line-revisit-rate", field: "line_revisit_rate" },
-  { slug: "iteration-depth", field: "iteration_depth" },
-  { slug: "token-cost-per-pr", field: "token_cost_usd" },
-  { slug: "cache-hit-rate", field: "cache_hit_rate" },
-  { slug: "sidechain-rate", field: "sidechain_rate" },
-  { slug: "re-read-rate", field: "re_read_rate" },
-  { slug: "autonomy-score", field: "autonomy_score" },
 ];
 
 export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics {
@@ -453,7 +520,7 @@ function buildTimeline(prs: PRWithMetrics[]): TimelinePoint[] {
           ? Math.round(p.metrics!.ci_success_rate * 100)
           : null,
       tokenCostUSD:
-        p.metrics!.token_cost_usd !== null
+        p.metrics!.token_cost_usd != null
           ? Math.round(p.metrics!.token_cost_usd * 100) / 100
           : null,
     }))

@@ -10,11 +10,19 @@ import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { PRWithMetrics } from "@/lib/db";
-import { listTeamPRsAsync } from "@/lib/db";
+import type { PRWithMetrics, SessionWithMetrics } from "@/lib/db";
+import { listTeamPRsAsync, listTeamSessionsAsync } from "@/lib/db";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
 import { getMetricDef, type MetricDefEntry } from "@/lib/metric-defs";
-import { extractPRValues, filterByRange } from "@/lib/metric-utils";
+import {
+  extractPRValues,
+  extractSessionValues,
+  filterByRange,
+  filterSessionsByRange,
+  type PRValue,
+  type SessionValue,
+  type MetricValue,
+} from "@/lib/metric-utils";
 
 const metricsDir = path.join(process.cwd(), "..", "docs", "metrics");
 
@@ -62,9 +70,14 @@ export default async function TeamMetricDetailPage({
   }
 
   const backHref = `/${slug}/teams/${teamSlug}`;
-  const prsPromise = listTeamPRsAsync(slug, teamSlug, { per_page: 100 })
-    .then((r) => r.data)
-    .catch(() => [] as PRWithMetrics[]);
+  const isSession = def.source === "session";
+  const dataPromise = isSession
+    ? listTeamSessionsAsync(slug, teamSlug, { per_page: 100 })
+        .then((r) => r.data)
+        .catch(() => [] as SessionWithMetrics[])
+    : listTeamPRsAsync(slug, teamSlug, { per_page: 100 })
+        .then((r) => r.data)
+        .catch(() => [] as PRWithMetrics[]);
 
   return (
     <div>
@@ -89,7 +102,12 @@ export default async function TeamMetricDetailPage({
           <RangeToggle current={range} />
         </div>
         <Suspense fallback={<Skeleton className="mt-1 h-4 w-40" />}>
-          <DataCountSubtitle promise={prsPromise} def={def} range={range} />
+          <DataCountSubtitle
+            promise={dataPromise}
+            def={def}
+            range={range}
+            isSession={isSession}
+          />
         </Suspense>
       </div>
 
@@ -97,10 +115,11 @@ export default async function TeamMetricDetailPage({
         <SectionErrorBoundary>
           <Suspense fallback={<DataSectionsSkeleton />}>
             <MetricDataSections
-              promise={prsPromise}
+              promise={dataPromise}
               def={def}
               range={range}
               slug={slug}
+              isSession={isSession}
             />
           </Suspense>
         </SectionErrorBoundary>
@@ -108,7 +127,7 @@ export default async function TeamMetricDetailPage({
         <div className="mb-6">
           <SectionErrorBoundary>
             <Suspense fallback={<SkeletonChartPanel title="Summary" />}>
-              <AsyncBooleanPanel promise={prsPromise} def={def} />
+              <AsyncBooleanPanel promise={dataPromise as Promise<PRWithMetrics[]>} def={def} />
             </Suspense>
           </SectionErrorBoundary>
         </div>
@@ -136,17 +155,24 @@ async function DataCountSubtitle({
   promise,
   def,
   range,
+  isSession,
 }: {
-  promise: Promise<PRWithMetrics[]>;
+  promise: Promise<PRWithMetrics[] | SessionWithMetrics[]>;
   def: MetricDefEntry;
   range: Range;
+  isSession: boolean;
 }) {
-  const prs = await promise;
-  const allValues = extractPRValues(prs, def);
-  const values = filterByRange(allValues, range);
+  const data = await promise;
+  const allValues = isSession
+    ? extractSessionValues(data as SessionWithMetrics[], def)
+    : extractPRValues(data as PRWithMetrics[], def);
+  const values = isSession
+    ? filterSessionsByRange(allValues as SessionValue[], range)
+    : filterByRange(allValues as PRValue[], range);
+  const itemLabel = isSession ? "session" : "PR";
   return (
     <p className="mt-1 text-[13px] text-muted-foreground">
-      {values.length} PR{values.length !== 1 && "s"} with data in past {range}
+      {values.length} {itemLabel}{values.length !== 1 && "s"} with data in past {range}
       {allValues.length > values.length && (
         <span className="text-muted-foreground/60">
           {" "}
@@ -162,15 +188,21 @@ async function MetricDataSections({
   def,
   range,
   slug,
+  isSession,
 }: {
-  promise: Promise<PRWithMetrics[]>;
+  promise: Promise<PRWithMetrics[] | SessionWithMetrics[]>;
   def: MetricDefEntry;
   range: Range;
   slug: string;
+  isSession: boolean;
 }) {
-  const prs = await promise;
-  const allValues = extractPRValues(prs, def);
-  const values = filterByRange(allValues, range);
+  const data = await promise;
+  const allValues: MetricValue[] = isSession
+    ? extractSessionValues(data as SessionWithMetrics[], def)
+    : extractPRValues(data as PRWithMetrics[], def);
+  const values: MetricValue[] = isSession
+    ? filterSessionsByRange(allValues as SessionValue[], range)
+    : filterByRange(allValues as PRValue[], range);
 
   if (values.length === 0) {
     return (
@@ -186,7 +218,7 @@ async function MetricDataSections({
       allValues={allValues}
       def={def}
       range={range}
-      prHref={(prId) => `/${slug}/prs/${prId}`}
+      prHref={isSession ? undefined : (prId) => `/${slug}/prs/${prId}`}
     />
   );
 }

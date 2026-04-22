@@ -76,41 +76,35 @@ See: [Rails Server — Webhook Handling](rails-server.md#webhook-handling)
 
 ```
 PR created (via backfill or webhook)
-  → PrMetrics initialized
+  → PrMetrics initialized (GitHub-derived fields only)
   → GitHub-derived metrics updated as data arrives (webhooks + backfill)
-  → Session-derived metrics updated when sessions are correlated (push)
   → PR reaches terminal state (merged or closed)
   → GitHub metrics settled: metrics_finalized = true, finalized_at = timestamp
-  → GitHub-derived fields locked; session-derived fields remain updatable
+  → GitHub-derived fields locked
 ```
 
-All PRs are shown in the dashboard regardless of settlement status. Open PRs show partial metrics with a "pending" indicator. PR-derived aggregate metrics (averages, trend lines) use settled PRs only for accuracy. Session-derived aggregate metrics are computed directly from the `sessions` table and do not require PR association — all pushed session data appears in the dashboard.
+All PRs are shown in the dashboard regardless of settlement status. Open PRs show partial metrics with a "pending" indicator. PR-derived aggregate metrics (averages, trend lines) use settled PRs only for accuracy. Session-derived aggregate metrics are computed directly from the `sessions` table (via `MetricsAggregator` SQL expressions) and do not require PR association — all pushed session data appears in the dashboard.
 
-### Scoped Write Protection
+### Write Protection
 
-`PrMetrics` has two field categories with different protection rules:
+`PrMetrics` only stores GitHub-derived fields. These are locked after settlement (`metrics_finalized = true`): `post_open_commits`, `line_revisit_rate`. `ci_success_rate` remains updatable after finalization for late-arriving CI results.
 
-- **GitHub-derived** (locked after settlement): `post_open_commits`, `line_revisit_rate`
-- **Session-derived** (always updatable via `update_session_metrics!`): `iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`
-
-This allows late-arriving session data to enrich already-settled PRs, which is the normal case (developers push after PRs merge).
+Session-derived metrics are no longer stored on `pr_metrics`. They are computed on-the-fly from the `sessions` table — either per-session (via session list endpoints) or aggregated across linked sessions (via the PR detail endpoint).
 
 See: [Metrics — Settlement](metrics.md#finalization)
 
 ## Session-to-PR Correlation
 
-The server correlates sessions to PRs using branch matching within the same repo.
+The server correlates sessions to PRs using branch matching and temporal overlap within the same repo.
 
 ```
 SessionPrCorrelationService:
   → Find all sessions for the repo with a non-null branch
   → Find all PRs for the repo with a non-null branch
-  → Match by branch name → create SessionPr records (confidence: "branch_match")
-  → Aggregate session metrics onto matched PRs:
-    token_cost_usd  = SUM(session.total_cost_usd)
-    iteration_depth = MAX(session.turn_count)
-    cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score via MetricsComputer
+  → Match by branch name + temporal overlap → create SessionPr records (confidence: "branch_match")
 ```
+
+The service only creates `SessionPr` join records — it does **not** compute or write session-derived metrics to `pr_metrics`. Session metrics are computed on-the-fly: per-PR aggregates are computed by `PrsController#show`, and dashboard-wide aggregates by `MetricsAggregator` directly from the `sessions` table.
 
 Correlation runs after: CLI push, GitHub App backfill, PR opened webhook.
 
@@ -135,6 +129,6 @@ When `ax push` arrives, the server looks up the repo by `github_owner + github_r
 PostgreSQL → Rails API (org-scoped) → fetch() with session token → Next.js server component → rendered page
 ```
 
-The dashboard's data layer (`dashboard/src/lib/db.ts`) provides async functions that fetch from the Rails API. All data endpoints are org-scoped. PR list endpoints return all PRs; the aggregate `/metrics` endpoint returns PR-derived metrics from settled PRs and session-derived metrics from all sessions (regardless of PR association). The response includes `totalPRs`, `totalSessions`, and per-metric `{ current, prior, sparkline }` for trend visualization and period-over-period deltas. The window defaults to 30 days (configurable to 7 or 90).
+The dashboard's data layer (`dashboard/src/lib/db.ts`) provides async functions that fetch from the Rails API. All data endpoints are org-scoped. PR list endpoints return all PRs; the aggregate `/metrics` endpoint returns PR-derived metrics from settled PRs and session-derived metrics from all sessions (regardless of PR association). Separate session list endpoints (`/sessions`, `/me/sessions`, `/teams/:slug/sessions`, `/repos/:id/sessions`) return individual sessions with per-session computed metrics. Metric detail pages use the session list endpoints for session-derived metrics (showing "X sessions with data") and PR list endpoints for PR-derived metrics. The aggregate response includes `totalPRs`, `totalSessions`, and per-metric `{ current, prior, sparkline }` for trend visualization and period-over-period deltas. The window defaults to 30 days (configurable to 7 or 90).
 
 See: [Dashboard — Data Layer](dashboard.md#data-layer)

@@ -9,7 +9,7 @@ RSpec.describe MetricsComputer do
       result = described_class.new(pr).call
       expect(result).to have_key(:line_revisit_rate)
       expect(result).to have_key(:ci_success_rate)
-      expect(result).to have_key(:cache_hit_rate)
+      expect(result.keys).to contain_exactly(:line_revisit_rate, :ci_success_rate)
     end
   end
 
@@ -89,114 +89,6 @@ RSpec.describe MetricsComputer do
 
       result = described_class.new(pr).call
       expect(result[:line_revisit_rate]).to eq(0.0)
-    end
-  end
-
-  describe "cache_hit_rate" do
-    it "returns nil when no correlated sessions" do
-      result = described_class.new(pr).call
-      expect(result[:cache_hit_rate]).to be_nil
-    end
-
-    it "computes ratio of cache reads to total input tokens" do
-      session = create(:coding_session, repo: repo, branch: pr.branch,
-        input_tokens: 1000, cache_creation_input_tokens: 200, cache_read_input_tokens: 800)
-      create(:session_pr, session_id: session.id, pr: pr)
-
-      result = described_class.new(pr).call
-      # 800 / (1000 + 200 + 800) = 0.4
-      expect(result[:cache_hit_rate]).to be_within(0.001).of(0.4)
-    end
-
-    it "returns nil when total input tokens is zero" do
-      session = create(:coding_session, repo: repo, branch: pr.branch,
-        input_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0)
-      create(:session_pr, session_id: session.id, pr: pr)
-
-      result = described_class.new(pr).call
-      expect(result[:cache_hit_rate]).to be_nil
-    end
-  end
-
-  describe "sidechain_rate" do
-    it "returns nil when no correlated sessions" do
-      result = described_class.new(pr).call
-      expect(result[:sidechain_rate]).to be_nil
-    end
-
-    it "computes ratio of sidechain messages to total messages" do
-      session = create(:coding_session, repo: repo, branch: pr.branch,
-        message_count: 10, assistant_message_count: 15, sidechain_messages: 5)
-      create(:session_pr, session_id: session.id, pr: pr)
-
-      result = described_class.new(pr).call
-      # 5 / (10 + 15) = 0.2
-      expect(result[:sidechain_rate]).to be_within(0.001).of(0.2)
-    end
-
-    it "sums across multiple sessions" do
-      s1 = create(:coding_session, repo: repo, branch: pr.branch,
-        message_count: 10, assistant_message_count: 10, sidechain_messages: 2)
-      s2 = create(:coding_session, repo: repo, branch: pr.branch,
-        message_count: 5, assistant_message_count: 5, sidechain_messages: 3)
-      create(:session_pr, session_id: s1.id, pr: pr)
-      create(:session_pr, session_id: s2.id, pr: pr)
-
-      result = described_class.new(pr).call
-      # 5 / (15 + 15) = 0.1667
-      expect(result[:sidechain_rate]).to be_within(0.001).of(0.167)
-    end
-  end
-
-  describe "re_read_rate" do
-    it "returns nil when no correlated sessions" do
-      result = described_class.new(pr).call
-      expect(result[:re_read_rate]).to be_nil
-    end
-
-    it "computes ratio of total reads to unique files read" do
-      session = create(:coding_session, repo: repo, branch: pr.branch,
-        total_file_reads: 20, files_read_count: 10)
-      create(:session_pr, session_id: session.id, pr: pr)
-
-      result = described_class.new(pr).call
-      # 20 / 10 = 2.0
-      expect(result[:re_read_rate]).to eq(2.0)
-    end
-
-    it "returns nil when no files were read" do
-      session = create(:coding_session, repo: repo, branch: pr.branch,
-        total_file_reads: 0, files_read_count: 0)
-      create(:session_pr, session_id: session.id, pr: pr)
-
-      result = described_class.new(pr).call
-      expect(result[:re_read_rate]).to be_nil
-    end
-  end
-
-  describe "autonomy_score" do
-    it "returns nil when no correlated sessions" do
-      result = described_class.new(pr).call
-      expect(result[:autonomy_score]).to be_nil
-    end
-
-    it "computes ratio of assistant to human messages" do
-      session = create(:coding_session, repo: repo, branch: pr.branch,
-        message_count: 5, assistant_message_count: 20)
-      create(:session_pr, session_id: session.id, pr: pr)
-
-      result = described_class.new(pr).call
-      # 20 / 5 = 4.0
-      expect(result[:autonomy_score]).to eq(4.0)
-    end
-
-    it "returns nil when no human messages" do
-      session = create(:coding_session, repo: repo, branch: pr.branch,
-        message_count: 0, assistant_message_count: 10)
-      create(:session_pr, session_id: session.id, pr: pr)
-
-      result = described_class.new(pr).call
-      expect(result[:autonomy_score]).to be_nil
     end
   end
 end

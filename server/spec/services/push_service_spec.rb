@@ -63,11 +63,9 @@ RSpec.describe PushService do
       pr_metrics: [
         {
           pr_number: 42,
-          iteration_depth: 2,
           post_open_commits: 1,
           ci_success_rate: 1.0,
-          line_revisit_rate: 0.1,
-          token_cost_usd: 0.50
+          line_revisit_rate: 0.1
         }
       ]
     }
@@ -99,8 +97,8 @@ RSpec.describe PushService do
       repo = Repo.find_by(path: "/home/user/myproject")
       pr = repo.prs.find_by(number: 42)
       expect(pr.title).to eq("Add feature")
-      expect(pr.pr_metrics.iteration_depth).to eq(2)
-      expect(pr.pr_metrics.token_cost_usd).to eq(0.50)
+      expect(pr.pr_metrics.post_open_commits).to eq(1)
+      expect(pr.pr_metrics.ci_success_rate).to eq(1.0)
     end
 
     it "sets pushed_by to the pushing user's github_username" do
@@ -229,12 +227,12 @@ RSpec.describe PushService do
 
       # Re-push with modified metrics
       modified_params = push_params.deep_dup
-      modified_params[:pr_metrics][0][:iteration_depth] = 999
+      modified_params[:pr_metrics][0][:post_open_commits] = 999
 
       PushService.new(modified_params, user: user).execute
 
-      # Should still be 2 because metrics were finalized
-      expect(pr.pr_metrics.reload.iteration_depth).to eq(2)
+      # Should still be 1 because metrics were finalized
+      expect(pr.pr_metrics.reload.post_open_commits).to eq(1)
     end
   end
 end

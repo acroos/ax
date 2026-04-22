@@ -1,6 +1,6 @@
 # Metrics
 
-AX computes 9 PR-level metrics across 3 categories. Full metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but aggregate statistics (averages, trend lines) use settled PRs only.
+AX computes 9 metrics across 3 categories. 3 are PR-derived (from GitHub data, stored in `pr_metrics`) and 6 are session-derived (computed on-the-fly from the `sessions` table). Full PR metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but PR-derived aggregate statistics (averages, trend lines) use settled PRs only. Session-derived metrics include all pushed sessions regardless of PR association.
 
 Each metric has detailed documentation in `docs/metrics/` and is viewable in the dashboard at `/docs/[slug]`.
 
@@ -47,9 +47,11 @@ All metric computation happens server-side in the Rails application.
 
 Server-side computation is split between three services:
 
-- **`MetricsComputer`** — Computes `ci_success_rate` (from per-commit `ci_passed` values on the `commits` table), `line_revisit_rate` (7-day lookback), and session-derived metrics (`cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`). Used by `SessionPrCorrelationService` to write per-PR session metrics.
-- **`SessionPrCorrelationService`** — Aggregates `token_cost_usd` and `iteration_depth` from correlated session data, and calls MetricsComputer to compute all derived metrics. Writes results to `pr_metrics` for per-PR display.
-- **`MetricsAggregator`** — Computes windowed aggregate metrics for the overview page. Takes two scopes: a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`, must join `prs`) for PR-derived metrics, and a `CodingSession` scope for session-derived metrics. Applies a configurable window (7/30/90 days) and returns: `{ totalPRs, totalSessions, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }`. PR metrics are dated by merge/close date (`COALESCE(prs.merged_at, prs.closed_at)`). Session metrics are dated by session end time (`to_timestamp(sessions.ended_at / 1000.0)`). Current = average over the window; prior = average over the preceding window (for delta computation). Sparkline = daily buckets with `AVG` per metric. Empty days are null (gaps in the sparkline). Session-derived metrics (cache_hit_rate, sidechain_rate, etc.) are computed inline from raw session columns using SQL expressions, not from pre-computed `pr_metrics` values.
+- **`MetricsComputer`** — Computes `ci_success_rate` (from per-commit `ci_passed` values on the `commits` table) and `line_revisit_rate` (7-day lookback). Only handles GitHub-derived metrics.
+- **`SessionPrCorrelationService`** — Matches sessions to PRs by branch name and temporal overlap. Creates `SessionPr` join records only — does **not** compute or write session-derived metrics to `pr_metrics`.
+- **`MetricsAggregator`** — Computes windowed aggregate metrics for the overview page. Takes two scopes: a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`, must join `prs`) for PR-derived metrics, and a `CodingSession` scope for session-derived metrics. Applies a configurable window (7/30/90 days) and returns: `{ totalPRs, totalSessions, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }`. PR metrics are dated by merge/close date (`COALESCE(prs.merged_at, prs.closed_at)`). Session metrics are dated by session end time (`sessions.ended_at`). Current = average over the window; prior = average over the preceding window (for delta computation). Sparkline = daily buckets with `AVG` per metric. Empty days are null (gaps in the sparkline). Session-derived metrics (cache_hit_rate, sidechain_rate, etc.) are computed inline from raw session columns using SQL expressions (`SESSION_METRIC_EXPRESSIONS`), not from pre-computed values.
+- **`PrsController#show`** — Computes session-derived metrics on-the-fly for the PR detail endpoint by aggregating across linked sessions (via `session_prs` join). Uses SQL expressions consistent with `MetricsAggregator` but aggregated per-PR (MAX for iteration_depth, SUM for token_cost_usd, weighted ratios for rates).
+- **`SessionSerialization`** — Computes per-session metric values via SQL aliases for the session list endpoints. Each session response includes a `metrics` object with all 6 session-derived metric values.
 
 The Go `cli/internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
 
@@ -59,22 +61,22 @@ Metrics follow a strict lifecycle:
 
 ```
 PR opened
-  → metrics initialized (all null)
+  → pr_metrics initialized (GitHub-derived fields, all null)
   → individual metrics updated as data arrives
   → PR reaches terminal state (merged or closed)
   → metrics_finalized = true, finalized_at = timestamp
-  → GitHub-derived fields locked; session-derived fields remain updatable
+  → GitHub-derived fields locked
 ```
 
 ### Why finalize?
 - Prevents partial GitHub metrics from appearing in aggregate reports
 - Ensures comparisons are apples-to-apples (all PRs measured at the same lifecycle stage)
-- Late-arriving session data can still enrich already-settled PRs (the normal case — developers push after PRs merge)
 
-### Scoped write protection
+### Write protection
 - **CI-derived** (updatable after finalization): `ci_success_rate` — computed from per-commit `ci_passed` values. Updated via `update_column` by `CiCompleted` webhook handler (uses the commit's PR association, not the webhook payload's `pull_requests` array) and by `ReconcileCiDataJob` (runs every 6 hours) to handle late-arriving check suite results.
 - **GitHub-derived** (locked after finalization): `post_open_commits`, `line_revisit_rate`
-- **Session-derived** (always updatable via `update_session_metrics!`): `iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`
+
+Session-derived metrics are not stored on `pr_metrics` — they are computed on-the-fly from the `sessions` table and are always available regardless of finalization status.
 
 ### Where is finalization enforced?
 - **Rails**: `PrMetrics` model has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`
@@ -89,7 +91,13 @@ PR opened
 
 ## Metric Storage
 
-### PostgreSQL (`pr_metrics` table)
-One row per PR. All 9 PR-level metrics as columns plus `metrics_finalized` (bool) and `finalized_at` (timestamp).
+### PR metrics — PostgreSQL (`pr_metrics` table)
+One row per PR. 3 GitHub-derived metrics (`post_open_commits`, `ci_success_rate`, `line_revisit_rate`) as columns plus `metrics_finalized` (bool) and `finalized_at` (timestamp).
+
+### Session metrics — computed on-the-fly
+The 6 session-derived metrics (`iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`) are **not** persisted in `pr_metrics`. They are computed at query time from raw session data in the `sessions` table using SQL expressions. This approach:
+- Avoids write contention on the `pr_metrics` table from late-arriving session data
+- Ensures session metrics are always up-to-date when new sessions are pushed
+- Allows aggregate session metrics to include sessions not associated with any PR
 
 See [Data Model](data-model.md) for full schema.

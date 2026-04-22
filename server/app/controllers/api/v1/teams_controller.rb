@@ -2,12 +2,13 @@ module Api
   module V1
     class TeamsController < BaseController
       include PrSerialization
+      include SessionSerialization
 
       before_action :require_session_auth!
-      before_action :find_org!, only: [ :index, :show, :prs, :metrics ]
+      before_action :find_org!, only: [ :index, :show, :prs, :sessions, :metrics ]
       before_action :find_org_as_admin!, only: [ :create, :update, :destroy ]
       before_action :require_teams_feature!
-      before_action :find_team!, only: [ :show, :prs, :metrics ]
+      before_action :find_team!, only: [ :show, :prs, :sessions, :metrics ]
       before_action :find_team_as_admin!, only: [ :update, :destroy ]
 
       def index
@@ -77,6 +78,16 @@ module Api
           .order(created_at: :desc, id: :desc)
 
         render_paginated_prs(scope)
+      end
+
+      def sessions
+        usernames = @team.member_github_usernames
+        scope = CodingSession
+          .joins(:repo)
+          .where(repos: { organization_id: @org.id })
+          .where(pushed_by: usernames)
+
+        render_sessions(scope)
       end
 
       def metrics
