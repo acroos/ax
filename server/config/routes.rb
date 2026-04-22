@@ -51,11 +51,13 @@ Rails.application.routes.draw do
         get :prs, to: "organizations#prs"
         get :sessions, to: "organizations#sessions"
         get :metrics, to: "organizations#metrics"
+        get "metrics/:metric_slug", to: "organizations#metric_detail", as: :metric_detail
 
         # Current user's PRs, sessions, and metrics within this org
         get "me/prs", to: "me#prs"
         get "me/sessions", to: "me#sessions"
         get "me/metrics", to: "me#metrics"
+        get "me/metrics/:metric_slug", to: "me#metric_detail", as: :me_metric_detail
 
         resources :teams, param: :team_slug, only: [ :index, :create ] do
           member do
@@ -65,6 +67,7 @@ Rails.application.routes.draw do
             get :prs, to: "teams#prs"
             get :sessions, to: "teams#sessions"
             get :metrics, to: "teams#metrics"
+            get "metrics/:metric_slug", to: "teams#metric_detail", as: :team_metric_detail
             get "members", to: "team_memberships#index", as: :team_members
             post "members", to: "team_memberships#create"
             delete "members/:id", to: "team_memberships#destroy", as: :team_member
@@ -76,6 +79,7 @@ Rails.application.routes.draw do
             get :prs
             get :sessions
             get :metrics
+            get "metrics/:metric_slug", to: "repos#metric_detail", as: :repo_metric_detail
             get :timeline
           end
         end

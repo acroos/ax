@@ -1,4 +1,11 @@
-import type { PRWithMetrics, SessionWithMetrics, SessionMetrics } from "./db";
+import type {
+  PRWithMetrics,
+  SessionWithMetrics,
+  SessionMetrics,
+  MetricDetailTrendPoint,
+  MetricDetailDistBucket,
+  NotableItem,
+} from "./db";
 import { formatMetricValue, type MetricDefEntry } from "./metric-defs";
 import type { Range } from "@/components/range-toggle";
 import type { DailyPoint } from "@/components/metric-trend-chart";
@@ -242,4 +249,105 @@ export function computeDistribution(
     count: b.count,
     pct: maxCount > 0 ? b.count / maxCount : 0,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Compute metric detail from raw values (for demo pages)
+// ---------------------------------------------------------------------------
+
+/** Shape matching MetricDetailBodyProps data, usable by both API responses and local computation. */
+export interface ComputedMetricDetail {
+  count: number;
+  totalCount: number;
+  stats: { avg: number; p10: number; p50: number; p90: number };
+  priorStats: { avg: number; p10: number; p50: number; p90: number } | null;
+  trend: MetricDetailTrendPoint[];
+  distribution: MetricDetailDistBucket[];
+  notableHighest: NotableItem[];
+  notableLowest: NotableItem[];
+}
+
+/**
+ * Compute all metric detail data from raw values — used by demo pages
+ * to produce the same shape as the server-side MetricDetailComputer.
+ */
+export function computeMetricDetailFromValues(
+  values: MetricValue[],
+  allValues: MetricValue[],
+  def: MetricDefEntry,
+  range: Range,
+): ComputedMetricDetail {
+  const numericValues = values.map((v) => v.value);
+  const sorted = [...numericValues].sort((a, b) => a - b);
+  const avg = numericValues.length > 0
+    ? numericValues.reduce((s, v) => s + v, 0) / numericValues.length
+    : 0;
+  const p10 = percentile(sorted, 10);
+  const p50 = percentile(sorted, 50);
+  const p90 = percentile(sorted, 90);
+
+  // Prior period values
+  const days = RANGE_DAYS[range];
+  const rangeStart = Date.now() - days * 24 * 60 * 60 * 1000;
+  const priorStart = rangeStart - days * 24 * 60 * 60 * 1000;
+  const priorValues = allValues.filter(
+    (v) => v.timestamp >= priorStart && v.timestamp < rangeStart,
+  );
+  const priorNums = priorValues.map((v) => v.value);
+  const priorSorted = [...priorNums].sort((a, b) => a - b);
+
+  const priorStats = priorNums.length > 0
+    ? {
+        avg: priorNums.reduce((s, v) => s + v, 0) / priorNums.length,
+        p10: percentile(priorSorted, 10),
+        p50: percentile(priorSorted, 50),
+        p90: percentile(priorSorted, 90),
+      }
+    : null;
+
+  // Trend — aggregate by day into API-compatible shape
+  const dailyPoints = aggregateByDay(values);
+  const trend: MetricDetailTrendPoint[] = dailyPoints.map((d) => ({
+    date: new Date(d.timestamp).toISOString().slice(0, 10),
+    avg: d.avg,
+    min: d.min,
+    max: d.max,
+    count: d.count,
+  }));
+
+  // Distribution
+  const distribution: MetricDetailDistBucket[] = computeDistribution(numericValues, def);
+
+  // Notable items
+  const byValue = [...values].sort((a, b) => b.value - a.value);
+  const highest = byValue.slice(0, 3);
+  const highestIds = new Set(
+    highest.map((v) => isPRValue(v) ? v.prId : (v as SessionValue).sessionId),
+  );
+  const lowest = byValue
+    .slice(-3)
+    .reverse()
+    .filter((v) => {
+      const id = isPRValue(v) ? v.prId : (v as SessionValue).sessionId;
+      return !highestIds.has(id);
+    });
+
+  const toNotable = (v: MetricValue): NotableItem => {
+    if (isPRValue(v)) {
+      return { id: v.prId, number: v.prNumber, title: v.title, value: v.value, state: v.state };
+    }
+    const s = v as SessionValue;
+    return { id: s.sessionId, label: s.label, value: s.value };
+  };
+
+  return {
+    count: values.length,
+    totalCount: allValues.length,
+    stats: { avg, p10, p50, p90 },
+    priorStats,
+    trend,
+    distribution,
+    notableHighest: highest.map(toNotable),
+    notableLowest: lowest.map(toNotable),
+  };
 }

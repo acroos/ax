@@ -15,6 +15,7 @@ import {
   extractSessionValues,
   filterByRange,
   filterSessionsByRange,
+  computeMetricDetailFromValues,
   type PRValue,
   type SessionValue,
 } from "@/lib/metric-utils";
@@ -73,6 +74,8 @@ export default async function DemoMyMetricDetailPage({
     ? filterSessionsByRange(allValues as SessionValue[], range)
     : filterByRange(allValues as PRValue[], range);
 
+  const detail = computeMetricDetailFromValues(values, allValues, def, range);
+
   return (
     <div>
       <Link
@@ -96,12 +99,12 @@ export default async function DemoMyMetricDetailPage({
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {values.length} {isSession ? "session" : "PR"}{values.length !== 1 && "s"} with data in past{" "}
+          {detail.count} {isSession ? "session" : "PR"}{detail.count !== 1 && "s"} with data in past{" "}
           {range}
-          {allValues.length > values.length && (
+          {detail.totalCount > detail.count && (
             <span className="text-muted-foreground/60">
               {" "}
-              ({allValues.length} total)
+              ({detail.totalCount} total)
             </span>
           )}
         </p>
@@ -109,14 +112,19 @@ export default async function DemoMyMetricDetailPage({
 
       {def.valueType === "boolean" ? (
         <BooleanPanel values={allValues as PRValue[]} def={def} />
-      ) : values.length === 0 ? (
+      ) : detail.count === 0 ? (
         <div className="mb-6 flex h-40 items-center justify-center rounded-lg border border-dashed border-border text-[13px] text-muted-foreground">
           No data for this metric in the selected period.
         </div>
       ) : (
         <MetricDetailBody
-          values={values}
-          allValues={allValues}
+          count={detail.count}
+          stats={detail.stats}
+          priorStats={detail.priorStats}
+          trend={detail.trend}
+          distribution={detail.distribution}
+          notableHighest={detail.notableHighest}
+          notableLowest={detail.notableLowest}
           def={def}
           range={range}
         />

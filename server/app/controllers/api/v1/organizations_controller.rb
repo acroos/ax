@@ -3,9 +3,10 @@ module Api
     class OrganizationsController < BaseController
       include PrSerialization
       include SessionSerialization
+      include MetricDetailAction
 
       before_action :require_session_auth!
-      before_action :find_org!, only: [ :show, :update, :destroy, :prs, :sessions, :metrics ]
+      before_action :find_org!, only: [ :show, :update, :destroy, :prs, :sessions, :metrics, :metric_detail ]
       before_action :find_org_as_admin!, only: [ :update ]
       before_action :require_owner!, only: [ :destroy ]
 
@@ -77,6 +78,18 @@ module Api
           .where(repos: { organization_id: @org.id })
 
         render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range).call
+      end
+
+      def metric_detail
+        pr_scope = PrMetrics
+          .joins(pr: :repo)
+          .where(repos: { organization_id: @org.id }, metrics_finalized: true)
+
+        session_scope = CodingSession
+          .joins(:repo)
+          .where(repos: { organization_id: @org.id })
+
+        render_metric_detail(pr_scope: pr_scope, session_scope: session_scope)
       end
 
       private

@@ -1,58 +1,55 @@
 import Link from "next/link";
 
 import { BooleanMetricSummary } from "@/components/boolean-metric-summary";
-import { MetricTrendChart } from "@/components/metric-trend-chart";
+import { MetricTrendChart, type DailyPoint } from "@/components/metric-trend-chart";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   formatMetricValue,
   type MetricDefEntry,
 } from "@/lib/metric-defs";
-import {
-  RANGE_DAYS,
-  percentile,
-  aggregateByDay,
-  computeDistribution,
-  isPRValue,
-  type MetricValue,
-  type PRValue,
-  type SessionValue,
-  type DistBucket,
-} from "@/lib/metric-utils";
+import type {
+  MetricDetailDistBucket,
+  MetricDetailTrendPoint,
+  NotableItem,
+  NotablePR,
+} from "@/lib/db";
+import { isNotablePR } from "@/lib/db";
 import type { Range } from "@/components/range-toggle";
+import type { PRValue } from "@/lib/metric-utils";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface MetricDetailBodyProps {
+  count: number;
+  stats: { avg: number; p10: number; p50: number; p90: number };
+  priorStats: { avg: number; p10: number; p50: number; p90: number } | null;
+  trend: MetricDetailTrendPoint[];
+  distribution: MetricDetailDistBucket[];
+  notableHighest: NotableItem[];
+  notableLowest: NotableItem[];
+  def: MetricDefEntry;
+  range: Range;
+  prHref?: (prId: number) => string;
+}
 
 // ---------------------------------------------------------------------------
 // MetricDetailBody — stats, trend chart, distribution, notable items
 // ---------------------------------------------------------------------------
 
 export function MetricDetailBody({
-  values,
-  allValues,
+  count,
+  stats,
+  priorStats,
+  trend,
+  distribution,
+  notableHighest,
+  notableLowest,
   def,
   range,
   prHref,
-}: {
-  values: MetricValue[];
-  allValues: MetricValue[];
-  def: MetricDefEntry;
-  range: Range;
-  prHref?: (prId: number) => string;
-}) {
-  const numericValues = values.map((v) => v.value);
-  const sorted = [...numericValues].sort((a, b) => a - b);
-  const avg = numericValues.reduce((s, v) => s + v, 0) / numericValues.length;
-  const p10 = percentile(sorted, 10);
-  const p50 = percentile(sorted, 50);
-  const p90 = percentile(sorted, 90);
-
-  const days = RANGE_DAYS[range];
-  const rangeStart = Date.now() - days * 24 * 60 * 60 * 1000;
-  const priorStart = rangeStart - days * 24 * 60 * 60 * 1000;
-  const priorValues = allValues.filter(
-    (v) => v.timestamp >= priorStart && v.timestamp < rangeStart,
-  );
-  const priorNums = priorValues.map((v) => v.value);
-  const priorSorted = [...priorNums].sort((a, b) => a - b);
-
+}: MetricDetailBodyProps) {
   function makeDelta(
     current: number,
     prior: number | null,
@@ -65,66 +62,54 @@ export function MetricDetailBody({
     return `${arrow} ${formatMetricValue(Math.abs(diff), def)} vs prior ${range}`;
   }
 
-  const priorAvg =
-    priorNums.length > 0
-      ? priorNums.reduce((s, v) => s + v, 0) / priorNums.length
-      : null;
-  const priorP10 =
-    priorSorted.length > 0 ? percentile(priorSorted, 10) : null;
-  const priorP50 =
-    priorSorted.length > 0 ? percentile(priorSorted, 50) : null;
-  const priorP90 =
-    priorSorted.length > 0 ? percentile(priorSorted, 90) : null;
-
-  const dailyData = aggregateByDay(values);
-  const distribution = computeDistribution(numericValues, def);
-
-  const byValue = [...values].sort((a, b) => b.value - a.value);
-  const highest = byValue.slice(0, 3);
-  const isSessionMetric = def.source === "session";
-  const notableLabel = isSessionMetric ? "Notable Sessions" : "Notable PRs";
-
-  // For notable lowest, exclude items already in highest
-  const highestIds = new Set(
-    highest.map((v) => isPRValue(v) ? v.prId : (v as SessionValue).sessionId),
-  );
-  const lowest = byValue
-    .slice(-3)
-    .reverse()
-    .filter((v) => {
-      const id = isPRValue(v) ? v.prId : (v as SessionValue).sessionId;
-      return !highestIds.has(id);
-    });
-
-  const stats: { label: string; value: string; delta?: string }[] = [
-    { label: "Count", value: String(values.length) },
+  const statCards: { label: string; value: string; delta?: string }[] = [
+    { label: "Count", value: String(count) },
     {
       label: "Average",
-      value: formatMetricValue(avg, def),
-      delta: makeDelta(avg, priorAvg),
+      value: formatMetricValue(stats.avg, def),
+      delta: makeDelta(stats.avg, priorStats?.avg ?? null),
     },
     {
       label: "P10",
-      value: formatMetricValue(p10, def),
-      delta: makeDelta(p10, priorP10),
+      value: formatMetricValue(stats.p10, def),
+      delta: makeDelta(stats.p10, priorStats?.p10 ?? null),
     },
     {
       label: "P50",
-      value: formatMetricValue(p50, def),
-      delta: makeDelta(p50, priorP50),
+      value: formatMetricValue(stats.p50, def),
+      delta: makeDelta(stats.p50, priorStats?.p50 ?? null),
     },
     {
       label: "P90",
-      value: formatMetricValue(p90, def),
-      delta: makeDelta(p90, priorP90),
+      value: formatMetricValue(stats.p90, def),
+      delta: makeDelta(stats.p90, priorStats?.p90 ?? null),
     },
   ];
+
+  const dailyData: DailyPoint[] = trend
+    .filter((t) => t.avg !== null)
+    .map((t) => {
+      const avg = t.avg!;
+      const min = t.min ?? avg;
+      const max = t.max ?? avg;
+      return {
+        timestamp: new Date(t.date + "T12:00:00Z").getTime(),
+        avg,
+        min,
+        max,
+        count: t.count,
+        range: [avg - min, max - avg] as [number, number],
+      };
+    });
+
+  const isSessionMetric = def.source === "session";
+  const notableLabel = isSessionMetric ? "Notable Sessions" : "Notable PRs";
 
   return (
     <>
       {/* Summary stats */}
       <div className="mb-6 grid grid-cols-5 gap-3">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <Card key={stat.label} className="p-4 text-center">
             <CardContent className="p-0">
               <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -153,7 +138,7 @@ export function MetricDetailBody({
             dailyData={dailyData}
             unit={def.unit}
             isRatio={def.valueType === "ratio"}
-            average={avg}
+            average={stats.avg}
           />
         </CardContent>
       </Card>
@@ -174,8 +159,8 @@ export function MetricDetailBody({
               {notableLabel}
             </h2>
             <NotableItems
-              highest={highest}
-              lowest={lowest}
+              highest={notableHighest}
+              lowest={notableLowest}
               def={def}
               prHref={prHref}
             />
@@ -221,7 +206,7 @@ export function BooleanPanel({
 // Distribution
 // ---------------------------------------------------------------------------
 
-function Distribution({ data }: { data: DistBucket[] }) {
+function Distribution({ data }: { data: MetricDetailDistBucket[] }) {
   if (data.length === 0) {
     return (
       <div className="flex h-32 items-center justify-center text-[12px] text-muted-foreground">
@@ -265,8 +250,8 @@ function NotableItems({
   def,
   prHref,
 }: {
-  highest: MetricValue[];
-  lowest: MetricValue[];
+  highest: NotableItem[];
+  lowest: NotableItem[];
   def: MetricDefEntry;
   prHref?: (prId: number) => string;
 }) {
@@ -309,24 +294,25 @@ function ItemList({
   def,
   prHref,
 }: {
-  entries: MetricValue[];
+  entries: NotableItem[];
   def: MetricDefEntry;
   prHref?: (prId: number) => string;
 }) {
   return (
     <div className="space-y-0.5">
       {entries.map((item) => {
-        if (isPRValue(item)) {
+        if (isNotablePR(item)) {
+          const pr = item as NotablePR;
           const content = (
             <>
               <span className="shrink-0 font-medium text-primary">
-                #{item.prNumber}
+                #{pr.number}
               </span>
               <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                {item.title}
+                {pr.title}
               </span>
               <span className="shrink-0 font-mono text-foreground">
-                {formatMetricValue(item.value, def)}
+                {formatMetricValue(pr.value, def)}
               </span>
             </>
           );
@@ -334,8 +320,8 @@ function ItemList({
           if (prHref) {
             return (
               <Link
-                key={item.prId}
-                href={prHref(item.prId)}
+                key={pr.id}
+                href={prHref(pr.id)}
                 className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px] transition-colors hover:bg-accent"
               >
                 {content}
@@ -345,7 +331,7 @@ function ItemList({
 
           return (
             <div
-              key={item.prId}
+              key={pr.id}
               className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px]"
             >
               {content}
@@ -354,17 +340,16 @@ function ItemList({
         }
 
         // Session item
-        const session = item as SessionValue;
         return (
           <div
-            key={session.sessionId}
+            key={item.id}
             className="flex items-center gap-2 rounded px-2 py-1.5 text-[12px]"
           >
             <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">
-              {session.label}
+              {item.label}
             </span>
             <span className="shrink-0 font-mono text-foreground">
-              {formatMetricValue(session.value, def)}
+              {formatMetricValue(item.value, def)}
             </span>
           </div>
         );

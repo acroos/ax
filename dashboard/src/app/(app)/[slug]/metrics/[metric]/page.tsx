@@ -10,20 +10,12 @@ import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { PRWithMetrics, SessionWithMetrics } from "@/lib/db";
-import { listPRsWithMetricsAsync, listSessionsAsync, listReposAsync } from "@/lib/db";
+import type { PRWithMetrics, MetricDetailResponse } from "@/lib/db";
+import { getMetricDetailAsync, listPRsWithMetricsAsync, listReposAsync } from "@/lib/db";
 import { RepoFilter } from "@/components/repo-filter";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
 import { getMetricDef, type MetricDefEntry } from "@/lib/metric-defs";
-import {
-  extractPRValues,
-  extractSessionValues,
-  filterByRange,
-  filterSessionsByRange,
-  type PRValue,
-  type SessionValue,
-  type MetricValue,
-} from "@/lib/metric-utils";
+import { extractPRValues, type PRValue } from "@/lib/metric-utils";
 
 const metricsDir = path.join(process.cwd(), "..", "docs", "metrics");
 
@@ -73,13 +65,20 @@ export default async function MetricDetailPage({
 
   const backHref = repoId ? `/${slug}?repo=${repoId}` : `/${slug}`;
   const isSession = def.source === "session";
-  const dataPromise = isSession
-    ? listSessionsAsync(repoId, slug, { per_page: 100 })
+
+  // Boolean metrics still need raw PR data for BooleanPanel
+  const dataPromise = def.valueType === "boolean"
+    ? listPRsWithMetricsAsync(repoId, slug, { per_page: 100 })
         .then((r) => r.data)
-        .catch(() => [] as SessionWithMetrics[])
-    : listPRsWithMetricsAsync(repoId, slug, { per_page: 100 })
-        .then((r) => r.data)
-        .catch(() => [] as PRWithMetrics[]);
+        .catch(() => [] as PRWithMetrics[])
+    : null;
+
+  // Non-boolean metrics use the pre-computed endpoint
+  const detailPromise = def.valueType !== "boolean"
+    ? getMetricDetailAsync(slug, metric, range, repoId)
+        .catch(() => null as MetricDetailResponse | null)
+    : null;
+
   const reposPromise = listReposAsync(slug).catch(() => []);
 
   return (
@@ -106,10 +105,9 @@ export default async function MetricDetailPage({
         </div>
         <Suspense fallback={<Skeleton className="mt-1 h-4 w-40" />}>
           <DataCountSubtitle
-            promise={dataPromise}
+            detailPromise={detailPromise}
             reposPromise={reposPromise}
             repoId={repoId}
-            def={def}
             range={range}
             isSession={isSession}
           />
@@ -120,7 +118,7 @@ export default async function MetricDetailPage({
         <SectionErrorBoundary>
           <Suspense fallback={<DataSectionsSkeleton />}>
             <MetricDataSections
-              promise={dataPromise}
+              detailPromise={detailPromise!}
               def={def}
               range={range}
               slug={slug}
@@ -132,7 +130,7 @@ export default async function MetricDetailPage({
         <div className="mb-6">
           <SectionErrorBoundary>
             <Suspense fallback={<SkeletonChartPanel title="Summary" />}>
-              <AsyncBooleanPanel promise={dataPromise as Promise<PRWithMetrics[]>} def={def} />
+              <AsyncBooleanPanel promise={dataPromise!} def={def} />
             </Suspense>
           </SectionErrorBoundary>
         </div>
@@ -163,41 +161,35 @@ type RepoLite = {
 };
 
 async function DataCountSubtitle({
-  promise,
+  detailPromise,
   reposPromise,
   repoId,
-  def,
   range,
   isSession,
 }: {
-  promise: Promise<PRWithMetrics[] | SessionWithMetrics[]>;
+  detailPromise: Promise<MetricDetailResponse | null> | null;
   reposPromise: Promise<RepoLite[]>;
   repoId: number | undefined;
-  def: MetricDefEntry;
   range: Range;
   isSession: boolean;
 }) {
-  const [data, allRepos] = await Promise.all([promise, reposPromise]);
+  const [detail, allRepos] = await Promise.all([detailPromise, reposPromise]);
   const repos = allRepos.filter(
     (r): r is RepoLite & { github_owner: string; github_repo: string } =>
       r.github_owner !== null && r.github_repo !== null,
   );
-  const allValues = isSession
-    ? extractSessionValues(data as SessionWithMetrics[], def)
-    : extractPRValues(data as PRWithMetrics[], def);
-  const values = isSession
-    ? filterSessionsByRange(allValues as SessionValue[], range)
-    : filterByRange(allValues as PRValue[], range);
+  const count = detail?.count ?? 0;
+  const totalCount = detail?.total_count ?? 0;
   const itemLabel = isSession ? "session" : "PR";
   return (
     <p className="mt-1 text-[13px] text-muted-foreground">
       <RepoFilter repos={repos} current={repoId} />
-      {" "}&middot; {values.length} {itemLabel}{values.length !== 1 && "s"} with data in
+      {" "}&middot; {count} {itemLabel}{count !== 1 && "s"} with data in
       past {range}
-      {allValues.length > values.length && (
+      {totalCount > count && (
         <span className="text-muted-foreground/60">
           {" "}
-          ({allValues.length} total)
+          ({totalCount} total)
         </span>
       )}
     </p>
@@ -205,27 +197,21 @@ async function DataCountSubtitle({
 }
 
 async function MetricDataSections({
-  promise,
+  detailPromise,
   def,
   range,
   slug,
   isSession,
 }: {
-  promise: Promise<PRWithMetrics[] | SessionWithMetrics[]>;
+  detailPromise: Promise<MetricDetailResponse | null>;
   def: MetricDefEntry;
   range: Range;
   slug: string;
   isSession: boolean;
 }) {
-  const data = await promise;
-  const allValues: MetricValue[] = isSession
-    ? extractSessionValues(data as SessionWithMetrics[], def)
-    : extractPRValues(data as PRWithMetrics[], def);
-  const values: MetricValue[] = isSession
-    ? filterSessionsByRange(allValues as SessionValue[], range)
-    : filterByRange(allValues as PRValue[], range);
+  const detail = await detailPromise;
 
-  if (values.length === 0) {
+  if (!detail || detail.count === 0 || !detail.stats) {
     return (
       <div className="mb-6 flex h-40 items-center justify-center rounded-lg border border-dashed border-border text-[13px] text-muted-foreground">
         No data for this metric in the selected period.
@@ -235,8 +221,13 @@ async function MetricDataSections({
 
   return (
     <MetricDetailBody
-      values={values}
-      allValues={allValues}
+      count={detail.count}
+      stats={detail.stats}
+      priorStats={detail.prior_stats}
+      trend={detail.trend}
+      distribution={detail.distribution}
+      notableHighest={detail.notable_highest}
+      notableLowest={detail.notable_lowest}
       def={def}
       range={range}
       prHref={isSession ? undefined : (prId) => `/${slug}/prs/${prId}`}
