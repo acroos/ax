@@ -10,19 +10,11 @@ import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { PRWithMetrics, SessionWithMetrics } from "@/lib/db";
-import { listMyPRsAsync, listMySessionsAsync } from "@/lib/db";
+import type { PRWithMetrics, MetricDetailResponse } from "@/lib/db";
+import { getMyMetricDetailAsync, listMyPRsAsync } from "@/lib/db";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
 import { getMetricDef, type MetricDefEntry } from "@/lib/metric-defs";
-import {
-  extractPRValues,
-  extractSessionValues,
-  filterByRange,
-  filterSessionsByRange,
-  type PRValue,
-  type SessionValue,
-  type MetricValue,
-} from "@/lib/metric-utils";
+import { extractPRValues } from "@/lib/metric-utils";
 
 const metricsDir = path.join(process.cwd(), "..", "docs", "metrics");
 
@@ -71,13 +63,17 @@ export default async function MyMetricDetailPage({
 
   const backHref = `/${slug}/me`;
   const isSession = def.source === "session";
-  const dataPromise = isSession
-    ? listMySessionsAsync(slug, { per_page: 100 })
+
+  const dataPromise = def.valueType === "boolean"
+    ? listMyPRsAsync(slug, { per_page: 100 })
         .then((r) => r.data)
-        .catch(() => [] as SessionWithMetrics[])
-    : listMyPRsAsync(slug, { per_page: 100 })
-        .then((r) => r.data)
-        .catch(() => [] as PRWithMetrics[]);
+        .catch(() => [] as PRWithMetrics[])
+    : null;
+
+  const detailPromise = def.valueType !== "boolean"
+    ? getMyMetricDetailAsync(slug, metric, range)
+        .catch(() => null as MetricDetailResponse | null)
+    : null;
 
   return (
     <div>
@@ -103,8 +99,7 @@ export default async function MyMetricDetailPage({
         </div>
         <Suspense fallback={<Skeleton className="mt-1 h-4 w-40" />}>
           <DataCountSubtitle
-            promise={dataPromise}
-            def={def}
+            detailPromise={detailPromise}
             range={range}
             isSession={isSession}
           />
@@ -115,7 +110,7 @@ export default async function MyMetricDetailPage({
         <SectionErrorBoundary>
           <Suspense fallback={<DataSectionsSkeleton />}>
             <MetricDataSections
-              promise={dataPromise}
+              detailPromise={detailPromise!}
               def={def}
               range={range}
               slug={slug}
@@ -127,7 +122,7 @@ export default async function MyMetricDetailPage({
         <div className="mb-6">
           <SectionErrorBoundary>
             <Suspense fallback={<SkeletonChartPanel title="Summary" />}>
-              <AsyncBooleanPanel promise={dataPromise as Promise<PRWithMetrics[]>} def={def} />
+              <AsyncBooleanPanel promise={dataPromise!} def={def} />
             </Suspense>
           </SectionErrorBoundary>
         </div>
@@ -152,31 +147,25 @@ export default async function MyMetricDetailPage({
 // ---------------------------------------------------------------------------
 
 async function DataCountSubtitle({
-  promise,
-  def,
+  detailPromise,
   range,
   isSession,
 }: {
-  promise: Promise<PRWithMetrics[] | SessionWithMetrics[]>;
-  def: MetricDefEntry;
+  detailPromise: Promise<MetricDetailResponse | null> | null;
   range: Range;
   isSession: boolean;
 }) {
-  const data = await promise;
-  const allValues = isSession
-    ? extractSessionValues(data as SessionWithMetrics[], def)
-    : extractPRValues(data as PRWithMetrics[], def);
-  const values = isSession
-    ? filterSessionsByRange(allValues as SessionValue[], range)
-    : filterByRange(allValues as PRValue[], range);
+  const detail = detailPromise ? await detailPromise : null;
+  const count = detail?.count ?? 0;
+  const totalCount = detail?.total_count ?? 0;
   const itemLabel = isSession ? "session" : "PR";
   return (
     <p className="mt-1 text-[13px] text-muted-foreground">
-      {values.length} {itemLabel}{values.length !== 1 && "s"} with data in past {range}
-      {allValues.length > values.length && (
+      {count} {itemLabel}{count !== 1 && "s"} with data in past {range}
+      {totalCount > count && (
         <span className="text-muted-foreground/60">
           {" "}
-          ({allValues.length} total)
+          ({totalCount} total)
         </span>
       )}
     </p>
@@ -184,27 +173,21 @@ async function DataCountSubtitle({
 }
 
 async function MetricDataSections({
-  promise,
+  detailPromise,
   def,
   range,
   slug,
   isSession,
 }: {
-  promise: Promise<PRWithMetrics[] | SessionWithMetrics[]>;
+  detailPromise: Promise<MetricDetailResponse | null>;
   def: MetricDefEntry;
   range: Range;
   slug: string;
   isSession: boolean;
 }) {
-  const data = await promise;
-  const allValues: MetricValue[] = isSession
-    ? extractSessionValues(data as SessionWithMetrics[], def)
-    : extractPRValues(data as PRWithMetrics[], def);
-  const values: MetricValue[] = isSession
-    ? filterSessionsByRange(allValues as SessionValue[], range)
-    : filterByRange(allValues as PRValue[], range);
+  const detail = await detailPromise;
 
-  if (values.length === 0) {
+  if (!detail || detail.count === 0 || !detail.stats) {
     return (
       <div className="mb-6 flex h-40 items-center justify-center rounded-lg border border-dashed border-border text-[13px] text-muted-foreground">
         No data for this metric in the selected period.
@@ -214,8 +197,13 @@ async function MetricDataSections({
 
   return (
     <MetricDetailBody
-      values={values}
-      allValues={allValues}
+      count={detail.count}
+      stats={detail.stats}
+      priorStats={detail.prior_stats}
+      trend={detail.trend}
+      distribution={detail.distribution}
+      notableHighest={detail.notable_highest}
+      notableLowest={detail.notable_lowest}
       def={def}
       range={range}
       prHref={isSession ? undefined : (prId) => `/${slug}/prs/${prId}`}

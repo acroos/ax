@@ -202,6 +202,56 @@ export interface AggregateMetrics {
   metrics: Record<string, MetricAggregate>;
 }
 
+// --- Metric Detail (server-computed) ---
+
+export interface MetricDetailTrendPoint {
+  date: string;
+  avg: number | null;
+  min: number | null;
+  max: number | null;
+  count: number;
+}
+
+export interface MetricDetailDistBucket {
+  label: string;
+  count: number;
+  pct: number;
+}
+
+export interface NotablePR {
+  id: number;
+  number: number;
+  title: string;
+  value: number;
+  state: string;
+}
+
+export interface NotableSession {
+  id: string;
+  label: string;
+  value: number;
+}
+
+export type NotableItem = NotablePR | NotableSession;
+
+export function isNotablePR(item: NotableItem): item is NotablePR {
+  return "number" in item;
+}
+
+export interface MetricDetailResponse {
+  metric: string;
+  source: "pr" | "session";
+  range: string;
+  count: number;
+  total_count: number;
+  stats: { avg: number; p10: number; p50: number; p90: number } | null;
+  prior_stats: { avg: number; p10: number; p50: number; p90: number } | null;
+  trend: MetricDetailTrendPoint[];
+  distribution: MetricDetailDistBucket[];
+  notable_highest: NotableItem[];
+  notable_lowest: NotableItem[];
+}
+
 export interface TimelinePoint {
   prNumber: number;
   title: string;
@@ -329,6 +379,48 @@ export async function listTeamMembersAsync(
 }
 
 // --- Current user (me) ---
+
+// --- Metric Detail functions ---
+
+export async function getMetricDetailAsync(
+  orgSlug: string,
+  metricSlug: string,
+  range?: string,
+  repoId?: number,
+): Promise<MetricDetailResponse> {
+  const rangeParam = range ? `&range=${range}` : "";
+  if (repoId) {
+    return fetchAPI<MetricDetailResponse>(
+      orgApiPath(orgSlug, `/repos/${repoId}/metrics/${metricSlug}`) + `?${rangeParam.slice(1)}`,
+    );
+  }
+  return fetchAPI<MetricDetailResponse>(
+    orgApiPath(orgSlug, `/metrics/${metricSlug}`) + (rangeParam ? `?${rangeParam.slice(1)}` : ""),
+  );
+}
+
+export async function getMyMetricDetailAsync(
+  orgSlug: string,
+  metricSlug: string,
+  range?: string,
+): Promise<MetricDetailResponse> {
+  const rangeParam = range ? `?range=${range}` : "";
+  return fetchAPI<MetricDetailResponse>(
+    orgApiPath(orgSlug, `/me/metrics/${metricSlug}`) + rangeParam,
+  );
+}
+
+export async function getTeamMetricDetailAsync(
+  orgSlug: string,
+  teamSlug: string,
+  metricSlug: string,
+  range?: string,
+): Promise<MetricDetailResponse> {
+  const rangeParam = range ? `?range=${range}` : "";
+  return fetchAPI<MetricDetailResponse>(
+    orgApiPath(orgSlug, `/teams/${teamSlug}/metrics/${metricSlug}`) + rangeParam,
+  );
+}
 
 export async function getMyMetricsAsync(
   orgSlug: string,

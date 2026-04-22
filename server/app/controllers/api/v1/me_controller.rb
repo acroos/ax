@@ -3,6 +3,7 @@ module Api
     class MeController < BaseController
       include PrSerialization
       include SessionSerialization
+      include MetricDetailAction
 
       before_action :require_session_auth!
       before_action :find_org!
@@ -40,6 +41,21 @@ module Api
           .where(pushed_by: current_user.github_username)
 
         render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range).call
+      end
+
+      def metric_detail
+        pr_scope = PrMetrics
+          .joins(pr: :repo)
+          .where(repos: { organization_id: @org.id })
+          .where(prs: { author: current_user.github_username })
+          .where(metrics_finalized: true)
+
+        session_scope = CodingSession
+          .joins(:repo)
+          .where(repos: { organization_id: @org.id })
+          .where(pushed_by: current_user.github_username)
+
+        render_metric_detail(pr_scope: pr_scope, session_scope: session_scope)
       end
     end
   end

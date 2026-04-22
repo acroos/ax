@@ -15,6 +15,7 @@ import {
   extractSessionValues,
   filterByRange,
   filterSessionsByRange,
+  computeMetricDetailFromValues,
   type PRValue,
   type SessionValue,
 } from "@/lib/metric-utils";
@@ -78,6 +79,8 @@ export default async function DemoTeamMetricDetailPage({
     ? filterSessionsByRange(allValues as SessionValue[], range)
     : filterByRange(allValues as PRValue[], range);
 
+  const computed = computeMetricDetailFromValues(values, allValues, def, range);
+
   return (
     <div>
       <Link
@@ -101,12 +104,12 @@ export default async function DemoTeamMetricDetailPage({
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {values.length} {isSession ? "session" : "PR"}{values.length !== 1 && "s"} with data in past{" "}
+          {computed.count} {isSession ? "session" : "PR"}{computed.count !== 1 && "s"} with data in past{" "}
           {range}
-          {allValues.length > values.length && (
+          {computed.totalCount > computed.count && (
             <span className="text-muted-foreground/60">
               {" "}
-              ({allValues.length} total)
+              ({computed.totalCount} total)
             </span>
           )}
         </p>
@@ -114,14 +117,19 @@ export default async function DemoTeamMetricDetailPage({
 
       {def.valueType === "boolean" ? (
         <BooleanPanel values={allValues as PRValue[]} def={def} />
-      ) : values.length === 0 ? (
+      ) : computed.count === 0 ? (
         <div className="mb-6 flex h-40 items-center justify-center rounded-lg border border-dashed border-border text-[13px] text-muted-foreground">
           No data for this metric in the selected period.
         </div>
       ) : (
         <MetricDetailBody
-          values={values}
-          allValues={allValues}
+          count={computed.count}
+          stats={computed.stats}
+          priorStats={computed.priorStats}
+          trend={computed.trend}
+          distribution={computed.distribution}
+          notableHighest={computed.notableHighest}
+          notableLowest={computed.notableLowest}
           def={def}
           range={range}
         />

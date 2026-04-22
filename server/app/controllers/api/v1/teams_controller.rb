@@ -3,12 +3,13 @@ module Api
     class TeamsController < BaseController
       include PrSerialization
       include SessionSerialization
+      include MetricDetailAction
 
       before_action :require_session_auth!
-      before_action :find_org!, only: [ :index, :show, :prs, :sessions, :metrics ]
+      before_action :find_org!, only: [ :index, :show, :prs, :sessions, :metrics, :metric_detail ]
       before_action :find_org_as_admin!, only: [ :create, :update, :destroy ]
       before_action :require_teams_feature!
-      before_action :find_team!, only: [ :show, :prs, :sessions, :metrics ]
+      before_action :find_team!, only: [ :show, :prs, :sessions, :metrics, :metric_detail ]
       before_action :find_team_as_admin!, only: [ :update, :destroy ]
 
       def index
@@ -104,6 +105,22 @@ module Api
           .where(pushed_by: usernames)
 
         render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range).call
+      end
+
+      def metric_detail
+        usernames = @team.member_github_usernames
+        pr_scope = PrMetrics
+          .joins(pr: :repo)
+          .where(repos: { organization_id: @org.id })
+          .where(prs: { author: usernames })
+          .where(metrics_finalized: true)
+
+        session_scope = CodingSession
+          .joins(:repo)
+          .where(repos: { organization_id: @org.id })
+          .where(pushed_by: usernames)
+
+        render_metric_detail(pr_scope: pr_scope, session_scope: session_scope)
       end
 
       private

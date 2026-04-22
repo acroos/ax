@@ -72,6 +72,9 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 | `listSessionsAsync(repoId?, orgSlug?, pagination?)` | Paginated sessions with per-session metrics. Hits `/orgs/:slug/sessions` or `/orgs/:slug/repos/:id/sessions`. Returns `PaginatedSessions`. |
 | `listMySessionsAsync(orgSlug, pagination?)` | Sessions pushed by the current user. Hits `/orgs/:slug/me/sessions`. |
 | `listTeamSessionsAsync(orgSlug, teamSlug, pagination?)` | Sessions pushed by team members. Hits `/orgs/:slug/teams/:team_slug/sessions`. |
+| `getMetricDetailAsync(orgSlug, metricSlug, range?, repoId?)` | Server-computed metric detail for a single metric. Returns `MetricDetailResponse` with stats (avg/P10/P50/P90), prior-period stats, daily trend, distribution histogram, and notable items. Used by metric detail pages. |
+| `getMyMetricDetailAsync(orgSlug, metricSlug, range?)` | Same as above, scoped to current user's data. |
+| `getTeamMetricDetailAsync(orgSlug, teamSlug, metricSlug, range?)` | Same as above, scoped to a team. |
 
 ### API Communication
 
@@ -129,7 +132,7 @@ Page-by-page streaming topology:
 |------|---------------------|------------------|
 | `/[slug]` | h1 + "View all PRs" link | Subtitle (repo + count), metrics body (3 category grids — Output Quality 3 cards, Prompt Efficiency 3 cards, Agent Behavior 3 cards, `NoDataState` / `NoFinalizedPRsState` fallbacks) |
 | `/[slug]/prs` | h1 + table header | Subtitle count, `<tbody>` rows, `NoDataBody` fallback |
-| `/[slug]/metrics/[metric]` | Back link + header + doc content (read from disk synchronously) | Data count subtitle ("X PRs with data" or "X sessions with data" depending on metric source), 5 summary stat cards, chart panel, notable items list |
+| `/[slug]/metrics/[metric]` | Back link + header + doc content (read from disk synchronously) | Data count subtitle ("X PRs with data" or "X sessions with data" depending on metric source), 5 summary stat cards, chart panel, notable items list. All data comes from the server-computed `metric_detail` endpoint (not paginated raw data). |
 | `/prs/[id]` | Back link | PR header (title + badges + metadata), grouped metric cards, `PRNotFound` fallback |
 | `/[slug]/me` | h1 + "View all my PRs" link | Subtitle (PR count), metrics body (3 category grids — mirrors org overview scoped to current user) |
 | `/[slug]/me/prs` | Back link + h1 + table header | PR count, `<tbody>` rows |

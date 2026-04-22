@@ -3,10 +3,11 @@ module Api
     class ReposController < BaseController
       include PrSerialization
       include SessionSerialization
+      include MetricDetailAction
 
       before_action :require_session_auth!
-      before_action :find_org!, only: [ :index, :prs, :sessions, :metrics, :timeline ]
-      before_action :find_repo!, only: [ :prs, :sessions, :metrics, :timeline ]
+      before_action :find_org!, only: [ :index, :prs, :sessions, :metrics, :metric_detail, :timeline ]
+      before_action :find_repo!, only: [ :prs, :sessions, :metrics, :metric_detail, :timeline ]
 
       def index
         repos = @org.repos.select(
@@ -38,6 +39,17 @@ module Api
           .where(repo_id: @repo.id)
 
         render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range).call
+      end
+
+      def metric_detail
+        pr_scope = PrMetrics
+          .joins(:pr)
+          .where(prs: { repo_id: @repo.id }, metrics_finalized: true)
+
+        session_scope = CodingSession
+          .where(repo_id: @repo.id)
+
+        render_metric_detail(pr_scope: pr_scope, session_scope: session_scope)
       end
 
       def timeline
