@@ -12,11 +12,7 @@ export function RangeToggle({ current }: { current: Range }) {
 
   function handleChange(range: Range) {
     const params = new URLSearchParams(searchParams.toString());
-    if (range === "30d") {
-      params.delete("range"); // 30d is default — keep URL clean
-    } else {
-      params.set("range", range);
-    }
+    params.set("range", range);
     const qs = params.toString();
     router.push(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
   }

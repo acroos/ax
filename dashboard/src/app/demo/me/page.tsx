@@ -127,7 +127,7 @@ export default async function DemoMyOverviewPage({
   const m = (slug: string) => data.metrics[slug]?.current ?? null;
   const prior = (slug: string) => data.metrics[slug]?.prior ?? null;
   const spark = (slug: string) => data.metrics[slug]?.sparkline;
-  const metricHref = (slug: string) => `/demo/me/metrics/${slug}`;
+  const metricHref = (slug: string) => `/demo/me/metrics/${slug}?range=${range}`;
   const tip = (slug: string) => {
     const def = METRIC_INFO[slug];
     return def ? { tooltip: def.tooltip } : {};

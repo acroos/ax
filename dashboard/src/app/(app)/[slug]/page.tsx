@@ -174,13 +174,16 @@ async function OverviewMetricsBody({
   const data = await promise;
   if (data.totalPRs === 0 && data.totalSessions === 0) return <NoDataState />;
 
-  const repoQuery = repoId ? `?repo=${repoId}` : "";
+  const query = new URLSearchParams();
+  if (repoId) query.set("repo", String(repoId));
+  query.set("range", range);
+  const qs = query.toString();
 
   return (
     <OverviewMetricsGrid
       metrics={data.metrics}
       range={range}
-      metricHref={(metricSlug) => `/${slug}/metrics/${metricSlug}${repoQuery}`}
+      metricHref={(metricSlug) => `/${slug}/metrics/${metricSlug}?${qs}`}
     />
   );
 }
