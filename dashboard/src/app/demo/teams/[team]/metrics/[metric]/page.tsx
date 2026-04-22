@@ -7,10 +7,17 @@ import { Markdown } from "@/components/markdown";
 import { RangeToggle, type Range } from "@/components/range-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { getMockTeamPRs, getMockTeamDetail } from "@/lib/mock/data";
+import { getMockTeamPRs, getMockTeamSessions, getMockTeamDetail } from "@/lib/mock/data";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
 import { getMetricDef } from "@/lib/metric-defs";
-import { extractPRValues, filterByRange } from "@/lib/metric-utils";
+import {
+  extractPRValues,
+  extractSessionValues,
+  filterByRange,
+  filterSessionsByRange,
+  type PRValue,
+  type SessionValue,
+} from "@/lib/metric-utils";
 
 const metricsDir = pathUtil.join(process.cwd(), "..", "docs", "metrics");
 
@@ -63,9 +70,13 @@ export default async function DemoTeamMetricDetailPage({
     // Doc file missing — not critical
   }
 
-  const prs = getMockTeamPRs(teamSlug);
-  const allValues = extractPRValues(prs, def);
-  const values = filterByRange(allValues, range);
+  const isSession = def.source === "session";
+  const allValues = isSession
+    ? extractSessionValues(getMockTeamSessions(teamSlug), def)
+    : extractPRValues(getMockTeamPRs(teamSlug), def);
+  const values = isSession
+    ? filterSessionsByRange(allValues as SessionValue[], range)
+    : filterByRange(allValues as PRValue[], range);
 
   return (
     <div>
@@ -90,7 +101,7 @@ export default async function DemoTeamMetricDetailPage({
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {values.length} PR{values.length !== 1 && "s"} with data in past{" "}
+          {values.length} {isSession ? "session" : "PR"}{values.length !== 1 && "s"} with data in past{" "}
           {range}
           {allValues.length > values.length && (
             <span className="text-muted-foreground/60">
@@ -102,7 +113,7 @@ export default async function DemoTeamMetricDetailPage({
       </div>
 
       {def.valueType === "boolean" ? (
-        <BooleanPanel values={allValues} def={def} />
+        <BooleanPanel values={allValues as PRValue[]} def={def} />
       ) : values.length === 0 ? (
         <div className="mb-6 flex h-40 items-center justify-center rounded-lg border border-dashed border-border text-[13px] text-muted-foreground">
           No data for this metric in the selected period.

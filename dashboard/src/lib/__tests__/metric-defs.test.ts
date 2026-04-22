@@ -23,6 +23,7 @@ function defWithType(
     valueType,
     lowerIsBetter: true,
     tooltip: "test",
+    source: "pr" as const,
     ...overrides,
   };
 }

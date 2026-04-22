@@ -39,8 +39,8 @@ module Api
           ],
           session_prs: [ :session_id, :pr_number, :confidence ],
           pr_metrics: [
-            :pr_number, :iteration_depth, :post_open_commits,
-            :ci_success_rate, :line_revisit_rate, :token_cost_usd
+            :pr_number, :post_open_commits,
+            :ci_success_rate, :line_revisit_rate
           ]
         )
       end

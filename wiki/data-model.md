@@ -111,20 +111,14 @@ File paths changed in a PR. Fetched from the GitHub API at PR finalization (merg
 Unique on (pr_id, filename).
 
 ### pr_metrics
-10 computed PR-level metrics. One row per PR.
+PR-level metrics from GitHub data. One row per PR. Session-derived metrics (iteration_depth, token_cost_usd, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score) are **not** stored here — they are computed on-the-fly from the `sessions` table via `MetricsAggregator` (for aggregates) or `PrsController` (for PR detail).
 
 | Column | Type | Notes |
 |--------|------|-------|
 | pr_id | bigint | PK / unique FK → prs |
-| iteration_depth | integer | Human-agent turn pairs |
 | post_open_commits | integer | |
 | ci_success_rate | real | 0.0 to 1.0. Computed from per-commit `ci_passed` values on the `commits` table. Updatable after finalization (not in `GITHUB_DERIVED_FIELDS`). |
 | line_revisit_rate | real | |
-| token_cost_usd | real | |
-| cache_hit_rate | real | Cache-read tokens / total input tokens |
-| sidechain_rate | real | Sidechain messages / total messages |
-| re_read_rate | real | Total file reads / unique files read |
-| autonomy_score | real | Assistant messages / human messages |
 | metrics_finalized | boolean | Write-lock flag |
 | finalized_at | timestamp | When metrics were locked |
 

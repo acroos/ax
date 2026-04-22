@@ -9,6 +9,7 @@ import type {
   Repo,
   PRWithMetrics,
   PRMetrics,
+  SessionWithMetrics,
   AggregateMetrics,
   SparklinePoint,
   MetricAggregate,
@@ -323,7 +324,7 @@ export const MOCK_TIMELINE: TimelinePoint[] = MOCK_PRS.filter(
       p.metrics!.ci_success_rate !== null
         ? Math.round(p.metrics!.ci_success_rate * 100)
         : null,
-    tokenCostUSD: p.metrics!.token_cost_usd,
+    tokenCostUSD: p.metrics!.token_cost_usd ?? null,
   }))
   .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
@@ -484,4 +485,86 @@ export function getMockMyPRs(): PRWithMetrics[] {
 
 export function getMockMyMetrics(days = 30): AggregateMetrics {
   return buildAggregateMetrics(getMockMyPRs(), days);
+}
+
+// ---------------------------------------------------------------------------
+// Mock sessions (~200 total, with computed metric values)
+// ---------------------------------------------------------------------------
+
+const SESSION_MODELS = [
+  "claude-sonnet-4-20250514",
+  "claude-opus-4-20250514",
+  "claude-haiku-4-20250514",
+];
+
+function generateSession(idx: number, _repoId: number, author: string): SessionWithMetrics {
+  const daysBack = randInt(0, 59);
+  const endDate = daysAgo(daysBack);
+  const startDate = daysAgo(daysBack); // same day, different time
+
+  const inputTokens = randInt(500, 20000);
+  const cacheCreation = randInt(100, 2000);
+  const cacheRead = randInt(200, 8000);
+  const totalInput = inputTokens + cacheCreation + cacheRead;
+  const messageCount = randInt(2, 20);
+  const assistantMessages = randInt(3, 30);
+  const sidechainMessages = randInt(0, Math.floor(messageCount * 0.3));
+  const filesRead = randInt(2, 20);
+  const totalReads = randInt(filesRead, filesRead * 4);
+
+  return {
+    id: `session-mock-${idx}`,
+    started_at: startDate,
+    ended_at: endDate,
+    branch: BRANCHES[idx % BRANCHES.length],
+    pushed_by: author,
+    primary_model: SESSION_MODELS[idx % SESSION_MODELS.length],
+    metrics: {
+      iteration_depth: randInt(1, 14),
+      token_cost_usd: Math.round(randFloat(0.4, 9.0) * 100) / 100,
+      cache_hit_rate: totalInput > 0
+        ? Math.round((cacheRead / totalInput) * 100) / 100
+        : null,
+      sidechain_rate: messageCount + assistantMessages > 0
+        ? Math.round((sidechainMessages / (messageCount + assistantMessages)) * 100) / 100
+        : null,
+      re_read_rate: filesRead > 0
+        ? Math.round((totalReads / filesRead) * 100) / 100
+        : null,
+      autonomy_score: messageCount > 0
+        ? Math.round((assistantMessages / messageCount) * 10) / 10
+        : null,
+    },
+  };
+}
+
+export const MOCK_SESSIONS: SessionWithMetrics[] = (() => {
+  const sessions: SessionWithMetrics[] = [];
+  let idx = 0;
+  for (const repo of MOCK_REPOS) {
+    for (let i = 0; i < 67; i++) {
+      const author = MOCK_AUTHORS[idx % MOCK_AUTHORS.length];
+      sessions.push(generateSession(idx++, repo.id, author));
+    }
+  }
+  return sessions;
+})();
+
+export function getMockMySessions(): SessionWithMetrics[] {
+  return MOCK_SESSIONS.filter((s) => s.pushed_by === MOCK_USER.github_username);
+}
+
+export function getMockTeamSessions(teamSlug: string): SessionWithMetrics[] {
+  const detail = getMockTeamDetail(teamSlug);
+  if (!detail) return [];
+  const usernames = new Set<string>();
+  function collectMembers(slug: string) {
+    const members = TEAM_MEMBERS_MAP[slug] ?? [];
+    for (const m of members) usernames.add(m.user.github_username);
+    for (const child of MOCK_TEAMS.filter((t) => t.parent_team_slug === slug)) {
+      collectMembers(child.slug);
+    }
+  }
+  collectMembers(teamSlug);
+  return MOCK_SESSIONS.filter((s) => s.pushed_by !== null && usernames.has(s.pushed_by));
 }

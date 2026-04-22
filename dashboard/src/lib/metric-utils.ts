@@ -1,4 +1,4 @@
-import type { PRWithMetrics } from "./db";
+import type { PRWithMetrics, SessionWithMetrics, SessionMetrics } from "./db";
 import { formatMetricValue, type MetricDefEntry } from "./metric-defs";
 import type { Range } from "@/components/range-toggle";
 import type { DailyPoint } from "@/components/metric-trend-chart";
@@ -24,6 +24,20 @@ export interface PRValue {
   value: number;
   state: string;
   timestamp: number;
+}
+
+export interface SessionValue {
+  sessionId: string;
+  label: string;
+  value: number;
+  timestamp: number;
+}
+
+/** Union type for metric detail page values — either PR or session sourced. */
+export type MetricValue = PRValue | SessionValue;
+
+export function isPRValue(v: MetricValue): v is PRValue {
+  return "prId" in v;
 }
 
 export interface DistBucket {
@@ -75,14 +89,45 @@ export function extractPRValues(
   return values.sort((a, b) => a.timestamp - b.timestamp);
 }
 
+export function extractSessionValues(
+  sessions: SessionWithMetrics[],
+  def: MetricDefEntry,
+): SessionValue[] {
+  const field = def.field as keyof SessionMetrics;
+  const values: SessionValue[] = [];
+  for (const s of sessions) {
+    const raw = s.metrics[field];
+    if (raw === null || raw === undefined) continue;
+    const dateStr = s.ended_at ?? s.started_at;
+    if (!dateStr) continue;
+    const ts = new Date(dateStr).getTime();
+    const label = s.branch
+      ? s.branch
+      : new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    values.push({
+      sessionId: s.id,
+      label,
+      value: raw as number,
+      timestamp: ts,
+    });
+  }
+  return values.sort((a, b) => a.timestamp - b.timestamp);
+}
+
+export function filterSessionsByRange(values: SessionValue[], range: Range): SessionValue[] {
+  const days = RANGE_DAYS[range];
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return values.filter((v) => v.timestamp >= cutoff);
+}
+
 export function filterByRange(values: PRValue[], range: Range): PRValue[] {
   const days = RANGE_DAYS[range];
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   return values.filter((v) => v.timestamp >= cutoff);
 }
 
-/** Group PRs by calendar day and compute per-day averages + ranges. */
-export function aggregateByDay(values: PRValue[]): DailyPoint[] {
+/** Group values by calendar day and compute per-day averages + ranges. */
+export function aggregateByDay(values: MetricValue[]): DailyPoint[] {
   const byDay = new Map<string, { vals: number[]; ts: number }>();
   for (const v of values) {
     const dayKey = new Date(v.timestamp).toISOString().slice(0, 10);

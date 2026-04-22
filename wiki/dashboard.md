@@ -55,7 +55,7 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 |----------|---------|
 | `listPRsWithMetricsAsync(repoId?, orgSlug?, pagination?)` | Paginated PRs with metrics. Returns `PaginatedPRs` (`{ data, pagination: { next_cursor, has_more, total } }`). Pass `{ cursor, per_page }` for subsequent pages. |
 | `getPRWithMetricsAsync(id)` | Single PR with metrics (hits `/api/v1/prs/:id`) |
-| `computeAggregatesFromPRs(prs)` | Compute aggregate metrics from a PR array (no API call). Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior: null, sparkline: [] } } }` — prior/sparkline are only populated by the server. |
+| `computeAggregatesFromPRs(prs)` | Compute aggregate metrics from a PR array (no API call). Only computes PR-derived metrics (post-open-commits, ci-success-rate, line-revisit-rate). Returns `{ totalPRs, totalSessions, sessionDataCount, metrics: { [slug]: { current, prior: null, sparkline: [] } } }` — prior/sparkline are only populated by the server. |
 | `getAggregateMetricsAsync(repoId?, orgSlug?, range?)` | Windowed aggregate metrics. `range` is `"7d"`, `"30d"` (default), or `"90d"` — controls both the current/prior comparison windows and the sparkline date range. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`. |
 | `getTimelineAsync(repoId?, orgSlug?)` | Time-series data for trend charts |
 | `listReposAsync(orgSlug?)` | Tracked repositories |
@@ -69,6 +69,9 @@ The data layer (`src/lib/db.ts`) fetches all data from the Rails API. All data f
 | `getTeamMembers(orgSlug, teamSlug)` | Team members list |
 | `listMyPRsAsync(orgSlug, pagination?)` | Paginated PRs authored by the current user. Same `PaginatedPRs` return type. |
 | `getMyMetricsAsync(orgSlug, range?)` | Windowed aggregate metrics for the current user's PRs |
+| `listSessionsAsync(repoId?, orgSlug?, pagination?)` | Paginated sessions with per-session metrics. Hits `/orgs/:slug/sessions` or `/orgs/:slug/repos/:id/sessions`. Returns `PaginatedSessions`. |
+| `listMySessionsAsync(orgSlug, pagination?)` | Sessions pushed by the current user. Hits `/orgs/:slug/me/sessions`. |
+| `listTeamSessionsAsync(orgSlug, teamSlug, pagination?)` | Sessions pushed by team members. Hits `/orgs/:slug/teams/:team_slug/sessions`. |
 
 ### API Communication
 
@@ -104,7 +107,7 @@ These components are rendered by both `/(app)` and `/demo` routes with different
 - **MetricCard** + formatters (`src/components/metric-card.tsx`) — Metric card with serif value, delta pill, sparkline, and hover tooltip overlay. Exports formatting utilities `fmt`, `fmtPct`, `fmtCost`, `fmtDelta`. Used by `OverviewMetricsGrid`.
 - **OverviewMetricsGrid** (`src/components/overview-metrics-grid.tsx`) — The 3-category × 3-card grid (Output Quality, Prompt Efficiency, Agent Behavior) used on overview and team detail pages. Accepts `metrics` (resolved `Record<string, MetricAggregate>`), `range`, and a `metricHref` builder function. App pages pass `/${slug}/metrics/${slug}`, demo pages pass `/demo/metrics/${slug}`.
 - **PRTableHeader** (`src/components/pr-table-header.tsx`) — The 9-column table header with tooltip-wrapped column labels. Used by all 4 PR table pages (org PRs, team PRs, and their demo counterparts).
-- **MetricDetailBody** + **BooleanPanel** (`src/components/metric-detail-content.tsx`) — Stats cards (count, avg, P10/P50/P90 with deltas), trend chart, distribution histogram, and notable PRs list. Accepts `values`, `allValues`, `def`, `range`, and an optional `prHref` function (app pages link to `/${slug}/prs/${prId}`, demo pages render plain divs). `BooleanPanel` wraps `BooleanMetricSummary` for boolean metrics.
+- **MetricDetailBody** + **BooleanPanel** (`src/components/metric-detail-content.tsx`) — Stats cards (count, avg, P10/P50/P90 with deltas), trend chart, distribution histogram, and notable items list. Accepts `values`, `allValues`, `def`, `range`, and an optional `prHref` function (app pages link to `/${slug}/prs/${prId}`, demo pages render plain divs). Works with both `PRValue` and `SessionValue` types via the `MetricValue` union. `BooleanPanel` wraps `BooleanMetricSummary` for boolean metrics.
 
 ### Loading states
 - **Skeleton primitives** (`src/components/skeleton.tsx`) — `Skeleton`, `SkeletonMetricCard`, `SkeletonMetricCategory`, `SkeletonTableRow`, `SkeletonTableBody`, `SkeletonPageHeader`, `SkeletonChartPanel`. Shared building blocks for route-level loading UIs and in-page Suspense fallbacks.
@@ -126,11 +129,11 @@ Page-by-page streaming topology:
 |------|---------------------|------------------|
 | `/[slug]` | h1 + "View all PRs" link | Subtitle (repo + count), metrics body (3 category grids — Output Quality 3 cards, Prompt Efficiency 3 cards, Agent Behavior 3 cards, `NoDataState` / `NoFinalizedPRsState` fallbacks) |
 | `/[slug]/prs` | h1 + table header | Subtitle count, `<tbody>` rows, `NoDataBody` fallback |
-| `/[slug]/metrics/[metric]` | Back link + header + doc content (read from disk synchronously) | Data count subtitle, 5 summary stat cards, chart panel, PR table |
+| `/[slug]/metrics/[metric]` | Back link + header + doc content (read from disk synchronously) | Data count subtitle ("X PRs with data" or "X sessions with data" depending on metric source), 5 summary stat cards, chart panel, notable items list |
 | `/prs/[id]` | Back link | PR header (title + badges + metadata), grouped metric cards, `PRNotFound` fallback |
 | `/[slug]/me` | h1 + "View all my PRs" link | Subtitle (PR count), metrics body (3 category grids — mirrors org overview scoped to current user) |
 | `/[slug]/me/prs` | Back link + h1 + table header | PR count, `<tbody>` rows |
-| `/[slug]/me/metrics/[metric]` | Back link + header + doc content | Data count subtitle, 5 summary stat cards, chart panel, PR table |
+| `/[slug]/me/metrics/[metric]` | Back link + header + doc content | Data count subtitle, 5 summary stat cards, chart panel, notable items list |
 | `/[slug]/teams` | h1 | Teams list |
 | `/[slug]/teams/[team]` | h1 + team name | Team metrics body (mirrors org overview) |
 | `/[slug]/teams/[team]/prs` | h1 | Team PR table |
@@ -252,18 +255,19 @@ Tests use [Vitest](https://vitest.dev/) (`vitest.config.ts` in `dashboard/`). Ru
 |------|----------------|
 | `src/lib/__tests__/db.test.ts` | `computeAggregatesFromPRs`, `getPRSize`, `orgApiPath` |
 | `src/lib/__tests__/metric-defs.test.ts` | `formatMetricValue`, `getMetricDef` |
-| `src/lib/__tests__/metric-utils.test.ts` | `percentile`, `extractPRValues`, `filterByRange`, `aggregateByDay`, `computeDistribution` |
+| `src/lib/__tests__/metric-utils.test.ts` | `percentile`, `extractPRValues`, `extractSessionValues`, `filterByRange`, `filterSessionsByRange`, `aggregateByDay`, `computeDistribution` |
 
 ### Shared metric utilities
 
-Pure functions used by both the app and demo metric detail pages are extracted into `src/lib/metric-utils.ts`: `percentile`, `extractPRValues`, `filterByRange`, `aggregateByDay`, `computeDistribution`, and related types (`PRValue`, `DistBucket`). All metric detail pages import from this module: the org-scoped `[slug]/metrics/[metric]/page.tsx`, the personal `[slug]/me/metrics/[metric]/page.tsx`, the team `[slug]/teams/[team]/metrics/[metric]/page.tsx`, and their demo counterparts (`demo/metrics/[metric]`, `demo/me/metrics/[metric]`, `demo/teams/[team]/metrics/[metric]`).
+Pure functions used by both the app and demo metric detail pages are extracted into `src/lib/metric-utils.ts`: `percentile`, `extractPRValues`, `extractSessionValues`, `filterByRange`, `filterSessionsByRange`, `aggregateByDay`, `computeDistribution`, and related types (`PRValue`, `SessionValue`, `MetricValue`, `DistBucket`). The `MetricValue` union type (`PRValue | SessionValue`) allows metric detail pages to handle both PR-sourced and session-sourced metrics through the same rendering pipeline. The `isPRValue()` type guard distinguishes between the two at render time. All metric detail pages import from this module: the org-scoped `[slug]/metrics/[metric]/page.tsx`, the personal `[slug]/me/metrics/[metric]/page.tsx`, the team `[slug]/teams/[team]/metrics/[metric]/page.tsx`, and their demo counterparts (`demo/metrics/[metric]`, `demo/me/metrics/[metric]`, `demo/teams/[team]/metrics/[metric]`).
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
 | `src/lib/db.ts` | API data layer |
-| `src/lib/metric-utils.ts` | Shared metric computation utilities (distribution bucketing, percentiles, filtering) |
+| `src/lib/metric-defs.ts` | Metric definitions with `source: "pr" \| "session"` discriminator, format helpers |
+| `src/lib/metric-utils.ts` | Shared metric computation utilities (distribution bucketing, percentiles, filtering, PR and session value extraction) |
 | `src/components/metric-card.tsx` | Shared MetricCard component + formatting utilities (fmt, fmtPct, fmtCost, fmtDelta) |
 | `src/components/overview-metrics-grid.tsx` | Shared 3×3 metric category grid (Output Quality, Prompt Efficiency, Agent Behavior) |
 | `src/components/pr-table-header.tsx` | Shared 9-column PR table header with tooltip column labels |

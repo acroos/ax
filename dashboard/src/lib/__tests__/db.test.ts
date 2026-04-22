@@ -104,8 +104,7 @@ describe("computeAggregatesFromPRs", () => {
     expect(result.sessionDataCount).toBe(1);
     expect(result.metrics["post-open-commits"].current).toBe(2);
     expect(result.metrics["ci-success-rate"].current).toBe(0.8);
-    expect(result.metrics["token-cost-per-pr"].current).toBe(3.50);
-    expect(result.metrics["autonomy-score"].current).toBe(7.5);
+    expect(result.metrics["line-revisit-rate"].current).toBe(1.5);
   });
 
   it("computes averages across multiple PRs", () => {
@@ -146,8 +145,7 @@ describe("computeAggregatesFromPRs", () => {
     expect(result.sessionDataCount).toBe(2);
     expect(result.metrics["post-open-commits"].current).toBe(3);
     expect(result.metrics["ci-success-rate"].current).toBe(0.9);
-    expect(result.metrics["iteration-depth"].current).toBe(5);
-    expect(result.metrics["token-cost-per-pr"].current).toBe(3.00);
+    expect(result.metrics["line-revisit-rate"].current).toBe(1.5);
   });
 
   it("ignores null metric values when averaging", () => {

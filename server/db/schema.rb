@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_21_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_21_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -129,20 +129,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_21_100000) do
   end
 
   create_table "pr_metrics", force: :cascade do |t|
-    t.float "autonomy_score"
-    t.float "cache_hit_rate"
     t.float "ci_success_rate"
     t.datetime "computed_at", default: -> { "now()" }, null: false
     t.datetime "created_at", null: false
     t.datetime "finalized_at"
-    t.integer "iteration_depth"
     t.float "line_revisit_rate"
     t.boolean "metrics_finalized", default: false
     t.integer "post_open_commits"
     t.bigint "pr_id", null: false
-    t.float "re_read_rate"
-    t.float "sidechain_rate"
-    t.float "token_cost_usd"
     t.datetime "updated_at", null: false
     t.index ["pr_id"], name: "index_pr_metrics_on_pr_id", unique: true
   end

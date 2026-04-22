@@ -47,12 +47,14 @@ Rails.application.routes.draw do
         resource :github_installation, only: [ :show ], controller: "github_installations" do
           post :install_url
         end
-        # Org-level PRs (all repos)
+        # Org-level PRs and sessions (all repos)
         get :prs, to: "organizations#prs"
+        get :sessions, to: "organizations#sessions"
         get :metrics, to: "organizations#metrics"
 
-        # Current user's PRs and metrics within this org
+        # Current user's PRs, sessions, and metrics within this org
         get "me/prs", to: "me#prs"
+        get "me/sessions", to: "me#sessions"
         get "me/metrics", to: "me#metrics"
 
         resources :teams, param: :team_slug, only: [ :index, :create ] do
@@ -61,6 +63,7 @@ Rails.application.routes.draw do
             put "/", to: "teams#update"
             delete "/", to: "teams#destroy"
             get :prs, to: "teams#prs"
+            get :sessions, to: "teams#sessions"
             get :metrics, to: "teams#metrics"
             get "members", to: "team_memberships#index", as: :team_members
             post "members", to: "team_memberships#create"
@@ -71,6 +74,7 @@ Rails.application.routes.draw do
         resources :repos, only: [ :index ] do
           member do
             get :prs
+            get :sessions
             get :metrics
             get :timeline
           end
