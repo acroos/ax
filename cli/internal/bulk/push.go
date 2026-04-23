@@ -29,6 +29,7 @@ type BulkPushConfig struct {
 	Repos       []DiscoveredRepo
 	Concurrency int
 	Writer      io.Writer
+	Force       bool // skip push-state filter and re-send all sessions
 }
 
 // RepoResult holds the outcome of pushing one repo.
@@ -272,7 +273,7 @@ func BulkPush(cfg *BulkPushConfig) *BulkPushResult {
 		go func() {
 			defer wg.Done()
 			for idx := range work {
-				results[idx] = pushRepo(cfg.Client, cfg.Repos[idx], idx, progress)
+				results[idx] = pushRepo(cfg.Client, cfg.Repos[idx], idx, progress, cfg.Force)
 			}
 		}()
 	}
@@ -295,7 +296,7 @@ func BulkPush(cfg *BulkPushConfig) *BulkPushResult {
 }
 
 // pushRepo handles pushing all sessions for a single repo in chunks.
-func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progressState) RepoResult {
+func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progressState, force bool) RepoResult {
 	result := RepoResult{
 		OwnerRepo: repo.OwnerRepo,
 		RepoPath:  repo.ProjectPaths[0],
@@ -306,12 +307,15 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 		progress.updateRateLimited(idx, result.SessionsSent, d)
 	})
 
-	// Filter to only new sessions
+	// Filter to only new sessions unless force is set.
 	repoState, err := state.Load(repo.OwnerRepo)
 	if err != nil {
 		repoState = &state.RepoState{}
 	}
-	sessionFiles := state.FilterNewSessionFiles(repo.SessionFiles, repoState.PushedSet())
+	sessionFiles := repo.SessionFiles
+	if !force {
+		sessionFiles = state.FilterNewSessionFiles(repo.SessionFiles, repoState.PushedSet())
+	}
 
 	// Parse new sessions.
 	var sessions []api.SessionData
