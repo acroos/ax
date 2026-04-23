@@ -108,7 +108,7 @@ GET fetches use `next: { revalidate: 60 }` by default (60s stale-while-revalidat
 ### Shared page components
 These components are rendered by both `/(app)` and `/demo` routes with different data sources, eliminating duplication between the two route trees:
 - **MetricCard** + formatters (`src/components/metric-card.tsx`) — Metric card with serif value, delta pill, sparkline, and hover tooltip overlay. Exports formatting utilities `fmt`, `fmtPct`, `fmtCost`, `fmtDelta`. Used by `OverviewMetricsGrid`.
-- **OverviewMetricsGrid** (`src/components/overview-metrics-grid.tsx`) — The 3-category × 3-card grid (Output Quality, Prompt Efficiency, Agent Behavior) used on overview and team detail pages. Accepts `metrics` (resolved `Record<string, MetricAggregate>`), `range`, and a `metricHref` builder function. App pages pass `/${slug}/metrics/${slug}`, demo pages pass `/demo/metrics/${slug}`.
+- **OverviewMetricsGrid** (`src/components/overview-metrics-grid.tsx`) — Data-driven 3-category × 3-card grid (Delivery, Session Effectiveness, Adoption Maturity) used on overview and team detail pages. Loops over `CATEGORIES` and filters `DISPLAYED_METRICS` by category — no per-metric hardcoding. Uses `formatMetricValue()` from metric-defs.ts for value formatting. Accepts `metrics` (resolved `Record<string, MetricAggregate>`), `range`, and a `metricHref` builder function. App pages pass `/${slug}/metrics/${slug}`, demo pages pass `/demo/metrics/${slug}`.
 - **PRTableHeader** (`src/components/pr-table-header.tsx`) — The 9-column table header with tooltip-wrapped column labels. Used by all 4 PR table pages (org PRs, team PRs, and their demo counterparts).
 - **MetricDetailBody** + **BooleanPanel** (`src/components/metric-detail-content.tsx`) — Stats cards (count, avg, P10/P50/P90 with deltas), trend chart, distribution histogram, and notable items list. Accepts `values`, `allValues`, `def`, `range`, and an optional `prHref` function (app pages link to `/${slug}/prs/${prId}`, demo pages render plain divs). Works with both `PRValue` and `SessionValue` types via the `MetricValue` union. `BooleanPanel` wraps `BooleanMetricSummary` for boolean metrics.
 
@@ -130,7 +130,7 @@ Page-by-page streaming topology:
 
 | Page | Shell (synchronous) | Streamed islands |
 |------|---------------------|------------------|
-| `/[slug]` | h1 + "View all PRs" link | Subtitle (repo + count), metrics body (3 category grids — Output Quality 3 cards, Prompt Efficiency 3 cards, Agent Behavior 3 cards, `NoDataState` / `NoFinalizedPRsState` fallbacks) |
+| `/[slug]` | h1 + "View all PRs" link | Subtitle (repo + count), metrics body (3 category grids — Delivery 3 cards, Session Effectiveness 3 cards, Adoption Maturity 3 cards, `NoDataState` / `NoFinalizedPRsState` fallbacks) |
 | `/[slug]/prs` | h1 + table header | Subtitle count, `<tbody>` rows, `NoDataBody` fallback |
 | `/[slug]/metrics/[metric]` | Back link + header + doc content (read from disk synchronously) | Data count subtitle ("X PRs with data" or "X sessions with data" depending on metric source), 5 summary stat cards, chart panel, notable items list. All data comes from the server-computed `metric_detail` endpoint (not paginated raw data). |
 | `/prs/[id]` | Back link | PR header (title + badges + metadata), grouped metric cards, `PRNotFound` fallback |
@@ -269,10 +269,10 @@ Pure functions used by both the app and demo metric detail pages are extracted i
 | File | Purpose |
 |------|---------|
 | `src/lib/db.ts` | API data layer |
-| `src/lib/metric-defs.ts` | Metric definitions with `source: "pr" \| "session"` discriminator, format helpers |
+| `src/lib/metric-defs.ts` | Metric definitions with `source`, `displayed`, `category` fields, `DISPLAYED_METRICS` / `CATEGORIES` exports, format helpers |
 | `src/lib/metric-utils.ts` | Shared metric computation utilities (distribution bucketing, percentiles, filtering, PR and session value extraction) |
 | `src/components/metric-card.tsx` | Shared MetricCard component + formatting utilities (fmt, fmtPct, fmtCost, fmtDelta) |
-| `src/components/overview-metrics-grid.tsx` | Shared 3×3 metric category grid (Output Quality, Prompt Efficiency, Agent Behavior) |
+| `src/components/overview-metrics-grid.tsx` | Data-driven 3×3 metric category grid (Delivery, Session Effectiveness, Adoption Maturity) |
 | `src/components/pr-table-header.tsx` | Shared 9-column PR table header with tooltip column labels |
 | `src/components/metric-detail-content.tsx` | Shared metric detail body (stats, trend, distribution, notable PRs, boolean panel) |
 | `src/lib/auth.ts` | Auth helpers |

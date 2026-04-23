@@ -1,58 +1,75 @@
 # Metrics
 
-AX computes 9 metrics across 3 categories. 3 are PR-derived (from GitHub data, stored in `pr_metrics`) and 6 are session-derived (computed on-the-fly from the `sessions` table). Full PR metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but PR-derived aggregate statistics (averages, trend lines) use settled PRs only. Session-derived metrics include all pushed sessions regardless of PR association.
+AX computes 15 metrics across 3 categories. 9 are displayed on the overview dashboard; 6 are hidden from the overview but still computed and accessible via detail pages. 4 displayed metrics are PR-derived (from GitHub data and session joins) and 5 are session-derived (computed on-the-fly from the `sessions` table). Full PR metrics are only computed for finalized (merged or closed) PRs. Open PRs are visible in the dashboard (with partial metrics and a "pending" indicator), but PR-derived aggregate statistics (averages, trend lines) use settled PRs only. Session-derived metrics include all pushed sessions regardless of PR association.
 
 Each metric has detailed documentation in `docs/metrics/` and is viewable in the dashboard at `/docs/[slug]`.
 
-See [ADR-001](../docs/decisions/001-metrics-selection.md) for the original metric selection and [ADR-015](../docs/decisions/015-metric-pruning.md) for the 2026-04-16 pruning.
+See [ADR-001](../docs/decisions/001-metrics-selection.md) for the original metric selection, [ADR-015](../docs/decisions/015-metric-pruning.md) for the 2026-04-16 pruning, and [ADR-017](../docs/decisions/017-metric-restructuring.md) for the 2026-04-23 restructuring into the current categories.
 
 ## Categories
 
-### Output Quality
+### Delivery
 
-Measures the quality of code produced by the agent-human collaboration and the feedback loop.
+Measures how quickly and cleanly code ships from idea to merged PR.
 
-| Metric | Type | Source | What it measures |
-|--------|------|--------|------------------|
-| Post-Open Commits | int | GitHub | Commits pushed after PR was opened. Lower = cleaner first draft. |
-| CI Success Rate | float | GitHub | Fraction of commits on the PR that passed all CI check suites. Per-commit CI status (`ci_passed`) is stored on the `commits` table, fetched via `list_check_suites` per commit SHA. At finalization, completed suites are evaluated immediately; in-progress suites are deferred to webhooks and the `ReconcileCiDataJob`. |
-| Line Revisit Rate | float | GitHub | Files in this PR that were also changed in other PRs finalized within the last 7 days. Higher = unstable areas. |
+| Metric | Type | Source | Displayed | What it measures |
+|--------|------|--------|-----------|------------------|
+| Task Cycle Time | float | PR + Sessions | Yes | Hours from the first coding session to PR merge or close. Requires a `session_prs` join to find the earliest linked session. Lower = faster delivery. |
+| PR Throughput | float | PR (aggregate) | Yes | Merged PRs per contributor per week. A special aggregate metric with no per-PR backing value. Higher = team ships more frequently. |
+| Post-Open Commits | int | GitHub | Yes | Commits pushed after PR was opened. Lower = cleaner first draft. |
+| CI Success Rate | float | GitHub | No | Fraction of commits on the PR that passed all CI check suites. Per-commit CI status (`ci_passed`) is stored on the `commits` table, fetched via `list_check_suites` per commit SHA. At finalization, completed suites are evaluated immediately; in-progress suites are deferred to webhooks and the `ReconcileCiDataJob`. |
+| Line Revisit Rate | float | GitHub | No | Files in this PR that were also changed in other PRs finalized within the last 7 days. Higher = unstable areas. |
 
-### Prompt Efficiency
+### Session Effectiveness
 
-Measures how efficiently the human directed the agent.
+Measures how efficiently the human directed the agent and how well the session used resources.
 
-| Metric | Type | Source | What it measures |
-|--------|------|--------|------------------|
-| Iteration Depth | int | Sessions | Number of human turns (back-and-forth cycles). |
-| Token Cost per PR | float | Sessions | Dollar cost of all tokens used, computed with model-specific pricing. |
-| Cache Hit Rate | float | Sessions | Ratio of cache-read tokens to total input tokens. Higher = better cache utilization. |
+| Metric | Type | Source | Displayed | What it measures |
+|--------|------|--------|-----------|------------------|
+| Iteration Depth | int | Sessions | Yes | Number of human turns (back-and-forth cycles). |
+| Peak Context Window | float | Sessions | Yes | Highest percentage of the model's context window used in any single message. CLI pre-computes this as `peak_context_pct` (0.0-1.0) using model-specific max context limits. High values mean the session is pushing against limits. |
+| Autonomy Score | float | Sessions | Yes | `assistant_messages / human_messages` — higher = agent works more independently. |
+| Token Cost per PR | float | Sessions | No | Dollar cost of all tokens used, computed with model-specific pricing. |
+| Cache Hit Rate | float | Sessions | No | Ratio of cache-read tokens to total input tokens. Higher = better cache utilization. |
+| Sidechain Rate | float | Sessions | No | Fraction of messages on sidechain branches (backtracking). Lower = fewer dead-end paths. |
+| Re-Read Rate | float | Sessions | No | `total_file_reads / unique_files_read` — 1.0 = no re-reads, higher = redundant reading. |
 
-### Agent Behavior
+### Adoption Maturity
 
-Measures how the agent performed during the coding session.
+Measures how deeply the team has adopted advanced agent capabilities and whether code review keeps pace.
 
-| Metric | Type | Source | What it measures |
-|--------|------|--------|------------------|
-| Sidechain Rate | float | Sessions | Fraction of messages on sidechain branches (backtracking). Lower = fewer dead-end paths. |
-| Re-Read Rate | float | Sessions | `total_file_reads / unique_files_read` — 1.0 = no re-reads, higher = redundant reading. |
-| Autonomy Score | float | Sessions | `assistant_messages / human_messages` — higher = agent works more independently. |
+| Metric | Type | Source | Displayed | What it measures |
+|--------|------|--------|-----------|------------------|
+| Skill & Tool Usage | float | Sessions | Yes | `(skill_tool_calls + mcp_tool_calls) / total_tool_calls` — fraction of tool calls using slash commands or custom MCP tools. Higher = leveraging advanced capabilities. |
+| Subagent Delegation | float | Sessions | Yes | `agent_tool_calls / total_tool_calls` — fraction of tool calls that delegate to subagents. Higher = parallelizing work effectively. |
+| Rubber Stamp Rate | float | GitHub | Yes | Binary per-PR: 1 if diff >= 50 lines AND open-to-merge <= 5 minutes, else 0. Aggregate = fraction of PRs flagged. Lower = more thorough review. |
+
+## Displayed vs Hidden
+
+The dashboard overview shows 9 metrics (3 per category). The remaining 6 are still computed and accessible via metric detail pages (e.g., `/metrics/cache-hit-rate`). The `displayed` flag in `metric-defs.ts` controls which metrics appear on the overview grid.
 
 ## Computation
 
 All metric computation happens server-side in the Rails application.
 
-- **GitHub-sourced metrics** (output quality) are computed from webhook data and GitHub API at PR finalization (merge/close)
-- **Session-dependent metrics** (prompt efficiency, agent behavior) are computed directly from session data in the `sessions` table. Sessions do not need to be associated with a PR — all pushed session data is included in aggregate metrics.
+- **GitHub-sourced metrics** (Post-Open Commits, CI Success Rate, Line Revisit Rate, Rubber Stamp Rate) are computed from webhook data and GitHub API at PR finalization (merge/close)
+- **Session-dependent metrics** (Iteration Depth, Autonomy Score, Peak Context Window, Skill & Tool Usage, Subagent Delegation, and 4 hidden metrics) are computed directly from session data in the `sessions` table. Sessions do not need to be associated with a PR — all pushed session data is included in aggregate metrics.
+- **Joined PR metrics** (Task Cycle Time) require a subquery joining `session_prs` to `sessions` to find the earliest session start time for each PR.
+- **Special aggregate metrics** (PR Throughput) have no per-PR backing value and are computed as `merged_count / contributors / weeks` directly in `MetricsAggregator`.
 
-Server-side computation is split between three services:
+Server-side computation is split between these services:
 
 - **`MetricsComputer`** — Computes `ci_success_rate` (from per-commit `ci_passed` values on the `commits` table) and `line_revisit_rate` (7-day lookback). Only handles GitHub-derived metrics.
 - **`SessionPrCorrelationService`** — Matches sessions to PRs by branch name and temporal overlap. Creates `SessionPr` join records only — does **not** compute or write session-derived metrics to `pr_metrics`.
-- **`MetricsAggregator`** — Computes windowed aggregate metrics for the overview page. Takes two scopes: a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`, must join `prs`) for PR-derived metrics, and a `CodingSession` scope for session-derived metrics. Applies a configurable window (7/30/90 days) and returns: `{ totalPRs, totalSessions, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }`. PR metrics are dated by merge/close date (`COALESCE(prs.merged_at, prs.closed_at)`). Session metrics are dated by session end time (`sessions.ended_at`). Current = average over the window; prior = average over the preceding window (for delta computation). Sparkline = daily buckets with `AVG` per metric. Empty days are null (gaps in the sparkline). Session-derived metrics (cache_hit_rate, sidechain_rate, etc.) are computed inline from raw session columns using SQL expressions (`SESSION_METRIC_EXPRESSIONS`), not from pre-computed values.
+- **`MetricsAggregator`** — Computes windowed aggregate metrics for the overview page. Handles four computation patterns:
+  1. **Stored PR metrics** (`PR_METRIC_COLUMNS`) — reads pre-computed values from `pr_metrics` (post-open-commits, ci-success-rate, line-revisit-rate)
+  2. **Computed PR expressions** (`COMPUTED_PR_EXPRESSIONS`) — evaluates SQL expressions per PR at query time (rubber-stamp-rate)
+  3. **Task cycle time** — special join pattern: joins `session_prs → sessions` to compute hours from first session start to PR terminal date
+  4. **PR throughput** — special aggregate: `merged_count / contributors / weeks`
+  5. **Session metric expressions** (`SESSION_METRIC_EXPRESSIONS`) — evaluates SQL expressions per session row (all session-derived metrics including peak-context-pct, subagent-delegation, skill-tool-usage)
 - **`PrsController#show`** — Computes session-derived metrics on-the-fly for the PR detail endpoint by aggregating across linked sessions (via `session_prs` join). Uses SQL expressions consistent with `MetricsAggregator` but aggregated per-PR (MAX for iteration_depth, SUM for token_cost_usd, weighted ratios for rates).
-- **`MetricDetailComputer`** — Computes all data for the metric detail drill-down page for a single metric. Takes a metric slug, PR/session scopes, and window days. Returns: `{ count, total_count, stats (avg/P10/P50/P90), prior_stats, trend (daily buckets with avg/min/max/count), distribution (histogram buckets), notable_highest, notable_lowest }`. Handles both PR-derived and session-derived metrics. Pre-computes all Arel SQL fragments at class load from frozen constants (same pattern as `MetricsAggregator`). Exposed via `metric_detail` controller actions at org, me, team, and repo scopes.
-- **`SessionSerialization`** — Computes per-session metric values via SQL aliases for the session list endpoints. Each session response includes a `metrics` object with all 6 session-derived metric values.
+- **`MetricDetailComputer`** — Computes all data for the metric detail drill-down page for a single metric. Takes a metric slug, PR/session scopes, and window days. Returns: `{ count, total_count, stats (avg/P10/P50/P90), prior_stats, trend (daily buckets with avg/min/max/count), distribution (histogram buckets), notable_highest, notable_lowest }`. Handles stored PR metrics, computed PR expressions, joined PR metrics (task cycle time), special aggregates (PR throughput), and session-derived metrics. Exposed via `metric_detail` controller actions at org, me, team, and repo scopes.
+- **`SessionSerialization`** — Computes per-session metric values via SQL aliases for the session list endpoints. Each session response includes a `metrics` object with all session-derived metric values (including peak_context_pct, subagent_delegation, skill_tool_usage).
 
 The Go `cli/internal/metrics/` package contains the original metric calculator implementations as pure functions (reference implementations).
 
@@ -79,6 +96,8 @@ PR opened
 
 Session-derived metrics are not stored on `pr_metrics` — they are computed on-the-fly from the `sessions` table and are always available regardless of finalization status.
 
+Query-time metrics (rubber-stamp-rate, task-cycle-time, pr-throughput) are also not stored — they are computed at query time from `prs` table data and session joins.
+
 ### Where is finalization enforced?
 - **Rails**: `PrMetrics` model has a `before_update` callback (`prevent_settled_github_update`) that blocks changes to GitHub-derived fields once `metrics_finalized = true`
 - **Webhooks**: All handlers check `pr_finalized?` before updating GitHub fields
@@ -95,8 +114,11 @@ Session-derived metrics are not stored on `pr_metrics` — they are computed on-
 ### PR metrics — PostgreSQL (`pr_metrics` table)
 One row per PR. 3 GitHub-derived metrics (`post_open_commits`, `ci_success_rate`, `line_revisit_rate`) as columns plus `metrics_finalized` (bool) and `finalized_at` (timestamp).
 
+### Computed PR metrics — query-time
+Rubber Stamp Rate is computed at query time from `prs` table columns (`additions`, `deletions`, `merged_at`, `created_at_source`). Task Cycle Time is computed via a join to `session_prs` and `sessions`. PR Throughput is a pure aggregate. None of these are stored.
+
 ### Session metrics — computed on-the-fly
-The 6 session-derived metrics (`iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, `autonomy_score`) are **not** persisted in `pr_metrics`. They are computed at query time from raw session data in the `sessions` table using SQL expressions. This approach:
+The session-derived metrics (iteration_depth, token_cost_usd, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score, peak_context_pct, subagent_delegation, skill_tool_usage) are **not** persisted in `pr_metrics`. They are computed at query time from raw session data in the `sessions` table using SQL expressions. Peak context percentage is pre-computed by the CLI (stored as `peak_context_pct` on `sessions`), while subagent delegation and skill/tool usage are computed from the tool call count columns (`agent_tool_calls`, `skill_tool_calls`, `mcp_tool_calls`, `total_tool_calls`). This approach:
 - Avoids write contention on the `pr_metrics` table from late-arriving session data
 - Ensures session metrics are always up-to-date when new sessions are pushed
 - Allows aggregate session metrics to include sessions not associated with any PR

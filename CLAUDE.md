@@ -110,7 +110,7 @@ See ADR-015 for the rationale behind both decisions.
 All architectural decisions are documented in `docs/decisions/`. Reference these when working in the related area:
 
 - [001 — Metrics Selection](docs/decisions/001-metrics-selection.md): Original metric set. Partially superseded by ADR-015.
-- [015 — Metric Pruning](docs/decisions/015-metric-pruning.md): 9 metrics across 3 categories. Check this before adding or changing metrics.
+- [015 — Metric Pruning](docs/decisions/015-metric-pruning.md): Pruned to 9 metrics across 3 categories. **Display set superseded by ADR-017** — categories and displayed metrics changed.
 - [002 — Form Factor](docs/decisions/002-form-factor.md): CLI + web dashboard. Don't build a plugin-only solution.
 - [003 — Target Scope](docs/decisions/003-target-scope.md): **Superseded by ADR-014.** Originally: local → team → managed service path.
 - [004 — CLI Language](docs/decisions/004-cli-language.md): Go for CLI, TypeScript for dashboard only.
@@ -126,6 +126,7 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [014 — Remove Local Mode](docs/decisions/014-remove-local-mode.md): Managed-only architecture. Supersedes ADR-003, ADR-007. CLI is a thin push client, metrics computed server-side.
 - [015 — Design System & shadcn/ui](docs/decisions/015-design-system-and-shadcn.md): Parchment & Clay theme + shadcn/ui as the primitive component library. Amends ADR-006. **Read before any dashboard styling work.**
 - [016 — Teams within Orgs](docs/decisions/016-teams-within-orgs.md): Teams as people-groups within orgs for metric scoping and access control. Pro-only. Relevant when working on team management, team-scoped metrics, or org access control.
+- [017 — Metric Restructuring](docs/decisions/017-metric-restructuring.md): New top 9 displayed metrics across Delivery / Session Effectiveness / Adoption Maturity. 6 new metrics, 3 kept, 6 hidden. Check this before adding or changing metrics.
 - [Open Questions](docs/decisions/open-questions.md): Pending decisions (CI images, PR author tracking, etc.)
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.
