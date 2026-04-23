@@ -210,7 +210,7 @@ You can override with --api-key.`,
 			}
 
 			if all {
-				return runBulkPush(apiKey)
+				return runBulkPush(apiKey, force)
 			}
 
 			path, err := resolveRepoPath(repoPath)
@@ -318,7 +318,7 @@ You can override with --api-key.`,
 	return cmd
 }
 
-func runBulkPush(apiKeyOverride string) error {
+func runBulkPush(apiKeyOverride string, force bool) error {
 	// Load config for defaults.
 	cfg, _ := config.LoadConfig()
 	serverURL := config.DefaultServerURL
@@ -417,6 +417,7 @@ func runBulkPush(apiKeyOverride string) error {
 		Repos:       summary.Repos,
 		Concurrency: bulk.DefaultConcurrency,
 		Writer:      os.Stdout,
+		Force:       force,
 	})
 
 	// Summary.
