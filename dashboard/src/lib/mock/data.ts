@@ -180,6 +180,14 @@ function generatePR(id: number, repoId: number): PRWithMetrics {
         sidechain_rate: hasSessionData ? Math.round(randFloat(0.02, 0.28) * 100) / 100 : null,
         re_read_rate: hasSessionData ? Math.round(randFloat(0.8, 3.8) * 100) / 100 : null,
         autonomy_score: hasSessionData ? Math.round(randFloat(2.0, 15.0) * 10) / 10 : null,
+        task_cycle_time_hours: hasSessionData ? Math.round(randFloat(0.5, 48.0) * 10) / 10 : null,
+        pr_throughput: Math.round(randFloat(1.0, 8.0) * 10) / 10,
+        peak_context_pct: hasSessionData ? Math.round(randFloat(0.1, 0.95) * 100) / 100 : null,
+        skill_tool_usage: hasSessionData ? Math.round(randFloat(0.0, 0.3) * 100) / 100 : null,
+        subagent_delegation: hasSessionData ? Math.round(randFloat(0.0, 0.5) * 100) / 100 : null,
+        rubber_stamp_rate: isMerged && additions + deletions >= 50
+          ? (rand() < 0.15 ? 1.0 : 0.0)
+          : 0.0,
         metrics_finalized: true,
         finalized_at: mergedAt ?? daysAgo(Math.max(0, daysBack - 1)),
       }
@@ -267,6 +275,12 @@ const SPARKLINE_CONFIGS: Record<string, SparklineConfig> = {
   "sidechain-rate": { base: 0.16, trend: -0.05, noise: 0.04, clampMin: 0, clampMax: 1 },
   "re-read-rate": { base: 1.8, trend: -0.2, noise: 0.4, clampMin: 0 },
   "autonomy-score": { base: 6.5, trend: 1.5, noise: 1.2, clampMin: 0 },
+  "task-cycle-time": { base: 12.0, trend: -3.0, noise: 4.0, clampMin: 0.5 },
+  "pr-throughput": { base: 3.2, trend: 0.8, noise: 0.6, clampMin: 0.5 },
+  "peak-context-pct": { base: 0.45, trend: -0.05, noise: 0.1, clampMin: 0, clampMax: 1 },
+  "skill-tool-usage": { base: 0.08, trend: 0.06, noise: 0.04, clampMin: 0, clampMax: 1 },
+  "subagent-delegation": { base: 0.12, trend: 0.08, noise: 0.05, clampMin: 0, clampMax: 1 },
+  "rubber-stamp-rate": { base: 0.12, trend: -0.04, noise: 0.04, clampMin: 0, clampMax: 1 },
 };
 
 function buildAggregateMetrics(prs: PRWithMetrics[], days = 30): AggregateMetrics {
@@ -534,6 +548,9 @@ function generateSession(idx: number, _repoId: number, author: string): SessionW
       autonomy_score: messageCount > 0
         ? Math.round((assistantMessages / messageCount) * 10) / 10
         : null,
+      peak_context_pct: Math.round(randFloat(0.1, 0.95) * 100) / 100,
+      skill_tool_usage: Math.round(randFloat(0.0, 0.3) * 100) / 100,
+      subagent_delegation: Math.round(randFloat(0.0, 0.5) * 100) / 100,
     },
   };
 }

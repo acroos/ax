@@ -111,6 +111,34 @@ describe("formatMetricValue", () => {
     });
   });
 
+  describe("float with unit=hrs (Task Cycle Time)", () => {
+    const def = defWithType("float", { unit: "hrs" });
+
+    it("formats values >= 1 as hours", () => {
+      expect(formatMetricValue(3.2, def)).toBe("3.2 hrs");
+    });
+
+    it("formats values < 1 as minutes", () => {
+      expect(formatMetricValue(0.5, def)).toBe("30 min");
+    });
+
+    it("formats exactly 1 as hours", () => {
+      expect(formatMetricValue(1, def)).toBe("1.0 hrs");
+    });
+  });
+
+  describe("float with unit=PRs/wk (PR Throughput)", () => {
+    const def = defWithType("float", { unit: "PRs/wk" });
+
+    it("formats as rate per week", () => {
+      expect(formatMetricValue(2.4, def)).toBe("2.4/wk");
+    });
+
+    it("formats low values", () => {
+      expect(formatMetricValue(0.5, def)).toBe("0.5/wk");
+    });
+  });
+
   describe("int", () => {
     const def = defWithType("int");
 
@@ -145,8 +173,8 @@ describe("getMetricDef", () => {
     expect(getMetricDef("nonexistent")).toBeUndefined();
   });
 
-  it("finds all 9 defined metrics", () => {
-    expect(METRIC_DEFS).toHaveLength(9);
+  it("finds all 15 defined metrics", () => {
+    expect(METRIC_DEFS).toHaveLength(15);
     const slugs = [
       "post-open-commits",
       "ci-success-rate",
@@ -157,6 +185,12 @@ describe("getMetricDef", () => {
       "sidechain-rate",
       "re-read-rate",
       "autonomy-score",
+      "task-cycle-time",
+      "pr-throughput",
+      "peak-context-pct",
+      "skill-tool-usage",
+      "subagent-delegation",
+      "rubber-stamp-rate",
     ];
     for (const slug of slugs) {
       expect(getMetricDef(slug)).toBeDefined();
@@ -170,17 +204,30 @@ describe("getMetricDef", () => {
 
 describe("DISPLAYED_METRICS", () => {
   it("contains only metrics with displayed: true", () => {
-    expect(DISPLAYED_METRICS.length).toBe(3);
+    expect(DISPLAYED_METRICS.length).toBe(9);
     for (const m of DISPLAYED_METRICS) {
       expect(m.displayed).toBe(true);
     }
   });
 
-  it("includes the 3 kept metrics", () => {
+  it("includes all 9 displayed metrics", () => {
     const slugs = DISPLAYED_METRICS.map((m) => m.slug);
+    expect(slugs).toContain("task-cycle-time");
+    expect(slugs).toContain("pr-throughput");
     expect(slugs).toContain("post-open-commits");
     expect(slugs).toContain("iteration-depth");
+    expect(slugs).toContain("peak-context-pct");
     expect(slugs).toContain("autonomy-score");
+    expect(slugs).toContain("skill-tool-usage");
+    expect(slugs).toContain("subagent-delegation");
+    expect(slugs).toContain("rubber-stamp-rate");
+  });
+
+  it("has 3 metrics per category", () => {
+    for (const cat of CATEGORIES) {
+      const count = DISPLAYED_METRICS.filter((m) => m.category === cat).length;
+      expect(count).toBe(3);
+    }
   });
 });
 
