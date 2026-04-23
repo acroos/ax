@@ -31,7 +31,9 @@ module Api
             :input_tokens, :output_tokens, :cache_creation_input_tokens,
             :cache_read_input_tokens, :total_cost_usd, :primary_model,
             :files_read_count, :files_modified_count,
-            :assistant_message_count, :sidechain_messages, :total_file_reads
+            :assistant_message_count, :sidechain_messages, :total_file_reads,
+            :peak_context_pct, :total_tool_calls, :agent_tool_calls,
+            :skill_tool_calls, :mcp_tool_calls
           ],
           commits: [
             :sha, :pr_number, :session_id, :message, :author, :committed_at,

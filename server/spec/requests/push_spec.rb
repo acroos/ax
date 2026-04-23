@@ -61,4 +61,49 @@ RSpec.describe "Push API", type: :request do
     expect(body["entities"]["repos"]).to eq(1)
     expect(body["entities"]["prs"]).to eq(1)
   end
+
+  it "persists all session fields including tool call metrics" do
+    payload = push_payload.merge(
+      sessions: [
+        {
+          id: "sess-tool-test",
+          branch: "main",
+          started_at: 1_700_000_000_000,
+          ended_at: 1_700_003_600_000,
+          message_count: 5,
+          turn_count: 4,
+          input_tokens: 1000,
+          output_tokens: 2000,
+          cache_creation_input_tokens: 100,
+          cache_read_input_tokens: 800,
+          total_cost_usd: 0.42,
+          primary_model: "claude-sonnet-4-20250514",
+          files_read_count: 10,
+          files_modified_count: 3,
+          assistant_message_count: 8,
+          sidechain_messages: 2,
+          total_file_reads: 15,
+          peak_context_pct: 0.72,
+          total_tool_calls: 60,
+          agent_tool_calls: 12,
+          skill_tool_calls: 5,
+          mcp_tool_calls: 7
+        }
+      ]
+    )
+
+    post "/api/v1/push",
+      params: payload,
+      headers: { "Authorization" => "Bearer #{raw_key}" },
+      as: :json
+
+    expect(response).to have_http_status(:ok)
+
+    session = CodingSession.find("sess-tool-test")
+    expect(session.peak_context_pct).to be_within(0.01).of(0.72)
+    expect(session.total_tool_calls).to eq(60)
+    expect(session.agent_tool_calls).to eq(12)
+    expect(session.skill_tool_calls).to eq(5)
+    expect(session.mcp_tool_calls).to eq(7)
+  end
 end
