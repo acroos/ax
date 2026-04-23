@@ -114,7 +114,7 @@ export function MetricCard({
 
   return (
     <Card
-      className="group gap-0 p-5 transition-colors"
+      className="group gap-0 p-5 transition-colors hover:border-primary/30 hover:bg-accent/40"
       tabIndex={0}
       aria-describedby={tooltip ? descriptionId : undefined}
     >
