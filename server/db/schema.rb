@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_21_200000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_23_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -209,6 +209,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_21_200000) do
   end
 
   create_table "sessions", id: :string, force: :cascade do |t|
+    t.integer "agent_tool_calls", default: 0, null: false
     t.integer "assistant_message_count", default: 0, null: false
     t.string "branch"
     t.integer "cache_creation_input_tokens", default: 0
@@ -219,15 +220,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_21_200000) do
     t.integer "files_modified_count", default: 0
     t.integer "files_read_count", default: 0
     t.integer "input_tokens", default: 0
+    t.integer "mcp_tool_calls", default: 0, null: false
     t.integer "message_count", default: 0
     t.integer "output_tokens", default: 0
+    t.float "peak_context_pct"
     t.string "primary_model"
     t.string "pushed_by"
     t.bigint "repo_id"
     t.integer "sidechain_messages", default: 0, null: false
+    t.integer "skill_tool_calls", default: 0, null: false
     t.datetime "started_at"
     t.float "total_cost_usd"
     t.integer "total_file_reads", default: 0, null: false
+    t.integer "total_tool_calls", default: 0, null: false
     t.integer "turn_count", default: 0
     t.datetime "updated_at", null: false
     t.index ["pushed_by"], name: "index_sessions_on_pushed_by"

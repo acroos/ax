@@ -16,5 +16,10 @@ FactoryBot.define do
     total_file_reads { 10 }
     files_read_count { 8 }
     files_modified_count { 3 }
+    peak_context_pct { nil }
+    total_tool_calls { 0 }
+    agent_tool_calls { 0 }
+    skill_tool_calls { 0 }
+    mcp_tool_calls { 0 }
   end
 end

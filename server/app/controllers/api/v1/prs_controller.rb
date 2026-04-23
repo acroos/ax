@@ -57,7 +57,10 @@ module Api
           Arel.sql("SUM(sessions.cache_read_input_tokens)::float / NULLIF(SUM(sessions.input_tokens) + SUM(sessions.cache_creation_input_tokens) + SUM(sessions.cache_read_input_tokens), 0)"), # brakeman:disable SQLInjection
           Arel.sql("SUM(sessions.sidechain_messages)::float / NULLIF(SUM(sessions.message_count) + SUM(sessions.assistant_message_count), 0)"), # brakeman:disable SQLInjection
           Arel.sql("SUM(sessions.total_file_reads)::float / NULLIF(SUM(sessions.files_read_count), 0)"),                             # brakeman:disable SQLInjection
-          Arel.sql("SUM(sessions.assistant_message_count)::float / NULLIF(SUM(sessions.message_count), 0)")                          # brakeman:disable SQLInjection
+          Arel.sql("SUM(sessions.assistant_message_count)::float / NULLIF(SUM(sessions.message_count), 0)"),                         # brakeman:disable SQLInjection
+          Arel.sql("MAX(sessions.peak_context_pct)"),                                                                                # brakeman:disable SQLInjection
+          Arel.sql("SUM(sessions.agent_tool_calls)::float / NULLIF(SUM(sessions.total_tool_calls), 0)"),                             # brakeman:disable SQLInjection
+          Arel.sql("SUM(sessions.skill_tool_calls + sessions.mcp_tool_calls)::float / NULLIF(SUM(sessions.total_tool_calls), 0)")    # brakeman:disable SQLInjection
         )
 
         result = [ result ] unless result.is_a?(Array)
@@ -68,7 +71,10 @@ module Api
           cache_hit_rate: result[2]&.to_f,
           sidechain_rate: result[3]&.to_f,
           re_read_rate: result[4]&.to_f,
-          autonomy_score: result[5]&.to_f
+          autonomy_score: result[5]&.to_f,
+          peak_context_pct: result[6]&.to_f,
+          subagent_delegation: result[7]&.to_f,
+          skill_tool_usage: result[8]&.to_f
         }.compact
       end
     end

@@ -4,16 +4,21 @@ RSpec.describe MetricsAggregator do
   let(:org) { create(:organization) }
   let(:repo) { create(:repo, organization: org) }
 
+  def build_scopes
+    pr_scope = PrMetrics.joins(pr: :repo)
+      .where(repos: { organization_id: org.id }, metrics_finalized: true)
+    session_scope = CodingSession.joins(:repo)
+      .where(repos: { organization_id: org.id })
+    [ pr_scope, session_scope ]
+  end
+
   describe "#call" do
     it "returns PR-derived metrics from finalized pr_metrics" do
       pr = create(:pr, repo: repo, state: "merged", merged_at: 5.days.ago)
       create(:pr_metrics, pr: pr, metrics_finalized: true,
         post_open_commits: 3, ci_success_rate: 0.9, line_revisit_rate: 0.1)
 
-      pr_scope = PrMetrics.joins(pr: :repo)
-        .where(repos: { organization_id: org.id }, metrics_finalized: true)
-      session_scope = CodingSession.joins(:repo)
-        .where(repos: { organization_id: org.id })
+      pr_scope, session_scope = build_scopes
 
       result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
 
@@ -32,10 +37,7 @@ RSpec.describe MetricsAggregator do
         message_count: 10, assistant_message_count: 15, sidechain_messages: 5,
         total_file_reads: 20, files_read_count: 10)
 
-      pr_scope = PrMetrics.joins(pr: :repo)
-        .where(repos: { organization_id: org.id }, metrics_finalized: true)
-      session_scope = CodingSession.joins(:repo)
-        .where(repos: { organization_id: org.id })
+      pr_scope, session_scope = build_scopes
 
       result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
 
@@ -52,6 +54,126 @@ RSpec.describe MetricsAggregator do
       expect(result[:metrics]["autonomy-score"][:current]).to be_within(0.01).of(1.5)
     end
 
+    it "returns new session-derived metrics (peak context, subagent, skill/tool)" do
+      create(:coding_session, repo: repo,
+        ended_at: 3.days.ago,
+        peak_context_pct: 0.75,
+        total_tool_calls: 100, agent_tool_calls: 20,
+        skill_tool_calls: 5, mcp_tool_calls: 10)
+
+      pr_scope, session_scope = build_scopes
+
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
+
+      expect(result[:metrics]["peak-context-pct"][:current]).to be_within(0.01).of(0.75)
+      # subagent_delegation = 20 / 100 = 0.2
+      expect(result[:metrics]["subagent-delegation"][:current]).to be_within(0.01).of(0.2)
+      # skill_tool_usage = (5 + 10) / 100 = 0.15
+      expect(result[:metrics]["skill-tool-usage"][:current]).to be_within(0.01).of(0.15)
+    end
+
+    it "returns nil for new session metrics when tool calls are zero" do
+      create(:coding_session, repo: repo,
+        ended_at: 3.days.ago,
+        peak_context_pct: nil,
+        total_tool_calls: 0, agent_tool_calls: 0,
+        skill_tool_calls: 0, mcp_tool_calls: 0)
+
+      pr_scope, session_scope = build_scopes
+
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
+
+      expect(result[:metrics]["peak-context-pct"][:current]).to be_nil
+      expect(result[:metrics]["subagent-delegation"][:current]).to be_nil
+      expect(result[:metrics]["skill-tool-usage"][:current]).to be_nil
+    end
+
+    it "computes rubber-stamp-rate from prs table columns" do
+      # Rubber-stamped: large diff, merged quickly
+      pr1 = create(:pr, repo: repo, state: "merged",
+        merged_at: 3.days.ago,
+        created_at_source: 3.days.ago + 2.minutes,
+        additions: 100, deletions: 20)
+      pr1.update_column(:merged_at, 3.days.ago)
+      pr1.update_column(:created_at_source, 3.days.ago - 2.minutes)
+      create(:pr_metrics, pr: pr1, metrics_finalized: true)
+
+      # Not rubber-stamped: large diff, took long to merge
+      pr2 = create(:pr, repo: repo, state: "merged",
+        merged_at: 2.days.ago,
+        created_at_source: 4.days.ago,
+        additions: 80, deletions: 30)
+      create(:pr_metrics, pr: pr2, metrics_finalized: true)
+
+      pr_scope, session_scope = build_scopes
+
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
+
+      # pr1 = 1.0 (rubber-stamped), pr2 = 0.0 (not), avg = 0.5
+      expect(result[:metrics]["rubber-stamp-rate"][:current]).to be_within(0.01).of(0.5)
+    end
+
+    it "computes task-cycle-time from session-to-PR join" do
+      pr = create(:pr, repo: repo, state: "merged", merged_at: 2.days.ago)
+      create(:pr_metrics, pr: pr, metrics_finalized: true)
+
+      session = create(:coding_session, repo: repo,
+        started_at: 3.days.ago,
+        ended_at: 2.days.ago - 1.hour)
+      create(:session_pr, coding_session: session, pr: pr)
+
+      pr_scope, session_scope = build_scopes
+
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
+
+      # Cycle time = (merged_at - session.started_at) in hours = ~24 hours
+      expect(result[:metrics]["task-cycle-time"][:current]).to be_within(1.0).of(24.0)
+    end
+
+    it "returns nil task-cycle-time when no sessions are linked" do
+      pr = create(:pr, repo: repo, state: "merged", merged_at: 2.days.ago)
+      create(:pr_metrics, pr: pr, metrics_finalized: true)
+
+      pr_scope, session_scope = build_scopes
+
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
+
+      expect(result[:metrics]["task-cycle-time"][:current]).to be_nil
+    end
+
+    it "computes pr-throughput as merged PRs per contributor per week" do
+      # 4 merged PRs by 2 contributors in a 30-day window
+      2.times do
+        pr = create(:pr, repo: repo, state: "merged",
+          merged_at: 5.days.ago, author: "alice")
+        create(:pr_metrics, pr: pr, metrics_finalized: true)
+      end
+      2.times do
+        pr = create(:pr, repo: repo, state: "merged",
+          merged_at: 5.days.ago, author: "bob")
+        create(:pr_metrics, pr: pr, metrics_finalized: true)
+      end
+
+      pr_scope, session_scope = build_scopes
+
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
+
+      # 4 merged / 2 contributors / (30/7) weeks ≈ 0.467
+      expected = 4.0 / 2.0 / (30.0 / 7.0)
+      expect(result[:metrics]["pr-throughput"][:current]).to be_within(0.01).of(expected)
+    end
+
+    it "returns nil pr-throughput when no merged PRs" do
+      pr = create(:pr, repo: repo, state: "closed", closed_at: 5.days.ago)
+      create(:pr_metrics, pr: pr, metrics_finalized: true)
+
+      pr_scope, session_scope = build_scopes
+
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
+
+      expect(result[:metrics]["pr-throughput"][:current]).to be_nil
+    end
+
     it "includes sessions without PR association" do
       # Session with no PR (orphan session)
       create(:coding_session, repo: repo,
@@ -60,10 +182,7 @@ RSpec.describe MetricsAggregator do
         turn_count: 5,
         total_cost_usd: 1.00)
 
-      pr_scope = PrMetrics.joins(pr: :repo)
-        .where(repos: { organization_id: org.id }, metrics_finalized: true)
-      session_scope = CodingSession.joins(:repo)
-        .where(repos: { organization_id: org.id })
+      pr_scope, session_scope = build_scopes
 
       result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
 
@@ -74,10 +193,7 @@ RSpec.describe MetricsAggregator do
     end
 
     it "returns nil metrics when no data exists" do
-      pr_scope = PrMetrics.joins(pr: :repo)
-        .where(repos: { organization_id: org.id }, metrics_finalized: true)
-      session_scope = CodingSession.joins(:repo)
-        .where(repos: { organization_id: org.id })
+      pr_scope, session_scope = build_scopes
 
       result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
 
@@ -85,6 +201,10 @@ RSpec.describe MetricsAggregator do
       expect(result[:totalSessions]).to eq(0)
       expect(result[:metrics]["post-open-commits"][:current]).to be_nil
       expect(result[:metrics]["iteration-depth"][:current]).to be_nil
+      expect(result[:metrics]["rubber-stamp-rate"][:current]).to be_nil
+      expect(result[:metrics]["task-cycle-time"][:current]).to be_nil
+      expect(result[:metrics]["pr-throughput"][:current]).to be_nil
+      expect(result[:metrics]["peak-context-pct"][:current]).to be_nil
     end
 
     it "generates sparklines with correct date bucketing" do
@@ -98,10 +218,7 @@ RSpec.describe MetricsAggregator do
         ended_at: 1.day.ago,
         turn_count: 4, total_cost_usd: 3.0)
 
-      pr_scope = PrMetrics.joins(pr: :repo)
-        .where(repos: { organization_id: org.id }, metrics_finalized: true)
-      session_scope = CodingSession.joins(:repo)
-        .where(repos: { organization_id: org.id })
+      pr_scope, session_scope = build_scopes
 
       result = described_class.new(pr_scope, session_scope: session_scope, window_days: 7).call
 
@@ -127,10 +244,7 @@ RSpec.describe MetricsAggregator do
         ended_at: 10.days.ago,
         turn_count: 5, total_cost_usd: 1.0)
 
-      pr_scope = PrMetrics.joins(pr: :repo)
-        .where(repos: { organization_id: org.id }, metrics_finalized: true)
-      session_scope = CodingSession.joins(:repo)
-        .where(repos: { organization_id: org.id })
+      pr_scope, session_scope = build_scopes
 
       result = described_class.new(pr_scope, session_scope: session_scope, window_days: 7).call
 

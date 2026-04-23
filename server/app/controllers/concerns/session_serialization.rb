@@ -17,7 +17,10 @@ module SessionSerialization
     "sessions.cache_read_input_tokens::float / NULLIF(sessions.input_tokens + sessions.cache_creation_input_tokens + sessions.cache_read_input_tokens, 0) AS cache_hit_rate",
     "sessions.sidechain_messages::float / NULLIF(sessions.message_count + sessions.assistant_message_count, 0) AS sidechain_rate",
     "sessions.total_file_reads::float / NULLIF(sessions.files_read_count, 0) AS re_read_rate",
-    "sessions.assistant_message_count::float / NULLIF(sessions.message_count, 0) AS autonomy_score"
+    "sessions.assistant_message_count::float / NULLIF(sessions.message_count, 0) AS autonomy_score",
+    "sessions.peak_context_pct AS peak_context_pct",
+    "sessions.agent_tool_calls::float / NULLIF(sessions.total_tool_calls, 0) AS subagent_delegation",
+    "(sessions.skill_tool_calls + sessions.mcp_tool_calls)::float / NULLIF(sessions.total_tool_calls, 0) AS skill_tool_usage"
   ].freeze
 
   private
@@ -51,7 +54,10 @@ module SessionSerialization
         cache_hit_rate: session.respond_to?(:cache_hit_rate) ? session.cache_hit_rate&.to_f : nil,
         sidechain_rate: session.respond_to?(:sidechain_rate) ? session.sidechain_rate&.to_f : nil,
         re_read_rate: session.respond_to?(:re_read_rate) ? session.re_read_rate&.to_f : nil,
-        autonomy_score: session.respond_to?(:autonomy_score) ? session.autonomy_score&.to_f : nil
+        autonomy_score: session.respond_to?(:autonomy_score) ? session.autonomy_score&.to_f : nil,
+        peak_context_pct: session.respond_to?(:peak_context_pct) ? session.peak_context_pct&.to_f : nil,
+        subagent_delegation: session.respond_to?(:subagent_delegation) ? session.subagent_delegation&.to_f : nil,
+        skill_tool_usage: session.respond_to?(:skill_tool_usage) ? session.skill_tool_usage&.to_f : nil
       }
     }
   end
