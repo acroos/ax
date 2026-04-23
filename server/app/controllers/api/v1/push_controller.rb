@@ -8,7 +8,7 @@ module Api
 
       def create
         if !request.content_length || request.content_length > MAX_PAYLOAD_SIZE
-          return render json: { ok: false, error: "Payload too large" }, status: :payload_too_large
+          return render json: { ok: false, error: "Payload too large" }, status: :content_too_large
         end
 
         result = PushService.new(push_params, user: current_user).execute
