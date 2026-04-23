@@ -50,7 +50,12 @@ RSpec.describe PushService do
           input_tokens: 5000,
           output_tokens: 3000,
           total_cost_usd: 0.50,
-          primary_model: "claude-sonnet-4-20250514"
+          primary_model: "claude-sonnet-4-20250514",
+          peak_context_pct: 0.65,
+          total_tool_calls: 50,
+          agent_tool_calls: 8,
+          skill_tool_calls: 3,
+          mcp_tool_calls: 5
         }
       ],
       session_prs: [
@@ -120,23 +125,15 @@ RSpec.describe PushService do
       expect(session.pushed_by).to eq("other-dev")
     end
 
-    it "sets pushed_by to the pushing user's github_username" do
+    it "persists new session fields (tool calls and peak context)" do
       PushService.new(push_params, user: user).execute
 
       session = CodingSession.find("session-001")
-      expect(session.pushed_by).to eq(user.github_username)
-    end
-
-    it "updates pushed_by on re-push" do
-      PushService.new(push_params, user: user).execute
-
-      other_user = create(:user, github_username: "other-dev")
-      create(:org_membership, user: other_user, organization: org, role: "member")
-
-      PushService.new(push_params, user: other_user).execute
-
-      session = CodingSession.find("session-001")
-      expect(session.pushed_by).to eq("other-dev")
+      expect(session.peak_context_pct).to be_within(0.01).of(0.65)
+      expect(session.total_tool_calls).to eq(50)
+      expect(session.agent_tool_calls).to eq(8)
+      expect(session.skill_tool_calls).to eq(3)
+      expect(session.mcp_tool_calls).to eq(5)
     end
 
     it "is idempotent on re-push" do

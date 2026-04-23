@@ -153,6 +153,7 @@ class PushService
     input_tokens output_tokens cache_creation_input_tokens cache_read_input_tokens
     total_cost_usd primary_model files_read_count files_modified_count
     assistant_message_count sidechain_messages total_file_reads pushed_by
+    peak_context_pct total_tool_calls agent_tool_calls skill_tool_calls mcp_tool_calls
   ].freeze
 
   def upsert_sessions(repo)
@@ -195,6 +196,11 @@ class PushService
         sidechain_messages: s[:sidechain_messages] || 0,
         total_file_reads: s[:total_file_reads] || 0,
         pushed_by: @user.github_username,
+        peak_context_pct: s[:peak_context_pct],
+        total_tool_calls: s[:total_tool_calls] || 0,
+        agent_tool_calls: s[:agent_tool_calls] || 0,
+        skill_tool_calls: s[:skill_tool_calls] || 0,
+        mcp_tool_calls: s[:mcp_tool_calls] || 0,
         created_at: now,
         updated_at: now
       }
