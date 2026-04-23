@@ -25,3 +25,4 @@ jobs:
         with:
           prompt: ${{ inputs.prompt }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: "Bash(git *),Bash(gh *),Bash(npm *),Read,Write,Edit,Glob,Grep"
