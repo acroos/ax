@@ -54,10 +54,24 @@ type ParsedSession struct {
 	// New metrics
 	SidechainMessages int // messages on sidechain branches
 	TotalFileReads    int // total Read tool calls (including re-reads)
+
+	// Context and tool categorization metrics
+	PeakContextTokens int // max (input + cache_creation + cache_read) across any single message
+	TotalToolCalls    int // sum of all tool call counts
+	AgentToolCalls    int // ToolCalls["Agent"]
+	SkillToolCalls    int // ToolCalls["Skill"]
+	McpToolCalls      int // sum of ToolCalls entries with "mcp__" prefix
 }
 
 // ToSessionData converts a ParsedSession to the API push payload format.
 func (s *ParsedSession) ToSessionData() api.SessionData {
+	// Compute peak context window percentage using model-specific limits.
+	var peakContextPct float64
+	if s.PeakContextTokens > 0 {
+		maxCtx := pricing.LookupMaxContext(s.PrimaryModel)
+		peakContextPct = float64(s.PeakContextTokens) / float64(maxCtx)
+	}
+
 	return api.SessionData{
 		ID:                       s.ID,
 		Branch:                   s.Branch,
@@ -76,6 +90,11 @@ func (s *ParsedSession) ToSessionData() api.SessionData {
 		AssistantMessageCount:    s.AssistantMessages,
 		SidechainMessages:        s.SidechainMessages,
 		TotalFileReads:           s.TotalFileReads,
+		PeakContextPct:           peakContextPct,
+		TotalToolCalls:           s.TotalToolCalls,
+		AgentToolCalls:           s.AgentToolCalls,
+		SkillToolCalls:           s.SkillToolCalls,
+		McpToolCalls:             s.McpToolCalls,
 	}
 }
 
@@ -345,6 +364,19 @@ func parseSessionFiles(sessionID string, files []string) (*ParsedSession, error)
 		}
 	}
 
+	// Derive tool call categorization counts
+	for name, count := range session.ToolCalls {
+		session.TotalToolCalls += count
+		switch {
+		case name == "Agent":
+			session.AgentToolCalls += count
+		case name == "Skill":
+			session.SkillToolCalls += count
+		case strings.HasPrefix(name, "mcp__"):
+			session.McpToolCalls += count
+		}
+	}
+
 	// Convert sets to slices
 	for f := range filesReadSet {
 		session.FilesRead = append(session.FilesRead, f)
@@ -453,6 +485,12 @@ func parseSessionFile(filePath string, session *ParsedSession,
 				session.OutputTokens += mc.Usage.OutputTokens
 				session.CacheCreationInputTokens += mc.Usage.CacheCreationInputTokens
 				session.CacheReadInputTokens += mc.Usage.CacheReadInputTokens
+
+				// Track peak context window usage (input + cache tokens for this message)
+				msgContext := mc.Usage.InputTokens + mc.Usage.CacheCreationInputTokens + mc.Usage.CacheReadInputTokens
+				if msgContext > session.PeakContextTokens {
+					session.PeakContextTokens = msgContext
+				}
 
 				// Compute per-message cost
 				if mc.Model != "" {
