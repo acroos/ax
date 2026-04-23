@@ -25,6 +25,31 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
 
   const metrics: MetricDisplay[] = [];
 
+  // ── Delivery ──────────────────────────────────────────────────────────
+
+  if (m.task_cycle_time_hours != null) {
+    const val = m.task_cycle_time_hours < 1
+      ? `${Math.round(m.task_cycle_time_hours * 60)} min`
+      : `${m.task_cycle_time_hours.toFixed(1)} hrs`;
+    metrics.push({
+      label: "Task Cycle Time",
+      value: val,
+      description:
+        "Hours from the first coding session to PR merge or close. Shorter means faster delivery.",
+      category: "Delivery",
+    });
+  }
+
+  if (m.pr_throughput != null) {
+    metrics.push({
+      label: "PR Throughput",
+      value: `${m.pr_throughput.toFixed(1)}/wk`,
+      description:
+        "Merged PRs per contributor per week. Higher means the team is shipping more frequently.",
+      category: "Delivery",
+    });
+  }
+
   if (m.post_open_commits !== null) {
     metrics.push({
       label: "Post-Open Commits",
@@ -55,12 +80,34 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
+  // ── Session Effectiveness ─────────────────────────────────────────────
+
   if (m.iteration_depth != null) {
     metrics.push({
       label: "Iteration Depth",
       value: String(m.iteration_depth),
       description:
         "Number of human→agent turn pairs. More turns mean more back-and-forth to reach the desired output.",
+      category: "Session Effectiveness",
+    });
+  }
+
+  if (m.peak_context_pct != null) {
+    metrics.push({
+      label: "Peak Context Window",
+      value: `${Math.round(m.peak_context_pct * 100)}%`,
+      description:
+        "Highest percentage of the model's context window used in any single message. High values risk hitting limits.",
+      category: "Session Effectiveness",
+    });
+  }
+
+  if (m.autonomy_score != null) {
+    metrics.push({
+      label: "Autonomy Score",
+      value: m.autonomy_score.toFixed(1),
+      description:
+        "Ratio of assistant to human messages. Higher means the agent worked more independently.",
       category: "Session Effectiveness",
     });
   }
@@ -105,13 +152,35 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.autonomy_score != null) {
+  // ── Adoption Maturity ─────────────────────────────────────────────────
+
+  if (m.skill_tool_usage != null) {
     metrics.push({
-      label: "Autonomy Score",
-      value: m.autonomy_score.toFixed(1),
+      label: "Skill & Tool Usage",
+      value: `${Math.round(m.skill_tool_usage * 100)}%`,
       description:
-        "Ratio of assistant to human messages. Higher means the agent worked more independently.",
-      category: "Session Effectiveness",
+        "Fraction of tool calls that are slash commands or custom MCP tools. Higher means more advanced agent use.",
+      category: "Adoption Maturity",
+    });
+  }
+
+  if (m.subagent_delegation != null) {
+    metrics.push({
+      label: "Subagent Delegation",
+      value: `${Math.round(m.subagent_delegation * 100)}%`,
+      description:
+        "Fraction of tool calls that delegate to subagents. Higher means the agent is parallelizing work effectively.",
+      category: "Adoption Maturity",
+    });
+  }
+
+  if (m.rubber_stamp_rate != null) {
+    metrics.push({
+      label: "Rubber Stamp Rate",
+      value: m.rubber_stamp_rate === 1.0 ? "Yes" : "No",
+      description:
+        "Whether this PR (50+ changed lines) was merged within 5 minutes of opening, suggesting insufficient review.",
+      category: "Adoption Maturity",
     });
   }
 

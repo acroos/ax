@@ -23,6 +23,16 @@ export function fmtCost(n: number | null): string {
   return `$${n.toFixed(2)}`;
 }
 
+export function fmtHours(n: number | null): string {
+  if (n === null) return "\u2014";
+  return n < 1 ? `${Math.round(n * 60)} min` : `${n.toFixed(1)} hrs`;
+}
+
+export function fmtRate(n: number | null): string {
+  if (n === null) return "\u2014";
+  return `${n.toFixed(1)}/wk`;
+}
+
 export function fmtDelta(
   current: number | null,
   prior: number | null,

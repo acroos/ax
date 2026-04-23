@@ -37,6 +37,34 @@ export interface MetricDefEntry {
 export const METRIC_DEFS: MetricDefEntry[] = [
   // ── Delivery (PR-derived) ──────────────────────────────────────────────
   {
+    slug: "task-cycle-time",
+    docSlug: "task-cycle-time",
+    field: "task_cycle_time_hours",
+    label: "Task Cycle Time",
+    category: "Delivery",
+    valueType: "float",
+    unit: "hrs",
+    lowerIsBetter: true,
+    source: "pr",
+    displayed: true,
+    tooltip:
+      "Hours from the first coding session to PR merge or close — shorter means faster delivery from idea to shipped code.",
+  },
+  {
+    slug: "pr-throughput",
+    docSlug: "pr-throughput",
+    field: "pr_throughput",
+    label: "PR Throughput",
+    category: "Delivery",
+    valueType: "float",
+    unit: "PRs/wk",
+    lowerIsBetter: false,
+    source: "pr",
+    displayed: true,
+    tooltip:
+      "Merged PRs per contributor per week — higher means the team is shipping more frequently with agent assistance.",
+  },
+  {
     slug: "post-open-commits",
     docSlug: "post-open-commits",
     field: "post_open_commits",
@@ -65,6 +93,19 @@ export const METRIC_DEFS: MetricDefEntry[] = [
       "How many back-and-forth turns it takes to finish a task — fewer means your prompts are clear and the agent stays on track.",
   },
   {
+    slug: "peak-context-pct",
+    docSlug: "peak-context-window",
+    field: "peak_context_pct",
+    label: "Peak Context Window",
+    category: "Session Effectiveness",
+    valueType: "ratio",
+    lowerIsBetter: true,
+    source: "session",
+    displayed: true,
+    tooltip:
+      "Highest percentage of the model's context window used in any single message — high values mean the session is pushing against limits.",
+  },
+  {
     slug: "autonomy-score",
     docSlug: "autonomy-score",
     field: "autonomy_score",
@@ -76,6 +117,47 @@ export const METRIC_DEFS: MetricDefEntry[] = [
     displayed: true,
     tooltip:
       "How much work the agent does between human interventions — higher means it operates independently with less hand-holding.",
+  },
+
+  // ── Adoption Maturity (session + PR derived) ──────────────────────────
+  {
+    slug: "skill-tool-usage",
+    docSlug: "skill-tool-usage",
+    field: "skill_tool_usage",
+    label: "Skill & Tool Usage",
+    category: "Adoption Maturity",
+    valueType: "ratio",
+    lowerIsBetter: false,
+    source: "session",
+    displayed: true,
+    tooltip:
+      "Fraction of tool calls that are slash commands or custom MCP tools — higher means the team is leveraging advanced agent capabilities.",
+  },
+  {
+    slug: "subagent-delegation",
+    docSlug: "subagent-delegation",
+    field: "subagent_delegation",
+    label: "Subagent Delegation",
+    category: "Adoption Maturity",
+    valueType: "ratio",
+    lowerIsBetter: false,
+    source: "session",
+    displayed: true,
+    tooltip:
+      "Fraction of tool calls that delegate to subagents — higher means the agent is parallelizing work effectively.",
+  },
+  {
+    slug: "rubber-stamp-rate",
+    docSlug: "rubber-stamp-rate",
+    field: "rubber_stamp_rate",
+    label: "Rubber Stamp Rate",
+    category: "Adoption Maturity",
+    valueType: "ratio",
+    lowerIsBetter: true,
+    source: "pr",
+    displayed: true,
+    tooltip:
+      "Fraction of PRs with 50+ changed lines merged within 5 minutes of opening — high rates suggest insufficient code review.",
   },
 
   // ── Hidden metrics (still computed, not shown on overview) ─────────────
@@ -175,6 +257,12 @@ export function formatMetricValue(value: number, def: MetricDefEntry): string {
     case "currency":
       return value < 0.01 ? "<$0.01" : `$${value.toFixed(2)}`;
     case "float":
+      if (def.unit === "hrs") {
+        return value < 1 ? `${Math.round(value * 60)} min` : `${value.toFixed(1)} hrs`;
+      }
+      if (def.unit === "PRs/wk") {
+        return `${value.toFixed(1)}/wk`;
+      }
       return value.toFixed(2);
     case "int":
     default:
