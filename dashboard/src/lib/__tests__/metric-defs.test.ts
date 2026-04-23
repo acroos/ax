@@ -3,6 +3,8 @@ import {
   formatMetricValue,
   getMetricDef,
   METRIC_DEFS,
+  DISPLAYED_METRICS,
+  CATEGORIES,
   type MetricDefEntry,
 } from "../metric-defs";
 
@@ -19,11 +21,12 @@ function defWithType(
     docSlug: "test",
     field: "post_open_commits",
     label: "Test",
-    category: "Output Quality",
+    category: "Delivery",
     valueType,
     lowerIsBetter: true,
     tooltip: "test",
     source: "pr" as const,
+    displayed: true,
     ...overrides,
   };
 }
@@ -157,6 +160,42 @@ describe("getMetricDef", () => {
     ];
     for (const slug of slugs) {
       expect(getMetricDef(slug)).toBeDefined();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DISPLAYED_METRICS / CATEGORIES
+// ---------------------------------------------------------------------------
+
+describe("DISPLAYED_METRICS", () => {
+  it("contains only metrics with displayed: true", () => {
+    expect(DISPLAYED_METRICS.length).toBe(3);
+    for (const m of DISPLAYED_METRICS) {
+      expect(m.displayed).toBe(true);
+    }
+  });
+
+  it("includes the 3 kept metrics", () => {
+    const slugs = DISPLAYED_METRICS.map((m) => m.slug);
+    expect(slugs).toContain("post-open-commits");
+    expect(slugs).toContain("iteration-depth");
+    expect(slugs).toContain("autonomy-score");
+  });
+});
+
+describe("CATEGORIES", () => {
+  it("lists the 3 new categories in order", () => {
+    expect(CATEGORIES).toEqual([
+      "Delivery",
+      "Session Effectiveness",
+      "Adoption Maturity",
+    ]);
+  });
+
+  it("every metric belongs to a valid category", () => {
+    for (const def of METRIC_DEFS) {
+      expect(CATEGORIES).toContain(def.category);
     }
   });
 });

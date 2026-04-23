@@ -135,6 +135,13 @@ export interface PRMetrics {
   sidechain_rate?: number | null;
   re_read_rate?: number | null;
   autonomy_score?: number | null;
+  // New metrics (Phase 1 — optional, populated in later phases)
+  task_cycle_time_hours?: number | null;
+  pr_throughput?: number | null;
+  peak_context_pct?: number | null;
+  skill_tool_usage?: number | null;
+  subagent_delegation?: number | null;
+  rubber_stamp_rate?: number | null;
   metrics_finalized: boolean;
   finalized_at: string | null;
 }
@@ -146,6 +153,10 @@ export interface SessionMetrics {
   sidechain_rate: number | null;
   re_read_rate: number | null;
   autonomy_score: number | null;
+  // New metrics (Phase 1 — optional, populated in later phases)
+  peak_context_pct?: number | null;
+  skill_tool_usage?: number | null;
+  subagent_delegation?: number | null;
 }
 
 export interface SessionWithMetrics {
