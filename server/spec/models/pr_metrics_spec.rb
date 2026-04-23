@@ -35,6 +35,39 @@ RSpec.describe PrMetrics, type: :model do
     end
   end
 
+  describe "#update_ci_metrics!" do
+    it "updates ci_success_rate on finalized metrics" do
+      metrics = create(:pr_metrics, metrics_finalized: true, finalized_at: Time.current, ci_success_rate: nil)
+
+      metrics.update_ci_metrics!(ci_success_rate: 0.75)
+
+      expect(metrics.reload.ci_success_rate).to eq(0.75)
+    end
+
+    it "updates updated_at" do
+      metrics = create(:pr_metrics, metrics_finalized: true, finalized_at: Time.current, ci_success_rate: nil)
+      original_updated_at = metrics.updated_at
+
+      travel 1.second do
+        metrics.update_ci_metrics!(ci_success_rate: 0.5)
+      end
+
+      expect(metrics.reload.updated_at).to be > original_updated_at
+    end
+
+    it "runs validations and rejects out-of-range rates" do
+      metrics = create(:pr_metrics, metrics_finalized: true, finalized_at: Time.current, ci_success_rate: nil)
+
+      expect { metrics.update_ci_metrics!(ci_success_rate: 1.5) }.to raise_error(ActiveRecord::RecordInvalid)
+    end
+
+    it "raises ArgumentError when passed non-CI fields" do
+      metrics = create(:pr_metrics, metrics_finalized: true, finalized_at: Time.current)
+
+      expect { metrics.update_ci_metrics!(post_open_commits: 3) }.to raise_error(ArgumentError, /post_open_commits/)
+    end
+  end
+
   describe "scoped write protection" do
     it "prevents updates to GitHub-derived fields on settled metrics" do
       metrics = create(:pr_metrics, metrics_finalized: true, finalized_at: Time.current, post_open_commits: 3)

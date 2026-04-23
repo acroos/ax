@@ -39,7 +39,7 @@ class ReconcileCiDataJob < ApplicationJob
       next unless commits_with_ci.exists?
 
       rate = commits_with_ci.where(ci_passed: true).count.to_f / commits_with_ci.count
-      metrics.update_column(:ci_success_rate, rate)
+      metrics.update_ci_metrics!(ci_success_rate: rate)
     end
   end
 

@@ -28,8 +28,6 @@ module WebhookHandlers
       # Recompute ci_success_rate for the commit's PR.
       # Use the commit's PR association rather than the webhook payload's
       # pull_requests array, which GitHub often leaves empty for merged PRs.
-      # update_column bypasses the finalization guard so late-arriving
-      # webhooks still update settled PRs.
       recompute_ci_rate(commit.pr) if commit.pr
     end
 
@@ -41,7 +39,7 @@ module WebhookHandlers
 
       rate = commits_with_ci.where(ci_passed: true).count.to_f / commits_with_ci.count
       metrics = ensure_pr_metrics(pr)
-      metrics.update_column(:ci_success_rate, rate)
+      metrics.update_ci_metrics!(ci_success_rate: rate)
     end
   end
 end

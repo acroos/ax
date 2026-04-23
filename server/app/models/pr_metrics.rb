@@ -16,8 +16,22 @@ class PrMetrics < ApplicationRecord
     post_open_commits line_revisit_rate
   ].freeze
 
+  CI_DERIVED_FIELDS = %w[ci_success_rate].freeze
+
   def finalized?
     metrics_finalized?
+  end
+
+  # Parallel to the finalization guard for GitHub-derived fields: CI metrics
+  # (ci_success_rate) must remain updatable after finalization because
+  # check_suite webhooks and reconciliation jobs arrive after a PR is settled.
+  # This method makes that bypass explicit and intentional, while still running
+  # validations and touching updated_at.
+  def update_ci_metrics!(attributes)
+    unexpected = attributes.keys.map(&:to_s) - CI_DERIVED_FIELDS
+    raise ArgumentError, "update_ci_metrics! only accepts CI-derived fields: #{unexpected.join(', ')}" if unexpected.any?
+
+    update!(attributes)
   end
 
   private
