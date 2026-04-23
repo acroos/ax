@@ -12,13 +12,17 @@ The CLI parses Claude Code session data locally and pushes it to the server.
 
 ```
 Step 1: Parse Sessions
-  ~/.claude/projects/ → SessionParser → token counts, costs, tool calls, branches
+  ~/.claude/projects/ → SessionParser →
+    token counts, costs, tool calls (categorized: Agent/Skill/MCP), branches,
+    peak context tokens, model-specific context limit → peak_context_pct
 
 Step 2: Identify Repo
   git remote get-url origin → owner/repo
 
 Step 3: Push to Server
   Build PushPayload with sessions → POST /api/v1/push → Rails API
+  Payload includes: peak_context_pct, total_tool_calls, agent_tool_calls,
+  skill_tool_calls, mcp_tool_calls (in addition to existing fields)
 
 Step 4: Post-Push (server-side)
   If repo has GitHub App → enqueue BackfillRepoJob (fetches PRs from GitHub API)
@@ -89,7 +93,9 @@ All PRs are shown in the dashboard regardless of settlement status. Open PRs sho
 
 `PrMetrics` only stores GitHub-derived fields. These are locked after settlement (`metrics_finalized = true`): `post_open_commits`, `line_revisit_rate`. `ci_success_rate` remains updatable after finalization for late-arriving CI results.
 
-Session-derived metrics are no longer stored on `pr_metrics`. They are computed on-the-fly from the `sessions` table — either per-session (via session list endpoints) or aggregated across linked sessions (via the PR detail endpoint).
+Session-derived metrics are no longer stored on `pr_metrics`. They are computed on-the-fly from the `sessions` table — either per-session (via session list endpoints) or aggregated across linked sessions (via the PR detail endpoint). New session fields (`peak_context_pct`, tool call counts) support the Peak Context Window, Subagent Delegation, and Skill & Tool Usage metrics.
+
+Query-time PR metrics (Rubber Stamp Rate, Task Cycle Time, PR Throughput) are computed at query time from `prs` table columns and session joins — they are not stored on `pr_metrics` either.
 
 See: [Metrics — Settlement](metrics.md#finalization)
 

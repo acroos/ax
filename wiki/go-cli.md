@@ -41,6 +41,9 @@ Reads Claude Code session data from `~/.claude/projects/<encoded-path>/`. Suppor
 Extracts per session:
 - Message counts (human/assistant), token usage (input, output, cache)
 - Model used (majority vote), tool calls by type
+- Tool call categorization: total, Agent (subagent), Skill (slash commands), MCP (custom tools with `mcp__` prefix)
+- Peak context tokens: highest `(input + cache_creation + cache_read)` across any single message
+- Peak context percentage: `peak_context_tokens / model_max_context` (using model-specific limits from `pricing.LookupMaxContext`)
 - Files read/modified, bash commands with success/failure
 - PR URLs, commit SHAs, referenced plan files
 

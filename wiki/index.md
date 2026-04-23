@@ -1,6 +1,6 @@
 # AX Wiki
 
-AX measures developer experience for agentic coding workflows. It analyzes git history, GitHub PR data, and Claude Code session data to produce 9 metrics across 3 categories (3 PR-derived, 6 session-derived).
+AX measures developer experience for agentic coding workflows. It analyzes git history, GitHub PR data, and Claude Code session data to produce 15 metrics across 3 categories (Delivery, Session Effectiveness, Adoption Maturity). 9 metrics are displayed on the overview dashboard (4 PR-derived, 5 session-derived); 6 are computed but hidden from the overview.
 
 AX operates as a managed service — the CLI pushes session data to the Rails API, which computes metrics server-side. The dashboard reads from the API.
 
