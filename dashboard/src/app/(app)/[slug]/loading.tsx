@@ -4,8 +4,7 @@ import {
 } from "@/components/skeleton";
 
 // Mirrors /[slug]/page.tsx:
-// header + Output Quality (6) + Prompt Efficiency (5) + Agent Behavior (6)
-// We omit the optional Planning Effectiveness row (only shown when data exists).
+// header + Delivery + Session Effectiveness + Adoption Maturity
 export default function OrgOverviewLoading() {
   return (
     <div>

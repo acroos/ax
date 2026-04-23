@@ -60,11 +60,12 @@ function defWithType(
     docSlug: "test",
     field: "post_open_commits",
     label: "Test",
-    category: "Output Quality",
+    category: "Delivery",
     valueType,
     lowerIsBetter: true,
     tooltip: "test",
     source: "pr" as const,
+    displayed: true,
     ...overrides,
   };
 }

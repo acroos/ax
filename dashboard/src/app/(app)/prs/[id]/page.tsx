@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { getPRWithMetricsAsync, getPRSize } from "@/lib/db";
 import type { PRWithMetrics } from "@/lib/db";
+import { CATEGORIES } from "@/lib/metric-defs";
 import { Skeleton } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { StateBadge } from "@/components/state-badge";
@@ -30,7 +31,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
       value: String(m.post_open_commits),
       description:
         "Commits pushed after the PR was opened. Lower means the initial output was closer to final.",
-      category: "Output Quality",
+      category: "Delivery",
     });
   }
 
@@ -40,7 +41,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
       value: `${Math.round(m.ci_success_rate * 100)}%`,
       description:
         "Percentage of CI checks that passed. Low rates suggest checks weren't run locally before pushing.",
-      category: "Output Quality",
+      category: "Delivery",
     });
   }
 
@@ -50,7 +51,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
       value: m.line_revisit_rate.toFixed(2),
       description:
         "How often files in this PR were also modified in other PRs. High values may indicate code instability or fast iteration.",
-      category: "Output Quality",
+      category: "Delivery",
     });
   }
 
@@ -60,7 +61,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
       value: String(m.iteration_depth),
       description:
         "Number of human→agent turn pairs. More turns mean more back-and-forth to reach the desired output.",
-      category: "Prompt Efficiency",
+      category: "Session Effectiveness",
     });
   }
 
@@ -70,7 +71,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
       value: `$${m.token_cost_usd.toFixed(2)}`,
       description:
         "Total dollar cost of tokens consumed across all sessions for this PR. Computed using model-specific pricing.",
-      category: "Prompt Efficiency",
+      category: "Session Effectiveness",
     });
   }
 
@@ -80,7 +81,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
       value: `${Math.round(m.cache_hit_rate * 100)}%`,
       description:
         "Ratio of cache-read tokens to total input tokens. Higher means better prompt cache utilization.",
-      category: "Prompt Efficiency",
+      category: "Session Effectiveness",
     });
   }
 
@@ -90,7 +91,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
       value: `${Math.round(m.sidechain_rate * 100)}%`,
       description:
         "Fraction of messages on sidechain branches. Lower means fewer dead-end reasoning paths.",
-      category: "Agent Behavior",
+      category: "Session Effectiveness",
     });
   }
 
@@ -100,7 +101,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
       value: m.re_read_rate.toFixed(2),
       description:
         "Total file reads divided by unique files read. 1.0 means no re-reads; higher is redundant.",
-      category: "Agent Behavior",
+      category: "Session Effectiveness",
     });
   }
 
@@ -110,7 +111,7 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
       value: m.autonomy_score.toFixed(1),
       description:
         "Ratio of assistant to human messages. Higher means the agent worked more independently.",
-      category: "Agent Behavior",
+      category: "Session Effectiveness",
     });
   }
 
@@ -259,8 +260,7 @@ async function MetricGroups({
   if (!pr) throw new Error("PR not found");
 
   const metricDisplays = getMetricDisplays(pr);
-  const categories = ["Output Quality", "Prompt Efficiency", "Agent Behavior"];
-  const grouped = categories
+  const grouped = CATEGORIES
     .map((cat) => ({
       name: cat,
       metrics: metricDisplays.filter((m) => m.category === cat),

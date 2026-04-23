@@ -68,45 +68,45 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Output Quality */}
+      {/* Delivery */}
       <FeatureSection
-        eyebrow="Output Quality"
-        heading="Is the code your agent produces good?"
-        body="CI success, post-open commits, and line revisit rate."
+        eyebrow="Delivery"
+        heading="Is work shipping smoothly?"
+        body="Cycle time, throughput, and post-open rework."
         metrics={[
+          "Task Cycle Time",
+          "PR Throughput",
           "Post-Open Commits",
-          "CI Success Rate",
-          "Line Revisit Rate",
         ]}
         cards={[
-          {
-            label: "CI Success Rate",
-            value: "83%",
-            sparkline: SPARKLINES.ciSuccess,
-          },
           {
             label: "Avg Post-Open Commits",
             value: "1.4",
             sparkline: SPARKLINES.postOpen,
           },
+          {
+            label: "CI Success Rate",
+            value: "83%",
+            sparkline: SPARKLINES.ciSuccess,
+          },
         ]}
       />
 
-      {/* Prompt Efficiency */}
+      {/* Session Effectiveness */}
       <FeatureSection
-        eyebrow="Prompt Efficiency"
-        heading="Are you getting results with fewer interactions and less cost?"
-        body="Token spend, iteration depth, and cache utilization."
+        eyebrow="Session Effectiveness"
+        heading="Are your agent sessions productive?"
+        body="Iteration depth, context usage, and autonomy."
         metrics={[
           "Iteration Depth",
-          "Token Cost per PR",
-          "Cache Hit Rate",
+          "Peak Context Window",
+          "Autonomy Score",
         ]}
         cards={[
           {
-            label: "Avg Token Cost",
-            value: "$1.28",
-            sparkline: SPARKLINES.tokenCost,
+            label: "Avg Autonomy Score",
+            value: "7.2",
+            sparkline: SPARKLINES.autonomy,
           },
           {
             label: "Avg Cache Hit Rate",
@@ -117,17 +117,17 @@ export default async function LandingPage() {
         reverse
       />
 
-      {/* Agent Behavior */}
+      {/* Adoption Maturity */}
       <FeatureSection
-        eyebrow="Agent Behavior"
-        heading="How well is the agent navigating problems?"
-        body="Backtracking, redundant reads, and autonomy."
-        metrics={["Sidechain Rate", "Re-Read Rate", "Autonomy Score"]}
+        eyebrow="Adoption Maturity"
+        heading="How deeply is your team using agent capabilities?"
+        body="Tool usage, delegation patterns, and review thoroughness."
+        metrics={["Skill & Tool Usage", "Subagent Delegation", "Rubber Stamp Rate"]}
         cards={[
           {
-            label: "Avg Autonomy Score",
-            value: "7.2",
-            sparkline: SPARKLINES.autonomy,
+            label: "Avg Token Cost",
+            value: "$1.28",
+            sparkline: SPARKLINES.tokenCost,
           },
           {
             label: "Avg Sidechain Rate",
