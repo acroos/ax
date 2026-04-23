@@ -44,7 +44,7 @@ RSpec.describe "Push API", type: :request do
       headers: { "Authorization" => "Bearer #{raw_key}" },
       as: :json
 
-    expect(response).to have_http_status(:payload_too_large)
+    expect(response).to have_http_status(:content_too_large)
     body = JSON.parse(response.body)
     expect(body["ok"]).to be false
   end
