@@ -614,6 +614,106 @@ func TestParseSessionSidechain(t *testing.T) {
 	}
 }
 
+func TestParseSessionToolUsageCategorization(t *testing.T) {
+	session, err := ParseSession(testdataPath(t, "tool_usage_session.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSession failed: %v", err)
+	}
+
+	// Tool call counts: Read(1) + Agent(2) + Skill(1) + mcp__linear(1) + mcp__slack(1) + Edit(1) = 7
+	if session.TotalToolCalls != 7 {
+		t.Errorf("TotalToolCalls = %d, want 7", session.TotalToolCalls)
+	}
+	if session.AgentToolCalls != 2 {
+		t.Errorf("AgentToolCalls = %d, want 2", session.AgentToolCalls)
+	}
+	if session.SkillToolCalls != 1 {
+		t.Errorf("SkillToolCalls = %d, want 1", session.SkillToolCalls)
+	}
+	if session.McpToolCalls != 2 {
+		t.Errorf("McpToolCalls = %d, want 2", session.McpToolCalls)
+	}
+
+	// Verify individual tool counts in the map
+	if session.ToolCalls["Agent"] != 2 {
+		t.Errorf("ToolCalls[Agent] = %d, want 2", session.ToolCalls["Agent"])
+	}
+	if session.ToolCalls["Skill"] != 1 {
+		t.Errorf("ToolCalls[Skill] = %d, want 1", session.ToolCalls["Skill"])
+	}
+	if session.ToolCalls["mcp__linear__create_issue"] != 1 {
+		t.Errorf("ToolCalls[mcp__linear__create_issue] = %d, want 1", session.ToolCalls["mcp__linear__create_issue"])
+	}
+	if session.ToolCalls["mcp__slack__send_message"] != 1 {
+		t.Errorf("ToolCalls[mcp__slack__send_message] = %d, want 1", session.ToolCalls["mcp__slack__send_message"])
+	}
+}
+
+func TestParseSessionPeakContextTokens(t *testing.T) {
+	session, err := ParseSession(testdataPath(t, "tool_usage_session.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSession failed: %v", err)
+	}
+
+	// Message usage (input + cache_creation + cache_read):
+	// msg_001: 50000 + 10000 + 140000 = 200000
+	// msg_002: 80000 + 5000 + 100000 = 185000
+	// msg_003: 30000 + 0 + 50000 = 80000
+	// Peak should be 200000 (msg_001)
+	if session.PeakContextTokens != 200000 {
+		t.Errorf("PeakContextTokens = %d, want 200000", session.PeakContextTokens)
+	}
+}
+
+func TestToSessionDataPeakContextPct(t *testing.T) {
+	session, err := ParseSession(testdataPath(t, "tool_usage_session.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSession failed: %v", err)
+	}
+
+	sd := session.ToSessionData()
+
+	// Model is claude-opus-4-6[1m] → max context = 1,000,000
+	// PeakContextPct = 200000 / 1000000 = 0.2
+	if diff := sd.PeakContextPct - 0.2; diff > 0.001 || diff < -0.001 {
+		t.Errorf("PeakContextPct = %f, want 0.2", sd.PeakContextPct)
+	}
+
+	// Verify tool counts are passed through
+	if sd.TotalToolCalls != 7 {
+		t.Errorf("SessionData.TotalToolCalls = %d, want 7", sd.TotalToolCalls)
+	}
+	if sd.AgentToolCalls != 2 {
+		t.Errorf("SessionData.AgentToolCalls = %d, want 2", sd.AgentToolCalls)
+	}
+	if sd.SkillToolCalls != 1 {
+		t.Errorf("SessionData.SkillToolCalls = %d, want 1", sd.SkillToolCalls)
+	}
+	if sd.McpToolCalls != 2 {
+		t.Errorf("SessionData.McpToolCalls = %d, want 2", sd.McpToolCalls)
+	}
+}
+
+func TestToSessionDataPeakContextPctStandardModel(t *testing.T) {
+	session, err := ParseSession(testdataPath(t, "normal_session.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSession failed: %v", err)
+	}
+
+	sd := session.ToSessionData()
+
+	// Model is claude-sonnet-4-5-20250514 → max context = 200,000
+	// normal_session msg usage (input + cache_creation + cache_read):
+	// msg_001: 1000 + 50 + 100 = 1150
+	// msg_002: 1500 + 0 + 150 = 1650
+	// msg_003: 500 + 0 + 50 = 550
+	// Peak = 1650, pct = 1650 / 200000 = 0.00825
+	expectedPct := 1650.0 / 200000.0
+	if diff := sd.PeakContextPct - expectedPct; diff > 0.0001 || diff < -0.0001 {
+		t.Errorf("PeakContextPct = %f, want %f", sd.PeakContextPct, expectedPct)
+	}
+}
+
 func TestParseSessionDeduplicatesMessages(t *testing.T) {
 	session, err := ParseSession(testdataPath(t, "duplicate_messages_session.jsonl"))
 	if err != nil {

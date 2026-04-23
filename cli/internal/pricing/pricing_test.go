@@ -80,6 +80,33 @@ func TestLookupModel_FamilyMatch(t *testing.T) {
 	}
 }
 
+func TestLookupMaxContext_Standard(t *testing.T) {
+	ctx := LookupMaxContext("claude-sonnet-4-6")
+	if ctx != 200_000 {
+		t.Errorf("expected 200000 for standard model, got %d", ctx)
+	}
+}
+
+func TestLookupMaxContext_ExtendedContext(t *testing.T) {
+	ctx := LookupMaxContext("claude-opus-4-6[1m]")
+	if ctx != 1_000_000 {
+		t.Errorf("expected 1000000 for [1m] model, got %d", ctx)
+	}
+
+	// Also works with sonnet
+	ctx = LookupMaxContext("claude-sonnet-4-6[1m]")
+	if ctx != 1_000_000 {
+		t.Errorf("expected 1000000 for sonnet [1m], got %d", ctx)
+	}
+}
+
+func TestLookupMaxContext_UnknownModel(t *testing.T) {
+	ctx := LookupMaxContext("some-unknown-model")
+	if ctx != 200_000 {
+		t.Errorf("expected 200000 for unknown model, got %d", ctx)
+	}
+}
+
 func TestFormatCost(t *testing.T) {
 	tests := []struct {
 		cost float64
