@@ -1,0 +1,26 @@
+name: Sidekick Claude Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "The prompt for Claude"
+        required: true
+      sidekick_run_id:
+        description: "Sidekick run tracking ID"
+        required: false
+
+jobs:
+  claude:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: ${{ inputs.prompt }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
