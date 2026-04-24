@@ -230,7 +230,7 @@ async function MetricDataSections({
       notableLowest={detail.notable_lowest}
       def={def}
       range={range}
-      prHref={isSession ? undefined : (prId) => `/${slug}/prs/${prId}`}
+      prHref={isSession ? undefined : (prId) => `/prs/${prId}`}
     />
   );
 }
