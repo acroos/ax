@@ -67,7 +67,7 @@ export function ScopeSelector({ current, teams, basePath }: Props) {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Change metric scope"
-        className="inline-flex items-center gap-1.5 font-medium text-foreground transition-colors hover:text-primary"
+        className="inline-flex items-center gap-1.5 align-middle font-medium text-foreground transition-colors hover:text-primary"
       >
         {iconFor(current)}
         {labelFor(current, teams)}
