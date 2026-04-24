@@ -57,6 +57,14 @@ just dashboard-test   # Run tests
 just dashboard-build  # Production build
 ```
 
+## Worktrees
+
+Worktrees do not have `dashboard/node_modules`. Before running any dashboard commands (`npm test`, `npm run dev`, `npx`, `just dashboard-*`, etc.) in a worktree, install dependencies first:
+
+```bash
+npm install --prefix <worktree-path>/dashboard
+```
+
 ## Pre-push checks
 
 Run the checks below before pushing. CI runs them per sub-project based on changed paths — run only the sections relevant to your changes.

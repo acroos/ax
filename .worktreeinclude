@@ -1,9 +1,0 @@
-# Dashboard (Next.js) — node_modules symlinked via WorktreeCreate hook
-# (copying breaks .bin/ symlinks; see .claude/hooks/worktree-link-deps.sh)
-
-# Server (Rails) — bundled gems needed for running specs, linting, brakeman
-server/vendor/
-server/.bundle/
-
-# Go CLI — module cache is global, but include go.sum for reproducibility
-# (Go modules are fetched from GOPATH/pkg/mod, not a local vendor dir)
