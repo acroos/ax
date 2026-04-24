@@ -353,17 +353,21 @@ async function MetricGroups({
           </h2>
           <div className="grid grid-cols-3 gap-3">
             {group.metrics.map((m) => (
-              <Card key={m.label} className="p-5">
-                <CardContent className="p-0">
+              <Card key={m.label} className="group p-5 transition-colors hover:border-primary/30 hover:bg-accent/40">
+                <CardContent className="relative p-0">
                   <div className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
                     {m.label}
                   </div>
-                  <div className="mb-2 font-mono text-[28px] font-medium leading-none tracking-tight text-foreground">
+                  <div className="font-mono text-[28px] font-medium leading-none tracking-tight text-foreground">
                     {m.value}
                   </div>
-                  <div className="text-[12px] leading-relaxed text-muted-foreground">
-                    {m.description}
-                  </div>
+                  {m.description && (
+                    <div className="pointer-events-none absolute -inset-x-5 -bottom-5 rounded-b-xl bg-gradient-to-t from-card from-75% to-transparent px-5 pb-5 pt-8 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+                      <p className="text-[12px] leading-relaxed text-muted-foreground/70">
+                        {m.description}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
