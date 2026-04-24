@@ -2,20 +2,20 @@
 
 **You're shipping PRs with Claude Code. But are they getting better?**
 
-AX measures what matters: cost per PR, iteration depth, CI success, and other metrics that tell you whether your AI coding workflow is working.
+AX measures what matters: cycle time, session effectiveness, adoption depth, and other metrics that tell you whether your AI coding workflow is working.
 
 ---
 
 ## 📊 What You Can Measure
 
-**🏗️ Output Quality** — Is the agent producing clean, mergeable work?
-> Post-open commits · CI success rate · line revisit rate
+**🚀 Delivery** — How fast and cleanly does code ship?
+> Task cycle time · PR throughput · post-open commits
 
-**💬 Prompt Efficiency** — How efficiently are you directing the agent?
-> Iteration depth · token cost per PR · cache hit rate
+**🎯 Session Effectiveness** — How well do sessions use time and resources?
+> Iteration depth · peak context window · autonomy score
 
-**🤖 Agent Behavior** — How well does the agent operate on its own?
-> Sidechain rate · re-read rate · autonomy score
+**📈 Adoption Maturity** — How deeply has the team adopted agent capabilities?
+> Skill & tool usage · subagent delegation · rubber stamp rate
 
 Every metric has a dedicated doc explaining what it measures, why it matters, and how to interpret values → [full metric reference](docs/metrics/index.md)
 
