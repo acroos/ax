@@ -120,6 +120,12 @@ function DemoSidebar() {
             Sign in to use AX →
           </Link>
           <Link
+            href="/contact"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Contact
+          </Link>
+          <Link
             href="/docs"
             className="text-xs text-muted-foreground transition-colors hover:text-foreground"
           >

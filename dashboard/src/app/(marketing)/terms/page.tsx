@@ -105,7 +105,14 @@ export default function TermsPage() {
 
           <Section title="10. Contact">
             <p>
-              Questions about these terms? Open an issue on{" "}
+              Questions about these terms? Visit our{" "}
+              <Link
+                href="/contact"
+                className="text-primary hover:underline"
+              >
+                contact page
+              </Link>{" "}
+              or open an issue on{" "}
               <a
                 href="https://github.com/acroos/ax"
                 target="_blank"

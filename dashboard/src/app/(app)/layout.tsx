@@ -297,6 +297,9 @@ async function AppSidebar() {
                 <DropdownMenuItem asChild>
                   <Link href="/docs">Docs</Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/contact">Contact</Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <ThemeToggle />

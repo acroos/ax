@@ -2,6 +2,7 @@
 // gating) and the app layout (org slug parsing) so they stay in sync when new
 // routes are added.
 export const MARKETING_SEGMENTS = [
+  "contact",
   "demo",
   "docs",
   "plans",

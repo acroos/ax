@@ -89,6 +89,12 @@ export default function MarketingLayout({
             >
               Terms
             </Link>
+            <Link
+              href="/contact"
+              className="transition-colors hover:text-foreground"
+            >
+              Contact
+            </Link>
             <a
               href="https://github.com/acroos/ax"
               target="_blank"

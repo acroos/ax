@@ -17,6 +17,7 @@ Location: `dashboard/`
 | `/docs` | Docs Index | Grid of all metric documentation pages, plus link to data collection disclosure |
 | `/docs/data-collection` | Data Collection | What data AX collects, sends, and stores (rendered from `docs/data-collection.md`) |
 | `/docs/[slug]` | Metric Doc | Individual metric explanation (rendered from `docs/metrics/*.md`) |
+| `/contact` | Contact | Email and GitHub links for reaching out |
 | `/settings` | Account | Profile (GitHub identity), API key rotation, logout |
 
 ### Org-Scoped Routes
