@@ -3,8 +3,9 @@ export const runtime = "edge";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Users, GitBranch } from "lucide-react";
-import { getTeamAsync, getTeamMetricsAsync } from "@/lib/db";
-import type { AggregateMetrics, TeamDetail } from "@/lib/db";
+import { getTeamAsync, getTeamMetricsAsync, listTeamsAsync } from "@/lib/db";
+import type { AggregateMetrics, Team, TeamDetail } from "@/lib/db";
+import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
 import { Skeleton, SkeletonMetricCategory } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { SectionDivider } from "@/components/section-divider";
@@ -31,20 +32,24 @@ export default async function TeamOverviewPage({
 
   const teamPromise = getTeamAsync(slug, teamSlug);
   const metricsPromise = getTeamMetricsAsync(slug, teamSlug, range);
+  const teamsPromise = listTeamsAsync(slug).catch(() => [] as Team[]);
 
   return (
     <div>
       <div className="mb-8">
         <div className="flex items-baseline justify-between">
-          <Suspense fallback={<Skeleton className="h-7 w-48" />}>
-            <TeamTitle teamPromise={teamPromise} slug={slug} />
-          </Suspense>
+          <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+            Metrics
+          </h1>
           <RangeToggle current={range} />
         </div>
         <Suspense fallback={<Skeleton className="mt-1 h-4 w-64" />}>
           <TeamSubtitle
             teamPromise={teamPromise}
             metricsPromise={metricsPromise}
+            teamsPromise={teamsPromise}
+            slug={slug}
+            teamSlug={teamSlug}
             range={range}
           />
         </Suspense>
@@ -85,41 +90,32 @@ export default async function TeamOverviewPage({
   );
 }
 
-async function TeamTitle({
-  teamPromise,
-  slug,
-}: {
-  teamPromise: Promise<TeamDetail>;
-  slug: string;
-}) {
-  const team = await teamPromise;
-  return (
-    <div>
-      {team.parent_team_slug && (
-        <Link
-          href={`/${slug}/teams/${team.parent_team_slug}`}
-          className="mb-1 block text-[12px] text-muted-foreground transition-colors hover:text-foreground"
-        >
-          ← Parent team
-        </Link>
-      )}
-      <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-        {team.name}
-      </h1>
-    </div>
-  );
+function teamsToScopeTeams(teams: Team[]): ScopeTeam[] {
+  const lookup = Object.fromEntries(teams.map((t) => [t.slug, t]));
+  return teams.map((t) => ({
+    slug: t.slug,
+    name: t.name,
+    parentName: t.parent_team_slug ? lookup[t.parent_team_slug]?.name ?? null : null,
+    memberCount: t.member_count,
+  }));
 }
 
 async function TeamSubtitle({
   teamPromise,
   metricsPromise,
+  teamsPromise,
+  slug,
+  teamSlug,
   range,
 }: {
   teamPromise: Promise<TeamDetail>;
   metricsPromise: Promise<AggregateMetrics>;
+  teamsPromise: Promise<Team[]>;
+  slug: string;
+  teamSlug: string;
   range: Range;
 }) {
-  const team = await teamPromise;
+  const [team, allTeams] = await Promise.all([teamPromise, teamsPromise]);
   let metrics: AggregateMetrics | null = null;
   try {
     metrics = await metricsPromise;
@@ -128,6 +124,16 @@ async function TeamSubtitle({
   }
   return (
     <p className="mt-1 text-[13px] text-muted-foreground">
+      <ScopeSelector
+        current={teamSlug}
+        teams={teamsToScopeTeams(allTeams)}
+        buildHref={(scope) => {
+          if (scope === "everyone") return `/${slug}`;
+          if (scope === "me") return `/${slug}/me`;
+          return `/${slug}/teams/${scope}`;
+        }}
+      />
+      {" "}&middot;{" "}
       <span className="font-medium text-foreground">
         {team.member_count} member{team.member_count !== 1 && "s"}
       </span>

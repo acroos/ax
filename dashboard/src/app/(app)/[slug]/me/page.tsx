@@ -2,8 +2,9 @@ export const runtime = "edge";
 
 import Link from "next/link";
 import { Suspense } from "react";
-import { getMyMetricsAsync } from "@/lib/db";
-import type { AggregateMetrics } from "@/lib/db";
+import { getMyMetricsAsync, listTeamsAsync } from "@/lib/db";
+import type { AggregateMetrics, Team } from "@/lib/db";
+import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
 import { Skeleton, SkeletonMetricCategory } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { OverviewMetricsGrid } from "@/components/overview-metrics-grid";
@@ -25,18 +26,24 @@ export default async function MyOverviewPage({
     : "30d";
 
   const metricsPromise = getMyMetricsAsync(slug, range);
+  const teamsPromise = listTeamsAsync(slug).catch(() => [] as Team[]);
 
   return (
     <div>
       <div className="mb-8">
         <div className="flex items-baseline justify-between">
           <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-            My Dashboard
+            Metrics
           </h1>
           <RangeToggle current={range} />
         </div>
         <Suspense fallback={<Skeleton className="mt-1 h-4 w-64" />}>
-          <MySubtitle metricsPromise={metricsPromise} range={range} />
+          <MySubtitle
+            metricsPromise={metricsPromise}
+            teamsPromise={teamsPromise}
+            slug={slug}
+            range={range}
+          />
         </Suspense>
       </div>
 
@@ -62,13 +69,28 @@ export default async function MyOverviewPage({
   );
 }
 
+function teamsToScopeTeams(teams: Team[]): ScopeTeam[] {
+  const lookup = Object.fromEntries(teams.map((t) => [t.slug, t]));
+  return teams.map((t) => ({
+    slug: t.slug,
+    name: t.name,
+    parentName: t.parent_team_slug ? lookup[t.parent_team_slug]?.name ?? null : null,
+    memberCount: t.member_count,
+  }));
+}
+
 async function MySubtitle({
   metricsPromise,
+  teamsPromise,
+  slug,
   range,
 }: {
   metricsPromise: Promise<AggregateMetrics>;
+  teamsPromise: Promise<Team[]>;
+  slug: string;
   range: Range;
 }) {
+  const teams = await teamsPromise;
   let metrics: AggregateMetrics | null = null;
   try {
     metrics = await metricsPromise;
@@ -77,9 +99,18 @@ async function MySubtitle({
   }
   return (
     <p className="mt-1 text-[13px] text-muted-foreground">
+      <ScopeSelector
+        current="me"
+        teams={teamsToScopeTeams(teams)}
+        buildHref={(scope) => {
+          if (scope === "everyone") return `/${slug}`;
+          if (scope === "me") return `/${slug}/me`;
+          return `/${slug}/teams/${scope}`;
+        }}
+      />
       {metrics !== null && (
         <>
-          {metrics.totalSessions} session
+          {" "}&middot; {metrics.totalSessions} session
           {metrics.totalSessions !== 1 && "s"}
           {metrics.totalPRs > 0 && (
             <>, {metrics.totalPRs} finalized PR

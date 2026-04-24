@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GitPullRequest, Home, User, Users } from "lucide-react";
+import { BarChart3, GitPullRequest, Users } from "lucide-react";
 
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -22,8 +22,7 @@ import {
 import { MOCK_TEAMS } from "@/lib/mock/data";
 
 const NAV_ITEMS = [
-  { href: "/demo", label: "Overview", icon: Home },
-  { href: "/demo/me", label: "My Dashboard", icon: User },
+  { href: "/demo", label: "Metrics", icon: BarChart3 },
   { href: "/demo/prs", label: "Pull Requests", icon: GitPullRequest },
 ];
 
