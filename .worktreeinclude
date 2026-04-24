@@ -1,0 +1,9 @@
+# Dashboard (Next.js) — node_modules needed for module resolution, type checking, builds
+dashboard/node_modules/
+
+# Server (Rails) — bundled gems needed for running specs, linting, brakeman
+server/vendor/
+server/.bundle/
+
+# Go CLI — module cache is global, but include go.sum for reproducibility
+# (Go modules are fetched from GOPATH/pkg/mod, not a local vendor dir)
