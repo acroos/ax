@@ -5,6 +5,7 @@ import {
   MOCK_TEAMS,
 } from "@/lib/mock/data";
 import { RangeToggle, type Range } from "@/components/range-toggle";
+import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
 import { ClientTooltip } from "@/components/client-tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +14,15 @@ import { OverviewMetricsGrid } from "@/components/overview-metrics-grid";
 
 const VALID_RANGES: Range[] = ["7d", "30d", "90d"];
 const RANGE_DAYS: Record<Range, number> = { "7d": 7, "30d": 30, "90d": 90 };
+
+const SCOPE_TEAMS: ScopeTeam[] = MOCK_TEAMS.map((t) => ({
+  slug: t.slug,
+  name: t.name,
+  parentName: t.parent_team_slug
+    ? MOCK_TEAMS.find((p) => p.slug === t.parent_team_slug)?.name ?? null
+    : null,
+  memberCount: t.member_count,
+}));
 
 export default async function DemoTeamOverviewPage({
   params,
@@ -39,31 +49,22 @@ export default async function DemoTeamOverviewPage({
   const days = RANGE_DAYS[range];
   const data = getMockTeamMetrics(teamSlug, days);
 
-  const parentTeam = detail.parent_team_slug
-    ? MOCK_TEAMS.find((t) => t.slug === detail.parent_team_slug)
-    : null;
-
   return (
     <div>
       <div className="mb-8">
         <div className="flex items-baseline justify-between">
           <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-            {detail.name}
+            Metrics
           </h1>
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {parentTeam && (
-            <>
-              <Link
-                href={`/demo/teams/${parentTeam.slug}`}
-                className="text-primary hover:underline"
-              >
-                {parentTeam.name}
-              </Link>
-              {" > "}
-            </>
-          )}
+          <ScopeSelector
+            current={teamSlug}
+            teams={SCOPE_TEAMS}
+            basePath="/demo"
+          />
+          {" "}&middot;{" "}
           {detail.members.length} member
           {detail.members.length !== 1 ? "s" : ""} &middot;{" "}
           {data.totalSessions} session

@@ -3,8 +3,10 @@ import {
   getMockAggregatesForDays,
   getMockAggregatesForRepo,
   MOCK_REPOS,
+  MOCK_TEAMS,
 } from "@/lib/mock/data";
 import { RepoFilter } from "@/components/repo-filter";
+import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
 import { RangeToggle, type Range } from "@/components/range-toggle";
 import { OverviewMetricsGrid } from "@/components/overview-metrics-grid";
 
@@ -12,6 +14,15 @@ const DEMO_REPOS = MOCK_REPOS.filter(
   (r): r is typeof r & { github_owner: string; github_repo: string } =>
     r.github_owner !== null && r.github_repo !== null,
 );
+
+const SCOPE_TEAMS: ScopeTeam[] = MOCK_TEAMS.map((t) => ({
+  slug: t.slug,
+  name: t.name,
+  parentName: t.parent_team_slug
+    ? MOCK_TEAMS.find((p) => p.slug === t.parent_team_slug)?.name ?? null
+    : null,
+  memberCount: t.member_count,
+}));
 
 const VALID_RANGES: Range[] = ["7d", "30d", "90d"];
 const RANGE_DAYS: Record<Range, number> = { "7d": 7, "30d": 30, "90d": 90 };
@@ -42,11 +53,17 @@ export default async function DemoOverviewPage({
       <div className="mb-8">
         <div className="flex items-baseline justify-between">
           <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-            Overview
+            Metrics
           </h1>
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
+          <ScopeSelector
+            current="everyone"
+            teams={SCOPE_TEAMS}
+            basePath="/demo"
+          />
+          {" "}&middot;{" "}
           <RepoFilter repos={DEMO_REPOS} current={repoId} />
           {" "}&middot; {data.totalSessions} session
           {data.totalSessions !== 1 && "s"}

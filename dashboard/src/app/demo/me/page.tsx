@@ -1,9 +1,19 @@
 import Link from "next/link";
-import { getMockMyMetrics } from "@/lib/mock/data";
+import { getMockMyMetrics, MOCK_TEAMS } from "@/lib/mock/data";
 import { OverviewMetricsGrid } from "@/components/overview-metrics-grid";
+import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
 import { RangeToggle, type Range } from "@/components/range-toggle";
 const VALID_RANGES: Range[] = ["7d", "30d", "90d"];
 const RANGE_DAYS: Record<Range, number> = { "7d": 7, "30d": 30, "90d": 90 };
+
+const SCOPE_TEAMS: ScopeTeam[] = MOCK_TEAMS.map((t) => ({
+  slug: t.slug,
+  name: t.name,
+  parentName: t.parent_team_slug
+    ? MOCK_TEAMS.find((p) => p.slug === t.parent_team_slug)?.name ?? null
+    : null,
+  memberCount: t.member_count,
+}));
 
 export default async function DemoMyOverviewPage({
   searchParams,
@@ -23,12 +33,17 @@ export default async function DemoMyOverviewPage({
       <div className="mb-8">
         <div className="flex items-baseline justify-between">
           <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-            My Dashboard
+            Metrics
           </h1>
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
-          {data.totalSessions} session
+          <ScopeSelector
+            current="me"
+            teams={SCOPE_TEAMS}
+            basePath="/demo"
+          />
+          {" "}&middot; {data.totalSessions} session
           {data.totalSessions !== 1 && "s"}
           {data.totalPRs > 0 && (
             <>, {data.totalPRs} finalized PR

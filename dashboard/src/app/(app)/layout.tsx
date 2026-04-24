@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { headers } from "next/headers";
 import {
+  BarChart3,
   ChevronUp,
   GitPullRequest,
-  Home,
   Settings,
   CreditCard,
   User,
@@ -159,8 +159,7 @@ async function AppSidebar() {
   const hiddenTeamCount = teams.length - visibleTeams.length;
 
   const navItems = [
-    { href: overviewHref, label: "Overview", icon: Home },
-    { href: `${base}/me`, label: "My Dashboard", icon: User },
+    { href: overviewHref, label: "Metrics", icon: BarChart3 },
     { href: `${base}/prs`, label: "Pull Requests", icon: GitPullRequest },
   ];
 

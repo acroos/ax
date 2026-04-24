@@ -2,9 +2,10 @@ export const runtime = "edge";
 
 import Link from "next/link";
 import { Suspense } from "react";
-import { getAggregateMetricsAsync, listReposAsync } from "@/lib/db";
-import type { AggregateMetrics } from "@/lib/db";
+import { getAggregateMetricsAsync, listReposAsync, listTeamsAsync } from "@/lib/db";
+import type { AggregateMetrics, Team } from "@/lib/db";
 import { RepoFilter } from "@/components/repo-filter";
+import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
 import { Skeleton, SkeletonMetricCategory } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { RangeToggle, type Range } from "@/components/range-toggle";
@@ -34,13 +35,14 @@ export default async function OrgOverviewPage({
   // same promise into a single fetch.
   const metricsPromise = getAggregateMetricsAsync(repoId, slug, range);
   const reposPromise = listReposAsync(slug).catch(() => []);
+  const teamsPromise = listTeamsAsync(slug).catch(() => [] as Team[]);
 
   return (
     <div>
       <div className="mb-8">
         <div className="flex items-baseline justify-between">
           <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-            Overview
+            Metrics
           </h1>
           <RangeToggle current={range} />
         </div>
@@ -49,6 +51,8 @@ export default async function OrgOverviewPage({
             reposPromise={reposPromise}
             repoId={repoId}
             metricsPromise={metricsPromise}
+            teamsPromise={teamsPromise}
+            slug={slug}
             range={range}
           />
         </Suspense>
@@ -83,20 +87,34 @@ type RepoLite = {
   github_repo: string | null;
 };
 
+function teamsToScopeTeams(teams: Team[]): ScopeTeam[] {
+  const lookup = Object.fromEntries(teams.map((t) => [t.slug, t]));
+  return teams.map((t) => ({
+    slug: t.slug,
+    name: t.name,
+    parentName: t.parent_team_slug ? lookup[t.parent_team_slug]?.name ?? null : null,
+    memberCount: t.member_count,
+  }));
+}
+
 // Subtitle depends on both promises. If the metrics fetch fails we still
 // render the repo filter (no PR count) rather than crashing the whole header.
 async function OverviewSubtitle({
   reposPromise,
   repoId,
   metricsPromise,
+  teamsPromise,
+  slug,
   range,
 }: {
   reposPromise: Promise<RepoLite[]>;
   repoId: number | undefined;
   metricsPromise: Promise<AggregateMetrics>;
+  teamsPromise: Promise<Team[]>;
+  slug: string;
   range: Range;
 }) {
-  const allRepos = await reposPromise;
+  const [allRepos, teams] = await Promise.all([reposPromise, teamsPromise]);
   const repos = allRepos.filter(
     (r): r is RepoLite & { github_owner: string; github_repo: string } =>
       r.github_owner !== null && r.github_repo !== null,
@@ -110,6 +128,12 @@ async function OverviewSubtitle({
   }
   return (
     <p className="mt-1 text-[13px] text-muted-foreground">
+      <ScopeSelector
+        current="everyone"
+        teams={teamsToScopeTeams(teams)}
+        basePath={`/${slug}`}
+      />
+      {" "}&middot;{" "}
       <RepoFilter repos={repos} current={repoId} />
       {metrics !== null && (
         <>
