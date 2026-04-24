@@ -41,11 +41,7 @@ export default async function DemoMyOverviewPage({
           <ScopeSelector
             current="me"
             teams={SCOPE_TEAMS}
-            buildHref={(scope) => {
-              if (scope === "everyone") return "/demo";
-              if (scope === "me") return "/demo/me";
-              return `/demo/teams/${scope}`;
-            }}
+            basePath="/demo"
           />
           {" "}&middot; {data.totalSessions} session
           {data.totalSessions !== 1 && "s"}

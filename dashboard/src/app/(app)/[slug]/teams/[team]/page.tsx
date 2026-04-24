@@ -127,11 +127,7 @@ async function TeamSubtitle({
       <ScopeSelector
         current={teamSlug}
         teams={teamsToScopeTeams(allTeams)}
-        buildHref={(scope) => {
-          if (scope === "everyone") return `/${slug}`;
-          if (scope === "me") return `/${slug}/me`;
-          return `/${slug}/teams/${scope}`;
-        }}
+        basePath={`/${slug}`}
       />
       {" "}&middot;{" "}
       <span className="font-medium text-foreground">

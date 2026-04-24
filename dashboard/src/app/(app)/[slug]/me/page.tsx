@@ -102,11 +102,7 @@ async function MySubtitle({
       <ScopeSelector
         current="me"
         teams={teamsToScopeTeams(teams)}
-        buildHref={(scope) => {
-          if (scope === "everyone") return `/${slug}`;
-          if (scope === "me") return `/${slug}/me`;
-          return `/${slug}/teams/${scope}`;
-        }}
+        basePath={`/${slug}`}
       />
       {metrics !== null && (
         <>

@@ -62,11 +62,7 @@ export default async function DemoTeamOverviewPage({
           <ScopeSelector
             current={teamSlug}
             teams={SCOPE_TEAMS}
-            buildHref={(scope) => {
-              if (scope === "everyone") return "/demo";
-              if (scope === "me") return "/demo/me";
-              return `/demo/teams/${scope}`;
-            }}
+            basePath="/demo"
           />
           {" "}&middot;{" "}
           {detail.members.length} member

@@ -22,8 +22,8 @@ type Props = {
   /** "everyone" | "me" | team slug */
   current: string;
   teams: ScopeTeam[];
-  /** Build the target pathname for a given scope value */
-  buildHref: (scope: string) => string;
+  /** Base path prefix — e.g. "/demo" or "/acme-eng" */
+  basePath: string;
 };
 
 const SCOPE_LABELS: Record<string, string> = {
@@ -43,12 +43,18 @@ function iconFor(scope: string) {
   return <Users className="size-3.5" />;
 }
 
-export function ScopeSelector({ current, teams, buildHref }: Props) {
+function hrefForScope(basePath: string, scope: string): string {
+  if (scope === "everyone") return basePath;
+  if (scope === "me") return `${basePath}/me`;
+  return `${basePath}/teams/${scope}`;
+}
+
+export function ScopeSelector({ current, teams, basePath }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   function handleChange(value: string) {
-    const href = buildHref(value);
+    const href = hrefForScope(basePath, value);
     // Preserve range param across scope changes
     const params = new URLSearchParams();
     const range = searchParams.get("range");

@@ -61,11 +61,7 @@ export default async function DemoOverviewPage({
           <ScopeSelector
             current="everyone"
             teams={SCOPE_TEAMS}
-            buildHref={(scope) => {
-              if (scope === "everyone") return "/demo";
-              if (scope === "me") return "/demo/me";
-              return `/demo/teams/${scope}`;
-            }}
+            basePath="/demo"
           />
           {" "}&middot;{" "}
           <RepoFilter repos={DEMO_REPOS} current={repoId} />

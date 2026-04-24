@@ -131,11 +131,7 @@ async function OverviewSubtitle({
       <ScopeSelector
         current="everyone"
         teams={teamsToScopeTeams(teams)}
-        buildHref={(scope) => {
-          if (scope === "everyone") return `/${slug}`;
-          if (scope === "me") return `/${slug}/me`;
-          return `/${slug}/teams/${scope}`;
-        }}
+        basePath={`/${slug}`}
       />
       {" "}&middot;{" "}
       <RepoFilter repos={repos} current={repoId} />
