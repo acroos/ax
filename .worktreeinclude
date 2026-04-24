@@ -1,5 +1,5 @@
-# Dashboard (Next.js) — node_modules needed for module resolution, type checking, builds
-dashboard/node_modules/
+# Dashboard (Next.js) — node_modules symlinked via WorktreeCreate hook
+# (copying breaks .bin/ symlinks; see .claude/hooks/worktree-link-deps.sh)
 
 # Server (Rails) — bundled gems needed for running specs, linting, brakeman
 server/vendor/
