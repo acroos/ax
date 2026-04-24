@@ -35,7 +35,7 @@ export default function MarketingLayout({
             >
               <Logo variant="wordmark" className="h-5 w-auto" />
             </Link>
-            <NavigationMenu viewport={false} className="hidden md:flex">
+            <NavigationMenu viewport={false}>
               <NavigationMenuList>
                 {NAV_LINKS.map((item) => (
                   <NavigationMenuItem key={item.href}>
