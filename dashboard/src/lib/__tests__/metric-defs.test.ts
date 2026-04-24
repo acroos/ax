@@ -229,6 +229,13 @@ describe("DISPLAYED_METRICS", () => {
       expect(count).toBe(3);
     }
   });
+
+  it("all displayed metrics have non-empty tooltip strings", () => {
+    for (const m of DISPLAYED_METRICS) {
+      expect(typeof m.tooltip).toBe("string");
+      expect(m.tooltip.length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("CATEGORIES", () => {
