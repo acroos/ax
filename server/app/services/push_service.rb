@@ -195,7 +195,7 @@ class PushService
         assistant_message_count: s[:assistant_message_count] || 0,
         sidechain_messages: s[:sidechain_messages] || 0,
         total_file_reads: s[:total_file_reads] || 0,
-        pushed_by: @user.github_username,
+        pushed_by: @user.platform_username,
         peak_context_pct: s[:peak_context_pct],
         total_tool_calls: s[:total_tool_calls] || 0,
         agent_tool_calls: s[:agent_tool_calls] || 0,

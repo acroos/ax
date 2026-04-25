@@ -10,6 +10,8 @@ module Api
           {
             id: i.id,
             github_username: i.github_username,
+            gitlab_username: i.gitlab_username,
+            platform: i.platform,
             role: i.role,
             token: i.token,
             expires_at: i.expires_at
@@ -25,11 +27,16 @@ module Api
           return if performed?
         end
 
-        invite = @org.invites.create!(
-          github_username: params[:github_username],
-          role: params[:role],
-          invited_by: current_user
-        )
+        platform = params[:platform] || "github"
+        invite_attrs = { role: params[:role], invited_by: current_user, platform: platform }
+
+        if platform == "gitlab"
+          invite_attrs[:gitlab_username] = params[:gitlab_username]
+        else
+          invite_attrs[:github_username] = params[:github_username]
+        end
+
+        invite = @org.invites.create!(invite_attrs)
         dashboard_url = ENV.fetch("DASHBOARD_URL", "http://localhost:3333").chomp("/")
         render json: {
           token: invite.token,

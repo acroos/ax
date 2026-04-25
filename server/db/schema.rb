@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_25_000005) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_25_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -92,7 +92,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_25_000005) do
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
     t.datetime "expires_at", null: false
-    t.string "github_username", null: false
+    t.string "github_username"
     t.string "gitlab_username"
     t.bigint "invited_by_id", null: false
     t.bigint "organization_id", null: false

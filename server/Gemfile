@@ -40,6 +40,7 @@ gem "lograge"
 # Authentication
 gem "devise"
 gem "omniauth-github", "~> 2.0"
+gem "omniauth-gitlab", "~> 4.0"
 gem "omniauth-rails_csrf_protection"
 
 # GitHub App authentication

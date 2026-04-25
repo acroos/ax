@@ -11,8 +11,8 @@ module Api
           return render json: { org_slug: invite.organization.slug, already_member: true }
         end
 
-        unless invite.github_username == current_user.github_username
-          return render json: { error: "This invite is for a different GitHub user" }, status: :forbidden
+        unless invite_matches_user?(invite, current_user)
+          return render json: { error: "This invite is for a different user" }, status: :forbidden
         end
 
         invite.accept!(current_user)
@@ -22,6 +22,17 @@ module Api
       rescue StripeService::Error, Stripe::StripeError => e
         Rails.logger.error("Failed to add seat for invite #{invite.id}: #{e.message}")
         render json: { error: "Could not add a seat. Please contact the organization owner." }, status: :payment_required
+      end
+
+      private
+
+      def invite_matches_user?(invite, user)
+        case invite.platform
+        when "gitlab"
+          invite.gitlab_username == user.gitlab_username
+        else
+          invite.github_username == user.github_username
+        end
       end
     end
   end

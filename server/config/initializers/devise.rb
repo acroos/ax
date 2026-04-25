@@ -15,4 +15,10 @@ Devise.setup do |config|
     ENV["GITHUB_CLIENT_ID"],
     ENV["GITHUB_CLIENT_SECRET"],
     scope: "read:user,user:email"
+
+  # OmniAuth GitLab
+  config.omniauth :gitlab,
+    ENV["GITLAB_CLIENT_ID"],
+    ENV["GITLAB_CLIENT_SECRET"],
+    scope: "read_user api"
 end
