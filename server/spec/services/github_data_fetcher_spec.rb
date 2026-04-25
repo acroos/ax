@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe GithubDataFetcher do
   let(:installation) { create(:github_installation) }
-  let(:repo) { create(:repo, github_owner: "acme", github_repo: "widget", github_installation: installation) }
+  let(:repo) { create(:repo, platform_owner: "acme", platform_repo: "widget", github_installation: installation) }
   let(:pr) { create(:pr, repo: repo, number: 42, additions: 20, deletions: 5) }
 
   let(:fake_token) { "ghs_fake_token" }
@@ -149,7 +149,7 @@ RSpec.describe GithubDataFetcher do
     end
 
     context "when repo has no GitHub installation" do
-      let(:repo) { create(:repo, github_owner: "acme", github_repo: "widget", github_installation: nil) }
+      let(:repo) { create(:repo, platform_owner: "acme", platform_repo: "widget", github_installation: nil) }
 
       it "skips fetching without error" do
         expect { described_class.new(pr).call }.not_to change { PrFile.count }

@@ -8,11 +8,11 @@ module WebhookHandlers
 
       if @installation
         # Prefer repos scoped to this installation's org
-        repo = Repo.find_by(github_owner: owner, github_repo: name, organization: @installation.organization)
+        repo = Repo.find_by(platform_owner: owner, platform_repo: name, organization: @installation.organization)
         return repo if repo
       end
 
-      Repo.find_by(github_owner: owner, github_repo: name)
+      Repo.find_by(platform_owner: owner, platform_repo: name)
     end
 
     def find_pr(repo, pr_data)

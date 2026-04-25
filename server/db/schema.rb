@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_23_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_25_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -68,20 +68,43 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_000001) do
     t.index ["organization_id"], name: "index_github_installations_on_organization_id"
   end
 
+  create_table "gitlab_connections", force: :cascade do |t|
+    t.string "access_token_ciphertext"
+    t.string "account_username", null: false
+    t.datetime "connected_at"
+    t.bigint "connected_by_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "gitlab_user_id", null: false
+    t.datetime "last_synced_at"
+    t.bigint "organization_id", null: false
+    t.string "refresh_token_ciphertext"
+    t.string "status", default: "active", null: false
+    t.datetime "token_expires_at"
+    t.string "token_scopes"
+    t.datetime "updated_at", null: false
+    t.string "webhook_secret", null: false
+    t.index ["connected_by_id"], name: "index_gitlab_connections_on_connected_by_id"
+    t.index ["organization_id"], name: "index_gitlab_connections_on_organization_id"
+    t.index ["organization_id"], name: "index_gitlab_connections_on_organization_id_unique", unique: true
+  end
+
   create_table "invites", force: :cascade do |t|
     t.datetime "accepted_at"
     t.datetime "created_at", null: false
     t.datetime "expires_at", null: false
     t.string "github_username", null: false
+    t.string "gitlab_username"
     t.bigint "invited_by_id", null: false
     t.bigint "organization_id", null: false
+    t.string "platform", default: "github", null: false
     t.string "role", null: false
     t.string "status", default: "pending", null: false
     t.string "token", null: false
     t.datetime "updated_at", null: false
     t.index ["github_username"], name: "index_invites_on_github_username"
     t.index ["invited_by_id"], name: "index_invites_on_invited_by_id"
-    t.index ["organization_id", "github_username", "status"], name: "idx_on_organization_id_github_username_status_2150455612", unique: true
+    t.index ["organization_id", "platform", "github_username", "status"], name: "index_invites_on_org_platform_username_status", unique: true, where: "(github_username IS NOT NULL)"
+    t.index ["organization_id", "platform", "gitlab_username", "status"], name: "index_invites_on_org_platform_gitlab_username_status", unique: true, where: "(gitlab_username IS NOT NULL)"
     t.index ["organization_id"], name: "index_invites_on_organization_id"
     t.index ["token"], name: "index_invites_on_token", unique: true
   end
@@ -148,6 +171,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_000001) do
     t.index ["event_id"], name: "index_processed_github_events_on_event_id", unique: true
   end
 
+  create_table "processed_gitlab_events", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_id"], name: "index_processed_gitlab_events_on_event_id", unique: true
+  end
+
   create_table "processed_stripe_events", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "event_id", null: false
@@ -185,15 +215,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_000001) do
   create_table "repos", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "github_installation_id"
-    t.string "github_owner"
-    t.string "github_repo"
+    t.bigint "gitlab_connection_id"
     t.datetime "last_synced_at"
     t.bigint "organization_id"
     t.string "path"
+    t.string "platform", default: "github", null: false
+    t.string "platform_owner"
+    t.string "platform_repo"
     t.string "remote_url"
     t.datetime "updated_at", null: false
     t.index ["github_installation_id"], name: "index_repos_on_github_installation_id"
-    t.index ["organization_id", "github_owner", "github_repo"], name: "index_repos_on_org_github_identity", unique: true
+    t.index ["gitlab_connection_id"], name: "index_repos_on_gitlab_connection_id"
+    t.index ["organization_id", "platform", "platform_owner", "platform_repo"], name: "index_repos_on_org_platform_identity", unique: true
     t.index ["organization_id"], name: "index_repos_on_organization_id"
     t.index ["path"], name: "index_repos_on_path"
   end
@@ -430,11 +463,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_000001) do
     t.datetime "created_at", null: false
     t.string "display_name"
     t.string "email"
-    t.bigint "github_id", null: false
-    t.string "github_username", null: false
+    t.bigint "github_id"
+    t.string "github_username"
+    t.bigint "gitlab_id"
+    t.string "gitlab_username"
     t.datetime "last_login_at", default: -> { "now()" }, null: false
     t.datetime "updated_at", null: false
     t.index ["github_id"], name: "index_users_on_github_id", unique: true
+    t.index ["gitlab_id"], name: "index_users_on_gitlab_id", unique: true, where: "(gitlab_id IS NOT NULL)"
+    t.check_constraint "github_id IS NOT NULL OR gitlab_id IS NOT NULL", name: "users_platform_identity_check"
   end
 
   create_table "waitlist_entries", force: :cascade do |t|
@@ -463,6 +500,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_000001) do
   add_foreign_key "commits", "repos"
   add_foreign_key "github_installations", "organizations"
   add_foreign_key "github_installations", "users", column: "installed_by_id"
+  add_foreign_key "gitlab_connections", "organizations"
+  add_foreign_key "gitlab_connections", "users", column: "connected_by_id"
   add_foreign_key "invites", "organizations"
   add_foreign_key "invites", "users", column: "invited_by_id"
   add_foreign_key "org_memberships", "organizations"
@@ -473,6 +512,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_23_000001) do
   add_foreign_key "pr_metrics", "prs"
   add_foreign_key "prs", "repos"
   add_foreign_key "repos", "github_installations"
+  add_foreign_key "repos", "gitlab_connections"
   add_foreign_key "repos", "organizations"
   add_foreign_key "session_prs", "prs"
   add_foreign_key "sessions", "repos"

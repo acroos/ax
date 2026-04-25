@@ -15,13 +15,13 @@ class BackfillRepoJob < ApplicationJob
     since = ENV.fetch("GITHUB_APP_BACKFILL_DAYS", "90").to_i.days.ago
 
     pulls = client.list_pulls(
-      owner: repo.github_owner,
-      repo: repo.github_repo,
+      owner: repo.platform_owner,
+      repo: repo.platform_repo,
       state: "all",
       since: since
     )
 
-    repo_data = { owner: { login: repo.github_owner }, name: repo.github_repo }
+    repo_data = { owner: { login: repo.platform_owner }, name: repo.platform_repo }
 
     pulls.each do |pr_data|
       backfill_pr(pr_data, repo_data)

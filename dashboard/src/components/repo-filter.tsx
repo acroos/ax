@@ -12,8 +12,8 @@ import {
 
 type RepoOption = {
   id: number;
-  github_owner: string;
-  github_repo: string;
+  platform_owner: string;
+  platform_repo: string;
 };
 
 export function RepoFilter({
@@ -30,7 +30,7 @@ export function RepoFilter({
   const currentLabel = current
     ? (() => {
         const r = repos.find((r) => r.id === current);
-        return r ? `${r.github_owner}/${r.github_repo}` : "All Repositories";
+        return r ? `${r.platform_owner}/${r.platform_repo}` : "All Repositories";
       })()
     : "All Repositories";
 
@@ -68,7 +68,7 @@ export function RepoFilter({
           </DropdownMenuRadioItem>
           {repos.map((r) => (
             <DropdownMenuRadioItem key={r.id} value={String(r.id)}>
-              {r.github_owner}/{r.github_repo}
+              {r.platform_owner}/{r.platform_repo}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

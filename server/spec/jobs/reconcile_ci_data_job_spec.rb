@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe ReconcileCiDataJob do
   let(:installation) { create(:github_installation) }
-  let(:repo) { create(:repo, github_owner: "acme", github_repo: "widget", github_installation: installation) }
+  let(:repo) { create(:repo, platform_owner: "acme", platform_repo: "widget", github_installation: installation) }
   let(:pr) { create(:pr, repo: repo, number: 1) }
 
   let(:fake_token) { "ghs_fake_token" }
@@ -66,7 +66,7 @@ RSpec.describe ReconcileCiDataJob do
     end
 
     it "skips repos without an active installation" do
-      repo_no_install = create(:repo, github_owner: "acme", github_repo: "other", github_installation: nil)
+      repo_no_install = create(:repo, platform_owner: "acme", platform_repo: "other", github_installation: nil)
       pr2 = create(:pr, repo: repo_no_install, number: 2)
       commit = create(:commit, sha: "abc123", repo: repo_no_install, pr: pr2, ci_passed: nil)
       create(:pr_metrics, pr: pr2, ci_success_rate: nil, metrics_finalized: true)

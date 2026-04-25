@@ -6,5 +6,7 @@ class Repo < ApplicationRecord
   belongs_to :organization, optional: true
   belongs_to :github_installation, optional: true
 
-  validates :github_owner, uniqueness: { scope: [ :organization_id, :github_repo ] }, allow_nil: true
+  validates :platform_owner, uniqueness: { scope: [ :organization_id, :platform, :platform_repo ] }, allow_nil: true
+
+  belongs_to :gitlab_connection, optional: true
 end

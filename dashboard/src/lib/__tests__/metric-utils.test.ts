@@ -44,8 +44,8 @@ function makePR(overrides: Partial<PRWithMetrics> = {}): PRWithMetrics {
       finalized_at: "2026-01-16T00:00:00Z",
     },
     author: "testuser",
-    github_owner: "org",
-    github_repo: "repo",
+    platform_owner: "org",
+    platform_repo: "repo",
     session_count: 1,
     ...overrides,
   };

@@ -27,8 +27,8 @@ function makePR(overrides: Partial<PRWithMetrics> = {}): PRWithMetrics {
     changed_files: 3,
     metrics: null,
     author: "testuser",
-    github_owner: "org",
-    github_repo: "repo",
+    platform_owner: "org",
+    platform_repo: "repo",
     session_count: 1,
     ...overrides,
   };

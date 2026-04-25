@@ -45,7 +45,7 @@ class PersonalDataExportService
       .limit(1000)
       .map do |pr|
         {
-          repo: "#{pr.repo.github_owner}/#{pr.repo.github_repo}",
+          repo: "#{pr.repo.platform_owner}/#{pr.repo.platform_repo}",
           number: pr.number,
           title: pr.title,
           state: pr.state,

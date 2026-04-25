@@ -11,8 +11,8 @@ import { RangeToggle, type Range } from "@/components/range-toggle";
 import { OverviewMetricsGrid } from "@/components/overview-metrics-grid";
 
 const DEMO_REPOS = MOCK_REPOS.filter(
-  (r): r is typeof r & { github_owner: string; github_repo: string } =>
-    r.github_owner !== null && r.github_repo !== null,
+  (r): r is typeof r & { platform_owner: string; platform_repo: string } =>
+    r.platform_owner !== null && r.platform_repo !== null,
 );
 
 const SCOPE_TEAMS: ScopeTeam[] = MOCK_TEAMS.map((t) => ({

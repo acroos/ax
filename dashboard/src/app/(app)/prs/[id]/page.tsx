@@ -263,9 +263,9 @@ async function PRHeader({
       </div>
 
       <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
-        {pr.github_owner && (
+        {pr.platform_owner && (
           <span>
-            {pr.github_owner}/{pr.github_repo}
+            {pr.platform_owner}/{pr.platform_repo}
           </span>
         )}
         {pr.branch && (

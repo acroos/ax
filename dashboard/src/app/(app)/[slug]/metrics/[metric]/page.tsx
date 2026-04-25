@@ -156,8 +156,8 @@ export default async function MetricDetailPage({
 
 type RepoLite = {
   id: number;
-  github_owner: string | null;
-  github_repo: string | null;
+  platform_owner: string | null;
+  platform_repo: string | null;
 };
 
 async function DataCountSubtitle({
@@ -175,8 +175,8 @@ async function DataCountSubtitle({
 }) {
   const [detail, allRepos] = await Promise.all([detailPromise, reposPromise]);
   const repos = allRepos.filter(
-    (r): r is RepoLite & { github_owner: string; github_repo: string } =>
-      r.github_owner !== null && r.github_repo !== null,
+    (r): r is RepoLite & { platform_owner: string; platform_repo: string } =>
+      r.platform_owner !== null && r.platform_repo !== null,
   );
   const count = detail?.count ?? 0;
   const totalCount = detail?.total_count ?? 0;

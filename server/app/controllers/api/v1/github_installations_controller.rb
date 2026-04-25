@@ -12,8 +12,8 @@ module Api
         user_role = current_user.role_in(@org)
 
         if installation
-          repos = installation.repos.order(:github_owner, :github_repo).map do |repo|
-            { id: repo.id, github_owner: repo.github_owner, github_repo: repo.github_repo }
+          repos = installation.repos.order(:platform_owner, :platform_repo).map do |repo|
+            { id: repo.id, platform_owner: repo.platform_owner, platform_repo: repo.platform_repo }
           end
 
           render json: {

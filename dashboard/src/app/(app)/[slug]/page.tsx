@@ -83,8 +83,8 @@ export default async function OrgOverviewPage({
 
 type RepoLite = {
   id: number;
-  github_owner: string | null;
-  github_repo: string | null;
+  platform_owner: string | null;
+  platform_repo: string | null;
 };
 
 function teamsToScopeTeams(teams: Team[]): ScopeTeam[] {
@@ -116,8 +116,8 @@ async function OverviewSubtitle({
 }) {
   const [allRepos, teams] = await Promise.all([reposPromise, teamsPromise]);
   const repos = allRepos.filter(
-    (r): r is RepoLite & { github_owner: string; github_repo: string } =>
-      r.github_owner !== null && r.github_repo !== null,
+    (r): r is RepoLite & { platform_owner: string; platform_repo: string } =>
+      r.platform_owner !== null && r.platform_repo !== null,
   );
   let metrics: AggregateMetrics | null = null;
   try {

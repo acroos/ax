@@ -179,7 +179,7 @@ RSpec.describe "Teams API", type: :request do
 
   describe "GET /api/v1/orgs/:slug/teams/:team_slug/prs" do
     let!(:team) { create(:team, slug: "frontend", organization: org, created_by: owner) }
-    let!(:repo) { create(:repo, organization: org, github_owner: "acme", github_repo: "app") }
+    let!(:repo) { create(:repo, organization: org, platform_owner: "acme", platform_repo: "app") }
 
     before do
       create(:team_membership, team: team, org_membership: member_membership)
@@ -200,7 +200,7 @@ RSpec.describe "Teams API", type: :request do
 
   describe "GET /api/v1/orgs/:slug/teams/:team_slug/metrics" do
     let!(:team) { create(:team, slug: "frontend", organization: org, created_by: owner) }
-    let!(:repo) { create(:repo, organization: org, github_owner: "acme", github_repo: "app") }
+    let!(:repo) { create(:repo, organization: org, platform_owner: "acme", platform_repo: "app") }
 
     before do
       create(:team_membership, team: team, org_membership: member_membership)

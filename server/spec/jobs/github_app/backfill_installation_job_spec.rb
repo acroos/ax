@@ -145,12 +145,12 @@ RSpec.describe GithubApp::BackfillInstallationJob do
       expect { described_class.new.perform(installation.id) }
         .to change(Repo, :count).by(2)
 
-      widget = Repo.find_by(github_owner: "acme", github_repo: "widget")
+      widget = Repo.find_by(platform_owner: "acme", platform_repo: "widget")
       expect(widget.organization).to eq(organization)
       expect(widget.github_installation).to eq(installation)
       expect(widget.path).to eq("acme/widget")
 
-      gadget = Repo.find_by(github_owner: "acme", github_repo: "gadget")
+      gadget = Repo.find_by(platform_owner: "acme", platform_repo: "gadget")
       expect(gadget.organization).to eq(organization)
     end
 
@@ -162,7 +162,7 @@ RSpec.describe GithubApp::BackfillInstallationJob do
     it "finalizes merged PRs" do
       described_class.new.perform(installation.id)
 
-      widget = Repo.find_by(github_owner: "acme", github_repo: "widget")
+      widget = Repo.find_by(platform_owner: "acme", platform_repo: "widget")
       pr = Pr.find_by(repo: widget, number: 1)
       expect(pr.state).to eq("merged")
       expect(pr.pr_metrics).to be_finalized
@@ -171,7 +171,7 @@ RSpec.describe GithubApp::BackfillInstallationJob do
     it "finalizes closed (unmerged) PRs" do
       described_class.new.perform(installation.id)
 
-      gadget = Repo.find_by(github_owner: "acme", github_repo: "gadget")
+      gadget = Repo.find_by(platform_owner: "acme", platform_repo: "gadget")
       pr = Pr.find_by(repo: gadget, number: 3)
       expect(pr.state).to eq("closed")
       expect(pr.pr_metrics).to be_finalized
@@ -180,7 +180,7 @@ RSpec.describe GithubApp::BackfillInstallationJob do
     it "does not finalize open PRs" do
       described_class.new.perform(installation.id)
 
-      widget = Repo.find_by(github_owner: "acme", github_repo: "widget")
+      widget = Repo.find_by(platform_owner: "acme", platform_repo: "widget")
       pr = Pr.find_by(repo: widget, number: 2)
       expect(pr.state).to eq("open")
       expect(pr.pr_metrics).not_to be_finalized
@@ -201,12 +201,12 @@ RSpec.describe GithubApp::BackfillInstallationJob do
     end
 
     it "upserts existing repos without duplicating" do
-      create(:repo, github_owner: "acme", github_repo: "widget", path: "acme/widget", organization: organization)
+      create(:repo, platform_owner: "acme", platform_repo: "widget", path: "acme/widget", organization: organization)
 
       expect { described_class.new.perform(installation.id) }
         .to change(Repo, :count).by(1) # only gadget is new
 
-      widget = Repo.find_by(github_owner: "acme", github_repo: "widget")
+      widget = Repo.find_by(platform_owner: "acme", platform_repo: "widget")
       expect(widget.github_installation).to eq(installation)
     end
 

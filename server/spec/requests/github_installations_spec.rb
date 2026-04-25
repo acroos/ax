@@ -39,8 +39,8 @@ RSpec.describe "GitHub Installations API", type: :request do
 
     it "includes connected repos in the response" do
       installation = create(:github_installation, organization: organization, installed_by: owner)
-      repo1 = create(:repo, github_installation: installation, github_owner: "acme", github_repo: "api")
-      repo2 = create(:repo, github_installation: installation, github_owner: "acme", github_repo: "web")
+      repo1 = create(:repo, github_installation: installation, platform_owner: "acme", platform_repo: "api")
+      repo2 = create(:repo, github_installation: installation, platform_owner: "acme", platform_repo: "web")
 
       get "/api/v1/orgs/#{organization.slug}/github_installation", headers: headers
       expect(response).to have_http_status(:ok)
@@ -48,7 +48,7 @@ RSpec.describe "GitHub Installations API", type: :request do
       body = JSON.parse(response.body)
       repos = body["installation"]["repos"]
       expect(repos.length).to eq(2)
-      expect(repos.map { |r| r["github_repo"] }).to contain_exactly("api", "web")
+      expect(repos.map { |r| r["platform_repo"] }).to contain_exactly("api", "web")
       expect(body["installation"]["repos_count"]).to eq(2)
     end
 

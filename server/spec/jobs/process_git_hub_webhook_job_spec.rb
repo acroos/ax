@@ -104,7 +104,7 @@ RSpec.describe ProcessGitHubWebhookJob do
 
   describe "installation-scoped webhook processing" do
     let!(:installation) { create(:github_installation, github_installation_id: 55555, status: "active") }
-    let!(:repo) { create(:repo, github_owner: "octocat", github_repo: "hello-world", organization: installation.organization, github_installation: installation) }
+    let!(:repo) { create(:repo, platform_owner: "octocat", platform_repo: "hello-world", organization: installation.organization, github_installation: installation) }
 
     let(:pr_payload) do
       {

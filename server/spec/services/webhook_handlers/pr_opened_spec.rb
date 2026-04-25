@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe WebhookHandlers::PrOpened do
-  let!(:repo) { create(:repo, github_owner: "octocat", github_repo: "hello-world") }
+  let!(:repo) { create(:repo, platform_owner: "octocat", platform_repo: "hello-world") }
 
   let(:pr_data) do
     {
@@ -39,7 +39,7 @@ RSpec.describe WebhookHandlers::PrOpened do
   context "with installation-scoped repo lookup" do
     let(:org) { create(:organization) }
     let(:installation) { create(:github_installation, organization: org) }
-    let!(:org_repo) { create(:repo, github_owner: "octocat", github_repo: "hello-world", organization: org, github_installation: installation) }
+    let!(:org_repo) { create(:repo, platform_owner: "octocat", platform_repo: "hello-world", organization: org, github_installation: installation) }
 
     it "prefers the repo scoped to the installation org" do
       # org_repo and repo both match owner/name; installation should pick org_repo

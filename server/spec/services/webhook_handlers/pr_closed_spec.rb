@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe WebhookHandlers::PrClosed do
   let(:installation) { create(:github_installation) }
-  let(:repo) { create(:repo, github_owner: "octocat", github_repo: "hello-world", github_installation: installation) }
+  let(:repo) { create(:repo, platform_owner: "octocat", platform_repo: "hello-world", github_installation: installation) }
   let!(:pr) { create(:pr, repo: repo, number: 1, state: "open") }
   let!(:metrics) { create(:pr_metrics, pr: pr, metrics_finalized: false) }
   let(:fake_token) { "ghs_fake_token" }

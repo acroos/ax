@@ -21,7 +21,7 @@ RSpec.describe "Account Export API", type: :request do
     end
 
     it "includes authored PRs" do
-      repo = create(:repo, github_owner: "acme", github_repo: "widget")
+      repo = create(:repo, platform_owner: "acme", platform_repo: "widget")
       create(:pr, repo: repo, author: "exportuser", number: 42, title: "Fix bug")
 
       get "/api/v1/account/export", headers: headers

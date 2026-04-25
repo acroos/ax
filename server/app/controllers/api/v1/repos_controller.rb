@@ -11,7 +11,7 @@ module Api
 
       def index
         repos = @org.repos.select(
-          :id, :path, :github_owner, :github_repo, :last_synced_at
+          :id, :path, :platform, :platform_owner, :platform_repo, :last_synced_at
         )
         render json: repos
       end
