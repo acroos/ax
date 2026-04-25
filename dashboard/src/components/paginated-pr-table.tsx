@@ -24,9 +24,9 @@ function PRRow({ pr }: { pr: PRWithMetrics }) {
         >
           #{pr.number}
         </Link>
-        {pr.github_owner && (
+        {pr.platform_owner && (
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {pr.github_owner}/{pr.github_repo}
+            {pr.platform_owner}/{pr.platform_repo}
           </div>
         )}
       </TableCell>

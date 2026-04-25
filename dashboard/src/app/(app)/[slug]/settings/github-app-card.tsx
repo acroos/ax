@@ -255,7 +255,7 @@ export function GitHubAppCard({
                         key={repo.id}
                         className="font-mono text-xs text-muted-foreground"
                       >
-                        {repo.github_owner}/{repo.github_repo}
+                        {repo.platform_owner}/{repo.platform_repo}
                       </li>
                     ))}
                   </ul>

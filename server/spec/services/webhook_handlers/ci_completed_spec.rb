@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe WebhookHandlers::CiCompleted do
   let(:installation) { create(:github_installation) }
-  let(:repo) { create(:repo, github_owner: "acme", github_repo: "widget", github_installation: installation) }
+  let(:repo) { create(:repo, platform_owner: "acme", platform_repo: "widget", github_installation: installation) }
   let(:pr) { create(:pr, repo: repo, number: 1) }
   let(:commit) { create(:commit, sha: "abc123", repo: repo, pr: pr) }
 

@@ -101,9 +101,10 @@ export async function getBilling(orgSlug: string): Promise<BillingInfo> {
 export interface Repo {
   id: number;
   path: string;
+  platform: "github" | "gitlab";
   remote_url: string | null;
-  github_owner: string | null;
-  github_repo: string | null;
+  platform_owner: string | null;
+  platform_repo: string | null;
   last_synced_at: string | null;
 }
 
@@ -181,8 +182,8 @@ export interface PaginatedSessions {
 export interface PRWithMetrics extends PR {
   metrics: PRMetrics | null;
   author: string | null;
-  github_owner: string | null;
-  github_repo: string | null;
+  platform_owner: string | null;
+  platform_repo: string | null;
   session_count: number;
 }
 
@@ -279,8 +280,8 @@ export type OrgRole = "owner" | "admin" | "member";
 
 export interface GithubInstallationRepo {
   id: number;
-  github_owner: string | null;
-  github_repo: string | null;
+  platform_owner: string | null;
+  platform_repo: string | null;
 }
 
 export interface GithubInstallation {

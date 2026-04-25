@@ -32,8 +32,8 @@ module PrSerialization
       deletions: pr.deletions,
       changed_files: pr.changed_files,
       author: pr.author,
-      github_owner: pr.repo.github_owner,
-      github_repo: pr.repo.github_repo,
+      platform_owner: pr.repo.platform_owner,
+      platform_repo: pr.repo.platform_repo,
       session_count: pr.session_prs.size,
       metrics: m ? {
         pr_number: pr.number,

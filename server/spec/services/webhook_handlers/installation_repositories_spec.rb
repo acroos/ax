@@ -21,7 +21,7 @@ RSpec.describe WebhookHandlers::InstallationRepositories do
       expect { described_class.new(payload).call }
         .to change(Repo, :count).by(2)
 
-      repo = Repo.find_by(github_owner: "my-org", github_repo: "repo-a")
+      repo = Repo.find_by(platform_owner: "my-org", platform_repo: "repo-a")
       expect(repo.organization).to eq(org)
       expect(repo.github_installation).to eq(installation)
       expect(repo.path).to eq("my-org/repo-a")
@@ -29,8 +29,8 @@ RSpec.describe WebhookHandlers::InstallationRepositories do
 
     it "updates existing org-scoped repos to attach them to the installation" do
       existing = create(:repo,
-        github_owner: "my-org",
-        github_repo: "repo-a",
+        platform_owner: "my-org",
+        platform_repo: "repo-a",
         path: "my-org/repo-a",
         organization: org,
         github_installation: nil
@@ -48,8 +48,8 @@ RSpec.describe WebhookHandlers::InstallationRepositories do
   describe "repositories_removed" do
     let!(:repo) do
       create(:repo,
-        github_owner: "my-org",
-        github_repo: "repo-a",
+        platform_owner: "my-org",
+        platform_repo: "repo-a",
         path: "my-org/repo-a",
         organization: org,
         github_installation: installation

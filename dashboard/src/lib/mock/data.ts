@@ -71,9 +71,9 @@ export const MOCK_USER: CurrentUser = {
 // ---------------------------------------------------------------------------
 
 export const MOCK_REPOS: Repo[] = [
-  { id: 1, path: "acme-eng/web-app", remote_url: "https://github.com/acme-eng/web-app.git", github_owner: "acme-eng", github_repo: "web-app", last_synced_at: daysAgo(0) },
-  { id: 2, path: "acme-eng/api-server", remote_url: "https://github.com/acme-eng/api-server.git", github_owner: "acme-eng", github_repo: "api-server", last_synced_at: daysAgo(0) },
-  { id: 3, path: "acme-eng/mobile-sdk", remote_url: "https://github.com/acme-eng/mobile-sdk.git", github_owner: "acme-eng", github_repo: "mobile-sdk", last_synced_at: daysAgo(1) },
+  { id: 1, path: "acme-eng/web-app", platform: "github", remote_url: "https://github.com/acme-eng/web-app.git", platform_owner: "acme-eng", platform_repo: "web-app", last_synced_at: daysAgo(0) },
+  { id: 2, path: "acme-eng/api-server", platform: "github", remote_url: "https://github.com/acme-eng/api-server.git", platform_owner: "acme-eng", platform_repo: "api-server", last_synced_at: daysAgo(0) },
+  { id: 3, path: "acme-eng/mobile-sdk", platform: "github", remote_url: "https://github.com/acme-eng/mobile-sdk.git", platform_owner: "acme-eng", platform_repo: "mobile-sdk", last_synced_at: daysAgo(1) },
 ];
 
 // ---------------------------------------------------------------------------
@@ -203,13 +203,13 @@ function generatePR(id: number, repoId: number): PRWithMetrics {
     created_at: createdAt,
     merged_at: mergedAt,
     closed_at: closedAt,
-    url: `https://github.com/${repo.github_owner}/${repo.github_repo}/pull/${100 + id}`,
+    url: `https://github.com/${repo.platform_owner}/${repo.platform_repo}/pull/${100 + id}`,
     additions,
     deletions,
     changed_files: randInt(1, 30),
     author,
-    github_owner: repo.github_owner,
-    github_repo: repo.github_repo,
+    platform_owner: repo.platform_owner,
+    platform_repo: repo.platform_repo,
     session_count: hasSessionData ? randInt(1, 4) : 0,
     metrics,
   };
@@ -384,8 +384,8 @@ export const MOCK_INSTALLATION: GithubInstallationResponse = {
     repos_count: 3,
     repos: MOCK_REPOS.map((r) => ({
       id: r.id,
-      github_owner: r.github_owner,
-      github_repo: r.github_repo,
+      platform_owner: r.platform_owner,
+      platform_repo: r.platform_repo,
     })),
   },
   user_role: "owner" as const,

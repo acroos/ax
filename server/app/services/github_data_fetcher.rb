@@ -23,8 +23,8 @@ class GithubDataFetcher
 
   def fetch_pr_files
     files = github_client.list_pull_files(
-      owner: @repo.github_owner,
-      repo: @repo.github_repo,
+      owner: @repo.platform_owner,
+      repo: @repo.platform_repo,
       number: @pr.number
     )
 
@@ -52,8 +52,8 @@ class GithubDataFetcher
 
   def fetch_commit_stats
     commits = github_client.list_pull_commits(
-      owner: @repo.github_owner,
-      repo: @repo.github_repo,
+      owner: @repo.platform_owner,
+      repo: @repo.platform_repo,
       number: @pr.number
     )
 
@@ -63,8 +63,8 @@ class GithubDataFetcher
       # The list-commits endpoint does NOT return per-commit stats.
       # Fetch each commit individually to get additions/deletions.
       full_commit = github_client.get_commit(
-        owner: @repo.github_owner,
-        repo: @repo.github_repo,
+        owner: @repo.platform_owner,
+        repo: @repo.platform_repo,
         sha: sha
       )
       stats = full_commit[:stats] || {}
@@ -93,8 +93,8 @@ class GithubDataFetcher
 
   def fetch_ci_status(commit, sha)
     response = github_client.list_check_suites(
-      owner: @repo.github_owner,
-      repo: @repo.github_repo,
+      owner: @repo.platform_owner,
+      repo: @repo.platform_repo,
       ref: sha
     )
 

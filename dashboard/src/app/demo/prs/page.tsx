@@ -6,8 +6,8 @@ import { PRTableHeader } from "@/components/pr-table-header";
 import { DemoPaginatedPRTableBody } from "@/components/demo-paginated-pr-table";
 
 const DEMO_REPOS = MOCK_REPOS.filter(
-  (r): r is typeof r & { github_owner: string; github_repo: string } =>
-    r.github_owner !== null && r.github_repo !== null,
+  (r): r is typeof r & { platform_owner: string; platform_repo: string } =>
+    r.platform_owner !== null && r.platform_repo !== null,
 );
 
 export default async function DemoPRsPage({

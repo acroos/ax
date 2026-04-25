@@ -46,8 +46,8 @@ class ReconcileCiDataJob < ApplicationJob
   def fetch_ci_for_commit(commit, installation)
     client = GithubApp::Client.new(installation)
     response = client.list_check_suites(
-      owner: commit.repo.github_owner,
-      repo: commit.repo.github_repo,
+      owner: commit.repo.platform_owner,
+      repo: commit.repo.platform_repo,
       ref: commit.sha
     )
 

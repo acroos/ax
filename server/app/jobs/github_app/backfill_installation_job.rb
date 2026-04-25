@@ -29,8 +29,8 @@ module GithubApp
 
       repo = Repo.find_or_initialize_by(
         organization_id: installation.organization_id,
-        github_owner: owner,
-        github_repo: name
+        platform_owner: owner,
+        platform_repo: name
       )
       repo.github_installation = installation
       repo.path ||= "#{owner}/#{name}"

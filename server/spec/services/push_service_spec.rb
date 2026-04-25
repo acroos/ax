@@ -92,8 +92,8 @@ RSpec.describe PushService do
       PushService.new(push_params, user: user).execute
 
       repo = Repo.find_by(path: "/home/user/myproject")
-      expect(repo.github_owner).to eq("owner")
-      expect(repo.github_repo).to eq("repo")
+      expect(repo.platform_owner).to eq("owner")
+      expect(repo.platform_repo).to eq("repo")
     end
 
     it "creates PR with metrics" do
@@ -194,8 +194,8 @@ RSpec.describe PushService do
 
     it "enforces plan repo limit on new repos" do
       # Free plan allows 2 repos — create 2 existing repos to hit the limit
-      create(:repo, organization: org, github_owner: "owner", github_repo: "existing1")
-      create(:repo, organization: org, github_owner: "owner", github_repo: "existing2")
+      create(:repo, organization: org, platform_owner: "owner", platform_repo: "existing1")
+      create(:repo, organization: org, platform_owner: "owner", platform_repo: "existing2")
 
       expect {
         PushService.new(push_params, user: user).execute
@@ -203,7 +203,7 @@ RSpec.describe PushService do
     end
 
     it "allows push when under plan repo limit" do
-      create(:repo, organization: org, github_owner: "owner", github_repo: "existing1")
+      create(:repo, organization: org, platform_owner: "owner", platform_repo: "existing1")
 
       result = PushService.new(push_params, user: user).execute
       expect(result[:repos]).to eq(1)

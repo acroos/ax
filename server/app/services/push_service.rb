@@ -68,7 +68,7 @@ class PushService
     user_org_ids = @user.organization_ids
 
     # Canonical lookup: github identity within user's orgs
-    repo = Repo.find_by(github_owner: owner, github_repo: repo_name, organization_id: user_org_ids) if owner.present? && repo_name.present?
+    repo = Repo.find_by(platform_owner: owner, platform_repo: repo_name, organization_id: user_org_ids) if owner.present? && repo_name.present?
 
     # Fallback: path-based lookup (legacy)
     repo ||= Repo.find_by(path: @params[:repo_path]) if @params[:repo_path].present?
@@ -88,8 +88,8 @@ class PushService
     repo.update!(
       path: @params[:repo_path] || "#{owner}/#{repo_name}",
       remote_url: @params[:remote_url],
-      github_owner: owner,
-      github_repo: repo_name,
+      platform_owner: owner,
+      platform_repo: repo_name,
       last_synced_at: Time.current
     )
 
