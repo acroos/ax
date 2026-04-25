@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Check, BookOpen, ArrowRight, ExternalLink } from "lucide-react";
 
-import { getInstallUrl, createInvite } from "./actions";
+import { getInstallUrl, getGitlabConnectUrl, createInvite } from "./actions";
 import { CopyButton } from "@/components/copy-button";
 import { Mark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
@@ -25,13 +25,13 @@ interface Props {
   isAdmin: boolean;
 }
 
-// Admin steps: welcome, github, cli, invite, done
+// Admin steps: welcome, source-control, cli, invite, done
 // Member steps: welcome, cli, done
-type AdminStep = "welcome" | "github" | "cli" | "invite" | "done";
+type AdminStep = "welcome" | "source-control" | "cli" | "invite" | "done";
 type MemberStep = "welcome" | "cli" | "done";
 type Step = AdminStep | MemberStep;
 
-const ADMIN_STEPS: AdminStep[] = ["welcome", "github", "cli", "invite", "done"];
+const ADMIN_STEPS: AdminStep[] = ["welcome", "source-control", "cli", "invite", "done"];
 const MEMBER_STEPS: MemberStep[] = ["welcome", "cli", "done"];
 
 function CodeBlock({ code }: { code: string }) {
@@ -105,33 +105,53 @@ function WelcomeStep({
   );
 }
 
-function GitHubStep({
+function SourceControlStep({
   orgSlug,
   onNext,
 }: {
   orgSlug: string;
   onNext: () => void;
 }) {
-  const [loading, setLoading] = useState(false);
+  const [githubLoading, setGithubLoading] = useState(false);
+  const [gitlabLoading, setGitlabLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleInstall() {
-    setLoading(true);
+  async function handleGitHub() {
+    setGithubLoading(true);
     setError(null);
     try {
       const result = await getInstallUrl(orgSlug);
       if (result.error) {
         setError(result.error);
-        setLoading(false);
+        setGithubLoading(false);
         return;
       }
       if (result.install_url) {
         window.open(result.install_url, "_blank", "noopener,noreferrer");
-        setLoading(false);
+        setGithubLoading(false);
       }
     } catch {
       setError("Something went wrong. Please try again.");
-      setLoading(false);
+      setGithubLoading(false);
+    }
+  }
+
+  async function handleGitLab() {
+    setGitlabLoading(true);
+    setError(null);
+    try {
+      const result = await getGitlabConnectUrl(orgSlug);
+      if (result.error) {
+        setError(result.error);
+        setGitlabLoading(false);
+        return;
+      }
+      if (result.connect_url) {
+        window.location.href = result.connect_url;
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+      setGitlabLoading(false);
     }
   }
 
@@ -139,34 +159,54 @@ function GitHubStep({
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="font-serif text-xl font-semibold text-foreground">
-          Connect GitHub
+          Connect Source Control
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           This is how AX receives pull request data
         </p>
       </div>
 
-      <Card className="p-6">
-        <CardContent className="space-y-4 p-0">
-          <p className="text-xs leading-relaxed text-muted-foreground">
-            The AX GitHub App listens for pull request events, reviews, and CI
-            results. Once installed, AX backfills up to 90 days of PR history
-            so you see metrics right away.
-          </p>
+      <div className="space-y-3">
+        <Card className="p-6">
+          <CardContent className="space-y-4 p-0">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              The AX GitHub App listens for pull request events, reviews, and CI
+              results. Once installed, AX backfills up to 90 days of PR history
+              so you see metrics right away.
+            </p>
 
-          <Button onClick={handleInstall} disabled={loading}>
-            {loading ? "Opening..." : "Install GitHub App"}
-            <ExternalLink className="ml-1.5 size-3.5" aria-hidden />
-          </Button>
+            <Button onClick={handleGitHub} disabled={githubLoading}>
+              {githubLoading ? "Opening..." : "Install GitHub App"}
+              <ExternalLink className="ml-1.5 size-3.5" aria-hidden />
+            </Button>
 
-          {error && <p className="text-xs text-destructive">{error}</p>}
+            <p className="text-[11px] text-muted-foreground">
+              This opens GitHub in a new tab. After installing, come back here
+              and continue.
+            </p>
+          </CardContent>
+        </Card>
 
-          <p className="text-[11px] text-muted-foreground">
-            This opens GitHub in a new tab. After installing, come back here
-            and continue. You can always install later from Org Settings.
-          </p>
-        </CardContent>
-      </Card>
+        <Card className="p-6">
+          <CardContent className="space-y-4 p-0">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Connect your GitLab account to receive merge request and pipeline
+              events. AX backfills up to 90 days of MR history on connection.
+            </p>
+
+            <Button variant="outline" onClick={handleGitLab} disabled={gitlabLoading}>
+              {gitlabLoading ? "Redirecting..." : "Connect GitLab"}
+              <ExternalLink className="ml-1.5 size-3.5" aria-hidden />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {error && <p className="text-center text-xs text-destructive">{error}</p>}
+
+      <p className="text-center text-[11px] text-muted-foreground">
+        You can connect both, or add the other later from Org Settings.
+      </p>
 
       <div className="flex items-center justify-center gap-3">
         <Button size="lg" onClick={onNext}>
@@ -511,8 +551,8 @@ export function OnboardingSteps({
           />
         )}
 
-        {currentStep === "github" && (
-          <GitHubStep orgSlug={orgSlug} onNext={goNext} />
+        {currentStep === "source-control" && (
+          <SourceControlStep orgSlug={orgSlug} onNext={goNext} />
         )}
 
         {currentStep === "cli" && (

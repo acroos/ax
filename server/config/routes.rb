@@ -12,10 +12,14 @@ Rails.application.routes.draw do
 
   # Webhooks (signature-validated, not session/key auth)
   post "/webhooks/github", to: "webhooks#github"
+  post "/webhooks/gitlab", to: "webhooks#gitlab"
   post "/webhooks/stripe", to: "webhooks#stripe"
 
   # GitHub App install callback (browser redirect from GitHub, state token is auth)
   get "/github/installations/callback", to: "github_app/installations#callback"
+
+  # GitLab OAuth connection callback (browser redirect from GitLab, state token is auth)
+  get "/gitlab/connections/callback", to: "gitlab/connections#callback"
 
   namespace :api do
     namespace :v1 do
@@ -46,6 +50,9 @@ Rails.application.routes.draw do
         resources :invites, controller: "org_invites", only: [ :index, :create, :destroy ]
         resource :github_installation, only: [ :show ], controller: "github_installations" do
           post :install_url
+        end
+        resource :gitlab_connection, only: [ :show, :destroy ], controller: "gitlab_connections" do
+          post :connect_url
         end
         # Org-level PRs and sessions (all repos)
         get :prs, to: "organizations#prs"

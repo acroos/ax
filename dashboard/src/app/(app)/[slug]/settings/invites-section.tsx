@@ -28,7 +28,9 @@ import {
 
 export interface Invite {
   id: number;
-  github_username: string;
+  github_username: string | null;
+  gitlab_username: string | null;
+  platform: "github" | "gitlab";
   role: string;
   expires_at: string;
 }
@@ -79,6 +81,7 @@ export function InvitesSection({
   const [invites, setInvites] = useState(initialInvites);
   const [revoking, setRevoking] = useState<number | null>(null);
   const [username, setUsername] = useState("");
+  const [platform, setPlatform] = useState<"github" | "gitlab">("github");
   const [role, setRole] = useState("member");
   const [creating, setCreating] = useState(false);
   const [results, setResults] = useState<InviteResult[]>([]);
@@ -113,21 +116,24 @@ export function InvitesSection({
     }
   }
 
-  async function createOneInvite(ghUsername: string): Promise<InviteResult> {
+  async function createOneInvite(uname: string): Promise<InviteResult> {
     try {
+      const body = platform === "gitlab"
+        ? { gitlab_username: uname, platform: "gitlab", role }
+        : { github_username: uname, platform: "github", role };
       const res = await fetch(`/api/v1/orgs/${slug}/invites`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ github_username: ghUsername, role }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const data = await res.json();
-        return { username: ghUsername, link: data.link };
+        return { username: uname, link: data.link };
       }
       const data = await res.json().catch(() => null);
-      return { username: ghUsername, error: data?.error || "Failed to create invite" };
+      return { username: uname, error: data?.error || "Failed to create invite" };
     } catch {
-      return { username: ghUsername, error: "Network error" };
+      return { username: uname, error: "Network error" };
     }
   }
 
@@ -182,7 +188,10 @@ export function InvitesSection({
               >
                 <div className="min-w-0 flex-1">
                   <div className="text-[13px] font-medium text-foreground">
-                    @{inv.github_username}
+                    @{inv.github_username || inv.gitlab_username}
+                    <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                      ({inv.platform === "gitlab" ? "GitLab" : "GitHub"})
+                    </span>
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     {inv.role} &middot; expires {timeUntil(inv.expires_at)}
@@ -213,19 +222,40 @@ export function InvitesSection({
               Invite members
             </h3>
             <form onSubmit={handleSubmit} className="flex items-end gap-2">
+              <div className="space-y-1">
+                <Label
+                  htmlFor="invite-platform"
+                  className="text-[11px] text-muted-foreground"
+                >
+                  Platform
+                </Label>
+                <Select value={platform} onValueChange={(v) => setPlatform(v as "github" | "gitlab")}>
+                  <SelectTrigger id="invite-platform" size="sm" className="text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="github" className="text-xs">
+                      GitHub
+                    </SelectItem>
+                    <SelectItem value="gitlab" className="text-xs">
+                      GitLab
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex-1 space-y-1">
                 <Label
                   htmlFor="invite-username"
                   className="text-[11px] text-muted-foreground"
                 >
-                  GitHub usernames (comma-separated)
+                  {platform === "gitlab" ? "GitLab" : "GitHub"} usernames (comma-separated)
                 </Label>
                 <Input
                   id="invite-username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="octocat, mona, hubot"
+                  placeholder={platform === "gitlab" ? "gitlab-user1, gitlab-user2" : "octocat, mona, hubot"}
                   className="h-8 text-xs"
                 />
               </div>

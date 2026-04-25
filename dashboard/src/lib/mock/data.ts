@@ -16,6 +16,7 @@ import type {
   TimelinePoint,
   BillingInfo,
   GithubInstallationResponse,
+  GitlabConnectionResponse,
   Team,
   TeamDetail,
   TeamMember,
@@ -57,6 +58,7 @@ function daysAgo(n: number): string {
 export const MOCK_USER: CurrentUser = {
   id: 1,
   github_username: "austinroos",
+  gitlab_username: null,
   display_name: "Austin Roos",
   email: "austin@acme-eng.dev",
   avatar_url: null,
@@ -74,6 +76,7 @@ export const MOCK_REPOS: Repo[] = [
   { id: 1, path: "acme-eng/web-app", platform: "github", remote_url: "https://github.com/acme-eng/web-app.git", platform_owner: "acme-eng", platform_repo: "web-app", last_synced_at: daysAgo(0) },
   { id: 2, path: "acme-eng/api-server", platform: "github", remote_url: "https://github.com/acme-eng/api-server.git", platform_owner: "acme-eng", platform_repo: "api-server", last_synced_at: daysAgo(0) },
   { id: 3, path: "acme-eng/mobile-sdk", platform: "github", remote_url: "https://github.com/acme-eng/mobile-sdk.git", platform_owner: "acme-eng", platform_repo: "mobile-sdk", last_synced_at: daysAgo(1) },
+  { id: 4, path: "acme-eng/infra-config", platform: "gitlab", remote_url: "https://gitlab.com/acme-eng/infra-config.git", platform_owner: "acme-eng", platform_repo: "infra-config", last_synced_at: daysAgo(0) },
 ];
 
 // ---------------------------------------------------------------------------
@@ -203,7 +206,9 @@ function generatePR(id: number, repoId: number): PRWithMetrics {
     created_at: createdAt,
     merged_at: mergedAt,
     closed_at: closedAt,
-    url: `https://github.com/${repo.platform_owner}/${repo.platform_repo}/pull/${100 + id}`,
+    url: repo.platform === "gitlab"
+      ? `https://gitlab.com/${repo.platform_owner}/${repo.platform_repo}/-/merge_requests/${100 + id}`
+      : `https://github.com/${repo.platform_owner}/${repo.platform_repo}/pull/${100 + id}`,
     additions,
     deletions,
     changed_files: randInt(1, 30),
@@ -364,7 +369,7 @@ export const MOCK_BILLING: BillingInfo = {
     quantity: 4,
     seat_price_cents: 1200,
   },
-  usage: { members: 4, repos: 3 },
+  usage: { members: 4, repos: 4 },
 };
 
 // ---------------------------------------------------------------------------
@@ -387,6 +392,25 @@ export const MOCK_INSTALLATION: GithubInstallationResponse = {
       platform_owner: r.platform_owner,
       platform_repo: r.platform_repo,
     })),
+  },
+  user_role: "owner" as const,
+};
+
+// ---------------------------------------------------------------------------
+// Mock GitLab connection
+// ---------------------------------------------------------------------------
+
+export const MOCK_GITLAB_CONNECTION: GitlabConnectionResponse = {
+  connection: {
+    id: 1,
+    account_username: "acme-eng",
+    status: "active",
+    connected_at: daysAgo(30),
+    last_synced_at: daysAgo(0),
+    repos_count: 1,
+    repos: [
+      { id: 4, platform_owner: "acme-eng", platform_repo: "infra-config" },
+    ],
   },
   user_role: "owner" as const,
 };
@@ -430,8 +454,8 @@ export const MOCK_MEMBERS = {
 // ---------------------------------------------------------------------------
 
 export const MOCK_INVITES = [
-  { id: 1, github_username: "taylorblake", role: "member", expires_at: daysAgo(-5) },
-  { id: 2, github_username: "morganli", role: "admin", expires_at: daysAgo(-3) },
+  { id: 1, github_username: "taylorblake", gitlab_username: null, platform: "github" as const, role: "member", expires_at: daysAgo(-5) },
+  { id: 2, github_username: null, gitlab_username: "morganli", platform: "gitlab" as const, role: "admin", expires_at: daysAgo(-3) },
 ];
 
 // ---------------------------------------------------------------------------

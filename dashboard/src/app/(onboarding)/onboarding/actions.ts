@@ -1,7 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { requestGithubInstallUrl } from "@/lib/db";
+import { requestGithubInstallUrl, requestGitlabConnectUrl } from "@/lib/db";
 
 const API_URL = process.env.AX_API_URL || "http://localhost:3000";
 
@@ -14,6 +14,19 @@ export async function getInstallUrl(
   } catch (e) {
     return {
       error: e instanceof Error ? e.message : "Failed to generate install URL",
+    };
+  }
+}
+
+export async function getGitlabConnectUrl(
+  orgSlug: string,
+): Promise<{ connect_url?: string; error?: string }> {
+  try {
+    const result = await requestGitlabConnectUrl(orgSlug);
+    return { connect_url: result.connect_url };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to generate connect URL",
     };
   }
 }

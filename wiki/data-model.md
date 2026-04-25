@@ -12,11 +12,15 @@ Repository container. One row per tracked repo.
 | id | bigint | PK |
 | path | text | Identifier |
 | remote_url | text | Git remote origin URL |
-| github_owner | text | Extracted from remote (e.g., "acroos") |
-| github_repo | text | Extracted from remote (e.g., "ax") |
+| platform | text | "github" or "gitlab" (default: "github") |
+| platform_owner | text | Extracted from remote (e.g., "acroos") |
+| platform_repo | text | Extracted from remote (e.g., "ax") |
 | last_synced_at | timestamp | Last successful data push |
 | organization_id | bigint | FK → organizations |
 | github_installation_id | bigint | FK → github_installations |
+| gitlab_connection_id | bigint | FK → gitlab_connections |
+| gitlab_project_id | bigint | GitLab project ID (for API calls) |
+| gitlab_webhook_id | bigint | GitLab per-project webhook ID |
 
 ### prs
 Pull requests. Unique per (repo_id, number).
@@ -132,17 +136,21 @@ See [Metrics — Finalization](metrics.md#finalization) for immutability rules.
 ## Identity & Auth Tables
 
 ### users
-GitHub OAuth identity (Devise).
+OAuth identity (GitHub and/or GitLab, via Devise).
 
 | Column | Type | Notes |
 |--------|------|-------|
 | id | bigint | PK |
-| github_id | integer | Unique |
-| github_username | text | |
+| github_id | integer | Unique, nullable |
+| github_username | text | Nullable |
+| gitlab_id | bigint | Unique, nullable |
+| gitlab_username | text | Nullable |
 | email | text | |
 | display_name | text | |
 | avatar_url | text | |
 | last_login_at | timestamp | |
+
+Check constraint: at least one of `github_id` or `gitlab_id` must be present.
 
 ### organizations
 
@@ -258,7 +266,9 @@ Unique on (team_id, org_membership_id).
 |--------|------|-------|
 | id | bigint | PK |
 | organization_id | bigint | FK → organizations |
-| github_username | text | Invitee |
+| platform | text | "github" or "gitlab" (default: "github") |
+| github_username | text | Invitee (nullable) |
+| gitlab_username | text | Invitee (nullable) |
 | role | text | Role to assign on acceptance |
 | token | text | Unique, URL-safe |
 | status | text | pending, accepted, expired, revoked |
@@ -277,6 +287,34 @@ Unique on (team_id, org_membership_id).
 | status | text | active, suspended, deleted |
 | permissions | jsonb | |
 | events | jsonb | |
+
+### gitlab_connections
+GitLab OAuth connection per org. Mirrors `github_installations` for GitLab.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | bigint | PK |
+| organization_id | bigint | FK → organizations (unique) |
+| gitlab_user_id | bigint | GitLab user ID from OAuth |
+| account_username | text | GitLab username |
+| access_token | text | ActiveRecord::Encryption |
+| refresh_token | text | ActiveRecord::Encryption |
+| token_expires_at | timestamp | OAuth token expiry |
+| token_scopes | text | Granted scopes |
+| webhook_secret | text | Secret for validating incoming webhooks |
+| connected_by_id | bigint | FK → users |
+| connected_at | timestamp | |
+| last_synced_at | timestamp | |
+| status | text | active, revoked, expired |
+
+### processed_gitlab_events
+Idempotency guard for GitLab webhook processing. Same pattern as `processed_github_events`.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | bigint | PK |
+| event_id | text | GitLab event UUID (unique index) |
+| created_at | timestamp | |
 
 ### Other
 - `waitlist_entries` — Early access management (email, status)

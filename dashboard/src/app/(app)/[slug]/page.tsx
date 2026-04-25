@@ -83,6 +83,7 @@ export default async function OrgOverviewPage({
 
 type RepoLite = {
   id: number;
+  platform: "github" | "gitlab";
   platform_owner: string | null;
   platform_repo: string | null;
 };

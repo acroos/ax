@@ -314,6 +314,8 @@ class PushService
   def trigger_post_push(repo)
     if repo.github_installation_id.present?
       BackfillRepoJob.perform_later(repo.id)
+    elsif repo.gitlab_connection_id.present?
+      BackfillGitlabRepoJob.perform_later(repo.id)
     else
       SessionPrCorrelationService.new(repo).call
     end

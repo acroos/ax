@@ -135,6 +135,7 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [015 — Design System & shadcn/ui](docs/decisions/015-design-system-and-shadcn.md): Parchment & Clay theme + shadcn/ui as the primitive component library. Amends ADR-006. **Read before any dashboard styling work.**
 - [016 — Teams within Orgs](docs/decisions/016-teams-within-orgs.md): Teams as people-groups within orgs for metric scoping and access control. Pro-only. Relevant when working on team management, team-scoped metrics, or org access control.
 - [017 — Metric Restructuring](docs/decisions/017-metric-restructuring.md): New top 9 displayed metrics across Delivery / Session Effectiveness / Adoption Maturity. 6 new metrics, 3 kept, 6 hidden. Check this before adding or changing metrics.
+- [018 — GitLab Integration](docs/decisions/018-gitlab-integration.md): GitLab as first-class platform alongside GitHub. OAuth Application + per-project webhooks (vs GitHub App model). Platform-agnostic data model. gitlab.com only for now.
 - [Open Questions](docs/decisions/open-questions.md): Pending decisions (CI images, PR author tracking, etc.)
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.

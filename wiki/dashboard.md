@@ -11,14 +11,14 @@ Location: `dashboard/`
 | Route | Page | What it shows |
 |-------|------|---------------|
 | `/` | Root | Redirects to default org or login |
-| `/login` | Login | GitHub OAuth sign-in |
-| `/onboarding` | Onboarding | Two-path guided setup. **Admin path** (5 steps): welcome, GitHub App install, API key + CLI, invite team, all-set landing. **Member path** (3 steps, `?role=member&org=<slug>`): welcome, API key + CLI, all-set landing. Rendered in its own `(onboarding)` route group without the sidebar. |
+| `/login` | Login | GitHub or GitLab OAuth sign-in |
+| `/onboarding` | Onboarding | Two-path guided setup. **Admin path** (5 steps): welcome, source control connect (GitHub App + GitLab OAuth), API key + CLI, invite team, all-set landing. **Member path** (3 steps, `?role=member&org=<slug>`): welcome, API key + CLI, all-set landing. Rendered in its own `(onboarding)` route group without the sidebar. |
 | `/prs/[id]` | PR Detail | All metrics for one PR, grouped by category |
 | `/docs` | Docs Index | Grid of all metric documentation pages, plus link to data collection disclosure |
 | `/docs/data-collection` | Data Collection | What data AX collects, sends, and stores (rendered from `docs/data-collection.md`) |
 | `/docs/[slug]` | Metric Doc | Individual metric explanation (rendered from `docs/metrics/*.md`) |
 | `/contact` | Contact | Email and GitHub links for reaching out |
-| `/settings` | Account | Profile (GitHub identity), API key rotation, logout |
+| `/settings` | Account | Profile (GitHub/GitLab identity), API key rotation, logout |
 
 ### Org-Scoped Routes
 
@@ -27,7 +27,7 @@ Location: `dashboard/`
 | `/{slug}` | Org Overview | Aggregate metrics grouped by category with section dividers (AX motif). Cards use a "stacked narrative" layout: serif metric value, delta pill, hero sparkline (h-16), then detail text. A 7d/30d/90d range toggle (`?range=` query param, always present) controls the comparison window, sparkline date range, and delta period. Clickable cards link to drill-down pages, preserving both `range` and `repo` query params. |
 | `/{slug}/metrics/[metric]` | Metric Detail | Per-PR breakdown for a single metric: bar chart, summary stats, sortable table, and documentation |
 | `/{slug}/prs` | PR List | Org-scoped table of finalized PRs with inline metrics and session count column |
-| `/{slug}/settings` | Org Settings | GitHub App installation card (status, connected repos, install/reinstall), members list (role management, removal), and invites (create, list, revoke) |
+| `/{slug}/settings` | Org Settings | GitHub App installation card, GitLab connection card (status, connected repos, connect/disconnect), members list (role management, removal), and invites (create with platform toggle, list, revoke) |
 | `/{slug}/billing` | Billing | Current plan badge, seat count and monthly total (Pro), usage bars (members vs purchased seats, repos vs limits), upgrade/manage buttons, feature comparison for free plan |
 | `/{slug}/me` | My Dashboard | Aggregate metrics for PRs authored by the current user (mirrors org overview, scoped to current user) |
 | `/{slug}/me/prs` | My PR List | PRs authored by the current user |

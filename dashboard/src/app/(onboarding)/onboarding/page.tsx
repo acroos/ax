@@ -22,7 +22,7 @@ export default async function OnboardingPage({
 
   return (
     <OnboardingSteps
-      displayName={user.display_name || user.github_username}
+      displayName={user.display_name || user.github_username || user.gitlab_username || "there"}
       orgSlug={orgSlug}
       orgName={orgName}
       isAdmin={isAdmin}

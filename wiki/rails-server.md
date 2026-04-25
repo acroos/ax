@@ -10,10 +10,11 @@ Location: `server/`
 
 | Model | Table | Purpose |
 |-------|-------|---------|
-| `User` | `users` | GitHub OAuth identity (github_id, username, email, avatar) |
+| `User` | `users` | OAuth identity (github_id/gitlab_id, username, email, avatar) |
 | `Organization` | `organizations` | Team container (slug, name, is_personal) |
 | `OrgMembership` | `org_memberships` | User-org join with role (owner, admin, member) |
 | `GitHubInstallation` | `github_installations` | GitHub App installation per org |
+| `GitlabConnection` | `gitlab_connections` | GitLab OAuth connection per org (encrypted tokens, webhook secret) |
 | `Team` | `teams` | Team within an org (name, slug, optional parent_team) |
 | `TeamMembership` | `team_memberships` | Org-membership-to-team join (validates org match) |
 
@@ -35,7 +36,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 
 | Model | Table | Purpose |
 |-------|-------|---------|
-| `Repo` | `repos` | Repository (path, remote_url, github_owner, github_repo, org_id) |
+| `Repo` | `repos` | Repository (path, remote_url, platform, platform_owner, platform_repo, org_id) |
 | `PrFile` | `pr_files` | File paths per PR (fetched from GitHub API at finalization) |
 | `PR` | `prs` | Pull request (number, state, branch, timestamps, diff stats) |
 | `Commit` | `commits` | Git commit (sha as PK, claude-authored flag, post-open flag) |
@@ -54,7 +55,9 @@ See [Authentication](authentication.md) for how these are used across modes.
 
 **Team** belongs to an organization with an optional parent team (self-referential FK). Child teams cascade-delete with their parent. Key methods: `descendant_team_ids` (recursive CTE for the full subtree), `member_github_usernames` (all members including descendants), `direct_member_count`. TeamMembership links to `OrgMembership` (not User directly) and validates the org matches. Organization has_many :teams, OrgMembership has_many :team_memberships/:teams, User has `teams_in(org)`.
 
-**Repo** is identified canonically by `(organization_id, github_owner, github_repo)`. The `path` field is informational and non-unique. PushService looks up repos by `github_owner/github_repo` within the user's orgs, falling back to `path` for legacy compatibility. On first push, repos are auto-assigned to the user's personal org.
+**Repo** is identified canonically by `(organization_id, platform, platform_owner, platform_repo)`. The `path` field is informational and non-unique. PushService looks up repos by `platform + platform_owner/platform_repo` within the user's orgs, falling back to `path` for legacy compatibility. On first push, repos are auto-assigned to the user's personal org. The `platform` column is `"github"` or `"gitlab"`.
+
+**GitlabConnection** stores encrypted OAuth tokens (`access_token`, `refresh_token` via ActiveRecord::Encryption), token expiry, webhook secret, and connection status. One connection per org (unique index on `organization_id`). Has_many repos (via `gitlab_connection_id` FK on repos). Token auto-refresh: `GitlabApp::Client` checks `token_expires_at` before each API call and refreshes via GitLab's OAuth token endpoint when needed.
 
 ## API Endpoints
 
@@ -126,12 +129,23 @@ Filters PRs by `current_user.github_username` as the author, following the same 
 | `POST` | `/api/v1/orgs/:slug/github_installation/install_url` | Generate signed GitHub App install URL (admin-only) |
 | `GET` | `/github/installations/callback` | GitHub App setup callback (state-token auth, not session) |
 
+### GitLab Connection (Session Token, Admin Required for Mutations)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/v1/orgs/:slug/gitlab_connection` | Current connection state + user role |
+| `POST` | `/api/v1/orgs/:slug/gitlab_connection/connect_url` | Generate GitLab OAuth authorize URL (admin-only) |
+| `DELETE` | `/api/v1/orgs/:slug/gitlab_connection` | Revoke connection, remove webhooks, detach repos (admin-only) |
+| `GET` | `/gitlab/connections/callback` | GitLab OAuth callback (state-token auth, not session) |
+
 ### Auth
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/users/auth/github` | Initiate GitHub OAuth |
 | `GET` | `/users/auth/github/callback` | OAuth callback → create user, generate session |
+| `GET` | `/users/auth/gitlab` | Initiate GitLab OAuth |
+| `GET` | `/users/auth/gitlab/callback` | OAuth callback → create user, generate session |
 | `GET` | `/auth/me` | Current user info + orgs |
 | `POST` | `/auth/logout` | Destroy session |
 | `GET` | `/api/v1/api_key` | View API key metadata |
@@ -152,6 +166,7 @@ Filters PRs by `current_user.github_username` as the author, following the same 
 | Method | Path | Purpose |
 |--------|------|---------|
 | `POST` | `/webhooks/github` | GitHub webhook receiver (HMAC validated) |
+| `POST` | `/webhooks/gitlab` | GitLab webhook receiver (X-Gitlab-Token validated) |
 | `POST` | `/webhooks/stripe` | Stripe webhook receiver (Stripe signature validated) |
 
 ### Account Management (Session Token)
@@ -173,13 +188,13 @@ Filters PRs by `current_user.github_username` as the author, following the same 
 Main ingestion orchestrator. Called by the push controller.
 
 1. Validates per-entity limits (max 500 PRs, 1000 sessions, 5000 commits, 1000 session_prs, 500 pr_metrics)
-2. Upserts repo by `github_owner/github_repo` (canonical lookup, falls back to path)
+2. Upserts repo by `platform + platform_owner/platform_repo` (canonical lookup, falls back to path)
 3. Validates user is member of repo's org
 4. Upserts PRs, sessions, commits, correlations, metrics — all in a transaction
 5. Strips `metrics_finalized` and `finalized_at` from client-supplied pr_metrics (only webhook handlers can finalize)
 6. Skips updates to already-finalized PR metrics
 7. Returns entity count hash
-8. Post-transaction: triggers `BackfillRepoJob` if repo has GitHub App, otherwise runs `SessionPrCorrelationService`
+8. Post-transaction: triggers `BackfillRepoJob` if repo has GitHub App, `BackfillGitlabRepoJob` if repo has GitLab connection, otherwise runs `SessionPrCorrelationService`
 
 ### SessionPrCorrelationService (`app/services/session_pr_correlation_service.rb`)
 Matches sessions to PRs within a repo by branch name and temporal overlap.
@@ -192,7 +207,8 @@ Matches sessions to PRs within a repo by branch name and temporal overlap.
 ### AuthService (`app/services/auth_service.rb`)
 Handles OAuth and onboarding:
 - `find_or_create_from_github(auth_hash)` — Creates/updates user, personal org, API key
-- `process_pending_invites(user)` — Auto-accepts invites matching the user's GitHub username (silently skips invites where the org has reached its member limit)
+- `find_or_create_from_gitlab(auth_hash)` — Same as GitHub, but matches by email first to link GitLab identity to existing users
+- `process_pending_invites(user)` — Auto-accepts invites matching the user's GitHub or GitLab username (silently skips invites where the org has reached its member limit)
 - `ensure_can_create_org!(user)` — Checks waitlist approval
 
 ### GithubDataFetcher (`app/services/github_data_fetcher.rb`)
@@ -203,6 +219,12 @@ Fetches file-level and commit data from the GitHub API at PR finalization:
 Also computes and updates the PR's `additions`, `deletions`, and `changed_files` from the fetched file data (the GitHub list endpoint doesn't include diff stats).
 
 Only runs if the repo has a GitHub App installation. Skips gracefully otherwise.
+
+### GitlabApp::Client (`app/services/gitlab_app/client.rb`)
+Wraps GitLab REST API v4 using the stored OAuth token. Methods: `list_projects`, `get_merge_request`, `list_merge_request_commits`, `get_merge_request_changes`, `list_merge_requests`, `get_commit`, `list_pipelines`, `create_project_webhook`, `delete_project_webhook`. Auto-refreshes token via `ensure_fresh_token!` when `token_expires_at` is past.
+
+### GitlabDataFetcher (`app/services/gitlab_data_fetcher.rb`)
+Mirrors `GithubDataFetcher` for GitLab: fetches MR files (via changes endpoint), commits (with individual commit stats), and pipeline status. Handles GitLab-specific response format (new_path/old_path, diff line counting).
 
 ### MetricsAggregator (`app/services/metrics_aggregator.rb`)
 Computes windowed aggregate metrics for the overview page. Used by `OrganizationsController#metrics`, `ReposController#metrics`, `TeamsController#metrics`, and `MeController#metrics`.
@@ -376,6 +398,18 @@ All handlers inherit from `Base`, which provides:
 
 All PR/review/CI handlers accept an optional `installation:` keyword argument, set by the job dispatcher.
 
+#### GitLab MR Lifecycle (`app/services/webhook_handlers/gitlab/`)
+
+| Handler | Trigger | Action |
+|---------|---------|--------|
+| `MrOpened` | MR opened | Create PR (iid → number), initialize PrMetrics, correlate sessions |
+| `MrUpdated` | MR updated | Recalculate post_open_commits via GitLab API |
+| `MrMerged` | MR merged | Advisory-lock, fetch files/commits from GitLab API, compute metrics, finalize |
+| `MrClosed` | MR closed | Same as MrMerged but state="closed" |
+| `PipelineCompleted` | Pipeline finished | Map GitLab status (success→true, failed→false), update ci_passed, recompute ci_success_rate |
+
+GitLab handlers use `GitlabApp::Client` and `GitlabDataFetcher` instead of Octokit and `GithubDataFetcher`. Webhook deduplication uses `processed_gitlab_events` table with the `X-Gitlab-Event-UUID` header.
+
 ### Installation Scoping
 
 `ProcessGitHubWebhookJob` extracts `installation.id` from every webhook payload and resolves it to a `GithubInstallation` record before dispatching to PR/review/CI handlers:
@@ -409,10 +443,26 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 - Retries on `Octokit::TooManyRequests` (8 attempts, polynomial backoff) and `Octokit::ServerError` (3 attempts)
 - Idempotent — safe to run repeatedly; skips already-settled PRs for GitHub metrics
 
+**ProcessGitLabWebhookJob** (queue: `:webhooks`)
+- Deduplicates via `processed_gitlab_events` table (`X-Gitlab-Event-UUID`)
+- Routes by `object_kind`: `"merge_request"` → MR handlers by action, `"pipeline"` → PipelineCompleted
+- Resolves connection by finding repo from payload, verifying active GitLab connection
+
+**GitlabApp::BackfillConnectionJob** (queue: `:default`)
+- Triggered after a GitLab connection is created
+- Lists all accessible projects via GitLab API
+- Upserts Repo records (platform: "gitlab"), creates per-project webhooks
+- Enqueues `BackfillGitlabRepoJob` for each repo
+
+**BackfillGitlabRepoJob** (queue: `:default`)
+- Single-repo MR backfill from GitLab API (last 90 days)
+- Reuses GitLab webhook handlers (`MrMerged`, `MrClosed`) for finalization
+- Runs `SessionPrCorrelationService` after backfill
+
 **ReconcileReposJob** (queue: `:default`)
 - Scheduled daily at 3am (via `config/recurring.yml`)
-- Self-healing: enqueues `BackfillRepoJob` for every repo with an active GitHub App
-- Catches missed webhooks, state drift, and ensures the system converges to GitHub's truth
+- Self-healing: enqueues `BackfillRepoJob` for every repo with an active GitHub App, and `BackfillGitlabRepoJob` for every repo with an active GitLab connection
+- Catches missed webhooks, state drift, and ensures the system converges to the platform's truth
 
 **ReconcileSubscriptionSeatsJob** (queue: `:default`)
 - Scheduled daily at 5am (via `config/recurring.yml`)
@@ -449,7 +499,17 @@ Installation lifecycle events (`installation.*`, `installation_repositories`) by
 | `app/jobs/process_git_hub_webhook_job.rb` | Webhook dispatcher |
 | `app/jobs/github_app/backfill_installation_job.rb` | Post-install coordinator (enqueues per-repo backfill) |
 | `app/jobs/backfill_repo_job.rb` | Single-repo backfill from GitHub API + session correlation |
-| `app/jobs/reconcile_repos_job.rb` | Daily reconciliation (self-healing) |
+| `app/jobs/reconcile_repos_job.rb` | Daily reconciliation (self-healing, both GitHub and GitLab) |
+| `app/services/gitlab_app/client.rb` | GitLab REST API v4 wrapper with auto token refresh |
+| `app/services/gitlab_app/state_token.rb` | Signed state token for GitLab OAuth connection flow |
+| `app/services/gitlab_app/webhook_setup.rb` | Per-project webhook creation/deletion |
+| `app/services/gitlab_data_fetcher.rb` | MR files/commits/pipeline data from GitLab API |
+| `app/services/webhook_handlers/gitlab/*.rb` | GitLab MR/pipeline event handlers (5 handlers) |
+| `app/controllers/api/v1/gitlab_connections_controller.rb` | GitLab connection management API |
+| `app/controllers/gitlab/connections_controller.rb` | GitLab OAuth callback handler |
+| `app/jobs/process_git_lab_webhook_job.rb` | GitLab webhook dispatcher |
+| `app/jobs/gitlab_app/backfill_connection_job.rb` | Post-connection coordinator |
+| `app/jobs/backfill_gitlab_repo_job.rb` | Single-repo MR backfill from GitLab API |
 | `app/jobs/reconcile_subscription_seats_job.rb` | Daily seat count drift reconciliation |
 | `app/jobs/concerns/backfillable.rb` | Shared PR backfill logic (used by BackfillRepoJob) |
 | `config/initializers/rack_attack.rb` | Rate limiting rules and 429 response |

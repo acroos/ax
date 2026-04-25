@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_25_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_25_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -216,6 +216,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_25_000006) do
     t.datetime "created_at", null: false
     t.bigint "github_installation_id"
     t.bigint "gitlab_connection_id"
+    t.bigint "gitlab_project_id"
+    t.bigint "gitlab_webhook_id"
     t.datetime "last_synced_at"
     t.bigint "organization_id"
     t.string "path"

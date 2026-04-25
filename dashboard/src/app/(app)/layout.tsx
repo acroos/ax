@@ -251,13 +251,13 @@ async function AppSidebar() {
                     <AvatarImage src={user.avatar_url} alt="" />
                   )}
                   <AvatarFallback>
-                    {(user.display_name || user.github_username || "?")
+                    {(user.display_name || user.github_username || user.gitlab_username || "?")
                       .charAt(0)
                       .toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <span className="flex-1 truncate text-sm text-sidebar-foreground">
-                  {user.display_name || user.github_username}
+                  {user.display_name || user.github_username || user.gitlab_username}
                 </span>
                 <ChevronUp className="size-4 text-muted-foreground" />
               </DropdownMenuTrigger>
@@ -267,7 +267,7 @@ async function AppSidebar() {
                 className="w-[--radix-dropdown-menu-trigger-width]"
               >
                 <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">
-                  {user.display_name || user.github_username}
+                  {user.display_name || user.github_username || user.gitlab_username}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
