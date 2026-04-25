@@ -92,8 +92,50 @@ RSpec.describe PushService do
       PushService.new(push_params, user: user).execute
 
       repo = Repo.find_by(path: "/home/user/myproject")
+      expect(repo.platform).to eq("github")
       expect(repo.platform_owner).to eq("owner")
       expect(repo.platform_repo).to eq("repo")
+    end
+
+    it "creates a gitlab repo when platform is gitlab" do
+      gitlab_params = push_params.deep_dup
+      gitlab_params[:platform] = "gitlab"
+      gitlab_params[:owner] = "gl-group"
+      gitlab_params[:repo] = "gl-project"
+      gitlab_params[:repo_path] = "/home/user/gl-project"
+      gitlab_params[:remote_url] = "https://gitlab.com/gl-group/gl-project.git"
+      gitlab_params.delete(:prs)
+      gitlab_params.delete(:commits)
+      gitlab_params.delete(:session_prs)
+      gitlab_params.delete(:pr_metrics)
+
+      result = PushService.new(gitlab_params, user: user).execute
+
+      repo = Repo.find_by(platform: "gitlab", platform_owner: "gl-group")
+      expect(repo).to be_present
+      expect(repo.platform_repo).to eq("gl-project")
+    end
+
+    it "treats same owner/repo on different platforms as separate repos" do
+      PushService.new(push_params, user: user).execute
+
+      gitlab_params = push_params.deep_dup
+      gitlab_params[:platform] = "gitlab"
+      gitlab_params[:repo_path] = "/home/user/gl-repo"
+      gitlab_params[:remote_url] = "https://gitlab.com/owner/repo.git"
+      gitlab_params[:sessions] = [
+        push_params[:sessions][0].merge(id: "session-gl-001")
+      ]
+      gitlab_params.delete(:prs)
+      gitlab_params.delete(:commits)
+      gitlab_params.delete(:session_prs)
+      gitlab_params.delete(:pr_metrics)
+
+      PushService.new(gitlab_params, user: user).execute
+
+      expect(Repo.count).to eq(2)
+      expect(Repo.where(platform: "github").count).to eq(1)
+      expect(Repo.where(platform: "gitlab").count).to eq(1)
     end
 
     it "creates PR with metrics" do

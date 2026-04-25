@@ -52,19 +52,14 @@ func resolveRepoPath(flagValue string) (string, error) {
 	return os.Getwd()
 }
 
-// gitRemoteOwnerRepo runs git to get the owner/repo from the remote URL.
-func gitRemoteOwnerRepo(repoPath string) (owner, repo string, err error) {
+// gitRemoteInfo runs git to get the platform/owner/repo from the remote URL.
+func gitRemoteInfo(repoPath string) (bulk.RemoteInfo, error) {
 	cmd := exec.Command("git", "-C", repoPath, "remote", "get-url", "origin")
 	out, err := cmd.Output()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get git remote URL: %w", err)
+		return bulk.RemoteInfo{}, fmt.Errorf("failed to get git remote URL: %w", err)
 	}
 	remoteURL := strings.TrimSpace(string(out))
-	return parseGitRemote(remoteURL)
-}
-
-// parseGitRemote extracts owner/repo from a GitHub remote URL.
-func parseGitRemote(remoteURL string) (owner, repo string, err error) {
 	return bulk.ParseGitRemote(remoteURL)
 }
 
@@ -229,10 +224,11 @@ You can override with --api-key.`,
 			}
 
 			// Determine repo identity from git remote
-			owner, repo, err := gitRemoteOwnerRepo(path)
+			remote, err := gitRemoteInfo(path)
 			if err != nil {
 				return fmt.Errorf("could not identify repo: %w\n\n  Make sure you're in a git repo with a remote origin", err)
 			}
+			owner, repo := remote.Owner, remote.Repo
 
 			// Parse Claude Code sessions for this repo
 			home, err := os.UserHomeDir()
@@ -270,6 +266,7 @@ You can override with --api-key.`,
 			// Parse sessions and build payload
 			payload := &api.PushPayload{
 				RepoPath: path,
+				Platform: remote.Platform,
 				Owner:    owner,
 				Repo:     repo,
 			}
@@ -344,7 +341,7 @@ func runBulkPush(apiKeyOverride string, force bool) error {
 	claudeDir := filepath.Join(home, ".claude")
 
 	ui.SectionHeader("Discovering repos...")
-	summary, err := bulk.DiscoverRepos(claudeDir, gitRemoteOwnerRepo)
+	summary, err := bulk.DiscoverRepos(claudeDir, gitRemoteInfo)
 	if err != nil {
 		return fmt.Errorf("discovery failed: %w", err)
 	}

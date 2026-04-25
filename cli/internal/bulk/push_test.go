@@ -92,12 +92,12 @@ func TestBulkPush_AllSucceed(t *testing.T) {
 
 	repos := []DiscoveredRepo{
 		{
-			Owner: "owner", Repo: "repo-a", OwnerRepo: "owner/repo-a",
+			Platform: "github", Owner: "owner", Repo: "repo-a", OwnerRepo: "owner/repo-a",
 			ProjectPaths: []string{"/fake/path"},
 			SessionFiles: sessFiles[:3],
 		},
 		{
-			Owner: "owner", Repo: "repo-b", OwnerRepo: "owner/repo-b",
+			Platform: "github", Owner: "owner", Repo: "repo-b", OwnerRepo: "owner/repo-b",
 			ProjectPaths: []string{"/fake/path2"},
 			SessionFiles: sessFiles[3:],
 		},
@@ -151,7 +151,7 @@ func TestBulkPush_RateLimitRetrySucceeds(t *testing.T) {
 
 	repos := []DiscoveredRepo{
 		{
-			Owner: "owner", Repo: "rl-repo", OwnerRepo: "owner/rl-repo",
+			Platform: "github", Owner: "owner", Repo: "rl-repo", OwnerRepo: "owner/rl-repo",
 			ProjectPaths: []string{"/fake/path"},
 			SessionFiles: sessFiles,
 		},
@@ -195,7 +195,7 @@ func TestBulkPush_ChunkedRequests(t *testing.T) {
 
 	repos := []DiscoveredRepo{
 		{
-			Owner: "owner", Repo: "big-repo", OwnerRepo: "owner/big-repo",
+			Platform: "github", Owner: "owner", Repo: "big-repo", OwnerRepo: "owner/big-repo",
 			ProjectPaths: []string{"/fake/path"},
 			SessionFiles: sessFiles,
 		},
@@ -240,12 +240,12 @@ func TestBulkPush_PartialFailure(t *testing.T) {
 
 	repos := []DiscoveredRepo{
 		{
-			Owner: "owner", Repo: "good-repo", OwnerRepo: "owner/good-repo",
+			Platform: "github", Owner: "owner", Repo: "good-repo", OwnerRepo: "owner/good-repo",
 			ProjectPaths: []string{"/fake/good"},
 			SessionFiles: sessFiles[:2],
 		},
 		{
-			Owner: "owner", Repo: "bad-repo", OwnerRepo: "owner/bad-repo",
+			Platform: "github", Owner: "owner", Repo: "bad-repo", OwnerRepo: "owner/bad-repo",
 			ProjectPaths: []string{"/fake/bad"},
 			SessionFiles: sessFiles[2:],
 		},

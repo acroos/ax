@@ -342,6 +342,7 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 	for ci, chunk := range chunks {
 		payload := &api.PushPayload{
 			RepoPath: repo.ProjectPaths[0],
+			Platform: repo.Platform,
 			Owner:    repo.Owner,
 			Repo:     repo.Repo,
 			Sessions: chunk,

@@ -5,6 +5,7 @@ package api
 type PushPayload struct {
 	RepoPath  string        `json:"repo_path,omitempty"`
 	RemoteURL string        `json:"remote_url,omitempty"`
+	Platform  string        `json:"platform,omitempty"`
 	Owner     string        `json:"owner"`
 	Repo      string        `json:"repo"`
 	Sessions  []SessionData `json:"sessions"`
