@@ -12,6 +12,7 @@ Rails.application.routes.draw do
 
   # Webhooks (signature-validated, not session/key auth)
   post "/webhooks/github", to: "webhooks#github"
+  post "/webhooks/gitlab", to: "webhooks#gitlab"
   post "/webhooks/stripe", to: "webhooks#stripe"
 
   # GitHub App install callback (browser redirect from GitHub, state token is auth)

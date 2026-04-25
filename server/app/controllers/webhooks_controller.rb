@@ -13,6 +13,19 @@ class WebhooksController < ApplicationController
     render json: { ok: true }
   end
 
+  def gitlab
+    unless valid_gitlab_token?
+      return head :unauthorized
+    end
+
+    event_uuid = request.headers["X-Gitlab-Event-UUID"]
+    payload = request.raw_post
+
+    ProcessGitLabWebhookJob.perform_later(payload, event_uuid)
+
+    render json: { ok: true }
+  end
+
   def stripe
     payload = request.raw_post
     sig_header = request.headers["Stripe-Signature"]
@@ -30,6 +43,14 @@ class WebhooksController < ApplicationController
   end
 
   private
+
+  def valid_gitlab_token?
+    token = request.headers["X-Gitlab-Token"]
+    return Rails.env.development? if token.blank?
+
+    # Find the connection with matching webhook secret
+    GitlabConnection.where(status: "active").exists?(webhook_secret: token)
+  end
 
   def valid_github_signature?
     secret = resolve_webhook_secret
