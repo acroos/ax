@@ -48,3 +48,4 @@ dashboard/next-env.d.ts
 *.db
 
 .env*
+.vercel
