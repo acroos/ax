@@ -4,15 +4,20 @@ class Invite < ApplicationRecord
   belongs_to :organization
   belongs_to :invited_by, class_name: "User"
 
-  validates :github_username, presence: true
   validates :role, inclusion: { in: %w[admin member] }
   validates :token, presence: true, uniqueness: true
   validates :status, inclusion: { in: %w[pending accepted expired revoked] }
+  validates :platform, inclusion: { in: %w[github gitlab] }
+  validate :platform_username_present
 
   scope :pending, -> { where(status: "pending").where("expires_at > ?", Time.current) }
 
   before_validation :generate_token, on: :create
   before_validation :set_expiry, on: :create
+
+  def platform_username
+    platform == "gitlab" ? gitlab_username : github_username
+  end
 
   def accept!(user)
     transaction do
@@ -49,6 +54,15 @@ class Invite < ApplicationRecord
   end
 
   private
+
+  def platform_username_present
+    case platform
+    when "github"
+      errors.add(:github_username, "can't be blank") if github_username.blank?
+    when "gitlab"
+      errors.add(:gitlab_username, "can't be blank") if gitlab_username.blank?
+    end
+  end
 
   def generate_token
     self.token ||= SecureRandom.hex(32)

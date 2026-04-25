@@ -74,7 +74,7 @@ RSpec.describe "Invites accept API", type: :request do
 
     expect(response).to have_http_status(:forbidden)
     body = JSON.parse(response.body)
-    expect(body["error"]).to include("different GitHub user")
+    expect(body["error"]).to include("different user")
     expect(invite.reload.status).to eq("pending")
   end
 

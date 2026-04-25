@@ -106,11 +106,11 @@ RSpec.describe PushService do
       expect(pr.pr_metrics.ci_success_rate).to eq(1.0)
     end
 
-    it "sets pushed_by to the pushing user's github_username" do
+    it "sets pushed_by to the pushing user's platform_username" do
       PushService.new(push_params, user: user).execute
 
       session = CodingSession.find("session-001")
-      expect(session.pushed_by).to eq(user.github_username)
+      expect(session.pushed_by).to eq(user.platform_username)
     end
 
     it "updates pushed_by on re-push" do

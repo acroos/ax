@@ -236,8 +236,11 @@ GEM
     omniauth-github (2.0.1)
       omniauth (~> 2.0)
       omniauth-oauth2 (~> 1.8)
-    omniauth-oauth2 (1.9.0)
-      oauth2 (>= 2.0.2, < 3)
+    omniauth-gitlab (4.1.0)
+      omniauth (~> 2.0)
+      omniauth-oauth2 (~> 1.8.0)
+    omniauth-oauth2 (1.8.0)
+      oauth2 (>= 1.4, < 3)
       omniauth (~> 2.0)
     omniauth-rails_csrf_protection (2.0.1)
       actionpack (>= 4.2)
@@ -458,6 +461,7 @@ DEPENDENCIES
   lograge
   octokit
   omniauth-github (~> 2.0)
+  omniauth-gitlab (~> 4.0)
   omniauth-rails_csrf_protection
   pg (~> 1.1)
   puma (>= 5.0)
@@ -559,7 +563,8 @@ CHECKSUMS
   octokit (10.0.0) sha256=82e99a539b7637b7e905e6d277bb0c1a4bed56735935cc33db6da7eae49a24e8
   omniauth (2.1.4) sha256=42a05b0496f0d22e1dd85d42aaf602f064e36bb47a6826a27ab55e5ba608763c
   omniauth-github (2.0.1) sha256=8ff8e70ac6d6db9d52485eef52cfa894938c941496e66b52b5e2773ade3ccad4
-  omniauth-oauth2 (1.9.0) sha256=ed15f6d9d20991807ce114cc5b9c1453bce3645b64e51c68c90cff5ff153fee8
+  omniauth-gitlab (4.1.0) sha256=543f1fa710488220b382bd683a3f314f5b29c36de85ad746f356f37795959613
+  omniauth-oauth2 (1.8.0) sha256=b2f8e9559cc7e2d4efba57607691d6d2b634b879fc5b5b6ccfefa3da85089e78
   omniauth-rails_csrf_protection (2.0.1) sha256=c6e3204d7e3925bb537cb52d50fdfc9f05293f1a9d87c5d4ab4ca3a39ba8c32d
   orm_adapter (0.5.0) sha256=aa5d0be5d540cbb46d3a93e88061f4ece6a25f6e97d6a47122beb84fe595e9b9
   ostruct (0.6.3) sha256=95a2ed4a4bd1d190784e666b47b2d3f078e4a9efda2fccf18f84ddc6538ed912

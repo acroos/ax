@@ -6,6 +6,7 @@ module Auth
       render json: {
         id: current_user.id,
         github_username: current_user.github_username,
+        gitlab_username: current_user.gitlab_username,
         display_name: current_user.display_name,
         email: current_user.email,
         avatar_url: current_user.avatar_url,

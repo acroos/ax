@@ -2,17 +2,12 @@ module Auth
   class OmniauthCallbacksController < ApplicationController
     def github
       user = AuthService.find_or_create_from_github(auth_hash)
-      session = UserSession.create_for(user, request)
+      complete_sign_in(user)
+    end
 
-      # Cross-origin auth handoff: we cannot set a cookie on the dashboard's
-      # domain from here, so we pass the session token through the URL to the
-      # dashboard's /auth/accept route, which then sets the cookie on its own
-      # domain and redirects to the final destination. Invite acceptance is
-      # handled entirely on the dashboard via a pending_invite cookie stored
-      # there. This is a stopgap until both services share a parent domain
-      # (see project memory).
-      redirect_to handoff_url(session.session_token, after_sign_in_next(user)),
-                  allow_other_host: true
+    def gitlab
+      user = AuthService.find_or_create_from_gitlab(auth_hash)
+      complete_sign_in(user)
     end
 
     def failure
@@ -31,6 +26,20 @@ module Auth
     end
 
     private
+
+    def complete_sign_in(user)
+      session = UserSession.create_for(user, request)
+
+      # Cross-origin auth handoff: we cannot set a cookie on the dashboard's
+      # domain from here, so we pass the session token through the URL to the
+      # dashboard's /auth/accept route, which then sets the cookie on its own
+      # domain and redirects to the final destination. Invite acceptance is
+      # handled entirely on the dashboard via a pending_invite cookie stored
+      # there. This is a stopgap until both services share a parent domain
+      # (see project memory).
+      redirect_to handoff_url(session.session_token, after_sign_in_next(user)),
+                  allow_other_host: true
+    end
 
     def auth_hash
       request.env["omniauth.auth"]

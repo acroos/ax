@@ -11,7 +11,7 @@ module Api
       def prs
         scope = Pr
           .joins(:repo)
-          .where(repos: { organization_id: @org.id }, author: current_user.github_username)
+          .where(repos: { organization_id: @org.id }, author: current_user.platform_usernames)
           .left_joins(:pr_metrics)
           .includes(:pr_metrics, :repo, :session_prs)
           .order(created_at: :desc, id: :desc)
@@ -23,7 +23,7 @@ module Api
         scope = CodingSession
           .joins(:repo)
           .where(repos: { organization_id: @org.id })
-          .where(pushed_by: current_user.github_username)
+          .where(pushed_by: current_user.platform_usernames)
 
         render_sessions(scope)
       end
@@ -32,13 +32,13 @@ module Api
         pr_scope = PrMetrics
           .joins(pr: :repo)
           .where(repos: { organization_id: @org.id })
-          .where(prs: { author: current_user.github_username })
+          .where(prs: { author: current_user.platform_usernames })
           .where(metrics_finalized: true)
 
         session_scope = CodingSession
           .joins(:repo)
           .where(repos: { organization_id: @org.id })
-          .where(pushed_by: current_user.github_username)
+          .where(pushed_by: current_user.platform_usernames)
 
         render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range).call
       end
@@ -47,13 +47,13 @@ module Api
         pr_scope = PrMetrics
           .joins(pr: :repo)
           .where(repos: { organization_id: @org.id })
-          .where(prs: { author: current_user.github_username })
+          .where(prs: { author: current_user.platform_usernames })
           .where(metrics_finalized: true)
 
         session_scope = CodingSession
           .joins(:repo)
           .where(repos: { organization_id: @org.id })
-          .where(pushed_by: current_user.github_username)
+          .where(pushed_by: current_user.platform_usernames)
 
         render_metric_detail(pr_scope: pr_scope, session_scope: session_scope)
       end
