@@ -4,7 +4,8 @@ import { fetchAPI } from "./db";
 
 export interface CurrentUser {
   id: number;
-  github_username: string;
+  github_username: string | null;
+  gitlab_username: string | null;
   display_name: string | null;
   email: string | null;
   avatar_url: string | null;

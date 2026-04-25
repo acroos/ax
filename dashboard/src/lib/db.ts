@@ -321,6 +321,57 @@ export async function requestGithubInstallUrl(
   );
 }
 
+// --- GitLab Connection ---
+
+export interface GitlabConnectionRepo {
+  id: number;
+  platform_owner: string | null;
+  platform_repo: string | null;
+}
+
+export interface GitlabConnection {
+  id: number;
+  account_username: string;
+  status: string;
+  connected_at: string | null;
+  last_synced_at: string | null;
+  repos_count: number;
+  repos: GitlabConnectionRepo[];
+}
+
+export interface GitlabConnectionResponse {
+  connection: GitlabConnection | null;
+  user_role: OrgRole;
+}
+
+export async function getGitlabConnection(
+  orgSlug: string,
+  opts?: { revalidate?: number | false },
+): Promise<GitlabConnectionResponse> {
+  return fetchAPI<GitlabConnectionResponse>(
+    orgApiPath(orgSlug, "/gitlab_connection"),
+    { revalidate: opts?.revalidate ?? 60 },
+  );
+}
+
+export async function requestGitlabConnectUrl(
+  orgSlug: string,
+): Promise<{ connect_url: string }> {
+  return fetchAPI<{ connect_url: string }>(
+    orgApiPath(orgSlug, "/gitlab_connection/connect_url"),
+    { method: "POST", revalidate: false },
+  );
+}
+
+export async function disconnectGitlab(
+  orgSlug: string,
+): Promise<{ ok: boolean }> {
+  return fetchAPI<{ ok: boolean }>(
+    orgApiPath(orgSlug, "/gitlab_connection"),
+    { method: "DELETE", revalidate: false },
+  );
+}
+
 // --- Teams ---
 
 export interface Team {

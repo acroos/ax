@@ -35,7 +35,7 @@ export default async function SettingsPage() {
             <Avatar className="size-12">
               {user.avatar_url && <AvatarImage src={user.avatar_url} alt="" />}
               <AvatarFallback>
-                {(user.display_name || user.github_username)
+                {(user.display_name || user.github_username || user.gitlab_username || "U")
                   .charAt(0)
                   .toUpperCase()}
               </AvatarFallback>
@@ -46,9 +46,11 @@ export default async function SettingsPage() {
                   {user.display_name}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground">
-                @{user.github_username}
-              </p>
+              {(user.github_username || user.gitlab_username) && (
+                <p className="text-xs text-muted-foreground">
+                  @{user.github_username || user.gitlab_username}
+                </p>
+              )}
               {user.email && (
                 <p className="text-xs text-muted-foreground">{user.email}</p>
               )}

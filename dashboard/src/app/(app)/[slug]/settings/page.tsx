@@ -2,11 +2,12 @@ export const runtime = "edge";
 
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
-import { fetchAPI, orgApiPath, getGithubInstallation, getBilling, type BillingInfo } from "@/lib/db";
+import { fetchAPI, orgApiPath, getGithubInstallation, getGitlabConnection, getBilling, type BillingInfo } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { MembersSection, type Member } from "./members-section";
 import { InvitesSection, type Invite } from "./invites-section";
 import { GitHubAppCard } from "./github-app-card";
+import { GitLabConnectionCard } from "./gitlab-connection-card";
 import { TeamsSection } from "./teams-section";
 import { DeleteOrgSection } from "./delete-org-section";
 import { listTeamsAsync, type Team } from "@/lib/db";
@@ -17,6 +18,9 @@ import { Card, CardContent } from "@/components/ui/card";
 type MembersResponse = { members: Member[]; current_user_role: string };
 type InstallationResponse = Awaited<
   ReturnType<typeof getGithubInstallation>
+> | null;
+type GitlabConnectionResponse = Awaited<
+  ReturnType<typeof getGitlabConnection>
 > | null;
 
 async function fetchSafe<T>(path: string): Promise<T | null> {
@@ -35,7 +39,7 @@ export default async function OrgSettingsPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ installed?: string; error?: string }>;
+  searchParams: Promise<{ installed?: string; error?: string; gitlab_connected?: string; gitlab_error?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -43,13 +47,18 @@ export default async function OrgSettingsPage({
   const { slug } = await params;
   const query = await searchParams;
 
-  // Kick off all three fetches in parallel — shared across cards below.
-  // Bypass the cache when returning from GitHub App installation so the
-  // settings page always shows the latest installation state.
+  // Kick off all fetches in parallel — shared across cards below.
+  // Bypass the cache when returning from GitHub App installation or
+  // GitLab connection so the settings page always shows latest state.
   const justInstalled = query.installed === "true" || query.installed === "false";
+  const justConnectedGitlab = query.gitlab_connected === "true" || query.gitlab_connected === "false";
   const installationPromise = getGithubInstallation(
     slug,
     justInstalled ? { revalidate: false } : undefined,
+  ).catch(() => null);
+  const gitlabConnectionPromise = getGitlabConnection(
+    slug,
+    justConnectedGitlab ? { revalidate: false } : undefined,
   ).catch(() => null);
   const membersPromise = fetchSafe<MembersResponse>(
     orgApiPath(slug, "/members"),
@@ -86,6 +95,18 @@ export default async function OrgSettingsPage({
             membersPromise={membersPromise}
             installedParam={query.installed}
             errorParam={query.error}
+          />
+        </Suspense>
+      </SectionErrorBoundary>
+
+      <SectionErrorBoundary>
+        <Suspense fallback={<SettingsCardSkeleton rows={3} />}>
+          <AsyncGitLabConnectionCard
+            slug={slug}
+            gitlabConnectionPromise={gitlabConnectionPromise}
+            membersPromise={membersPromise}
+            connectedParam={query.gitlab_connected}
+            errorParam={query.gitlab_error}
           />
         </Suspense>
       </SectionErrorBoundary>
@@ -159,10 +180,10 @@ function SettingsCardSkeleton({ rows = 3 }: { rows?: number }) {
 // Derive isAdmin from the shared members response. Consumed by every card.
 function resolveIsAdmin(
   members: MembersResponse | null,
-  installation: InstallationResponse,
+  connectionOrInstallation: InstallationResponse | GitlabConnectionResponse | null,
 ): boolean {
   const role =
-    members?.current_user_role ?? installation?.user_role ?? "member";
+    members?.current_user_role ?? connectionOrInstallation?.user_role ?? "member";
   return role === "admin" || role === "owner";
 }
 
@@ -190,6 +211,35 @@ async function AsyncGitHubAppCard({
       installation={installation?.installation ?? null}
       isAdmin={isAdmin}
       installedParam={installedParam}
+      errorParam={errorParam}
+    />
+  );
+}
+
+async function AsyncGitLabConnectionCard({
+  slug,
+  gitlabConnectionPromise,
+  membersPromise,
+  connectedParam,
+  errorParam,
+}: {
+  slug: string;
+  gitlabConnectionPromise: Promise<GitlabConnectionResponse>;
+  membersPromise: Promise<MembersResponse | null>;
+  connectedParam: string | undefined;
+  errorParam: string | undefined;
+}) {
+  const [gitlabConnection, members] = await Promise.all([
+    gitlabConnectionPromise,
+    membersPromise,
+  ]);
+  const isAdmin = resolveIsAdmin(members, null);
+  return (
+    <GitLabConnectionCard
+      slug={slug}
+      connection={gitlabConnection?.connection ?? null}
+      isAdmin={isAdmin}
+      connectedParam={connectedParam}
       errorParam={errorParam}
     />
   );

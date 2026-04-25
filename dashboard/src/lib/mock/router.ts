@@ -13,6 +13,7 @@ import {
   MOCK_TIMELINE,
   MOCK_BILLING,
   MOCK_INSTALLATION,
+  MOCK_GITLAB_CONNECTION,
   MOCK_MEMBERS,
   MOCK_INVITES,
   MOCK_TEAMS,
@@ -141,6 +142,8 @@ export function mockFetchAPI<T>(
     if (sub === "billing") return MOCK_BILLING as T;
     if (sub === "github_installation") return MOCK_INSTALLATION as T;
     if (sub === "github_installation/install_url") return { install_url: "#" } as T;
+    if (sub === "gitlab_connection") return MOCK_GITLAB_CONNECTION as T;
+    if (sub === "gitlab_connection/connect_url") return { connect_url: "#" } as T;
     if (sub === "members") return MOCK_MEMBERS as T;
     if (sub === "invites") return MOCK_INVITES as T;
   }
@@ -181,6 +184,10 @@ function mockMutationResponse(urlPath: string, method: string): unknown {
     return { link: "http://localhost:3333/invite/mock-token" };
   if (urlPath.includes("/github_installation/install_url"))
     return { install_url: "#" };
+  if (urlPath.includes("/gitlab_connection/connect_url"))
+    return { connect_url: "#" };
+  if (urlPath.match(/\/gitlab_connection$/) && method === "DELETE")
+    return { ok: true };
   if (urlPath.match(/\/teams\/[^/]+\/members/) && method === "POST")
     return { id: 99, org_membership_id: 1, user: { id: 1, github_username: "austinroos", display_name: "Austin Roos", avatar_url: null } };
   if (urlPath.match(/\/teams\/[^/]+\/members\/\d+/) && method === "DELETE")

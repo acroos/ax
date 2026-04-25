@@ -156,6 +156,7 @@ export default async function MetricDetailPage({
 
 type RepoLite = {
   id: number;
+  platform: "github" | "gitlab";
   platform_owner: string | null;
   platform_repo: string | null;
 };
