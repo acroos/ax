@@ -20,8 +20,8 @@ Before you begin, make sure you have:
   [ADR-008](decisions/008-distribution-strategy.md)). You can also build from
   source with `make build` if you're contributing.
 
-- ✅ **A GitHub account** — Sign-in is GitHub OAuth. There is no email/password
-  flow.
+- ✅ **A GitHub or GitLab account** — Sign-in is via GitHub or GitLab OAuth.
+  There is no email/password flow.
 
 - ✅ **Claude Code** — The `ax` CLI reads session data from `~/.claude/projects/`
   and installs hooks into `~/.claude/settings.json`. If you're not using
@@ -33,15 +33,18 @@ Before you begin, make sure you have:
 ## Step 1 — Sign in to the dashboard 🔑
 
 Open [`www.axmetrics.dev`](https://www.axmetrics.dev) and click
-**Sign in with GitHub**. You'll be bounced through GitHub's OAuth consent
-screen (scopes: `read:user` and `user:email`), then back to the dashboard.
+**Sign in with GitHub** or **Sign in with GitLab**. You'll be bounced through
+the provider's OAuth consent screen, then back to the dashboard.
 
 On first sign-in, three things happen automatically:
 
-1. A **user account** is created from your GitHub profile.
-2. A **personal organization** is created (slugged from your GitHub username).
+1. A **user account** is created from your GitHub or GitLab profile.
+2. A **personal organization** is created (slugged from your username).
    You land on the onboarding page.
 3. An **API key** is minted for you — you'll need it in Step 3.
+
+> 💡 If you sign in with GitLab using the same email as an existing GitHub
+> account, the two identities are automatically linked to the same user.
 
 > 💡 The OAuth App used for login is separate from the GitHub App that handles
 > repo data and webhooks. See
@@ -171,6 +174,51 @@ historical data and metrics.
 
 ---
 
+## Step 5b — Connect GitLab (optional) 🦊
+
+> **Who needs to do this?** An org admin, if your team uses GitLab. This is
+> a one-time step per GitLab organization/group.
+
+Connecting GitLab unlocks the same benefits as the GitHub App, but for
+GitLab merge requests:
+
+- 📡 **Automatic webhook delivery** — MR and pipeline events flow into AX
+  in real time via per-project webhooks.
+- ⏪ **Historical backfill** — On connection, AX fetches the last 90 days of
+  MR history across all accessible projects.
+
+### How to connect
+
+1. Go to `https://www.axmetrics.dev/{your-org-slug}/settings`.
+2. In the **GitLab Integration** card, click **Connect GitLab** (admins only).
+3. GitLab's OAuth consent screen appears — authorize AX with `api` scope.
+4. After authorizing, you're redirected back. A success banner confirms
+   the connection, and background backfill starts automatically. ✅
+
+### What happens behind the scenes
+
+- The server exchanges the OAuth code for access and refresh tokens,
+  stored encrypted in the database.
+- A backfill job lists all accessible projects, creates repos, registers
+  per-project webhooks, and fetches MRs from the last 90 days.
+- Going forward, GitLab delivers webhook events to the AX server.
+
+### Managing the connection
+
+From `/{slug}/settings` you can see:
+
+- **Status** — Connected (active)
+- **Account** — The GitLab username used for the connection
+- **Connected repos** — List of GitLab projects linked
+- **Last synced** — When the most recent backfill or sync completed
+- **Disconnect** — Revokes the connection and removes webhooks
+
+> 💡 An org can have both a GitHub App and a GitLab connection active
+> simultaneously. Metrics from both platforms appear together in the
+> dashboard.
+
+---
+
 ## Step 6 — View results on the dashboard 📈
 
 Open `https://www.axmetrics.dev/{your-org-slug}`. On first sign-in your
@@ -196,7 +244,8 @@ org slug is your GitHub username.
 
 ## Inviting teammates 👥
 
-From `/{slug}/settings`, an org admin can invite team members by GitHub
+From `/{slug}/settings`, an org admin can invite team members by GitHub or
+GitLab username. Select the platform from the dropdown, then enter the
 username. Here's how it works:
 
 1. 📩 Admin creates an invite — Rails generates a single-use token.
@@ -218,6 +267,7 @@ Each teammate gets their own API key. Keys are scoped per user, not per org.
 | Feature | Status |
 |---|---|
 | GitHub OAuth sign-in | ✅ Working |
+| GitLab OAuth sign-in | ✅ Working |
 | API key auth + rotation | ✅ Working |
 | `ax push` + `ax push --all` data ingestion | ✅ Working |
 | Org-scoped PR list with inline metrics | ✅ Working |
@@ -225,14 +275,15 @@ Each teammate gets their own API key. Keys are scoped per user, not per org.
 | Metric drill-down pages | ✅ Working |
 | Member + invite management UI | ✅ Working |
 | GitHub App installation flow | ✅ Working |
-| Real-time webhooks (PR / review / CI) | ✅ Working |
-| Historical backfill on GitHub App install | ✅ Working |
+| GitLab connection flow | ✅ Working |
+| Real-time webhooks (PR / review / CI) | ✅ Working (GitHub + GitLab) |
+| Historical backfill on connection | ✅ Working (GitHub + GitLab) |
 
-**In short:** session data enters via CLI push, and GitHub PR data enters via
-webhooks from the GitHub App. Once an org admin installs the GitHub App
-(Step 5), webhook events flow automatically and a backfill job seeds
-historical PR data. The CLI push path handles session metrics and works for
-repos not covered by the GitHub App installation.
+**In short:** session data enters via CLI push, and PR/MR data enters via
+webhooks from the GitHub App or GitLab connection. Once an org admin installs
+the GitHub App (Step 5) or connects GitLab (Step 5b), webhook events flow
+automatically and a backfill job seeds historical PR data. The CLI push path
+handles session metrics and works for repos not covered by either integration.
 
 ---
 
@@ -333,3 +384,5 @@ nothing to misconfigure on your end.
   — The OAuth App + GitHub App split
 - [ADR-014 — Remove Local Mode](decisions/014-remove-local-mode.md)
   — Managed-only architecture decision
+- [ADR-018 — GitLab Integration](decisions/018-gitlab-integration.md)
+  — GitLab OAuth + per-project webhook approach

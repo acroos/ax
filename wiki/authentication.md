@@ -65,9 +65,11 @@ X-Ax-Session: <token>
 
 **Used by**: All dashboard API calls (org reads, member management, settings)
 
-## GitHub OAuth Flow
+## OAuth Flows
 
-The OAuth flow connects the dashboard user to their GitHub identity.
+AX supports two OAuth providers: GitHub and GitLab. Both follow the same pattern.
+
+### GitHub OAuth Flow
 
 ```
 1. User clicks "Sign in with GitHub" on dashboard
@@ -81,6 +83,17 @@ The OAuth flow connects the dashboard user to their GitHub identity.
 9. Dashboard redirects to intended page
 ```
 
+### GitLab OAuth Flow
+
+```
+1. User clicks "Sign in with GitLab" on dashboard
+2. Dashboard redirects to Rails: GET /users/auth/gitlab
+3. Rails redirects to GitLab OAuth consent screen (scope: read_user)
+4. User approves → GitLab redirects to Rails callback
+5. Rails creates/updates User record via AuthService (matches by email first)
+6-9. Same session handoff as GitHub
+```
+
 ### Cross-Origin Handoff
 
 The Rails server and dashboard run on different origins (e.g., `ax.up.railway.app` and `www.axmetrics.dev`). The server cannot set cookies on the dashboard's domain directly.
@@ -92,10 +105,16 @@ Future plan: shared parent domain cookies (e.g., both on `*.ax.dev`).
 ### First Login Side Effects
 
 When a user signs in for the first time:
-1. A `User` record is created from their GitHub profile
+1. A `User` record is created from their GitHub or GitLab profile (users can have both identities linked via email matching)
 2. A personal `Organization` is created (is_personal = true)
 3. An `ApiKey` is generated
-4. Any pending `Invite` records matching their GitHub username are auto-accepted (skipped silently if the org has reached its member limit)
+4. Any pending `Invite` records matching their GitHub or GitLab username are auto-accepted (skipped silently if the org has reached its member limit)
+
+### User Identity
+
+Users can have a GitHub identity, GitLab identity, or both. At least one must be present (enforced by a DB check constraint). The `User` model provides:
+- `platform_username` — returns the first available username (GitHub preferred)
+- `platform_usernames` — returns all platform usernames for matching (used by team-scoped queries)
 
 ## Authorization
 

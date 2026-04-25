@@ -2,8 +2,8 @@
 
 This page traces data from raw sources to displayed metrics. There are three data sources, each with a distinct role:
 
-- **GitHub API** — Source of truth for PR data. Provides complete historical picture on demand.
-- **GitHub Webhooks** — Real-time update channel. Keeps data fresh after initial backfill.
+- **GitHub API / GitLab API** — Source of truth for PR/MR data. Provides complete historical picture on demand.
+- **GitHub Webhooks / GitLab Webhooks** — Real-time update channel. Keeps data fresh after initial backfill.
 - **CLI Push** — Session enrichment. Adds AI-specific metrics (cost, messages, turns) to PRs.
 
 ## CLI Push (`ax push`)
@@ -26,7 +26,8 @@ Step 3: Push to Server
 
 Step 4: Post-Push (server-side)
   If repo has GitHub App → enqueue BackfillRepoJob (fetches PRs from GitHub API)
-  Always → run SessionPrCorrelationService (match sessions to PRs by branch)
+  Else if repo has GitLab connection → enqueue BackfillGitlabRepoJob (fetches MRs from GitLab API)
+  Else → run SessionPrCorrelationService (match sessions to PRs by branch)
 ```
 
 This runs automatically via the SessionEnd hook installed by `ax init`, or manually via `ax push --repo .`.
@@ -76,6 +77,46 @@ Webhooks are an optimization on top of API backfill. If a webhook is missed, the
 
 See: [Rails Server — Webhook Handling](rails-server.md#webhook-handling)
 
+## GitLab Webhook Ingestion
+
+Real-time path for MR events. GitLab sends per-project webhook events after connection setup.
+
+```
+GitLab Event → POST /webhooks/gitlab → Validate X-Gitlab-Token header
+  → Enqueue ProcessGitLabWebhookJob (async)
+  → Route to handler by object_kind + action:
+
+  merge_request action=open     → Create PR (iid as number), initialize metrics
+                                → Run SessionPrCorrelationService
+  merge_request action=update   → Update post_open_commits
+  merge_request action=merge    → Fetch file/commit data from GitLab API
+                                → Compute metrics, finalize (merged)
+  merge_request action=close    → Fetch file/commit data from GitLab API
+                                → Compute metrics, finalize (closed)
+  pipeline status=success/failed → Update per-commit ci_passed, recompute ci_success_rate
+```
+
+GitLab webhooks use the same deduplication pattern as GitHub (`processed_gitlab_events` table, `X-Gitlab-Event-UUID` header).
+
+## GitLab Connection Backfill
+
+When a GitLab connection is established, the server fetches historical MR data.
+
+```
+GitLab Connected
+  → BackfillConnectionJob
+    → List accessible projects via GitLab API
+    → Upsert Repo records (platform: "gitlab")
+    → Create per-project webhooks
+    → For each repo: enqueue BackfillGitlabRepoJob
+
+BackfillGitlabRepoJob (per-repo, idempotent):
+  → Fetch MRs from GitLab API (last 90 days)
+  → Translate MR data to PR format
+  → Reuse webhook handlers (MrMerged, MrClosed) for finalization
+  → Run SessionPrCorrelationService
+```
+
 ## Metric Lifecycle
 
 ```
@@ -116,13 +157,13 @@ Correlation runs after: CLI push, GitHub App backfill, PR opened webhook.
 
 ## Repo Identity
 
-Repos are identified canonically by `(organization_id, github_owner, github_repo)`. The `path` field (local filesystem path) is informational and non-unique — different developers have different local paths for the same repo.
+Repos are identified canonically by `(organization_id, platform, platform_owner, platform_repo)`. The `path` field (local filesystem path) is informational and non-unique — different developers have different local paths for the same repo.
 
-When `ax push` arrives, the server looks up the repo by `github_owner + github_repo` within the user's orgs, falling back to `path` for legacy compatibility.
+When `ax push` arrives, the server looks up the repo by `platform + platform_owner + platform_repo` within the user's orgs, falling back to `path` for legacy compatibility. The `platform` field defaults to `"github"` and is set to `"gitlab"` for GitLab repos.
 
 ## Periodic Reconciliation
 
-`ReconcileReposJob` runs daily (3am) and enqueues `BackfillRepoJob` for every repo with an active GitHub App. This is the self-healing layer: catches missed webhooks, state drift, and ensures the system converges to GitHub's truth.
+`ReconcileReposJob` runs daily (3am) and enqueues `BackfillRepoJob` for every repo with an active GitHub App, and `BackfillGitlabRepoJob` for every repo with an active GitLab connection. This is the self-healing layer: catches missed webhooks, state drift, and ensures the system converges to the platform's truth.
 
 `ReconcileCiDataJob` runs every 6 hours and fills CI data gaps that the general backfill can't reach (since finalized PRs are skipped by `BackfillRepoJob`). It does two things:
 
