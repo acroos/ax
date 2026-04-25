@@ -3,7 +3,8 @@ export const runtime = "edge";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getAggregateMetricsAsync, listReposAsync, listTeamsAsync } from "@/lib/db";
-import type { AggregateMetrics, Team } from "@/lib/db";
+import type { AgentType, AggregateMetrics, Team } from "@/lib/db";
+import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { RepoFilter } from "@/components/repo-filter";
 import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
 import { Skeleton, SkeletonMetricCategory } from "@/components/skeleton";
@@ -21,19 +22,20 @@ export default async function OrgOverviewPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ repo?: string; range?: string }>;
+  searchParams: Promise<{ repo?: string; range?: string; agent_type?: string }>;
 }) {
   const { slug } = await params;
-  const { repo, range: rangeParam } = await searchParams;
+  const { repo, range: rangeParam, agent_type: agentTypeParam } = await searchParams;
   const repoId = repo ? parseInt(repo, 10) : undefined;
   const range: Range = VALID_RANGES.includes(rangeParam as Range)
     ? (rangeParam as Range)
     : "30d";
+  const agentType = parseAgentType(agentTypeParam);
 
   // Kick off all fetches in parallel — do NOT await here. Each child
   // component awaits what it needs; React dedupes multiple awaits on the
   // same promise into a single fetch.
-  const metricsPromise = getAggregateMetricsAsync(repoId, slug, range);
+  const metricsPromise = getAggregateMetricsAsync(repoId, slug, range, agentType);
   const reposPromise = listReposAsync(slug).catch(() => []);
   const teamsPromise = listTeamsAsync(slug).catch(() => [] as Team[]);
 
@@ -54,6 +56,7 @@ export default async function OrgOverviewPage({
             teamsPromise={teamsPromise}
             slug={slug}
             range={range}
+            agentType={agentType}
           />
         </Suspense>
       </div>
@@ -65,6 +68,7 @@ export default async function OrgOverviewPage({
             slug={slug}
             repoId={repoId}
             range={range}
+            agentType={agentType}
           />
         </Suspense>
       </SectionErrorBoundary>
@@ -97,6 +101,10 @@ function teamsToScopeTeams(teams: Team[]): ScopeTeam[] {
   }));
 }
 
+function parseAgentType(value?: string): AgentType | undefined {
+  return value === "claude_code" || value === "copilot_cli" ? value : undefined;
+}
+
 // Subtitle depends on both promises. If the metrics fetch fails we still
 // render the repo filter (no PR count) rather than crashing the whole header.
 async function OverviewSubtitle({
@@ -106,6 +114,7 @@ async function OverviewSubtitle({
   teamsPromise,
   slug,
   range,
+  agentType,
 }: {
   reposPromise: Promise<RepoLite[]>;
   repoId: number | undefined;
@@ -113,6 +122,7 @@ async function OverviewSubtitle({
   teamsPromise: Promise<Team[]>;
   slug: string;
   range: Range;
+  agentType?: AgentType;
 }) {
   const [allRepos, teams] = await Promise.all([reposPromise, teamsPromise]);
   const repos = allRepos.filter(
@@ -135,6 +145,8 @@ async function OverviewSubtitle({
       />
       {" "}&middot;{" "}
       <RepoFilter repos={repos} current={repoId} />
+      {" "}&middot;{" "}
+      <AgentTypeFilter current={agentType} />
       {metrics !== null && (
         <>
           {" "}
@@ -189,17 +201,20 @@ async function OverviewMetricsBody({
   slug,
   repoId,
   range,
+  agentType,
 }: {
   promise: Promise<AggregateMetrics>;
   slug: string;
   repoId: number | undefined;
   range: Range;
+  agentType?: AgentType;
 }) {
   const data = await promise;
   if (data.totalPRs === 0 && data.totalSessions === 0) return <NoDataState />;
 
   const query = new URLSearchParams();
   if (repoId) query.set("repo", String(repoId));
+  if (agentType) query.set("agent_type", agentType);
   query.set("range", range);
   const qs = query.toString();
 

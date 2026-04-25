@@ -336,10 +336,10 @@ func TestIsSessionUUID(t *testing.T) {
 		{"memory", false},
 		{"subagents", false},
 		{"session1.jsonl", false},
-		{"580d904d96af4905865b70a8d476d203", false}, // no dashes
-		{"580d904d-96af-4905-865b-70a8d476d20", false}, // too short
+		{"580d904d96af4905865b70a8d476d203", false},      // no dashes
+		{"580d904d-96af-4905-865b-70a8d476d20", false},   // too short
 		{"580d904d-96af-4905-865b-70a8d476d2030", false}, // too long
-		{"580d904d-96af-4905-865b-70a8d476d20g", false}, // invalid hex
+		{"580d904d-96af-4905-865b-70a8d476d20g", false},  // invalid hex
 	}
 
 	for _, tt := range tests {
@@ -397,12 +397,6 @@ func TestParseSessionNormal(t *testing.T) {
 	}
 	if session.CacheReadInputTokens != 300 {
 		t.Errorf("CacheReadInputTokens = %d, want 300", session.CacheReadInputTokens)
-	}
-
-	// Cost: sonnet pricing (3.0/15.0/0.3/3.75 per MTok)
-	expectedCost := 0.0197775
-	if diff := session.TotalCostUSD - expectedCost; diff > 0.0001 || diff < -0.0001 {
-		t.Errorf("TotalCostUSD = %f, want ~%f", session.TotalCostUSD, expectedCost)
 	}
 
 	// Model

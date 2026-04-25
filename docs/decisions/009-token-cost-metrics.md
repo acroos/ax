@@ -1,36 +1,31 @@
 # ADR-009: Token Cost Metrics
 
 ## Status
-Accepted
+Superseded by ADR-017 and Copilot CLI support
 
 ## Date
 2026-03-24
 
 ## Context
-Raw token counts are noisy without task complexity context — a session consuming 100k tokens could be cheap (Haiku) or expensive (Opus). Cost in dollars is a more intuitive and actionable unit for evaluating prompt efficiency. Additionally, we want to surface how much spend goes to work that never merges, which requires a repo-level aggregate view that raw per-session token counts cannot provide.
+Raw token counts are noisy without task complexity context — a session consuming 100k tokens may represent focused implementation work or inefficient context loading. This ADR originally chose dollar-denominated cost, but Copilot CLI support requires a provider-neutral unit because Copilot-served model pricing is not reliably attributable from local session data.
 
-The previously deferred "Token Usage per PR" metric highlighted the need for cost normalization. Rather than tracking raw tokens, we are evolving that concept into dollar-cost metrics with model-specific pricing.
+The previously deferred "Token Usage per PR" metric highlighted the need for efficiency tracking. The current implementation uses raw `input_tokens + output_tokens` as the cross-agent unit and keeps cache token fields for cache-efficiency metrics.
 
 ## Decision
-Add two metrics:
-
-1. **Token Cost per PR (Metric #15)** — Per-message cost computation using model-specific pricing (`input_tokens × input_price + output_tokens × output_price + cache_tokens × cache_rates`), summed across all messages in all sessions correlated to a PR. Per-message granularity handles mixed-model sessions correctly.
-
-2. **Unmerged Token Spend (Metric #16)** — Repo-level aggregate of dollar cost on sessions that correlate to closed-not-merged PRs or don't correlate to any PR. Expressed as both absolute dollars and as a rate (`unmerged_cost / total_cost`). Open PRs are excluded from the calculation.
+Track **Token Total per PR** as `input_tokens + output_tokens` across sessions correlated to a PR. Sessions carry an `agent_type` (`claude_code` or `copilot_cli`) so dashboards can show all agents combined by default or filter to one agent.
 
 Implementation details:
-- Store both raw tokens AND precomputed dollar cost. Raw tokens enable recomputation when pricing changes.
-- Use a hardcoded pricing map with version tracking. Each entry maps a model identifier to its input, output, and cache token rates.
-- Mixed-model sessions are handled naturally via per-message computation — each message carries its own model identifier.
-- The repo-level Unmerged Token Spend metric requires a new `repo_metrics` table, as existing metrics are all per-PR.
+- Store raw token fields on `sessions`; do not store precomputed dollar cost.
+- Keep model identifiers and context-window lookup for peak context metrics.
+- Use `agent_type` filtering at the API layer for aggregate and metric-detail views.
+- Do not compute Unmerged Token Spend as a dollar metric.
 
 ## Alternatives Considered
-- **Raw token counts only** — not actionable; a session using 50k Haiku tokens costs a fraction of one using 50k Opus tokens, but raw counts treat them equally
+- **Dollar costs** — originally selected, but provider-specific pricing made cross-agent comparisons brittle once Copilot CLI support was added
 - **External billing API** — adds complexity, latency, and a dependency on Anthropic's billing system availability; also cannot attribute cost to individual PRs
-- **Per-session cost only** — useful but does not correlate cost to deliverables (PRs), making it harder to evaluate whether spend is proportional to value produced
+- **Per-session cost only** — useful but does not correlate effort to deliverables (PRs), making it harder to evaluate whether agent work is proportional to value produced
 
 ## Consequences
-- Pricing needs manual updates when Anthropic changes model prices. The hardcoded pricing map must be versioned so changes are tracked.
-- Recomputation is needed when pricing changes — storing raw tokens alongside precomputed cost enables this without re-ingesting session data.
-- The repo-level Unmerged Token Spend metric requires a new `repo_metrics` table, expanding the data model beyond per-PR metrics for the first time.
-- Dollar cost provides a universally understood unit that enables cross-team and cross-model comparisons.
+- Token totals are not equivalent to billing cost, especially across models, but they are stable across supported agents.
+- Model-specific pricing maintenance is no longer required for the dashboard metric.
+- Historical sessions default to `claude_code` so existing Claude Code data remains filterable.

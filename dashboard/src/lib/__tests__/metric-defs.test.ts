@@ -69,31 +69,6 @@ describe("formatMetricValue", () => {
     });
   });
 
-  describe("currency", () => {
-    const def = defWithType("currency", { unit: "$" });
-
-    it("formats normal values with dollar sign", () => {
-      expect(formatMetricValue(3.5, def)).toBe("$3.50");
-    });
-
-    it("formats values less than 0.01 as <$0.01", () => {
-      expect(formatMetricValue(0.005, def)).toBe("<$0.01");
-      expect(formatMetricValue(0.001, def)).toBe("<$0.01");
-    });
-
-    it("formats exactly 0.01", () => {
-      expect(formatMetricValue(0.01, def)).toBe("$0.01");
-    });
-
-    it("formats zero as <$0.01", () => {
-      expect(formatMetricValue(0, def)).toBe("<$0.01");
-    });
-
-    it("formats large values", () => {
-      expect(formatMetricValue(123.456, def)).toBe("$123.46");
-    });
-  });
-
   describe("float", () => {
     const def = defWithType("float");
 

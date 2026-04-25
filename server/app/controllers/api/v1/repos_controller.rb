@@ -38,7 +38,9 @@ module Api
         session_scope = CodingSession
           .where(repo_id: @repo.id)
 
-        render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range).call
+        session_scope = apply_agent_type_filter(session_scope)
+
+        render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range, agent_type: parsed_agent_type).call
       end
 
       def metric_detail
@@ -49,7 +51,7 @@ module Api
         session_scope = CodingSession
           .where(repo_id: @repo.id)
 
-        render_metric_detail(pr_scope: pr_scope, session_scope: session_scope)
+        render_metric_detail(pr_scope: pr_scope, session_scope: apply_agent_type_filter(session_scope))
       end
 
       def timeline
@@ -67,7 +69,9 @@ module Api
             created_at: pr.created_at_source,
             post_open_commits: m&.post_open_commits,
             ci_success_rate: m&.ci_success_rate.nil? ? nil : (m.ci_success_rate * 100),
-            token_cost_usd: m&.token_cost_usd
+            total_tokens: apply_agent_type_filter(CodingSession.joins(:session_prs)
+              .where(session_prs: { pr_id: pr.id }))
+              .sum("sessions.input_tokens + sessions.output_tokens")
           }
         }
       end

@@ -40,7 +40,9 @@ module Api
           .where(repos: { organization_id: @org.id })
           .where(pushed_by: current_user.github_username)
 
-        render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range).call
+        session_scope = apply_agent_type_filter(session_scope)
+
+        render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range, agent_type: parsed_agent_type).call
       end
 
       def metric_detail
@@ -55,7 +57,7 @@ module Api
           .where(repos: { organization_id: @org.id })
           .where(pushed_by: current_user.github_username)
 
-        render_metric_detail(pr_scope: pr_scope, session_scope: session_scope)
+        render_metric_detail(pr_scope: pr_scope, session_scope: apply_agent_type_filter(session_scope))
       end
     end
   end

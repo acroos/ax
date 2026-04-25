@@ -7,9 +7,9 @@ Patterns and norms for working in the AX codebase.
 ### File Organization
 - All Go code lives under `cli/`
 - One metric area per file in `cli/internal/metrics/` (e.g., `output_quality.go`, `planning.go`), each with a corresponding `_test.go`
-- Session parser in `cli/internal/parsers/claude_sessions.go`
+- Session parsers in `cli/internal/parsers/claude_sessions.go` and `cli/internal/parsers/copilot_sessions.go`
 - GitHub/git data types in `cli/internal/parsers/github.go` (types only, no CLI interaction)
-- Token pricing in `cli/internal/pricing/` with model-specific lookup tables
+- Context-window lookup in `cli/internal/pricing/` with model-specific lookup tables
 
 ### Testing
 - Metric tests use inline data — no fixtures or factories
@@ -17,7 +17,7 @@ Patterns and norms for working in the AX codebase.
 
 ### External Dependencies
 - Session parser reads JSONL files directly (no external CLIs)
-- Token pricing lives in `cli/internal/pricing/` with model-specific lookup tables
+- Context-window lookup lives in `cli/internal/pricing/` with model-specific lookup tables
 - CLI shells out to `git` only to resolve remote URLs (for repo identification)
 
 ## Rails Server

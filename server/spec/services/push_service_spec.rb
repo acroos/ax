@@ -49,7 +49,7 @@ RSpec.describe PushService do
           turn_count: 2,
           input_tokens: 5000,
           output_tokens: 3000,
-          total_cost_usd: 0.50,
+          agent_type: "claude_code",
           primary_model: "claude-sonnet-4-20250514",
           peak_context_pct: 0.65,
           total_tool_calls: 50,

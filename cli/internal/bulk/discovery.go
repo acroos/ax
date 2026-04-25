@@ -39,13 +39,10 @@ type GitRemoteFn func(path string) (owner, repo string, err error)
 func DiscoverRepos(claudeDir string, gitRemoteFn GitRemoteFn) (*DiscoverySummary, error) {
 	history, err := parsers.LoadHistory(claudeDir)
 	if err != nil {
-		return &DiscoverySummary{}, nil // no history = no repos, not an error
+		history = map[string][]parsers.HistoryEntry{} // no Claude history = still discover Copilot sessions
 	}
 
 	projectPaths := uniqueProjectPaths(history)
-	if len(projectPaths) == 0 {
-		return &DiscoverySummary{}, nil
-	}
 
 	// Resolve each project path to its repo root, then to owner/repo.
 	// Multiple paths can map to the same owner/repo.
@@ -78,12 +75,32 @@ func DiscoverRepos(claudeDir string, gitRemoteFn GitRemoteFn) (*DiscoverySummary
 		}
 	}
 
+	copilotDir := parsers.CopilotDirForClaudeDir(claudeDir)
+	copilotWorkspaces, err := parsers.DiscoverCopilotWorkspaces(copilotDir)
+	if err == nil {
+		for sessionDir, workspace := range copilotWorkspaces {
+			parts := strings.Split(workspace.Repository, "/")
+			if len(parts) != 2 {
+				continue
+			}
+			key := repoKey{owner: parts[0], repo: parts[1]}
+			projectPath := workspace.GitRoot
+			if projectPath == "" {
+				projectPath = workspace.Cwd
+			}
+			if projectPath == "" {
+				projectPath = sessionDir
+			}
+			repoGroups[key] = append(repoGroups[key], projectPath)
+		}
+	}
+
 	// For each repo group, discover and deduplicate session files.
 	var repos []DiscoveredRepo
 	totalSessions := 0
 
 	for key, paths := range repoGroups {
-		sessionSet := make(map[string]string) // basename -> full path
+		sessionSet := make(map[string]string) // session id -> full path
 
 		// Deduplicate the paths themselves first.
 		seen := make(map[string]bool)
@@ -98,9 +115,25 @@ func DiscoverRepos(claudeDir string, gitRemoteFn GitRemoteFn) (*DiscoverySummary
 				continue
 			}
 			for _, f := range files {
-				base := filepath.Base(f)
-				if _, exists := sessionSet[base]; !exists {
-					sessionSet[base] = f
+				id := strings.TrimSuffix(filepath.Base(f), ".jsonl")
+				if _, exists := sessionSet[id]; !exists {
+					sessionSet[id] = f
+				}
+			}
+		}
+
+		if copilotWorkspaces != nil {
+			ownerRepo := key.owner + "/" + key.repo
+			for sessionDir, workspace := range copilotWorkspaces {
+				if workspace.Repository != ownerRepo {
+					continue
+				}
+				id := parsers.CopilotSessionIDFromPath(sessionDir)
+				if workspace.ID != "" {
+					id = workspace.ID
+				}
+				if _, exists := sessionSet[id]; !exists {
+					sessionSet[id] = sessionDir
 				}
 			}
 		}

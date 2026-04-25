@@ -76,7 +76,7 @@ RSpec.describe "Push API", type: :request do
           output_tokens: 2000,
           cache_creation_input_tokens: 100,
           cache_read_input_tokens: 800,
-          total_cost_usd: 0.42,
+          agent_type: "copilot_cli",
           primary_model: "claude-sonnet-4-20250514",
           files_read_count: 10,
           files_modified_count: 3,
@@ -100,6 +100,7 @@ RSpec.describe "Push API", type: :request do
     expect(response).to have_http_status(:ok)
 
     session = CodingSession.find("sess-tool-test")
+    expect(session.agent_type).to eq("copilot_cli")
     expect(session.peak_context_pct).to be_within(0.01).of(0.72)
     expect(session.total_tool_calls).to eq(60)
     expect(session.agent_tool_calls).to eq(12)

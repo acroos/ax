@@ -10,12 +10,3 @@ func IterationDepth(sessions []*parsers.ParsedSession) int {
 	}
 	return total
 }
-
-// TokenCostForSessions sums the total dollar cost across sessions.
-func TokenCostForSessions(sessions []*parsers.ParsedSession) float64 {
-	total := 0.0
-	for _, s := range sessions {
-		total += s.TotalCostUSD
-	}
-	return total
-}

@@ -15,6 +15,10 @@ import {
 
 const PAGE_SIZE = 25;
 
+function fmtTokens(n: number): string {
+  return Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
+}
+
 export function DemoPaginatedPRTableBody({
   allPrs,
 }: {
@@ -72,9 +76,9 @@ export function DemoPaginatedPRTableBody({
               {pr.metrics?.iteration_depth ?? "\u2014"}
             </TableCell>
             <TableCell className="text-right font-mono text-[13px] text-muted-foreground">
-              {pr.metrics?.token_cost_usd !== null &&
-              pr.metrics?.token_cost_usd !== undefined
-                ? `$${pr.metrics.token_cost_usd.toFixed(2)}`
+              {pr.metrics?.total_tokens !== null &&
+              pr.metrics?.total_tokens !== undefined
+                ? fmtTokens(pr.metrics.total_tokens)
                 : "\u2014"}
             </TableCell>
             <TableCell className="text-center">

@@ -32,8 +32,7 @@ RSpec.describe MetricsAggregator do
       create(:coding_session, repo: repo,
         ended_at: 3.days.ago,
         turn_count: 8,
-        total_cost_usd: 2.50,
-        input_tokens: 1000, cache_creation_input_tokens: 200, cache_read_input_tokens: 800,
+        input_tokens: 1000, output_tokens: 1500, cache_creation_input_tokens: 200, cache_read_input_tokens: 800,
         message_count: 10, assistant_message_count: 15, sidechain_messages: 5,
         total_file_reads: 20, files_read_count: 10)
 
@@ -43,7 +42,7 @@ RSpec.describe MetricsAggregator do
 
       expect(result[:totalSessions]).to eq(1)
       expect(result[:metrics]["iteration-depth"][:current]).to be_within(0.01).of(8.0)
-      expect(result[:metrics]["token-cost-per-pr"][:current]).to be_within(0.01).of(2.50)
+      expect(result[:metrics]["token-cost-per-pr"][:current]).to be_within(0.01).of(2500)
       # cache_hit_rate = 800 / (1000 + 200 + 800) = 0.4
       expect(result[:metrics]["cache-hit-rate"][:current]).to be_within(0.01).of(0.4)
       # sidechain_rate = 5 / (10 + 15) = 0.2
@@ -180,7 +179,7 @@ RSpec.describe MetricsAggregator do
         branch: "some-branch-with-no-pr",
         ended_at: 2.days.ago,
         turn_count: 5,
-        total_cost_usd: 1.00)
+        input_tokens: 600, output_tokens: 400)
 
       pr_scope, session_scope = build_scopes
 
@@ -189,7 +188,7 @@ RSpec.describe MetricsAggregator do
       expect(result[:totalPRs]).to eq(0)
       expect(result[:totalSessions]).to eq(1)
       expect(result[:metrics]["iteration-depth"][:current]).to be_within(0.01).of(5.0)
-      expect(result[:metrics]["token-cost-per-pr"][:current]).to be_within(0.01).of(1.00)
+      expect(result[:metrics]["token-cost-per-pr"][:current]).to be_within(0.01).of(1000)
     end
 
     it "returns nil metrics when no data exists" do
@@ -210,13 +209,13 @@ RSpec.describe MetricsAggregator do
     it "generates sparklines with correct date bucketing" do
       create(:coding_session, repo: repo,
         ended_at: 3.days.ago,
-        turn_count: 10, total_cost_usd: 2.0)
+        turn_count: 10)
       create(:coding_session, repo: repo,
         ended_at: 3.days.ago,
-        turn_count: 6, total_cost_usd: 1.0)
+        turn_count: 6)
       create(:coding_session, repo: repo,
         ended_at: 1.day.ago,
-        turn_count: 4, total_cost_usd: 3.0)
+        turn_count: 4)
 
       pr_scope, session_scope = build_scopes
 
@@ -237,12 +236,12 @@ RSpec.describe MetricsAggregator do
       # Current period session
       create(:coding_session, repo: repo,
         ended_at: 2.days.ago,
-        turn_count: 10, total_cost_usd: 3.0)
+        turn_count: 10)
 
       # Prior period session
       create(:coding_session, repo: repo,
         ended_at: 10.days.ago,
-        turn_count: 5, total_cost_usd: 1.0)
+        turn_count: 5)
 
       pr_scope, session_scope = build_scopes
 
@@ -254,9 +253,9 @@ RSpec.describe MetricsAggregator do
 
     it "scopes sessions by pushed_by for user-level metrics" do
       create(:coding_session, repo: repo, ended_at: 2.days.ago,
-        pushed_by: "alice", turn_count: 10, total_cost_usd: 3.0)
+        pushed_by: "alice", turn_count: 10)
       create(:coding_session, repo: repo, ended_at: 2.days.ago,
-        pushed_by: "bob", turn_count: 4, total_cost_usd: 1.0)
+        pushed_by: "bob", turn_count: 4)
 
       pr_scope = PrMetrics.joins(pr: :repo)
         .where(repos: { organization_id: org.id }, metrics_finalized: true)

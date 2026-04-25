@@ -125,7 +125,7 @@ export default async function LandingPage() {
         metrics={["Skill & Tool Usage", "Subagent Delegation", "Rubber Stamp Rate"]}
         cards={[
           {
-            label: "Avg Token Cost",
+            label: "Avg Token Total",
             value: "$1.28",
             sparkline: SPARKLINES.tokenCost,
           },

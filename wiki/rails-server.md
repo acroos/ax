@@ -73,7 +73,7 @@ See [Authentication](authentication.md) for how these are used across modes.
 | `POST` | `/api/v1/orgs` | Create organization (requires approved waitlist) |
 | `GET` | `/api/v1/orgs/:slug` | Org details |
 | `GET` | `/api/v1/orgs/:slug/repos` | List org repos |
-| `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership + `history_days` cutoff). Session-derived metrics (iteration_depth, token_cost_usd, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score) are computed on-the-fly from linked sessions. |
+| `GET` | `/api/v1/prs/:id` | Single PR with metrics (access-checked via org membership + `history_days` cutoff). Session-derived metrics (iteration_depth, total_tokens, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score) are computed on-the-fly from linked sessions. |
 | `GET` | `/api/v1/orgs/:slug/prs` | Paginated PRs across all org repos. Supports `?cursor=&per_page=` (default 25, max 100). Returns `{ data: [...], pagination: { next_cursor, has_more, total } }`. |
 | `GET` | `/api/v1/orgs/:slug/metrics` | Windowed aggregate metrics (7-day current + prior) with daily sparkline buckets. Returns `{ totalPRs, sessionDataCount, metrics: { [slug]: { current, prior, sparkline } } }` via `MetricsAggregator`. |
 | `GET` | `/api/v1/orgs/:slug/sessions` | Paginated sessions with per-session computed metrics. Returns `PaginatedSessions`. |
@@ -209,7 +209,7 @@ Computes windowed aggregate metrics for the overview page. Used by `Organization
 
 1. Takes two scopes: a `PrMetrics` scope (pre-filtered to org/repo + `metrics_finalized: true`, must join `prs`) for PR-derived metrics, and a `CodingSession` scope for session-derived metrics
 2. Splits each scope into current window and prior window — PRs by merge/close date (`COALESCE(prs.merged_at, prs.closed_at)`), sessions by end time (`sessions.ended_at`)
-3. Computes `AVG` for PR metrics from `PR_METRIC_COLUMNS` (post_open_commits, ci_success_rate, line_revisit_rate) and for session metrics from `SESSION_METRIC_EXPRESSIONS` (iteration_depth, token_cost_usd, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score) — session metrics are computed inline via SQL expressions on raw session columns, not from pre-computed values
+3. Computes `AVG` for PR metrics from `PR_METRIC_COLUMNS` (post_open_commits, ci_success_rate, line_revisit_rate) and for session metrics from `SESSION_METRIC_EXPRESSIONS` (iteration_depth, total_tokens, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score) — session metrics are computed inline via SQL expressions on raw session columns, not from pre-computed values
 4. Builds daily sparkline buckets for each metric within the current window
 5. Returns `{ totalPRs, totalSessions, sessionDataCount, metrics: { [slug]: { current, prior, sparkline: [{t, v}] } } }`
 
@@ -282,7 +282,7 @@ The Stripe API version is pinned in `config/initializers/stripe.rb` (default `20
 Extracted shared PR JSON serialization logic used by `OrganizationsController`, `ReposController`, and `TeamsController`. Provides `serialize_prs_with_metrics(prs)` to avoid duplicating the PR-to-JSON mapping across controllers.
 
 ### SessionSerialization (`app/controllers/concerns/session_serialization.rb`)
-Extracted shared session list serialization. Provides `render_sessions(scope)` which selects session columns plus computed metric aliases (using the same SQL expressions as `MetricsAggregator::SESSION_METRIC_EXPRESSIONS`), paginates, and returns `{ data: [...], pagination: { ... } }`. Each session includes a `metrics` object with `iteration_depth`, `token_cost_usd`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, and `autonomy_score`. Used by `OrganizationsController#sessions`, `ReposController#sessions`, `TeamsController#sessions`, `MeController#sessions`, and `PrsController`.
+Extracted shared session list serialization. Provides `render_sessions(scope)` which selects session columns plus computed metric aliases (using the same SQL expressions as `MetricsAggregator::SESSION_METRIC_EXPRESSIONS`), paginates, and returns `{ data: [...], pagination: { ... } }`. Each session includes `agent_type` and a `metrics` object with `iteration_depth`, `total_tokens`, `cache_hit_rate`, `sidechain_rate`, `re_read_rate`, and `autonomy_score`. Used by `OrganizationsController#sessions`, `ReposController#sessions`, `TeamsController#sessions`, `MeController#sessions`, and `PrsController`.
 
 ## Authorization — Team Helpers
 

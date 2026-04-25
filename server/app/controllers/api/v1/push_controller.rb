@@ -27,9 +27,9 @@ module Api
             :merged_at, :closed_at, :url, :additions, :deletions, :changed_files
           ],
           sessions: [
-            :id, :branch, :started_at, :ended_at, :message_count, :turn_count,
+            :id, :agent_type, :branch, :started_at, :ended_at, :message_count, :turn_count,
             :input_tokens, :output_tokens, :cache_creation_input_tokens,
-            :cache_read_input_tokens, :total_cost_usd, :primary_model,
+            :cache_read_input_tokens, :primary_model,
             :files_read_count, :files_modified_count,
             :assistant_message_count, :sidechain_messages, :total_file_reads,
             :peak_context_pct, :total_tool_calls, :agent_tool_calls,

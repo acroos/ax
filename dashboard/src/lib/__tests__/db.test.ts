@@ -64,7 +64,7 @@ describe("computeAggregatesFromPRs", () => {
           post_open_commits: null,
           ci_success_rate: null,
           line_revisit_rate: null,
-          token_cost_usd: null,
+          total_tokens: null,
           cache_hit_rate: null,
           sidechain_rate: null,
           re_read_rate: null,
@@ -89,7 +89,7 @@ describe("computeAggregatesFromPRs", () => {
           post_open_commits: 2,
           ci_success_rate: 0.8,
           line_revisit_rate: 1.5,
-          token_cost_usd: 3.50,
+          total_tokens: 35000,
           cache_hit_rate: 0.6,
           sidechain_rate: 0.1,
           re_read_rate: 2.0,
@@ -114,7 +114,7 @@ describe("computeAggregatesFromPRs", () => {
       post_open_commits: 2,
       ci_success_rate: 0.8,
       line_revisit_rate: 1.0,
-      token_cost_usd: 2.00,
+      total_tokens: 20000,
       cache_hit_rate: 0.5,
       sidechain_rate: 0.2,
       re_read_rate: 1.0,
@@ -128,7 +128,7 @@ describe("computeAggregatesFromPRs", () => {
       post_open_commits: 4,
       ci_success_rate: 1.0,
       line_revisit_rate: 2.0,
-      token_cost_usd: 4.00,
+      total_tokens: 40000,
       cache_hit_rate: 0.7,
       sidechain_rate: 0.0,
       re_read_rate: 3.0,
@@ -158,7 +158,7 @@ describe("computeAggregatesFromPRs", () => {
           post_open_commits: null,
           ci_success_rate: 0.8,
           line_revisit_rate: null,
-          token_cost_usd: 2.00,
+          total_tokens: 20000,
           cache_hit_rate: null,
           sidechain_rate: null,
           re_read_rate: null,
@@ -175,7 +175,7 @@ describe("computeAggregatesFromPRs", () => {
           post_open_commits: 3,
           ci_success_rate: 1.0,
           line_revisit_rate: null,
-          token_cost_usd: null,
+          total_tokens: null,
           cache_hit_rate: null,
           sidechain_rate: null,
           re_read_rate: null,
@@ -192,7 +192,7 @@ describe("computeAggregatesFromPRs", () => {
     expect(result.metrics["ci-success-rate"].current).toBe(0.9);
     // line_revisit_rate: both null
     expect(result.metrics["line-revisit-rate"].current).toBeNull();
-    // sessionDataCount: only PR1 has token_cost_usd
+    // sessionDataCount: only PR1 has total_tokens
     expect(result.sessionDataCount).toBe(1);
   });
 
@@ -205,7 +205,7 @@ describe("computeAggregatesFromPRs", () => {
           post_open_commits: 1,
           ci_success_rate: 0.9,
           line_revisit_rate: 0.5,
-          token_cost_usd: 1.50,
+          total_tokens: 15000,
           cache_hit_rate: 0.4,
           sidechain_rate: 0.05,
           re_read_rate: 0.8,

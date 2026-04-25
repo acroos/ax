@@ -1,6 +1,6 @@
 # Go CLI
 
-The CLI is a thin client that parses Claude Code session data and pushes it to the AX managed service. It also handles initial setup (auth, hook installation).
+The CLI is a thin client that parses Claude Code and Copilot CLI session data and pushes it to the AX managed service. It also handles initial setup (auth, hook installation).
 
 All CLI code lives under `cli/`. Entry point: `cli/cmd/ax/main.go` (Cobra-based).
 
@@ -8,7 +8,7 @@ All CLI code lives under `cli/`. Entry point: `cli/cmd/ax/main.go` (Cobra-based)
 
 | Command | Purpose |
 |---------|---------|
-| `ax init --api-key <key>` | Set up AX: validate server, save config, install Claude Code hooks |
+| `ax init --api-key <key>` | Set up AX: validate server, save config, install Claude Code hooks and Copilot CLI hooks when Copilot state exists |
 | `ax init --uninstall` | Remove all AX hooks |
 | `ax push --repo .` | Parse and push new session data for a single repo |
 | `ax push --repo . --force` | Re-send all sessions, ignoring push history |
@@ -23,17 +23,19 @@ cli/
     api/         Push payload types (PushPayload, PushResponse, SessionData)
     bulk/        Repo discovery (from history.jsonl) and bulk push orchestration
     config/      Config management (~/.ax/config.json)
-    hooks/       Claude Code hook installation in ~/.claude/settings.json
+    hooks/       Claude Code hook installation plus AX-owned Copilot CLI hook files
     metrics/     Metric calculator library (pure functions, used by Rails port)
     parsers/     Session data parsing + GitHub/git data types
-    pricing/     Model-specific token cost tables
+    pricing/     Model-specific context window lookup
     push/        HTTP client for AX server
     state/       Push state tracking (which sessions already sent)
     ui/          Terminal output: spinners, colors, banners (lipgloss)
   Justfile       Build commands (just build, just test, etc.)
 ```
 
-## Session Parser (`cli/internal/parsers/claude_sessions.go`)
+## Session Parsers
+
+### Claude Code (`cli/internal/parsers/claude_sessions.go`)
 Reads Claude Code session data from `~/.claude/projects/<encoded-path>/`. Supports two storage formats:
 1. **Top-level JSONL files**: `<uuid>.jsonl` — the traditional format
 2. **Directory-based sessions**: `<uuid>/subagents/agent-*.jsonl` — used when no top-level `.jsonl` exists (e.g. subagent-only sessions)
@@ -47,27 +49,40 @@ Extracts per session:
 - Files read/modified, bash commands with success/failure
 - PR URLs, commit SHAs, referenced plan files
 
-Returns `ParsedSession` structs. Also discovers sessions from Claude Code worktrees belonging to the same repo.
+Returns `ParsedSession` structs with `agent_type = "claude_code"`. Also discovers sessions from Claude Code worktrees belonging to the same repo.
+
+### Copilot CLI (`cli/internal/parsers/copilot_sessions.go`)
+Reads Copilot CLI session directories from `~/.copilot/session-state/<uuid>/`. The parser uses `workspace.yaml` for repo metadata and `events.jsonl` for the event stream. IDE-only workspaces without `events.jsonl` are skipped.
+
+Extracts per session:
+- Message/turn counts from user and assistant events
+- Token usage from `session.shutdown.data.modelMetrics`
+- Majority model, tool calls, file read/modify counts
+- PR URLs and commit SHAs observed in tool results
+
+Returns `ParsedSession` structs with `agent_type = "copilot_cli"`.
 
 ## Hooks System
 
-`cli/internal/hooks/hooks.go` manages Claude Code hooks in `~/.claude/settings.json`.
+`cli/internal/hooks/hooks.go` manages Claude Code hooks in `~/.claude/settings.json`. `cli/internal/hooks/copilot_hooks.go` manages AX-owned Copilot CLI hook files at `.github/hooks/session-end.json`.
 
 - `Install()` — Adds a `SessionEnd` hook that runs `ax push --repo <cwd>` after every Claude Code session. Also removes stale AX hooks from other events (e.g. `Stop`).
 - `Uninstall()` / `IsInstalled()` — Remove or check hook presence across all AX-managed events (`SessionEnd`, `Stop`)
 - Handles worktree resolution — if the CWD is a worktree path (`<repo>/.claude/worktrees/<name>/`), resolves back to the main repo
 - Preserves existing settings — reads the full JSON, modifies only hook entries
+- Copilot hook install is conservative: AX writes only its own hook file and refuses to overwrite a non-AX hook.
 
 ## Bulk Push (`cli/internal/bulk/`)
 
-`ax push --all` discovers all repos from `~/.claude/history.jsonl` and pushes sessions for each.
+`ax push --all` discovers all repos from Claude Code history and Copilot CLI workspaces, then pushes sessions for each.
 
 **Discovery** (`discovery.go`):
 1. Reads `~/.claude/history.jsonl` to get unique project paths
 2. Resolves worktree paths (`/.claude/worktrees/<name>`) to parent repo roots
 3. Runs `git remote get-url origin` to identify owner/repo
-4. Groups project paths by owner/repo, deduplicates session files by basename
-5. Filters out paths that don't exist or lack a git remote (logged as skipped)
+4. Adds Copilot-only repos from `workspace.yaml.repository` when present
+5. Groups project paths by owner/repo, deduplicates session files by session ID
+6. Filters out paths that don't exist or lack a git remote (logged as skipped)
 
 **Push** (`push.go`):
 - Sessions are chunked into batches of 100 to stay under the 10MB payload limit
@@ -114,7 +129,7 @@ Written by `ax init`, read by `ax push`.
 Pure function metric calculators, kept as a Go library. These are being ported to Ruby for server-side computation. The Go versions may be removed once the port is complete.
 
 - `output_quality.go` — PostOpenCommits, FirstPassAccepted, CISuccessRate, HasTestFiles, DiffChurn, LineRevisits
-- `prompt_efficiency.go` — MessagesPerPR, IterationDepth, TokenCost
+- `prompt_efficiency.go` — MessagesPerPR, IterationDepth
 - `planning.go` — PlanCoverage, PlanDeviation, ScopeCreep
 
 ## Key Files
@@ -124,7 +139,9 @@ Pure function metric calculators, kept as a Go library. These are being ported t
 | `cli/cmd/ax/main.go` | ~370 | CLI commands: init, push, push --all |
 | `cli/internal/bulk/discovery.go` | ~170 | Repo discovery from history.jsonl |
 | `cli/internal/bulk/push.go` | ~280 | Bulk push orchestration, progress, error logging |
-| `cli/internal/parsers/claude_sessions.go` | ~350 | Session JSONL parsing |
+| `cli/internal/parsers/claude_sessions.go` | ~350 | Claude Code session JSONL parsing |
+| `cli/internal/parsers/copilot_sessions.go` | ~250 | Copilot CLI events.jsonl parsing |
+| `cli/internal/parsers/copilot_discovery.go` | ~180 | Copilot CLI workspace/session discovery |
 | `cli/internal/hooks/hooks.go` | ~200 | Claude Code hook management |
 | `cli/internal/push/client.go` | ~140 | HTTP client for server API |
 | `cli/internal/state/state.go` | ~110 | Push state tracking per repo |

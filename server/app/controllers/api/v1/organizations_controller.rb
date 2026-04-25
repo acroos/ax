@@ -77,7 +77,9 @@ module Api
           .joins(:repo)
           .where(repos: { organization_id: @org.id })
 
-        render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range).call
+        session_scope = apply_agent_type_filter(session_scope)
+
+        render json: MetricsAggregator.new(pr_scope, session_scope: session_scope, window_days: parsed_range, agent_type: parsed_agent_type).call
       end
 
       def metric_detail
@@ -89,7 +91,7 @@ module Api
           .joins(:repo)
           .where(repos: { organization_id: @org.id })
 
-        render_metric_detail(pr_scope: pr_scope, session_scope: session_scope)
+        render_metric_detail(pr_scope: pr_scope, session_scope: apply_agent_type_filter(session_scope))
       end
 
       private

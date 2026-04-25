@@ -149,9 +149,9 @@ class PushService
   end
 
   SESSION_UPDATE_COLUMNS = %i[
-    repo_id branch started_at ended_at message_count turn_count
+    repo_id agent_type branch started_at ended_at message_count turn_count
     input_tokens output_tokens cache_creation_input_tokens cache_read_input_tokens
-    total_cost_usd primary_model files_read_count files_modified_count
+    primary_model files_read_count files_modified_count
     assistant_message_count sidechain_messages total_file_reads pushed_by
     peak_context_pct total_tool_calls agent_tool_calls skill_tool_calls mcp_tool_calls
   ].freeze
@@ -179,6 +179,7 @@ class PushService
       {
         id: s[:id],
         repo_id: repo.id,
+        agent_type: s[:agent_type].presence || "claude_code",
         branch: s[:branch],
         started_at: epoch_ms_to_time(s[:started_at]),
         ended_at: epoch_ms_to_time(s[:ended_at]),
@@ -188,7 +189,6 @@ class PushService
         output_tokens: s[:output_tokens] || 0,
         cache_creation_input_tokens: s[:cache_creation_input_tokens] || 0,
         cache_read_input_tokens: s[:cache_read_input_tokens] || 0,
-        total_cost_usd: s[:total_cost_usd],
         primary_model: s[:primary_model],
         files_read_count: s[:files_read_count] || 0,
         files_modified_count: s[:files_modified_count] || 0,

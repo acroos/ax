@@ -31,7 +31,7 @@ export function PRTableHeader() {
           <HeaderWithTip label="Depth" tip="Human-agent turn pairs" />
         </TableHead>
         <TableHead className="text-right">
-          <HeaderWithTip label="Cost" tip="Token cost in dollars" />
+          <HeaderWithTip label="Tokens" tip="Input and output tokens" />
         </TableHead>
         <TableHead className="text-center">
           <HeaderWithTip

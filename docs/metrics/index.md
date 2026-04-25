@@ -36,7 +36,7 @@ These metrics are still computed and accessible on detail pages but are no longe
 |---|--------|----------|-------------------|--------------|
 | 10 | [CI Success Rate](./ci-success-rate.md) | Delivery | Percentage of commits/PRs passing CI on first push | GitHub Status Checks |
 | 11 | [Line Revisit Rate](./line-revisit-rate.md) | Delivery | How often the same lines are modified across different PRs | Git blame/diff |
-| 12 | [Token Cost per PR](./token-cost-per-pr.md) | Session Effectiveness | Dollar cost of tokens consumed across sessions for a PR | Session data, Pricing module |
+| 12 | [Token Total per PR](./token-cost-per-pr.md) | Session Effectiveness | Input plus output tokens consumed across sessions for a PR | Session data |
 | 13 | [Cache Hit Rate](./cache-hit-rate.md) | Session Effectiveness | Ratio of cache-read tokens to total input tokens | Session data |
 | 14 | [Sidechain Rate](./sidechain-rate.md) | Session Effectiveness | Fraction of messages on sidechain branches (backtracking) | Session data |
 | 15 | [Re-Read Rate](./re-read-rate.md) | Session Effectiveness | Total file reads divided by unique files read | Session data |
@@ -48,7 +48,7 @@ These metrics are still computed and accessible on detail pages but are no longe
 These were considered but deferred. They may return in future iterations:
 
 - **Time-to-Merge** — Conflates human review latency with agent quality; unreliable without normalization.
-- **~~Token Usage per PR~~** — Raw token counts are noisy. Evolved into [Token Cost per PR](./token-cost-per-pr.md), which uses dollar cost with model-specific pricing.
+- **~~Token Usage per PR~~** — Reintroduced as [Token Total per PR](./token-cost-per-pr.md) using the cross-agent `input_tokens + output_tokens` unit.
 - **Human Edit Rate** — Hard to distinguish style preference edits from correctness fixes without manual classification.
 - **PR Size Distribution** — Useful as a normalizing dimension but not independently actionable. May be added as a supporting dimension.
 

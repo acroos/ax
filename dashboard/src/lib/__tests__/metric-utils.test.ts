@@ -35,7 +35,7 @@ function makePR(overrides: Partial<PRWithMetrics> = {}): PRWithMetrics {
       post_open_commits: 2,
       ci_success_rate: 0.8,
       line_revisit_rate: 1.5,
-      token_cost_usd: 3.5,
+      total_tokens: 35000,
       cache_hit_rate: 0.6,
       sidechain_rate: 0.1,
       re_read_rate: 2.0,
@@ -411,12 +411,6 @@ describe("computeDistribution", () => {
       expect(result[0].count).toBe(2);
     });
 
-    it("returns a single bucket for currency", () => {
-      const def = defWithType("currency", { unit: "$" });
-      const result = computeDistribution([3.5, 3.5], def);
-      expect(result).toHaveLength(1);
-      expect(result[0].label).toBe("$3.50");
-    });
   });
 
   describe("int bucketing", () => {
@@ -436,16 +430,6 @@ describe("computeDistribution", () => {
       // range = 50, step = max(1, ceil(50/6)) = 9
       // All buckets should have range labels like "0–8", "9–17", etc.
       expect(result.some((b) => b.label.includes("\u2013"))).toBe(true);
-    });
-  });
-
-  describe("currency bucketing", () => {
-    it("uses dollar labels", () => {
-      const def = defWithType("currency", { unit: "$" });
-      const values = [1, 5, 10, 15, 20, 25];
-      const result = computeDistribution(values, def);
-      // Should have labels like "$0–$5", "$5–$10", etc.
-      expect(result.every((b) => b.label.startsWith("$"))).toBe(true);
     });
   });
 
