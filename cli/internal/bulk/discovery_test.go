@@ -71,22 +71,27 @@ func TestUniqueProjectPaths(t *testing.T) {
 
 func TestParseGitRemote(t *testing.T) {
 	tests := []struct {
-		name      string
-		remoteURL string
-		wantOwner string
-		wantRepo  string
-		wantErr   bool
+		name         string
+		remoteURL    string
+		wantPlatform string
+		wantOwner    string
+		wantRepo     string
+		wantErr      bool
 	}{
-		{"ssh url", "git@github.com:acroos/ax.git", "acroos", "ax", false},
-		{"ssh url no .git", "git@github.com:acroos/ax", "acroos", "ax", false},
-		{"https url", "https://github.com/acroos/ax.git", "acroos", "ax", false},
-		{"https url no .git", "https://github.com/acroos/ax", "acroos", "ax", false},
-		{"empty url", "", "", "", true},
+		{"github ssh url", "git@github.com:acroos/ax.git", "github", "acroos", "ax", false},
+		{"github ssh url no .git", "git@github.com:acroos/ax", "github", "acroos", "ax", false},
+		{"github https url", "https://github.com/acroos/ax.git", "github", "acroos", "ax", false},
+		{"github https url no .git", "https://github.com/acroos/ax", "github", "acroos", "ax", false},
+		{"gitlab ssh url", "git@gitlab.com:mygroup/myproject.git", "gitlab", "mygroup", "myproject", false},
+		{"gitlab ssh url no .git", "git@gitlab.com:mygroup/myproject", "gitlab", "mygroup", "myproject", false},
+		{"gitlab https url", "https://gitlab.com/mygroup/myproject.git", "gitlab", "mygroup", "myproject", false},
+		{"gitlab https url no .git", "https://gitlab.com/mygroup/myproject", "gitlab", "mygroup", "myproject", false},
+		{"empty url", "", "", "", "", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			owner, repo, err := ParseGitRemote(tt.remoteURL)
+			info, err := ParseGitRemote(tt.remoteURL)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ParseGitRemote(%q) expected error, got nil", tt.remoteURL)
@@ -96,8 +101,11 @@ func TestParseGitRemote(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseGitRemote(%q) unexpected error: %v", tt.remoteURL, err)
 			}
-			if owner != tt.wantOwner || repo != tt.wantRepo {
-				t.Errorf("ParseGitRemote(%q) = (%q, %q), want (%q, %q)", tt.remoteURL, owner, repo, tt.wantOwner, tt.wantRepo)
+			if info.Platform != tt.wantPlatform {
+				t.Errorf("ParseGitRemote(%q).Platform = %q, want %q", tt.remoteURL, info.Platform, tt.wantPlatform)
+			}
+			if info.Owner != tt.wantOwner || info.Repo != tt.wantRepo {
+				t.Errorf("ParseGitRemote(%q) = (%q, %q), want (%q, %q)", tt.remoteURL, info.Owner, info.Repo, tt.wantOwner, tt.wantRepo)
 			}
 		})
 	}
@@ -153,14 +161,14 @@ func TestDiscoverRepos(t *testing.T) {
 	writeHistory(t, claudeDir, entries)
 
 	// Stub git remote function.
-	stubGitRemote := func(path string) (string, string, error) {
+	stubGitRemote := func(path string) (RemoteInfo, error) {
 		switch path {
 		case projectA:
-			return "owner", "repo-a", nil
+			return RemoteInfo{Platform: "github", Owner: "owner", Repo: "repo-a"}, nil
 		case projectB:
-			return "owner", "repo-b", nil
+			return RemoteInfo{Platform: "github", Owner: "owner", Repo: "repo-b"}, nil
 		default:
-			return "", "", fmt.Errorf("unknown path: %s", path)
+			return RemoteInfo{}, fmt.Errorf("unknown path: %s", path)
 		}
 	}
 
@@ -181,6 +189,9 @@ func TestDiscoverRepos(t *testing.T) {
 	repoA := summary.Repos[0]
 	if repoA.OwnerRepo != "owner/repo-a" {
 		t.Errorf("repos[0].OwnerRepo = %q, want %q", repoA.OwnerRepo, "owner/repo-a")
+	}
+	if repoA.Platform != "github" {
+		t.Errorf("repos[0].Platform = %q, want %q", repoA.Platform, "github")
 	}
 	if len(repoA.SessionFiles) != 2 {
 		t.Errorf("repos[0] has %d sessions, want 2", len(repoA.SessionFiles))
@@ -245,11 +256,11 @@ func TestDiscoverRepos_WorktreeDedup(t *testing.T) {
 	}
 	writeHistory(t, claudeDir, entries)
 
-	stubGitRemote := func(path string) (string, string, error) {
+	stubGitRemote := func(path string) (RemoteInfo, error) {
 		if path == project {
-			return "owner", "my-repo", nil
+			return RemoteInfo{Platform: "github", Owner: "owner", Repo: "my-repo"}, nil
 		}
-		return "", "", fmt.Errorf("unknown path: %s", path)
+		return RemoteInfo{}, fmt.Errorf("unknown path: %s", path)
 	}
 
 	summary, err := DiscoverRepos(claudeDir, stubGitRemote)
@@ -276,8 +287,8 @@ func TestDiscoverRepos_WorktreeDedup(t *testing.T) {
 func TestDiscoverRepos_EmptyHistory(t *testing.T) {
 	tmpDir := t.TempDir()
 	// No history.jsonl at all.
-	summary, err := DiscoverRepos(tmpDir, func(string) (string, string, error) {
-		return "", "", fmt.Errorf("should not be called")
+	summary, err := DiscoverRepos(tmpDir, func(string) (RemoteInfo, error) {
+		return RemoteInfo{}, fmt.Errorf("should not be called")
 	})
 	if err != nil {
 		t.Fatalf("DiscoverRepos() error: %v", err)

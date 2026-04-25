@@ -21,7 +21,7 @@ module Api
 
       def push_params
         params.permit(
-          :repo_path, :remote_url, :owner, :repo,
+          :repo_path, :remote_url, :platform, :owner, :repo,
           prs: [
             :number, :title, :branch, :state, :created_at,
             :merged_at, :closed_at, :url, :additions, :deletions, :changed_files
