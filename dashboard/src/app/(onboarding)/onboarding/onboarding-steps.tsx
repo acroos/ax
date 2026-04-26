@@ -477,9 +477,12 @@ export function OnboardingSteps({
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   }
 
-  // Fetch the API key when we reach the CLI step
+  // Fetch the API key when we reach the CLI step.
+  // Do NOT depend on apiKeyLoading: setting it inside this effect would
+  // re-run the effect and its cleanup would cancel the in-flight fetch
+  // before it could store the key, leaving the UI stuck on "Loading...".
   useEffect(() => {
-    if (currentStep !== "cli" || apiKey !== null || apiKeyLoading) return;
+    if (currentStep !== "cli" || apiKey !== null) return;
 
     let cancelled = false;
     setApiKeyLoading(true);
@@ -495,7 +498,7 @@ export function OnboardingSteps({
     return () => {
       cancelled = true;
     };
-  }, [currentStep, apiKey, apiKeyLoading]);
+  }, [currentStep, apiKey]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
