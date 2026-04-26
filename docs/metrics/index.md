@@ -38,7 +38,7 @@ These metrics are still computed and accessible on detail pages but are no longe
 | 11 | [Line Revisit Rate](./line-revisit-rate.md) | Delivery | How often the same lines are modified across different PRs | Git blame/diff |
 | 12 | [Token Total per PR](./token-cost-per-pr.md) | Session Effectiveness | Input plus output tokens consumed across sessions for a PR | Session data |
 | 13 | [Cache Hit Rate](./cache-hit-rate.md) | Session Effectiveness | Ratio of cache-read tokens to total input tokens | Session data |
-| 14 | [Sidechain Rate](./sidechain-rate.md) | Session Effectiveness | Fraction of messages on sidechain branches (backtracking) | Session data |
+| 14 | [Sidechain Rate](./sidechain-rate.md) | Session Effectiveness | Fraction of Claude Code messages on sidechain branches (backtracking) | Claude Code session data |
 | 15 | [Re-Read Rate](./re-read-rate.md) | Session Effectiveness | Total file reads divided by unique files read | Session data |
 
 ---

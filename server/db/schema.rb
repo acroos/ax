@@ -228,7 +228,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_25_000001) do
     t.string "primary_model"
     t.string "pushed_by"
     t.bigint "repo_id"
-    t.integer "sidechain_messages", default: 0, null: false
+    t.integer "sidechain_messages"
     t.integer "skill_tool_calls", default: 0, null: false
     t.datetime "started_at"
     t.integer "total_file_reads", default: 0, null: false

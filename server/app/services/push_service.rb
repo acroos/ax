@@ -156,6 +156,13 @@ class PushService
     peak_context_pct total_tool_calls agent_tool_calls skill_tool_calls mcp_tool_calls
   ].freeze
 
+  def sidechain_messages_for(session_data)
+    return session_data[:sidechain_messages] if session_data.key?(:sidechain_messages)
+    return nil if session_data[:agent_type] == "copilot_cli"
+
+    0
+  end
+
   def upsert_sessions(repo)
     session_data_list = Array(@params[:sessions])
     return 0 if session_data_list.empty?
@@ -193,7 +200,7 @@ class PushService
         files_read_count: s[:files_read_count] || 0,
         files_modified_count: s[:files_modified_count] || 0,
         assistant_message_count: s[:assistant_message_count] || 0,
-        sidechain_messages: s[:sidechain_messages] || 0,
+        sidechain_messages: sidechain_messages_for(s),
         total_file_reads: s[:total_file_reads] || 0,
         pushed_by: @user.github_username,
         peak_context_pct: s[:peak_context_pct],

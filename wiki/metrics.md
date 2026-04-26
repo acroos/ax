@@ -31,7 +31,7 @@ Measures how efficiently the human directed the agent and how well the session u
 | Autonomy Score | float | Sessions | Yes | `assistant_messages / human_messages` — higher = agent works more independently. |
 | Token Total per PR | int | Sessions | No | Input plus output tokens used across correlated sessions. |
 | Cache Hit Rate | float | Sessions | No | Ratio of cache-read tokens to total input tokens. Higher = better cache utilization. |
-| Sidechain Rate | float | Sessions | No | Fraction of messages on sidechain branches (backtracking). Lower = fewer dead-end paths. |
+| Sidechain Rate | float | Sessions | No | Fraction of Claude Code messages on sidechain branches (backtracking). Lower = fewer dead-end paths. Copilot CLI sessions are excluded because they do not expose an equivalent signal. |
 | Re-Read Rate | float | Sessions | No | `total_file_reads / unique_files_read` — 1.0 = no re-reads, higher = redundant reading. |
 
 ### Adoption Maturity

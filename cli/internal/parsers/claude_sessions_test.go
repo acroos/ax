@@ -669,8 +669,11 @@ func TestToSessionDataPeakContextPct(t *testing.T) {
 
 	// Model is claude-opus-4-6[1m] → max context = 1,000,000
 	// PeakContextPct = 200000 / 1000000 = 0.2
-	if diff := sd.PeakContextPct - 0.2; diff > 0.001 || diff < -0.001 {
-		t.Errorf("PeakContextPct = %f, want 0.2", sd.PeakContextPct)
+	if sd.PeakContextPct == nil {
+		t.Fatal("PeakContextPct = nil, want 0.2")
+	}
+	if diff := *sd.PeakContextPct - 0.2; diff > 0.001 || diff < -0.001 {
+		t.Errorf("PeakContextPct = %f, want 0.2", *sd.PeakContextPct)
 	}
 
 	// Verify tool counts are passed through
@@ -703,8 +706,11 @@ func TestToSessionDataPeakContextPctStandardModel(t *testing.T) {
 	// msg_003: 500 + 0 + 50 = 550
 	// Peak = 1650, pct = 1650 / 200000 = 0.00825
 	expectedPct := 1650.0 / 200000.0
-	if diff := sd.PeakContextPct - expectedPct; diff > 0.0001 || diff < -0.0001 {
-		t.Errorf("PeakContextPct = %f, want %f", sd.PeakContextPct, expectedPct)
+	if sd.PeakContextPct == nil {
+		t.Fatalf("PeakContextPct = nil, want %f", expectedPct)
+	}
+	if diff := *sd.PeakContextPct - expectedPct; diff > 0.0001 || diff < -0.0001 {
+		t.Errorf("PeakContextPct = %f, want %f", *sd.PeakContextPct, expectedPct)
 	}
 }
 

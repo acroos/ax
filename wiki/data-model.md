@@ -81,9 +81,9 @@ Agentic coding sessions. PK is `id` (UUID string from the local agent session fi
 | files_read_count | integer | Unique files read |
 | files_modified_count | integer | Unique files modified |
 | assistant_message_count | integer | Assistant messages in session |
-| sidechain_messages | integer | Messages on sidechain branches |
+| sidechain_messages | integer | Messages on sidechain branches. Nullable for agents without an equivalent signal, such as Copilot CLI. |
 | total_file_reads | integer | Total Read tool invocations |
-| peak_context_pct | real | Highest fraction (0.0–1.0) of model's context window used in any single message. Pre-computed by CLI using model-specific max context limits. Null for sessions pushed before CLI v2 update. |
+| peak_context_pct | real | Highest fraction (0.0–1.0) of model's context window used in any single message. Pre-computed by CLI using model-specific max context limits. Null for sessions pushed before CLI v2 update or agents without a reliable peak context signal. |
 | total_tool_calls | integer | Sum of all tool call counts in the session (default 0) |
 | agent_tool_calls | integer | Count of `Agent` tool calls — subagent delegation (default 0) |
 | skill_tool_calls | integer | Count of `Skill` tool calls — slash commands (default 0) |

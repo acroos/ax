@@ -22,8 +22,8 @@ branch: "feature/copilot"
 {"type":"session.model_change","timestamp":"2026-04-01T10:00:01Z","data":{"newModel":"gpt-5.4"}}
 {"type":"user.message","timestamp":"2026-04-01T10:00:02Z","data":{"message":"hello"}}
 {"type":"assistant.turn_start","timestamp":"2026-04-01T10:00:03Z","data":{}}
-{"type":"assistant.message","timestamp":"2026-04-01T10:00:04Z","data":{"model":"gpt-5.4","toolRequests":[{"id":"tool-1","toolName":"bash"},{"id":"tool-2","toolName":"edit_file"},{"id":"tool-3","toolName":"read_file"},{"id":"tool-4","toolName":"bash"}]}}
-{"type":"tool.execution_start","timestamp":"2026-04-01T10:00:05Z","data":{"toolName":"bash","arguments":{"command":"gh pr create"},"toolRequestId":"tool-1"}}
+{"type":"assistant.message","timestamp":"2026-04-01T10:00:04Z","data":{"model":"gpt-5.4","toolRequests":[{"id":"tool-1","toolName":"shell"},{"id":"tool-2","toolName":"edit_file"},{"id":"tool-3","toolName":"read_file"},{"id":"tool-4","toolName":"bash"}]}}
+{"type":"tool.execution_start","timestamp":"2026-04-01T10:00:05Z","data":{"toolName":"shell","arguments":{"command":"gh pr create"},"toolRequestId":"tool-1"}}
 {"type":"tool.execution_start","timestamp":"2026-04-01T10:00:06Z","data":{"toolName":"edit_file","arguments":{"file_path":"README.md"},"toolRequestId":"tool-2"}}
 {"type":"tool.execution_start","timestamp":"2026-04-01T10:00:07Z","data":{"toolName":"read_file","arguments":{"path":"README.md"},"toolRequestId":"tool-3"}}
 {"type":"tool.execution_start","timestamp":"2026-04-01T10:00:08Z","data":{"toolName":"bash","arguments":{"command":"git commit -m test"},"toolRequestId":"tool-4"}}
@@ -58,6 +58,14 @@ branch: "feature/copilot"
 	if session.TotalToolCalls != 4 || session.TotalFileReads != 1 || len(session.FilesModified) != 1 {
 		t.Errorf("tool/file counts = tools %d reads %d modified %d, want 4/1/1", session.TotalToolCalls, session.TotalFileReads, len(session.FilesModified))
 	}
+	sd := session.ToSessionData()
+	if sd.SidechainMessages != nil {
+		t.Fatalf("SidechainMessages = %d, want nil for Copilot CLI", *sd.SidechainMessages)
+	}
+	if sd.PeakContextPct != nil {
+		t.Fatalf("PeakContextPct = %f, want nil for Copilot CLI", *sd.PeakContextPct)
+	}
+
 	if len(session.PRURLs) != 1 || session.PRURLs[0] != "https://github.com/owner/repo/pull/123" {
 		t.Fatalf("PRURLs = %#v, want PR URL", session.PRURLs)
 	}

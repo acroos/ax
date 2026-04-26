@@ -248,9 +248,6 @@ func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
 					session.CacheCreationInputTokens += metrics.Usage.CacheWriteTokens
 					session.CacheReadInputTokens += metrics.Usage.CacheReadTokens
 				}
-				if data.CurrentTokens > session.PeakContextTokens {
-					session.PeakContextTokens = data.CurrentTokens
-				}
 			}
 		}
 	}
@@ -292,7 +289,7 @@ func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
 
 func recordCopilotTool(name, toolCallID string, args json.RawMessage, session *ParsedSession, bashToolIDs map[string]string, filesReadSet, filesModifiedSet map[string]bool) {
 	switch name {
-	case "bash", "run_command":
+	case "bash", "shell", "run_command":
 		var arg copilotBashArg
 		if json.Unmarshal(args, &arg) == nil && arg.Command != "" && toolCallID != "" {
 			bashToolIDs[toolCallID] = arg.Command
