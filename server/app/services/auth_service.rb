@@ -14,6 +14,8 @@ class AuthService
     if user.previously_new_record?
       create_personal_org(user)
       ApiKey.generate_for(user)
+    else
+      ensure_personal_org(user)
     end
 
     process_pending_invites(user)
@@ -33,7 +35,7 @@ class AuthService
 
     user.update!(
       gitlab_id: auth_hash.uid,
-      gitlab_username: auth_hash.info.nickname,
+      gitlab_username: auth_hash.info.username,
       email: auth_hash.info.email,
       display_name: auth_hash.info.name,
       avatar_url: auth_hash.info.image,
@@ -43,6 +45,8 @@ class AuthService
     if user.previously_new_record?
       create_personal_org(user)
       ApiKey.generate_for(user)
+    else
+      ensure_personal_org(user)
     end
 
     process_pending_invites(user)
@@ -53,6 +57,15 @@ class AuthService
     username = user.github_username || user.gitlab_username
     entry = WaitlistEntry.find_by(github_username: username, status: "approved")
     raise ForbiddenError, "Not approved to create organizations" unless entry
+  end
+
+  # Recovery: if a returning user somehow lost their personal org (e.g.,
+  # a prior sign-in created the User but org creation failed), recreate it.
+  def self.ensure_personal_org(user)
+    return if user.personal_org.present?
+
+    create_personal_org(user)
+    ApiKey.generate_for(user) unless user.api_key
   end
 
   def self.create_personal_org(user)

@@ -17,7 +17,7 @@ RSpec.describe AuthService do
     OmniAuth::AuthHash.new(
       uid: "67890",
       info: OmniAuth::AuthHash::InfoHash.new(
-        nickname: "gitlabfox",
+        username: "gitlabfox",
         email: "fox@gitlab.com",
         name: "The Fox",
         image: "https://gitlab.com/uploads/-/system/user/avatar/67890/avatar.png"
@@ -51,6 +51,15 @@ RSpec.describe AuthService do
       user = AuthService.find_or_create_from_github(updated_hash)
       expect(user.display_name).to eq("Updated Name")
       expect(User.count).to eq(1)
+    end
+
+    it "creates personal org for returning user who lost theirs" do
+      user = AuthService.find_or_create_from_github(github_auth_hash)
+      user.personal_org.destroy!
+
+      returning = AuthService.find_or_create_from_github(github_auth_hash)
+      expect(returning.personal_org).to be_present
+      expect(returning.personal_org.slug).to eq("octocat")
     end
 
     it "processes pending invites on login" do
@@ -143,11 +152,21 @@ RSpec.describe AuthService do
 
     it "does not create a second personal org when linking accounts" do
       existing = create(:user, email: "fox@gitlab.com")
-      create(:organization, created_by: existing, is_personal: true)
+      org = create(:organization, created_by: existing, is_personal: true)
+      create(:org_membership, organization: org, user: existing, role: "owner")
 
       expect {
         AuthService.find_or_create_from_gitlab(gitlab_auth_hash)
       }.not_to change(Organization, :count)
+    end
+
+    it "creates personal org for returning user who lost theirs" do
+      user = AuthService.find_or_create_from_gitlab(gitlab_auth_hash)
+      user.personal_org.destroy!
+
+      returning = AuthService.find_or_create_from_gitlab(gitlab_auth_hash)
+      expect(returning.personal_org).to be_present
+      expect(returning.personal_org.slug).to eq("gitlabfox")
     end
 
     it "processes pending GitLab invites on login" do
