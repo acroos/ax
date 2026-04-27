@@ -73,7 +73,7 @@ class PersonalDataExportService
           turn_count: session.turn_count,
           input_tokens: session.input_tokens,
           output_tokens: session.output_tokens,
-          total_cost_usd: session.total_cost_usd,
+          agent_type: session.agent_type,
           primary_model: session.primary_model
         }
       end

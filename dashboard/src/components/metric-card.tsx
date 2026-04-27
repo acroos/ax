@@ -18,11 +18,6 @@ export function fmtPct(n: number | null): string {
   return `${Math.round(n * 100)}%`;
 }
 
-export function fmtCost(n: number | null): string {
-  if (n === null) return "\u2014";
-  return `$${n.toFixed(2)}`;
-}
-
 export function fmtHours(n: number | null): string {
   if (n === null) return "\u2014";
   return n < 1 ? `${Math.round(n * 60)} min` : `${n.toFixed(1)} hrs`;

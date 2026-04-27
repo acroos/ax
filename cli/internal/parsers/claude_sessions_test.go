@@ -336,10 +336,10 @@ func TestIsSessionUUID(t *testing.T) {
 		{"memory", false},
 		{"subagents", false},
 		{"session1.jsonl", false},
-		{"580d904d96af4905865b70a8d476d203", false}, // no dashes
-		{"580d904d-96af-4905-865b-70a8d476d20", false}, // too short
+		{"580d904d96af4905865b70a8d476d203", false},      // no dashes
+		{"580d904d-96af-4905-865b-70a8d476d20", false},   // too short
 		{"580d904d-96af-4905-865b-70a8d476d2030", false}, // too long
-		{"580d904d-96af-4905-865b-70a8d476d20g", false}, // invalid hex
+		{"580d904d-96af-4905-865b-70a8d476d20g", false},  // invalid hex
 	}
 
 	for _, tt := range tests {
@@ -397,12 +397,6 @@ func TestParseSessionNormal(t *testing.T) {
 	}
 	if session.CacheReadInputTokens != 300 {
 		t.Errorf("CacheReadInputTokens = %d, want 300", session.CacheReadInputTokens)
-	}
-
-	// Cost: sonnet pricing (3.0/15.0/0.3/3.75 per MTok)
-	expectedCost := 0.0197775
-	if diff := session.TotalCostUSD - expectedCost; diff > 0.0001 || diff < -0.0001 {
-		t.Errorf("TotalCostUSD = %f, want ~%f", session.TotalCostUSD, expectedCost)
 	}
 
 	// Model
@@ -675,8 +669,11 @@ func TestToSessionDataPeakContextPct(t *testing.T) {
 
 	// Model is claude-opus-4-6[1m] → max context = 1,000,000
 	// PeakContextPct = 200000 / 1000000 = 0.2
-	if diff := sd.PeakContextPct - 0.2; diff > 0.001 || diff < -0.001 {
-		t.Errorf("PeakContextPct = %f, want 0.2", sd.PeakContextPct)
+	if sd.PeakContextPct == nil {
+		t.Fatal("PeakContextPct = nil, want 0.2")
+	}
+	if diff := *sd.PeakContextPct - 0.2; diff > 0.001 || diff < -0.001 {
+		t.Errorf("PeakContextPct = %f, want 0.2", *sd.PeakContextPct)
 	}
 
 	// Verify tool counts are passed through
@@ -709,8 +706,11 @@ func TestToSessionDataPeakContextPctStandardModel(t *testing.T) {
 	// msg_003: 500 + 0 + 50 = 550
 	// Peak = 1650, pct = 1650 / 200000 = 0.00825
 	expectedPct := 1650.0 / 200000.0
-	if diff := sd.PeakContextPct - expectedPct; diff > 0.0001 || diff < -0.0001 {
-		t.Errorf("PeakContextPct = %f, want %f", sd.PeakContextPct, expectedPct)
+	if sd.PeakContextPct == nil {
+		t.Fatalf("PeakContextPct = nil, want %f", expectedPct)
+	}
+	if diff := *sd.PeakContextPct - expectedPct; diff > 0.0001 || diff < -0.0001 {
+		t.Errorf("PeakContextPct = %f, want %f", *sd.PeakContextPct, expectedPct)
 	}
 }
 

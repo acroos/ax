@@ -130,7 +130,7 @@ export interface PRMetrics {
   line_revisit_rate: number | null;
   // Session-derived fields are computed on-the-fly for PR detail only
   iteration_depth?: number | null;
-  token_cost_usd?: number | null;
+  total_tokens?: number | null;
   cache_hit_rate?: number | null;
   sidechain_rate?: number | null;
   re_read_rate?: number | null;
@@ -148,7 +148,7 @@ export interface PRMetrics {
 
 export interface SessionMetrics {
   iteration_depth: number | null;
-  token_cost_usd: number | null;
+  total_tokens: number | null;
   cache_hit_rate: number | null;
   sidechain_rate: number | null;
   re_read_rate: number | null;
@@ -161,6 +161,7 @@ export interface SessionMetrics {
 
 export interface SessionWithMetrics {
   id: string;
+  agent_type: AgentType;
   started_at: string | null;
   ended_at: string | null;
   branch: string | null;
@@ -177,6 +178,8 @@ export interface PaginatedSessions {
     total: number;
   };
 }
+
+export type AgentType = "claude_code" | "copilot_cli";
 
 export interface PRWithMetrics extends PR {
   metrics: PRMetrics | null;
@@ -269,7 +272,7 @@ export interface TimelinePoint {
   createdAt: string;
   postOpenCommits: number | null;
   ciSuccessRate: number | null;
-  tokenCostUSD: number | null;
+  totalTokens: number | null;
 }
 
 // --- GitHub Installation ---
@@ -362,8 +365,9 @@ export async function getTeamMetricsAsync(
   orgSlug: string,
   teamSlug: string,
   range?: string,
+  agentType?: AgentType,
 ): Promise<AggregateMetrics> {
-  const rangeParam = range ? `?range=${range}` : "";
+  const rangeParam = buildQuery({ range, agent_type: agentType });
   return fetchAPI<AggregateMetrics>(
     orgApiPath(orgSlug, `/teams/${teamSlug}/metrics`) + rangeParam,
   );
@@ -398,15 +402,16 @@ export async function getMetricDetailAsync(
   metricSlug: string,
   range?: string,
   repoId?: number,
+  agentType?: AgentType,
 ): Promise<MetricDetailResponse> {
-  const rangeParam = range ? `&range=${range}` : "";
+  const qs = buildQuery({ range, agent_type: agentType });
   if (repoId) {
     return fetchAPI<MetricDetailResponse>(
-      orgApiPath(orgSlug, `/repos/${repoId}/metrics/${metricSlug}`) + `?${rangeParam.slice(1)}`,
+      orgApiPath(orgSlug, `/repos/${repoId}/metrics/${metricSlug}`) + qs,
     );
   }
   return fetchAPI<MetricDetailResponse>(
-    orgApiPath(orgSlug, `/metrics/${metricSlug}`) + (rangeParam ? `?${rangeParam.slice(1)}` : ""),
+    orgApiPath(orgSlug, `/metrics/${metricSlug}`) + qs,
   );
 }
 
@@ -414,8 +419,9 @@ export async function getMyMetricDetailAsync(
   orgSlug: string,
   metricSlug: string,
   range?: string,
+  agentType?: AgentType,
 ): Promise<MetricDetailResponse> {
-  const rangeParam = range ? `?range=${range}` : "";
+  const rangeParam = buildQuery({ range, agent_type: agentType });
   return fetchAPI<MetricDetailResponse>(
     orgApiPath(orgSlug, `/me/metrics/${metricSlug}`) + rangeParam,
   );
@@ -426,8 +432,9 @@ export async function getTeamMetricDetailAsync(
   teamSlug: string,
   metricSlug: string,
   range?: string,
+  agentType?: AgentType,
 ): Promise<MetricDetailResponse> {
-  const rangeParam = range ? `?range=${range}` : "";
+  const rangeParam = buildQuery({ range, agent_type: agentType });
   return fetchAPI<MetricDetailResponse>(
     orgApiPath(orgSlug, `/teams/${teamSlug}/metrics/${metricSlug}`) + rangeParam,
   );
@@ -436,8 +443,9 @@ export async function getTeamMetricDetailAsync(
 export async function getMyMetricsAsync(
   orgSlug: string,
   range?: string,
+  agentType?: AgentType,
 ): Promise<AggregateMetrics> {
-  const rangeParam = range ? `?range=${range}` : "";
+  const rangeParam = buildQuery({ range, agent_type: agentType });
   return fetchAPI<AggregateMetrics>(
     orgApiPath(orgSlug, "/me/metrics") + rangeParam,
   );
@@ -457,8 +465,9 @@ export async function listSessionsAsync(
   repoId?: number,
   orgSlug?: string,
   pagination?: { per_page?: number },
+  agentType?: AgentType,
 ): Promise<PaginatedSessions> {
-  const qs = pagination?.per_page ? `?per_page=${pagination.per_page}` : "";
+  const qs = buildQuery({ per_page: pagination?.per_page, agent_type: agentType });
   if (repoId && orgSlug) {
     return fetchAPI<PaginatedSessions>(
       orgApiPath(orgSlug, `/repos/${repoId}/sessions`) + qs,
@@ -475,8 +484,9 @@ export async function listSessionsAsync(
 export async function listMySessionsAsync(
   orgSlug: string,
   pagination?: { per_page?: number },
+  agentType?: AgentType,
 ): Promise<PaginatedSessions> {
-  const qs = pagination?.per_page ? `?per_page=${pagination.per_page}` : "";
+  const qs = buildQuery({ per_page: pagination?.per_page, agent_type: agentType });
   return fetchAPI<PaginatedSessions>(
     orgApiPath(orgSlug, "/me/sessions") + qs,
   );
@@ -486,8 +496,9 @@ export async function listTeamSessionsAsync(
   orgSlug: string,
   teamSlug: string,
   pagination?: { per_page?: number },
+  agentType?: AgentType,
 ): Promise<PaginatedSessions> {
-  const qs = pagination?.per_page ? `?per_page=${pagination.per_page}` : "";
+  const qs = buildQuery({ per_page: pagination?.per_page, agent_type: agentType });
   return fetchAPI<PaginatedSessions>(
     orgApiPath(orgSlug, `/teams/${teamSlug}/sessions`) + qs,
   );
@@ -502,6 +513,13 @@ function buildPaginationQuery(
   const parts: string[] = [];
   if (pagination.cursor) parts.push(`cursor=${encodeURIComponent(pagination.cursor)}`);
   if (pagination.per_page) parts.push(`per_page=${pagination.per_page}`);
+  return parts.length ? `?${parts.join("&")}` : "";
+}
+
+function buildQuery(params: Record<string, string | number | undefined>): string {
+  const parts = Object.entries(params).flatMap(([key, value]) =>
+    value === undefined || value === "" ? [] : [`${key}=${encodeURIComponent(String(value))}`],
+  );
   return parts.length ? `?${parts.join("&")}` : "";
 }
 
@@ -547,8 +565,9 @@ export async function getAggregateMetricsAsync(
   repoId?: number,
   orgSlug?: string,
   range?: string,
+  agentType?: AgentType,
 ): Promise<AggregateMetrics> {
-  const rangeParam = range ? `?range=${range}` : "";
+  const rangeParam = buildQuery({ range, agent_type: agentType });
   if (repoId) {
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/metrics`) + rangeParam
@@ -574,7 +593,7 @@ export function computeAggregatesFromPRs(prs: PRWithMetrics[]): AggregateMetrics
   const withMetrics = prs.filter((p) => p.metrics);
   const totalPRs = prs.length;
   const sessionDataCount = withMetrics.filter(
-    (p) => p.metrics!.token_cost_usd !== null
+    (p) => p.metrics!.total_tokens !== null
   ).length;
 
   const metrics: Record<string, MetricAggregate> = {};
@@ -622,9 +641,9 @@ function buildTimeline(prs: PRWithMetrics[]): TimelinePoint[] {
         p.metrics!.ci_success_rate !== null
           ? Math.round(p.metrics!.ci_success_rate * 100)
           : null,
-      tokenCostUSD:
-        p.metrics!.token_cost_usd != null
-          ? Math.round(p.metrics!.token_cost_usd * 100) / 100
+      totalTokens:
+        p.metrics!.total_tokens != null
+          ? Math.round(p.metrics!.total_tokens)
           : null,
     }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));

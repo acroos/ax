@@ -1,6 +1,6 @@
 # Data Collection & Privacy
 
-AX collects data about your Claude Code sessions and GitHub pull requests to compute developer experience metrics. This page describes exactly what is collected, what is sent to the server, and what is not.
+AX collects data about your Claude Code/Copilot CLI sessions and GitHub pull requests to compute developer experience metrics. This page describes exactly what is collected, what is sent to the server, and what is not.
 
 ## What the CLI reads locally
 
@@ -8,6 +8,7 @@ The AX CLI reads these files on your machine:
 
 - **Claude Code session files** — `~/.claude/projects/<path>/*.jsonl` — parsed for metadata (token counts, tool usage, timestamps), never for conversation content
 - **Claude Code history** — `~/.claude/history.jsonl` — used by `ax push --all` to discover which repos have session data
+- **Copilot CLI session files** — `~/.copilot/session-state/<uuid>/events.jsonl` and `workspace.yaml` — parsed for metadata (token counts, tool usage, timestamps, repo), never for conversation content
 - **Git remote URL** — from `.git/config` via `git remote get-url origin` — used to identify the repository
 
 ## What is sent to the server
@@ -24,7 +25,7 @@ When `ax push` runs (manually or via the automatic SessionEnd hook), it sends **
 | Turn count | Number of human turns |
 | Input / output tokens | Token counts across all messages |
 | Cache tokens | Prompt cache creation and read token counts |
-| Total cost (USD) | Computed locally using public model pricing |
+| Agent type | `claude_code` or `copilot_cli` |
 | Primary model | Model used in the majority of messages |
 | Bash errors / successes | Count of failed and successful bash commands |
 | Files read count | **Count only** — not file names or paths |

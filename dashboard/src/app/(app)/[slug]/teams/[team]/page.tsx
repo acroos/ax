@@ -4,7 +4,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Users, GitBranch } from "lucide-react";
 import { getTeamAsync, getTeamMetricsAsync, listTeamsAsync } from "@/lib/db";
-import type { AggregateMetrics, Team, TeamDetail } from "@/lib/db";
+import type { AgentType, AggregateMetrics, Team, TeamDetail } from "@/lib/db";
+import { parseAgentType } from "@/lib/utils";
+import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
 import { Skeleton, SkeletonMetricCategory } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
@@ -22,16 +24,17 @@ export default async function TeamOverviewPage({
   searchParams,
 }: {
   params: Promise<{ slug: string; team: string }>;
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; agent_type?: string }>;
 }) {
   const { slug, team: teamSlug } = await params;
-  const { range: rangeParam } = await searchParams;
+  const { range: rangeParam, agent_type: agentTypeParam } = await searchParams;
   const range: Range = VALID_RANGES.includes(rangeParam as Range)
     ? (rangeParam as Range)
     : "30d";
+  const agentType = parseAgentType(agentTypeParam);
 
   const teamPromise = getTeamAsync(slug, teamSlug);
-  const metricsPromise = getTeamMetricsAsync(slug, teamSlug, range);
+  const metricsPromise = getTeamMetricsAsync(slug, teamSlug, range, agentType);
   const teamsPromise = listTeamsAsync(slug).catch(() => [] as Team[]);
 
   return (
@@ -51,6 +54,7 @@ export default async function TeamOverviewPage({
             slug={slug}
             teamSlug={teamSlug}
             range={range}
+            agentType={agentType}
           />
         </Suspense>
       </div>
@@ -62,6 +66,7 @@ export default async function TeamOverviewPage({
             slug={slug}
             teamSlug={teamSlug}
             range={range}
+            agentType={agentType}
           />
         </Suspense>
       </SectionErrorBoundary>
@@ -99,7 +104,6 @@ function teamsToScopeTeams(teams: Team[]): ScopeTeam[] {
     memberCount: t.member_count,
   }));
 }
-
 async function TeamSubtitle({
   teamPromise,
   metricsPromise,
@@ -107,6 +111,7 @@ async function TeamSubtitle({
   slug,
   teamSlug,
   range,
+  agentType,
 }: {
   teamPromise: Promise<TeamDetail>;
   metricsPromise: Promise<AggregateMetrics>;
@@ -114,6 +119,7 @@ async function TeamSubtitle({
   slug: string;
   teamSlug: string;
   range: Range;
+  agentType?: AgentType;
 }) {
   const [team, allTeams] = await Promise.all([teamPromise, teamsPromise]);
   let metrics: AggregateMetrics | null = null;
@@ -133,6 +139,8 @@ async function TeamSubtitle({
       <span className="font-medium text-foreground">
         {team.member_count} member{team.member_count !== 1 && "s"}
       </span>
+      {" "}&middot;{" "}
+      <AgentTypeFilter current={agentType} />
       {metrics !== null && (
         <>
           {" "}
@@ -178,11 +186,13 @@ async function TeamMetricsBody({
   slug,
   teamSlug,
   range,
+  agentType,
 }: {
   metricsPromise: Promise<AggregateMetrics>;
   slug: string;
   teamSlug: string;
   range: Range;
+  agentType?: AgentType;
 }) {
   const data = await metricsPromise;
   if (data.totalPRs === 0 && data.totalSessions === 0) return <NoDataState />;
@@ -191,7 +201,7 @@ async function TeamMetricsBody({
     <OverviewMetricsGrid
       metrics={data.metrics}
       range={range}
-      metricHref={(metricSlug) => `/${slug}/teams/${teamSlug}/metrics/${metricSlug}?range=${range}`}
+      metricHref={(metricSlug) => `/${slug}/teams/${teamSlug}/metrics/${metricSlug}?${new URLSearchParams({ range, ...(agentType ? { agent_type: agentType } : {}) }).toString()}`}
     />
   );
 }

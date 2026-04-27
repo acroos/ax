@@ -39,8 +39,8 @@ type ParsedSession struct {
 	OutputTokens             int
 	CacheCreationInputTokens int
 	CacheReadInputTokens     int
-	TotalCostUSD             float64
 	PrimaryModel             string // model used in majority of messages
+	AgentType                string // claude_code or copilot_cli
 
 	// Tool usage
 	ToolCalls     map[string]int // tool name → call count
@@ -65,15 +65,28 @@ type ParsedSession struct {
 
 // ToSessionData converts a ParsedSession to the API push payload format.
 func (s *ParsedSession) ToSessionData() api.SessionData {
+	agentType := s.AgentType
+	if agentType == "" {
+		agentType = "claude_code"
+	}
+
 	// Compute peak context window percentage using model-specific limits.
-	var peakContextPct float64
-	if s.PeakContextTokens > 0 {
+	var peakContextPct *float64
+	if agentType == "claude_code" && s.PeakContextTokens > 0 {
 		maxCtx := pricing.LookupMaxContext(s.PrimaryModel)
-		peakContextPct = float64(s.PeakContextTokens) / float64(maxCtx)
+		value := float64(s.PeakContextTokens) / float64(maxCtx)
+		peakContextPct = &value
+	}
+
+	var sidechainMessages *int
+	if agentType == "claude_code" {
+		value := s.SidechainMessages
+		sidechainMessages = &value
 	}
 
 	return api.SessionData{
 		ID:                       s.ID,
+		AgentType:                agentType,
 		Branch:                   s.Branch,
 		StartedAt:                s.StartedAt,
 		EndedAt:                  s.EndedAt,
@@ -83,12 +96,11 @@ func (s *ParsedSession) ToSessionData() api.SessionData {
 		OutputTokens:             s.OutputTokens,
 		CacheCreationInputTokens: s.CacheCreationInputTokens,
 		CacheReadInputTokens:     s.CacheReadInputTokens,
-		TotalCostUSD:             s.TotalCostUSD,
 		PrimaryModel:             s.PrimaryModel,
 		FilesReadCount:           len(s.FilesRead),
 		FilesModifiedCount:       len(s.FilesModified),
 		AssistantMessageCount:    s.AssistantMessages,
-		SidechainMessages:        s.SidechainMessages,
+		SidechainMessages:        sidechainMessages,
 		TotalFileReads:           s.TotalFileReads,
 		PeakContextPct:           peakContextPct,
 		TotalToolCalls:           s.TotalToolCalls,
@@ -308,6 +320,13 @@ func ParseSession(path string) (*ParsedSession, error) {
 		return nil, fmt.Errorf("failed to stat session path: %w", err)
 	}
 
+	if info.IsDir() {
+		copilotEventsPath := filepath.Join(path, "events.jsonl")
+		if _, err := os.Stat(copilotEventsPath); err == nil {
+			return ParseCopilotSession(path)
+		}
+	}
+
 	var sessionID string
 	var files []string
 
@@ -330,6 +349,7 @@ func ParseSession(path string) (*ParsedSession, error) {
 func parseSessionFiles(sessionID string, files []string) (*ParsedSession, error) {
 	session := &ParsedSession{
 		ID:        sessionID,
+		AgentType: "claude_code",
 		ToolCalls: make(map[string]int),
 	}
 
@@ -492,12 +512,7 @@ func parseSessionFile(filePath string, session *ParsedSession,
 					session.PeakContextTokens = msgContext
 				}
 
-				// Compute per-message cost
 				if mc.Model != "" {
-					cost := pricing.ComputeCost(mc.Model, mc.Usage.InputTokens,
-						mc.Usage.OutputTokens, mc.Usage.CacheReadInputTokens,
-						mc.Usage.CacheCreationInputTokens)
-					session.TotalCostUSD += cost
 					modelCounts[mc.Model]++
 				}
 			}

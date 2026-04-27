@@ -1,7 +1,7 @@
 # AX Setup 🛠️
 
 Get AX running in under 5 minutes. By the end of this guide you'll have
-PR metrics, Claude Code session data, and cost figures flowing into a
+PR metrics, Claude Code/Copilot CLI session data, and token totals flowing into a
 shared dashboard.
 
 ---
@@ -23,10 +23,10 @@ Before you begin, make sure you have:
 - ✅ **A GitHub account** — Sign-in is GitHub OAuth. There is no email/password
   flow.
 
-- ✅ **Claude Code** — The `ax` CLI reads session data from `~/.claude/projects/`
-  and installs hooks into `~/.claude/settings.json`. If you're not using
-  Claude Code yet, session metrics will be empty but GitHub-sourced metrics
-  still work fine.
+- ✅ **Claude Code or Copilot CLI** — The `ax` CLI reads Claude Code sessions
+  from `~/.claude/projects/` and Copilot CLI sessions from `~/.copilot/session-state/`.
+  If neither agent has local session history yet, session metrics will be empty
+  but GitHub-sourced metrics still work fine.
 
 ---
 
@@ -84,6 +84,9 @@ That's the only flag you need! `ax init` will:
 3. 💾 Write `~/.ax/config.json` with your key.
 4. 🪝 Install a Claude Code `SessionEnd` hook into `~/.claude/settings.json`
    that automatically runs `ax push` after each Claude Code session ends.
+5. 🪝 If Copilot CLI state exists, install an AX-owned repo-local
+   `.github/hooks/session-end.json` hook that runs `ax push` after Copilot CLI
+   sessions for that repo.
 
 Flag reference:
 
@@ -107,8 +110,9 @@ ax push --repo .
 
 Here's what happens under the hood:
 
-1. Parses Claude Code session JSONL files from `~/.claude/projects/` for
-   sessions associated with this repo.
+1. Parses Claude Code session JSONL files from `~/.claude/projects/` and
+   Copilot CLI session directories from `~/.copilot/session-state/` for sessions
+   associated with this repo.
 2. Identifies the repo via `git remote get-url origin`.
 3. POSTs the session payload to the AX server.
 
@@ -116,7 +120,7 @@ After the initial push, the `SessionEnd` hook installed by `ax init` handles
 this automatically — no more manual pushes needed! 🎉
 
 > 💡 **Got lots of repos?** Run `ax push --all` to discover all repos from
-> your Claude Code history and push sessions for each one in bulk.
+> your Claude Code and Copilot CLI history and push sessions for each one in bulk.
 
 ---
 

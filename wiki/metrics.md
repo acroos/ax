@@ -29,9 +29,9 @@ Measures how efficiently the human directed the agent and how well the session u
 | Iteration Depth | int | Sessions | Yes | Number of human turns (back-and-forth cycles). |
 | Peak Context Window | float | Sessions | Yes | Highest percentage of the model's context window used in any single message. CLI pre-computes this as `peak_context_pct` (0.0-1.0) using model-specific max context limits. High values mean the session is pushing against limits. |
 | Autonomy Score | float | Sessions | Yes | `assistant_messages / human_messages` — higher = agent works more independently. |
-| Token Cost per PR | float | Sessions | No | Dollar cost of all tokens used, computed with model-specific pricing. |
+| Token Total per PR | int | Sessions | No | Input plus output tokens used across correlated sessions. |
 | Cache Hit Rate | float | Sessions | No | Ratio of cache-read tokens to total input tokens. Higher = better cache utilization. |
-| Sidechain Rate | float | Sessions | No | Fraction of messages on sidechain branches (backtracking). Lower = fewer dead-end paths. |
+| Sidechain Rate | float | Sessions | No | Fraction of Claude Code messages on sidechain branches (backtracking). Lower = fewer dead-end paths. Copilot CLI sessions are excluded because they do not expose an equivalent signal. |
 | Re-Read Rate | float | Sessions | No | `total_file_reads / unique_files_read` — 1.0 = no re-reads, higher = redundant reading. |
 
 ### Adoption Maturity
@@ -67,7 +67,7 @@ Server-side computation is split between these services:
   3. **Task cycle time** — special join pattern: joins `session_prs → sessions` to compute hours from first session start to PR terminal date
   4. **PR throughput** — special aggregate: `merged_count / contributors / weeks`
   5. **Session metric expressions** (`SESSION_METRIC_EXPRESSIONS`) — evaluates SQL expressions per session row (all session-derived metrics including peak-context-pct, subagent-delegation, skill-tool-usage)
-- **`PrsController#show`** — Computes session-derived metrics on-the-fly for the PR detail endpoint by aggregating across linked sessions (via `session_prs` join). Uses SQL expressions consistent with `MetricsAggregator` but aggregated per-PR (MAX for iteration_depth, SUM for token_cost_usd, weighted ratios for rates).
+- **`PrsController#show`** — Computes session-derived metrics on-the-fly for the PR detail endpoint by aggregating across linked sessions (via `session_prs` join). Uses SQL expressions consistent with `MetricsAggregator` but aggregated per-PR (MAX for iteration_depth, SUM for `input_tokens + output_tokens`, weighted ratios for rates).
 - **`MetricDetailComputer`** — Computes all data for the metric detail drill-down page for a single metric. Takes a metric slug, PR/session scopes, and window days. Returns: `{ count, total_count, stats (avg/P10/P50/P90), prior_stats, trend (daily buckets with avg/min/max/count), distribution (histogram buckets), notable_highest, notable_lowest }`. Handles stored PR metrics, computed PR expressions, joined PR metrics (task cycle time), special aggregates (PR throughput), and session-derived metrics. Exposed via `metric_detail` controller actions at org, me, team, and repo scopes.
 - **`SessionSerialization`** — Computes per-session metric values via SQL aliases for the session list endpoints. Each session response includes a `metrics` object with all session-derived metric values (including peak_context_pct, subagent_delegation, skill_tool_usage).
 
@@ -118,7 +118,7 @@ One row per PR. 3 GitHub-derived metrics (`post_open_commits`, `ci_success_rate`
 Rubber Stamp Rate is computed at query time from `prs` table columns (`additions`, `deletions`, `merged_at`, `created_at_source`). Task Cycle Time is computed via a join to `session_prs` and `sessions`. PR Throughput is a pure aggregate. None of these are stored.
 
 ### Session metrics — computed on-the-fly
-The session-derived metrics (iteration_depth, token_cost_usd, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score, peak_context_pct, subagent_delegation, skill_tool_usage) are **not** persisted in `pr_metrics`. They are computed at query time from raw session data in the `sessions` table using SQL expressions. Peak context percentage is pre-computed by the CLI (stored as `peak_context_pct` on `sessions`), while subagent delegation and skill/tool usage are computed from the tool call count columns (`agent_tool_calls`, `skill_tool_calls`, `mcp_tool_calls`, `total_tool_calls`). This approach:
+The session-derived metrics (iteration_depth, total_tokens, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score, peak_context_pct, subagent_delegation, skill_tool_usage) are **not** persisted in `pr_metrics`. They are computed at query time from raw session data in the `sessions` table using SQL expressions. Peak context percentage is pre-computed by the CLI (stored as `peak_context_pct` on `sessions`), while subagent delegation and skill/tool usage are computed from the tool call count columns (`agent_tool_calls`, `skill_tool_calls`, `mcp_tool_calls`, `total_tool_calls`). This approach:
 - Avoids write contention on the `pr_metrics` table from late-arriving session data
 - Ensures session metrics are always up-to-date when new sessions are pushed
 - Allows aggregate session metrics to include sessions not associated with any PR

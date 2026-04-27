@@ -4,8 +4,7 @@ export type MetricValueType =
   | "int"
   | "float"
   | "ratio"
-  | "boolean"
-  | "currency";
+  | "boolean";
 
 export type MetricSource = "pr" | "session";
 
@@ -190,16 +189,15 @@ export const METRIC_DEFS: MetricDefEntry[] = [
   {
     slug: "token-cost-per-pr",
     docSlug: "token-cost-per-pr",
-    field: "token_cost_usd",
-    label: "Token Cost",
+    field: "total_tokens",
+    label: "Token Total",
     category: "Session Effectiveness",
-    valueType: "currency",
-    unit: "$",
+    valueType: "int",
     lowerIsBetter: true,
     source: "session",
     displayed: false,
     tooltip:
-      "How much you spent on AI tokens to produce this PR — tracks whether the agent is cost-efficient or burning through tokens.",
+      "How many input and output tokens were used to produce this PR — tracks whether the agent is efficient or burning through context.",
   },
   {
     slug: "cache-hit-rate",
@@ -254,8 +252,6 @@ export function formatMetricValue(value: number, def: MetricDefEntry): string {
       return `${Math.round(value * 100)}%`;
     case "boolean":
       return value === 1 ? "Yes" : "No";
-    case "currency":
-      return value < 0.01 ? "<$0.01" : `$${value.toFixed(2)}`;
     case "float":
       if (def.unit === "hrs") {
         return value < 1 ? `${Math.round(value * 60)} min` : `${value.toFixed(1)} hrs`;

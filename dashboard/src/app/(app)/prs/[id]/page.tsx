@@ -112,12 +112,12 @@ function getMetricDisplays(pr: PRWithMetrics): MetricDisplay[] {
     });
   }
 
-  if (m.token_cost_usd != null) {
+  if (m.total_tokens != null) {
     metrics.push({
-      label: "Token Cost",
-      value: `$${m.token_cost_usd.toFixed(2)}`,
+      label: "Token Total",
+      value: Intl.NumberFormat("en-US").format(m.total_tokens),
       description:
-        "Total dollar cost of tokens consumed across all sessions for this PR. Computed using model-specific pricing.",
+        "Total input and output tokens consumed across all sessions for this PR.",
       category: "Session Effectiveness",
     });
   }

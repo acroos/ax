@@ -229,8 +229,6 @@ export function computeDistribution(
     let label: string;
     if (def.valueType === "int" && step === 1) {
       label = String(Math.round(lo));
-    } else if (def.unit === "$") {
-      label = `$${lo.toFixed(0)}\u2013$${hi.toFixed(0)}`;
     } else if (def.valueType === "int") {
       label = `${Math.round(lo)}\u2013${Math.round(hi - 1)}`;
     } else {

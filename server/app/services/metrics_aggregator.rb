@@ -18,7 +18,11 @@ class MetricsAggregator
   # Requires joining session data via session_prs.
   TASK_CYCLE_TIME_SLUG = "task-cycle-time"
   TASK_CYCLE_TIME_EXPR = "EXTRACT(EPOCH FROM (COALESCE(prs.merged_at, prs.closed_at) - first_sessions.min_started)) / 3600.0".freeze
-  TASK_CYCLE_TIME_JOIN = "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id".freeze # brakeman:disable SQLInjection — frozen constant
+  TASK_CYCLE_TIME_JOINS = {
+    nil => "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id",
+    "claude_code" => "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id WHERE sessions.agent_type = 'claude_code' GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id",
+    "copilot_cli" => "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id WHERE sessions.agent_type = 'copilot_cli' GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id"
+  }.freeze # brakeman:disable SQLInjection — frozen constants
 
   # PR throughput — special aggregate (merged PRs / contributors / weeks).
   PR_THROUGHPUT_SLUG = "pr-throughput"
@@ -27,9 +31,9 @@ class MetricsAggregator
   # Each maps dashboard slug → a SQL expression computed per-session row.
   SESSION_METRIC_EXPRESSIONS = {
     "iteration-depth"      => "turn_count",
-    "token-cost-per-pr"    => "total_cost_usd",
+    "token-cost-per-pr"    => "input_tokens + output_tokens",
     "cache-hit-rate"       => "cache_read_input_tokens::float / NULLIF(input_tokens + cache_creation_input_tokens + cache_read_input_tokens, 0)",
-    "sidechain-rate"       => "sidechain_messages::float / NULLIF(message_count + assistant_message_count, 0)",
+    "sidechain-rate"       => "CASE WHEN sidechain_messages IS NOT NULL THEN sidechain_messages::float / NULLIF(message_count + assistant_message_count, 0) END",
     "re-read-rate"         => "total_file_reads::float / NULLIF(files_read_count, 0)",
     "autonomy-score"       => "assistant_message_count::float / NULLIF(message_count, 0)",
     "peak-context-pct"     => "peak_context_pct",
@@ -91,11 +95,12 @@ class MetricsAggregator
   #   sessions table directly (no joins required).
   # @param window_days [Integer] 7, 30, or 90 — controls current/prior
   #   comparison windows and sparkline date range.
-  def initialize(pr_scope, session_scope:, window_days: 30)
+  def initialize(pr_scope, session_scope:, window_days: 30, agent_type: nil)
     raise ArgumentError, "window_days must be one of #{VALID_WINDOWS}" unless VALID_WINDOWS.include?(window_days)
     @pr_scope = pr_scope
     @session_scope = session_scope
     @window_days = window_days
+    @agent_type = agent_type
   end
 
   def call
@@ -250,7 +255,7 @@ class MetricsAggregator
 
   def aggregate_task_cycle_time(scope)
     joined = scope
-      .joins(TASK_CYCLE_TIME_JOIN) # brakeman:disable SQLInjection — frozen constant
+      .joins(self.class.task_cycle_time_join_for(@agent_type)) # brakeman:disable SQLInjection — frozen constant
       .where("first_sessions.min_started IS NOT NULL")
     return nil if joined.none?
 
@@ -261,7 +266,7 @@ class MetricsAggregator
     dates = (from.to_date..to.to_date).to_a
 
     joined = scope
-      .joins(TASK_CYCLE_TIME_JOIN) # brakeman:disable SQLInjection — frozen constant
+      .joins(self.class.task_cycle_time_join_for(@agent_type)) # brakeman:disable SQLInjection — frozen constant
       .where("first_sessions.min_started IS NOT NULL")
 
     rows = joined
@@ -332,5 +337,9 @@ class MetricsAggregator
         { t: date.iso8601, v: row ? row.send(col_alias)&.to_f : nil }
       end
     end
+  end
+
+  def self.task_cycle_time_join_for(agent_type)
+    TASK_CYCLE_TIME_JOINS.fetch(agent_type, TASK_CYCLE_TIME_JOINS[nil])
   end
 end

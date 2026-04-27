@@ -5,12 +5,14 @@ import path from "path";
 import { Suspense } from "react";
 
 import { Markdown } from "@/components/markdown";
+import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { RangeToggle, type Range } from "@/components/range-toggle";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { PRWithMetrics, MetricDetailResponse } from "@/lib/db";
+import type { AgentType, PRWithMetrics, MetricDetailResponse } from "@/lib/db";
+import { parseAgentType } from "@/lib/utils";
 import { getMetricDetailAsync, listPRsWithMetricsAsync, listReposAsync } from "@/lib/db";
 import { RepoFilter } from "@/components/repo-filter";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
@@ -30,14 +32,15 @@ export default async function MetricDetailPage({
   searchParams,
 }: {
   params: Promise<{ slug: string; metric: string }>;
-  searchParams: Promise<{ repo?: string; range?: string }>;
+  searchParams: Promise<{ repo?: string; range?: string; agent_type?: string }>;
 }) {
   const { slug, metric } = await params;
-  const { repo, range: rangeParam } = await searchParams;
+  const { repo, range: rangeParam, agent_type: agentTypeParam } = await searchParams;
   const repoId = repo ? parseInt(repo, 10) : undefined;
   const range: Range = VALID_RANGES.includes(rangeParam as Range)
     ? (rangeParam as Range)
     : "30d";
+  const agentType = parseAgentType(agentTypeParam);
   const def = getMetricDef(metric);
 
   if (!def) {
@@ -63,7 +66,10 @@ export default async function MetricDetailPage({
     // Doc file missing — not critical
   }
 
-  const backHref = repoId ? `/${slug}?repo=${repoId}` : `/${slug}`;
+  const backParams = new URLSearchParams();
+  if (repoId) backParams.set("repo", String(repoId));
+  if (agentType) backParams.set("agent_type", agentType);
+  const backHref = `/${slug}${backParams.toString() ? `?${backParams.toString()}` : ""}`;
   const isSession = def.source === "session";
 
   // Boolean metrics still need raw PR data for BooleanPanel
@@ -75,7 +81,7 @@ export default async function MetricDetailPage({
 
   // Non-boolean metrics use the pre-computed endpoint
   const detailPromise = def.valueType !== "boolean"
-    ? getMetricDetailAsync(slug, metric, range, repoId)
+    ? getMetricDetailAsync(slug, metric, range, repoId, agentType)
         .catch(() => null as MetricDetailResponse | null)
     : null;
 
@@ -101,7 +107,10 @@ export default async function MetricDetailPage({
               {def.category}
             </Badge>
           </div>
-          <RangeToggle current={range} />
+          <div className="flex items-center gap-3">
+            {isSession && <AgentTypeFilter current={agentType} />}
+            <RangeToggle current={range} />
+          </div>
         </div>
         <Suspense fallback={<Skeleton className="mt-1 h-4 w-40" />}>
           <DataCountSubtitle

@@ -5,12 +5,14 @@ import path from "path";
 import { Suspense } from "react";
 
 import { Markdown } from "@/components/markdown";
+import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { RangeToggle, type Range } from "@/components/range-toggle";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { PRWithMetrics, MetricDetailResponse } from "@/lib/db";
+import type { AgentType, PRWithMetrics, MetricDetailResponse } from "@/lib/db";
+import { parseAgentType } from "@/lib/utils";
 import { getMyMetricDetailAsync, listMyPRsAsync } from "@/lib/db";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
 import { getMetricDef, type MetricDefEntry } from "@/lib/metric-defs";
@@ -29,13 +31,14 @@ export default async function MyMetricDetailPage({
   searchParams,
 }: {
   params: Promise<{ slug: string; metric: string }>;
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; agent_type?: string }>;
 }) {
   const { slug, metric } = await params;
-  const { range: rangeParam } = await searchParams;
+  const { range: rangeParam, agent_type: agentTypeParam } = await searchParams;
   const range: Range = VALID_RANGES.includes(rangeParam as Range)
     ? (rangeParam as Range)
     : "30d";
+  const agentType = parseAgentType(agentTypeParam);
   const def = getMetricDef(metric);
 
   if (!def) {
@@ -61,7 +64,7 @@ export default async function MyMetricDetailPage({
     // Doc file missing — not critical
   }
 
-  const backHref = `/${slug}/me`;
+  const backHref = `/${slug}/me${agentType ? `?agent_type=${agentType}` : ""}`;
   const isSession = def.source === "session";
 
   const dataPromise = def.valueType === "boolean"
@@ -71,7 +74,7 @@ export default async function MyMetricDetailPage({
     : null;
 
   const detailPromise = def.valueType !== "boolean"
-    ? getMyMetricDetailAsync(slug, metric, range)
+    ? getMyMetricDetailAsync(slug, metric, range, agentType)
         .catch(() => null as MetricDetailResponse | null)
     : null;
 
@@ -95,7 +98,10 @@ export default async function MyMetricDetailPage({
               {def.category}
             </Badge>
           </div>
-          <RangeToggle current={range} />
+          <div className="flex items-center gap-3">
+            {isSession && <AgentTypeFilter current={agentType} />}
+            <RangeToggle current={range} />
+          </div>
         </div>
         <Suspense fallback={<Skeleton className="mt-1 h-4 w-40" />}>
           <DataCountSubtitle

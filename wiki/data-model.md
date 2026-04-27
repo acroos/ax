@@ -59,11 +59,11 @@ Git commits. PK is `sha` (not auto-increment).
 | ci_passed | boolean | Whether all check suites passed for this commit. Set by `GithubDataFetcher` (at finalization) or `CiCompleted` webhook handler (real-time). |
 
 ### sessions
-Claude Code sessions. PK is `id` (UUID string from session file).
+Agentic coding sessions. PK is `id` (UUID string from the local agent session file or directory).
 
 | Column | Type | Notes |
 |--------|------|-------|
-| id | text | PK (UUID from Claude Code) |
+| id | text | PK (UUID from Claude Code or Copilot CLI) |
 | repo_id | bigint | FK → repos |
 | branch | text | Working branch during session |
 | started_at | timestamp | |
@@ -74,16 +74,16 @@ Claude Code sessions. PK is `id` (UUID string from session file).
 | output_tokens | integer | |
 | cache_creation_input_tokens | integer | |
 | cache_read_input_tokens | integer | |
-| total_cost_usd | real | Computed via model-specific pricing |
+| agent_type | text | Agent source: `claude_code` or `copilot_cli`. Defaults to `claude_code` for historical sessions. |
 | primary_model | text | Majority model used |
 | cwd | text | Working directory |
 | pushed_by | text | Who pushed this data |
 | files_read_count | integer | Unique files read |
 | files_modified_count | integer | Unique files modified |
 | assistant_message_count | integer | Assistant messages in session |
-| sidechain_messages | integer | Messages on sidechain branches |
+| sidechain_messages | integer | Messages on sidechain branches. Nullable for agents without an equivalent signal, such as Copilot CLI. |
 | total_file_reads | integer | Total Read tool invocations |
-| peak_context_pct | real | Highest fraction (0.0–1.0) of model's context window used in any single message. Pre-computed by CLI using model-specific max context limits. Null for sessions pushed before CLI v2 update. |
+| peak_context_pct | real | Highest fraction (0.0–1.0) of model's context window used in any single message. Pre-computed by CLI using model-specific max context limits. Null for sessions pushed before CLI v2 update or agents without a reliable peak context signal. |
 | total_tool_calls | integer | Sum of all tool call counts in the session (default 0) |
 | agent_tool_calls | integer | Count of `Agent` tool calls — subagent delegation (default 0) |
 | skill_tool_calls | integer | Count of `Skill` tool calls — slash commands (default 0) |
@@ -116,7 +116,7 @@ File paths changed in a PR. Fetched from the GitHub API at PR finalization (merg
 Unique on (pr_id, filename).
 
 ### pr_metrics
-PR-level metrics from GitHub data. One row per PR. Session-derived metrics (iteration_depth, token_cost_usd, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score) are **not** stored here — they are computed on-the-fly from the `sessions` table via `MetricsAggregator` (for aggregates) or `PrsController` (for PR detail).
+PR-level metrics from GitHub data. One row per PR. Session-derived metrics (iteration_depth, total_tokens, cache_hit_rate, sidechain_rate, re_read_rate, autonomy_score) are **not** stored here — they are computed on-the-fly from the `sessions` table via `MetricsAggregator` (for aggregates) or `PrsController` (for PR detail).
 
 | Column | Type | Notes |
 |--------|------|-------|

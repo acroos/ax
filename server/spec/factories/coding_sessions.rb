@@ -9,7 +9,6 @@ FactoryBot.define do
     output_tokens { 500 }
     cache_creation_input_tokens { 200 }
     cache_read_input_tokens { 800 }
-    total_cost_usd { 0.10 }
     primary_model { "claude-sonnet-4-20250514" }
     assistant_message_count { 5 }
     sidechain_messages { 0 }

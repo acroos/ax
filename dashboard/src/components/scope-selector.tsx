@@ -59,6 +59,10 @@ export function ScopeSelector({ current, teams, basePath }: Props) {
     const params = new URLSearchParams();
     const range = searchParams.get("range");
     if (range) params.set("range", range);
+    const repo = searchParams.get("repo");
+    if (repo) params.set("repo", repo);
+    const agentType = searchParams.get("agent_type");
+    if (agentType) params.set("agent_type", agentType);
     const qs = params.toString();
     router.push(`${href}${qs ? `?${qs}` : ""}`, { scroll: false });
   }

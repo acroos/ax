@@ -85,6 +85,18 @@ module Api
         VALID_RANGES.fetch(params[:range], 30)
       end
 
+      VALID_AGENT_TYPES = [ "claude_code", "copilot_cli" ].freeze
+
+      def parsed_agent_type
+        type = params[:agent_type].presence
+        VALID_AGENT_TYPES.include?(type) ? type : nil
+      end
+
+      def apply_agent_type_filter(scope)
+        agent_type = parsed_agent_type
+        agent_type ? scope.where(sessions: { agent_type: agent_type }) : scope
+      end
+
       def history_cutoff
         plan = PlanService.for(@org)
         days = plan.capability(:history_days)

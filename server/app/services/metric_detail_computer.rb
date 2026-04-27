@@ -10,7 +10,7 @@ class MetricDetailComputer
     "task-cycle-time"      => { value_type: :float, unit: "hrs" },
     "pr-throughput"        => { value_type: :float, unit: "/wk" },
     "iteration-depth"      => { value_type: :int, unit: nil },
-    "token-cost-per-pr"    => { value_type: :currency, unit: "$" },
+    "token-cost-per-pr"    => { value_type: :int, unit: nil },
     "cache-hit-rate"       => { value_type: :ratio, unit: nil },
     "sidechain-rate"       => { value_type: :ratio, unit: nil },
     "re-read-rate"         => { value_type: :float, unit: nil },
@@ -104,7 +104,7 @@ class MetricDetailComputer
   # @param pr_scope [ActiveRecord::Relation, nil] PrMetrics scope (finalized, joined to prs)
   # @param session_scope [ActiveRecord::Relation, nil] CodingSession scope
   # @param window_days [Integer] 7, 30, or 90
-  def initialize(metric_slug, pr_scope: nil, session_scope: nil, window_days: 30)
+  def initialize(metric_slug, pr_scope: nil, session_scope: nil, window_days: 30, agent_type: nil)
     raise ArgumentError, "unknown metric: #{metric_slug}" unless ALL_SLUGS.include?(metric_slug)
     raise ArgumentError, "window_days must be one of #{VALID_WINDOWS}" unless VALID_WINDOWS.include?(window_days)
 
@@ -112,6 +112,7 @@ class MetricDetailComputer
     @pr_scope = pr_scope
     @session_scope = session_scope
     @window_days = window_days
+    @agent_type = agent_type
     @is_session = MetricsAggregator::SESSION_METRIC_EXPRESSIONS.key?(metric_slug)
     @is_computed_pr = MetricsAggregator::COMPUTED_PR_EXPRESSIONS.key?(metric_slug)
     @is_task_cycle_time = metric_slug == MetricsAggregator::TASK_CYCLE_TIME_SLUG
@@ -239,7 +240,7 @@ class MetricDetailComputer
     prior_start = current_start - @window_days.days
 
     base = @pr_scope
-      .joins(MetricsAggregator::TASK_CYCLE_TIME_JOIN) # brakeman:disable SQLInjection — frozen constant
+      .joins(MetricsAggregator.task_cycle_time_join_for(@agent_type)) # brakeman:disable SQLInjection — frozen constant
       .where("first_sessions.min_started IS NOT NULL")
 
     current = base.where("#{date_sql} BETWEEN ? AND ?", current_start, now)

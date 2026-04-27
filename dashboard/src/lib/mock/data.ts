@@ -175,7 +175,7 @@ function generatePR(id: number, repoId: number): PRWithMetrics {
         ci_success_rate: rand() > 0.1 ? Math.round(randFloat(0.5, 1.0) * 100) / 100 : null,
         line_revisit_rate: Math.round(randFloat(0.0, 0.5) * 100) / 100,
         iteration_depth: Math.round(randFloat(1, 14)),
-        token_cost_usd: hasSessionData ? Math.round(randFloat(0.4, 9.0) * 100) / 100 : null,
+        total_tokens: hasSessionData ? randInt(20_000, 450_000) : null,
         cache_hit_rate: hasSessionData ? Math.round(randFloat(0.25, 0.92) * 100) / 100 : null,
         sidechain_rate: hasSessionData ? Math.round(randFloat(0.02, 0.28) * 100) / 100 : null,
         re_read_rate: hasSessionData ? Math.round(randFloat(0.8, 3.8) * 100) / 100 : null,
@@ -270,7 +270,7 @@ const SPARKLINE_CONFIGS: Record<string, SparklineConfig> = {
   "ci-success-rate": { base: 0.76, trend: 0.08, noise: 0.06, clampMin: 0, clampMax: 1 },
   "line-revisit-rate": { base: 0.14, trend: 0.02, noise: 0.06, clampMin: 0 },
   "iteration-depth": { base: 9, trend: -1.5, noise: 2.5, clampMin: 1 },
-  "token-cost-per-pr": { base: 1.6, trend: 0.3, noise: 0.6, clampMin: 0.2 },
+  "token-cost-per-pr": { base: 180000, trend: 30000, noise: 60000, clampMin: 10000 },
   "cache-hit-rate": { base: 0.58, trend: 0.1, noise: 0.06, clampMin: 0, clampMax: 1 },
   "sidechain-rate": { base: 0.16, trend: -0.05, noise: 0.04, clampMin: 0, clampMax: 1 },
   "re-read-rate": { base: 1.8, trend: -0.2, noise: 0.4, clampMin: 0 },
@@ -286,7 +286,7 @@ const SPARKLINE_CONFIGS: Record<string, SparklineConfig> = {
 function buildAggregateMetrics(prs: PRWithMetrics[], days = 30): AggregateMetrics {
   const totalPRs = prs.length;
   const sessionDataCount = prs.filter(
-    (p) => p.metrics && p.metrics.token_cost_usd !== null,
+    (p) => p.metrics && p.metrics.total_tokens !== null,
   ).length;
 
   const metrics: Record<string, MetricAggregate> = {};
@@ -317,7 +317,7 @@ export function getMockAggregatesForRepo(repoId: number, days = 30): AggregateMe
     ...base,
     totalPRs: repoPrs.length,
     sessionDataCount: repoPrs.filter(
-      (p) => p.metrics && p.metrics.token_cost_usd !== null,
+      (p) => p.metrics && p.metrics.total_tokens !== null,
     ).length,
   };
 }
@@ -338,7 +338,7 @@ export const MOCK_TIMELINE: TimelinePoint[] = MOCK_PRS.filter(
       p.metrics!.ci_success_rate !== null
         ? Math.round(p.metrics!.ci_success_rate * 100)
         : null,
-    tokenCostUSD: p.metrics!.token_cost_usd ?? null,
+    totalTokens: p.metrics!.total_tokens ?? null,
   }))
   .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
@@ -517,6 +517,7 @@ function generateSession(idx: number, _repoId: number, author: string): SessionW
   const startDate = daysAgo(daysBack); // same day, different time
 
   const inputTokens = randInt(500, 20000);
+  const outputTokens = randInt(200, 8000);
   const cacheCreation = randInt(100, 2000);
   const cacheRead = randInt(200, 8000);
   const totalInput = inputTokens + cacheCreation + cacheRead;
@@ -528,6 +529,7 @@ function generateSession(idx: number, _repoId: number, author: string): SessionW
 
   return {
     id: `session-mock-${idx}`,
+    agent_type: idx % 3 === 0 ? "copilot_cli" : "claude_code",
     started_at: startDate,
     ended_at: endDate,
     branch: BRANCHES[idx % BRANCHES.length],
@@ -535,7 +537,7 @@ function generateSession(idx: number, _repoId: number, author: string): SessionW
     primary_model: SESSION_MODELS[idx % SESSION_MODELS.length],
     metrics: {
       iteration_depth: randInt(1, 14),
-      token_cost_usd: Math.round(randFloat(0.4, 9.0) * 100) / 100,
+      total_tokens: inputTokens + outputTokens,
       cache_hit_rate: totalInput > 0
         ? Math.round((cacheRead / totalInput) * 100) / 100
         : null,

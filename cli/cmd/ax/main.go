@@ -77,15 +77,18 @@ func newInitCmd() *cobra.Command {
 		Short: "Set up AX for automatic metrics collection",
 		Long: `Set up AX for automatic metrics collection.
 
-Connects to the AX managed service and installs Claude Code hooks
-that automatically push session data after each coding session.
+Connects to the AX managed service and installs hooks that automatically
+push Claude Code and Copilot CLI session data after coding sessions.
 
 Use --uninstall to remove all AX hooks.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settingsPath := hooks.DefaultSettingsPath()
 
 			if uninstall {
-				hooks.Uninstall(settingsPath)
+				_ = hooks.Uninstall(settingsPath)
+				if cwd, err := os.Getwd(); err == nil {
+					_ = hooks.UninstallCopilot(cwd)
+				}
 				ui.StepDone("All AX hooks removed")
 				return nil
 			}
@@ -165,7 +168,18 @@ func initManagedMode(apiKey, settingsPath string) error {
 	if err := hooks.Install(settingsPath, axBinary); err != nil {
 		return fmt.Errorf("failed to install hooks: %w", err)
 	}
-	fmt.Printf("           %s SessionEnd hook installed\n", ui.SuccessIcon())
+	fmt.Printf("           %s Claude Code SessionEnd hook installed\n", ui.SuccessIcon())
+
+	if hooks.CopilotHomeExists() {
+		if repoPath, err := os.Getwd(); err == nil {
+			if installed, err := hooks.InstallCopilot(repoPath); err != nil {
+				return fmt.Errorf("failed to install Copilot CLI hook: %w", err)
+			} else if installed {
+				fmt.Printf("           %s Created %s\n", ui.SuccessIcon(), ui.Code.Render(".github/hooks/session-end.json"))
+				fmt.Printf("           Commit this file so your team gets automatic Copilot CLI session collection.\n")
+			}
+		}
+	}
 
 	// Success summary
 	ui.CompleteBanner("Setup complete!")
@@ -234,7 +248,7 @@ You can override with --api-key.`,
 				return fmt.Errorf("could not identify repo: %w\n\n  Make sure you're in a git repo with a remote origin", err)
 			}
 
-			// Parse Claude Code sessions for this repo
+			// Parse Claude Code and Copilot CLI sessions for this repo
 			home, err := os.UserHomeDir()
 			if err != nil {
 				return fmt.Errorf("could not find home directory: %w", err)
@@ -245,6 +259,12 @@ You can override with --api-key.`,
 			if err != nil {
 				return fmt.Errorf("failed to find session files: %w", err)
 			}
+			ownerRepo := owner + "/" + repo
+			copilotSessions, err := parsers.FindCopilotSessionsForRepo(parsers.DefaultCopilotDir(), ownerRepo)
+			if err != nil {
+				return fmt.Errorf("failed to find Copilot session files: %w", err)
+			}
+			sessionFiles = mergeSessionPaths(sessionFiles, copilotSessions)
 
 			if len(sessionFiles) == 0 {
 				ui.CompleteBanner("No session data found for this repo")
@@ -252,7 +272,6 @@ You can override with --api-key.`,
 			}
 
 			// Filter to only new sessions unless --force is set
-			ownerRepo := owner + "/" + repo
 			var repoState *state.RepoState
 			if !force {
 				repoState, err = state.Load(ownerRepo)
@@ -316,6 +335,22 @@ You can override with --api-key.`,
 	cmd.Flags().BoolVar(&force, "force", false, "Re-send all sessions, ignoring push history")
 
 	return cmd
+}
+
+func mergeSessionPaths(paths ...[]string) []string {
+	seen := make(map[string]bool)
+	var merged []string
+	for _, group := range paths {
+		for _, path := range group {
+			id := state.SessionIDFromPath(path)
+			if seen[id] {
+				continue
+			}
+			seen[id] = true
+			merged = append(merged, path)
+		}
+	}
+	return merged
 }
 
 func runBulkPush(apiKeyOverride string, force bool) error {

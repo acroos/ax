@@ -9,12 +9,13 @@ module MetricDetailAction
       return render json: { error: "Unknown metric: #{slug}" }, status: :not_found
     end
 
-    result = MetricDetailComputer.new(
-      slug,
-      pr_scope: pr_scope,
-      session_scope: session_scope,
-      window_days: parsed_range
-    ).call
+      result = MetricDetailComputer.new(
+        slug,
+        pr_scope: pr_scope,
+        session_scope: session_scope,
+        window_days: parsed_range,
+        agent_type: parsed_agent_type
+      ).call
 
     render json: result
   end

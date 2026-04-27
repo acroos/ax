@@ -3,7 +3,9 @@ export const runtime = "edge";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getMyMetricsAsync, listTeamsAsync } from "@/lib/db";
-import type { AggregateMetrics, Team } from "@/lib/db";
+import type { AgentType, AggregateMetrics, Team } from "@/lib/db";
+import { parseAgentType } from "@/lib/utils";
+import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
 import { Skeleton, SkeletonMetricCategory } from "@/components/skeleton";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
@@ -17,15 +19,16 @@ export default async function MyOverviewPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; agent_type?: string }>;
 }) {
   const { slug } = await params;
-  const { range: rangeParam } = await searchParams;
+  const { range: rangeParam, agent_type: agentTypeParam } = await searchParams;
   const range: Range = VALID_RANGES.includes(rangeParam as Range)
     ? (rangeParam as Range)
     : "30d";
+  const agentType = parseAgentType(agentTypeParam);
 
-  const metricsPromise = getMyMetricsAsync(slug, range);
+  const metricsPromise = getMyMetricsAsync(slug, range, agentType);
   const teamsPromise = listTeamsAsync(slug).catch(() => [] as Team[]);
 
   return (
@@ -43,6 +46,7 @@ export default async function MyOverviewPage({
             teamsPromise={teamsPromise}
             slug={slug}
             range={range}
+            agentType={agentType}
           />
         </Suspense>
       </div>
@@ -53,6 +57,7 @@ export default async function MyOverviewPage({
             metricsPromise={metricsPromise}
             slug={slug}
             range={range}
+            agentType={agentType}
           />
         </Suspense>
       </SectionErrorBoundary>
@@ -78,17 +83,18 @@ function teamsToScopeTeams(teams: Team[]): ScopeTeam[] {
     memberCount: t.member_count,
   }));
 }
-
 async function MySubtitle({
   metricsPromise,
   teamsPromise,
   slug,
   range,
+  agentType,
 }: {
   metricsPromise: Promise<AggregateMetrics>;
   teamsPromise: Promise<Team[]>;
   slug: string;
   range: Range;
+  agentType?: AgentType;
 }) {
   const teams = await teamsPromise;
   let metrics: AggregateMetrics | null = null;
@@ -104,6 +110,8 @@ async function MySubtitle({
         teams={teamsToScopeTeams(teams)}
         basePath={`/${slug}`}
       />
+      {" "}&middot;{" "}
+      <AgentTypeFilter current={agentType} />
       {metrics !== null && (
         <>
           {" "}&middot; {metrics.totalSessions} session
@@ -147,10 +155,12 @@ async function MyMetricsBody({
   metricsPromise,
   slug,
   range,
+  agentType,
 }: {
   metricsPromise: Promise<AggregateMetrics>;
   slug: string;
   range: Range;
+  agentType?: AgentType;
 }) {
   const data = await metricsPromise;
   if (data.totalPRs === 0 && data.totalSessions === 0) return <NoDataState />;
@@ -159,7 +169,7 @@ async function MyMetricsBody({
     <OverviewMetricsGrid
       metrics={data.metrics}
       range={range}
-      metricHref={(metricSlug) => `/${slug}/me/metrics/${metricSlug}?range=${range}`}
+      metricHref={(metricSlug) => `/${slug}/me/metrics/${metricSlug}?${new URLSearchParams({ range, ...(agentType ? { agent_type: agentType } : {}) }).toString()}`}
     />
   );
 }

@@ -53,9 +53,9 @@ module Api
         # Use the same SQL expressions as MetricsAggregator / SessionSerialization
         result = sessions.pick(
           Arel.sql("MAX(sessions.turn_count)"),                                                                                      # brakeman:disable SQLInjection
-          Arel.sql("SUM(sessions.total_cost_usd)"),                                                                                  # brakeman:disable SQLInjection
+          Arel.sql("SUM(sessions.input_tokens + sessions.output_tokens)"),                                                           # brakeman:disable SQLInjection
           Arel.sql("SUM(sessions.cache_read_input_tokens)::float / NULLIF(SUM(sessions.input_tokens) + SUM(sessions.cache_creation_input_tokens) + SUM(sessions.cache_read_input_tokens), 0)"), # brakeman:disable SQLInjection
-          Arel.sql("SUM(sessions.sidechain_messages)::float / NULLIF(SUM(sessions.message_count) + SUM(sessions.assistant_message_count), 0)"), # brakeman:disable SQLInjection
+          Arel.sql("(SUM(sessions.sidechain_messages) FILTER (WHERE sessions.sidechain_messages IS NOT NULL))::float / NULLIF(SUM(sessions.message_count + sessions.assistant_message_count) FILTER (WHERE sessions.sidechain_messages IS NOT NULL), 0)"), # brakeman:disable SQLInjection
           Arel.sql("SUM(sessions.total_file_reads)::float / NULLIF(SUM(sessions.files_read_count), 0)"),                             # brakeman:disable SQLInjection
           Arel.sql("SUM(sessions.assistant_message_count)::float / NULLIF(SUM(sessions.message_count), 0)"),                         # brakeman:disable SQLInjection
           Arel.sql("MAX(sessions.peak_context_pct)"),                                                                                # brakeman:disable SQLInjection
@@ -67,7 +67,7 @@ module Api
 
         {
           iteration_depth: result[0]&.to_i,
-          token_cost_usd: result[1]&.to_f,
+          total_tokens: result[1]&.to_i,
           cache_hit_rate: result[2]&.to_f,
           sidechain_rate: result[3]&.to_f,
           re_read_rate: result[4]&.to_f,

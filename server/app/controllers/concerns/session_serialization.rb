@@ -9,11 +9,12 @@ module SessionSerialization
     "sessions.started_at",
     "sessions.ended_at",
     "sessions.branch",
+    "sessions.agent_type",
     "sessions.pushed_by",
     "sessions.primary_model",
     "sessions.repo_id",
     "sessions.turn_count AS iteration_depth",
-    "sessions.total_cost_usd AS token_cost_usd",
+    "(sessions.input_tokens + sessions.output_tokens) AS total_tokens",
     "sessions.cache_read_input_tokens::float / NULLIF(sessions.input_tokens + sessions.cache_creation_input_tokens + sessions.cache_read_input_tokens, 0) AS cache_hit_rate",
     "sessions.sidechain_messages::float / NULLIF(sessions.message_count + sessions.assistant_message_count, 0) AS sidechain_rate",
     "sessions.total_file_reads::float / NULLIF(sessions.files_read_count, 0) AS re_read_rate",
@@ -27,6 +28,7 @@ module SessionSerialization
 
   def render_sessions(scope)
     per_page = [ (params[:per_page] || 100).to_i, 100 ].min
+    scope = apply_agent_type_filter(scope)
     total = scope.count
 
     sessions = scope
@@ -46,11 +48,12 @@ module SessionSerialization
       started_at: session.started_at,
       ended_at: session.ended_at,
       branch: session.branch,
+      agent_type: session.agent_type,
       pushed_by: session.pushed_by,
       primary_model: session.primary_model,
       metrics: {
         iteration_depth: session.respond_to?(:iteration_depth) ? session.iteration_depth&.to_i : nil,
-        token_cost_usd: session.respond_to?(:token_cost_usd) ? session.token_cost_usd&.to_f : nil,
+        total_tokens: session.respond_to?(:total_tokens) ? session.total_tokens&.to_i : nil,
         cache_hit_rate: session.respond_to?(:cache_hit_rate) ? session.cache_hit_rate&.to_f : nil,
         sidechain_rate: session.respond_to?(:sidechain_rate) ? session.sidechain_rate&.to_f : nil,
         re_read_rate: session.respond_to?(:re_read_rate) ? session.re_read_rate&.to_f : nil,
