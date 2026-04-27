@@ -1,27 +1,29 @@
-# AX — Agentic Coding DX Metrics ✨
+# AX — Agentic Coding DX Metrics
 
 **You're shipping PRs with Claude Code. But are they getting better?**
+
+AX is for engineering teams using Claude Code and GitHub PR workflows.
 
 AX measures what matters: cycle time, session effectiveness, adoption depth, and other metrics that tell you whether your AI coding workflow is working.
 
 ---
 
-## 📊 What You Can Measure
+## What You Can Measure
 
-**🚀 Delivery** — How fast and cleanly does code ship?
+**Delivery** — How fast and cleanly does code ship?
 > Task cycle time · PR throughput · post-open commits
 
-**🎯 Session Effectiveness** — How well do sessions use time and resources?
+**Session Effectiveness** — How well do sessions use time and resources?
 > Iteration depth · peak context window · autonomy score
 
-**📈 Adoption Maturity** — How deeply has the team adopted agent capabilities?
+**Adoption Maturity** — How deeply has the team adopted agent capabilities?
 > Skill & tool usage · subagent delegation · rubber stamp rate
 
 Every metric has a dedicated doc explaining what it measures, why it matters, and how to interpret values → [full metric reference](docs/metrics/index.md)
 
 ---
 
-## ⚙️ How It Works
+## How It Works
 
 AX is a managed service with three components:
 
@@ -32,14 +34,14 @@ AX is a managed service with three components:
 | 📈 **Next.js Dashboard** | Web UI at `https://www.axmetrics.dev` for viewing metrics, comparing developers, and managing your team. |
 
 Data flows in two ways:
-1. **Claude Code sessions** → CLI parses local session files and pushes to the API
-2. **GitHub PR events** → Webhooks deliver PR, review, and CI data directly to the API
+1. **Claude Code sessions** → CLI uploads parsed local session data to the API
+2. **GitHub PR events** → GitHub webhooks send PR, review, and CI data to the API
 
 Metrics are computed server-side when PRs reach a terminal state (merged or closed).
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install the CLI
 
@@ -65,7 +67,10 @@ Open [`www.axmetrics.dev`](https://www.axmetrics.dev) and sign in with GitHub. Y
 ax init --api-key <your-key>
 ```
 
-That's it! This validates your key, saves config to `~/.ax/config.json`, and installs a Claude Code `SessionEnd` hook that automatically pushes session data after each coding session. 🎉
+That's it! `ax init` does two things:
+
+- Validates your API key and saves config to `~/.ax/config.json`
+- Installs a Claude Code `SessionEnd` hook to auto-push session data
 
 ### 4. Push your first data
 
@@ -75,25 +80,34 @@ ax push --repo .
 
 After this, the hook handles it automatically. View your results at `https://www.axmetrics.dev/{your-org-slug}`.
 
-👉 See the [Setup Guide](docs/setup.md) for the full walkthrough including GitHub App installation and team invites.
+For PR and review metrics, install the GitHub App during setup.
+
+See the [Setup Guide](docs/setup.md) for the full walkthrough, including GitHub App installation and team invites.
 
 ---
 
-## 🔗 Claude Code Integration
+## Claude Code Integration
 
 AX is purpose-built for [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) workflows. It correlates Claude Code session data — messages, token usage, self-corrections — with your GitHub PRs to give you the full picture of each agent-assisted PR.
 
 ---
 
-## 🔒 Data Collection
+## Data Collection
 
-AX collects **aggregated session metadata** — token counts, cost, timestamps, tool usage counts — never conversation content, source code, or file names. Commit messages and PR metadata (titles, branch names, line-count stats) are also collected to correlate sessions with PRs.
+AX collects:
+- **Aggregated session metadata** (token counts, cost, timestamps, tool usage counts)
+- **Commit and PR metadata** (titles, branch names, line-count stats) to correlate sessions with PRs
+
+AX does **not** collect:
+- Conversation content
+- Source code
+- File names
 
 For the full breakdown of what is and isn't collected, see the **[Data Collection & Privacy](docs/data-collection.md)** doc (also available at `/docs/data-collection` on the dashboard).
 
 ---
 
-## 📚 Docs
+## Docs
 
 - [Metric Reference](docs/metrics/index.md) — All metrics, explained
 - [Setup Guide](docs/setup.md) — Full setup walkthrough
@@ -102,7 +116,7 @@ For the full breakdown of what is and isn't collected, see the **[Data Collectio
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Start with [CLAUDE.md](CLAUDE.md) — it covers project conventions, build commands, and the decision record process.
 
