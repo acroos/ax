@@ -34,7 +34,7 @@ This plan is written to be **implementable by Sonnet sub-agents**. Each phase in
   - [Phase 9 — Documentation + ADR](#phase-9--documentation--adr)
 - [Cross-cutting concerns](#cross-cutting-concerns)
 - [Testing strategy](#testing-strategy)
-- [Open questions](#open-questions)
+- [Resolved tactical decisions](#resolved-tactical-decisions)
 - [Risks](#risks)
 - [Out of scope](#out-of-scope)
 - [Related decisions](#related-decisions)
@@ -2036,7 +2036,7 @@ func (i *Installer) IsInstalled(ctx hooks.InstallContext) bool { /* existing */ 
 - The bash one-liner is a long, fragile string. When extracting into `pushcommand.Build`, preserve quoting EXACTLY. Test by running `bash -n -c "<output>"` to confirm parses without error.
 - `IsInstalled` for Claude reads three different status-message strings (legacy detection). Preserve all three checks in the moved code.
 - The Copilot installer's `isAXCopilotHook` check verifies only one entry under `sessionEnd` and `Bash` contains `"ax push --repo"`. The new `pushcommand.Build` output is significantly longer (worktree + logging) than the current Copilot one-liner (`ax push --repo .`). Decide whether Copilot moves to the richer one-liner or keeps the simple form. **Recommendation**: keep Copilot simple for now (`ax push --repo .`). Only Claude needs worktree handling. Pass `WorktreeMarker: ""` from Copilot's installer; the Build output will be the simple form.
-- `--scope=repo` flag for Cursor isn't needed in Phase 6 (Cursor lands Phase 7). The `Scope` enum supports it; the iteration in `main.go` correctly skips installers that don't declare a given scope. Add the CLI flag only if/when Cursor ships.
+- `--scope=repo` flag for Cursor lands in Phase 7, not here. The `Scope` enum supports it; the iteration in `main.go` correctly skips installers that don't declare a given scope. Phase 6 ships installers for Claude (UserScope only) and Copilot (RepoScope only), so neither agent has scope ambiguity yet — no CLI flag needed.
 
 **Sonnet sub-agent delegation prompt:**
 
@@ -2087,7 +2087,8 @@ After:
 - `cli/internal/agents/providers.go` — register `cursor.New()`.
 - `cli/internal/hooks/installers.go` — register `cursor.NewInstaller()`.
 - `dashboard/src/lib/mock/data.ts` — generation now includes Cursor sessions automatically (via `ALL_AGENTS`); spot-check that mock Cursor sessions correctly NULL token fields per the registry.
-- `cli/cmd/ax/main.go` — if you want a `--scope` flag for Cursor's dual-scope install, add it now (optional; deferring this is fine — defaults to user scope).
+- `cli/cmd/ax/main.go` — add `--scope` string flag to `ax init` (values: `user` (default), `repo`, `both`). When set to `repo` or `both`, the installer-iteration loop passes the appropriate `hooks.Scope` to installers that declare it. Single-scope installers (Claude, Copilot) ignore the flag — the loop already skips scopes the installer doesn't support. Default `user` matches resolved decision #3.
+- `cli/cmd/ax/main.go` (uninstall path) — `ax init --uninstall` removes hooks from EVERY scope an installer supports, regardless of the original install scope. (Best-effort cleanup; don't require users to remember which scope they installed.)
 
 **Files to delete:** none.
 
@@ -2535,7 +2536,8 @@ func (i *Installer) Install(ctx hooks.InstallContext) (hooks.Installed, error) {
 - `ApplyPatch` is unified create-and-edit. We count modifications via `FilesModified`. Don't try to distinguish creates vs updates in Phase 7 (the patch text knows but we don't need to).
 - Hook event flakiness: Cursor's `sessionEnd` reportedly doesn't fire reliably in CLI mode (Jan 2026). Document in setup docs (Phase 9). Provide manual `ax push --repo .` as fallback. Don't try to fix Cursor's bug.
 - Worktree handling: Cursor doesn't have an AX-managed worktree convention. Don't try to add one. Plain `git worktree` directories are seen as separate Cursor projects.
-- `RepoEnumerator` implementation: the `ent.Name()` decoded path is approximate; trust `.workspace-trusted` JSON's `workspacePath` first. If both are missing, skip the project (don't push half-known data).
+- `RepoEnumerator` implementation: the `ent.Name()` decoded path is approximate; trust `.workspace-trusted` JSON's `workspacePath` first (resolved decision #9). If both are missing, OR if `GitRemoteFn` fails on the resolved path, **skip the project entirely** — no synthesized owner/repo, no half-known push. Skip is silent in normal runs; log when verbose.
+- `--scope` flag default: `user`. Resolved decision #3 — repo-scope creates a committable file the team must opt into. Don't surprise users.
 
 **Sonnet sub-agent delegation prompt:**
 
@@ -2862,20 +2864,37 @@ In Phase 7, add a Cursor fixture and an expected-payload snapshot to the same te
 
 ---
 
-## Open questions
+## Resolved tactical decisions
 
-These have current best guesses; revisit during implementation if needed.
+The strategic decisions ("Decisions locked in" near the top) drove the architecture. The tactical decisions below were deferred during planning and are now locked in. Changing any of these after implementation starts requires updating the plan first.
 
-1. **Codegen language** — Ruby (chosen).
-2. **YAML vs TOML** — YAML (chosen for nested capability maps; better Rails affinity).
-3. **Cursor hook scope default** — UserScope. Add `--scope=repo` flag in Phase 6 only if customer asks.
-4. **Always-show agent badge on session lists** — yes (cheap, removes "what agent is this from?" question).
-5. **`payload_version` bump rules** — semantic field changes bump; additive optional fields don't.
-6. **`agent_type` as tuple vs single ID** — single ID; add `model_provider` as separate column when a real harness needs it.
-7. **Cursor `store.db` blob format** — research follow-up; out of scope.
-8. **CGO for sqlite read** — use `modernc.org/sqlite` (pure Go). Adds ~3-5 MB to binary.
-9. **Owner/repo for Cursor `RepoEnumerator`** — caller resolves via `GitRemoteFn` per `.workspace-trusted` workspacePath. If the resolver fails, the project is skipped.
-10. **Codegen file: multi-line strings in YAML** — none of our values need them; if added later, be aware ERB templates must escape correctly.
+1. **Codegen language: Ruby.** Has YAML + ERB built in; user's strongest language; no toolchain to introduce. The script lives at `scripts/codegen-agents/generate.rb`.
+
+2. **Config file format: YAML.** Nested capability maps read better than TOML; aligns with Rails conventions. File path: `config/agents.yaml`.
+
+3. **Cursor hook scope default: UserScope only at install time, with `--scope=repo` opt-in flag.** Rationale: repo-scope creates a `.cursor/hooks.json` file that must be committed to be useful (mirroring Copilot's `.github/hooks/session-end.json`); we don't surprise teams. UserScope mirrors Claude. Teams that want shared install can `ax init --scope=repo`. Implementation: add the flag in Phase 7 alongside the Cursor installer (not Phase 6 — Phase 6 only ships installers with single-scope agents).
+
+4. **Always-show agent badge on session lists: yes.** A small color-coded pill answers "what agent did this come from?" without a click. Cost is one badge per row. Use `AGENT_LABELS` + `AGENT_COLORS` from the registry.
+
+5. **`payload_version` bump rules:** bump for semantic changes (a field's meaning, type, or required-ness changes). Don't bump for additive optional fields. Document in ADR-018 so future contributors have a stable contract. Server keeps every prior-version parser indefinitely.
+
+6. **`agent_type` stays a single string ID.** A tuple (`harness, model_provider, ingestion_mode`) is over-fit for what we need today. When a real harness requires per-session model-provider provenance (Copilot CLI's `/model` switch is the closest case), add a nullable `model_provider` column rather than restructuring `agent_type`. Today's `primary_model` field is sufficient — Copilot's mid-session model switching loses fidelity to "primary" but that's already the case and is not introduced by this plan.
+
+7. **Cursor `store.db` blob format: not reverse-engineered.** The transcript JSONL is enough for the metrics in the capability matrix. Reverse-engineering buys per-message latency and a proper message tree, neither of which currently maps to a metric. If a future metric needs it, that's a research project of its own — see "Out of scope".
+
+8. **CGO for sqlite read: `modernc.org/sqlite` (pure Go).** Keeps the existing `CGO_ENABLED=0` cross-compile in `cli/Justfile`'s `build-all` recipe working unchanged. The ~3-5 MB binary-size increase is a one-time, acceptable cost. Driver name is `"sqlite"`; open with `?mode=ro&immutable=1`.
+
+9. **Cursor `RepoEnumerator` owner/repo derivation:** read `.workspace-trusted` JSON's `workspacePath` first; fall back to decoded directory name only when the file is missing. Run `GitRemoteFn` against the resulting path. If `GitRemoteFn` fails, **skip the project entirely** — don't push half-known data with synthesized `owner/repo` values. The skip is silent (no error surfaced to the user) but logged when verbose mode is on.
+
+10. **Multi-line YAML strings in `agents.yaml`:** not needed for any current value (labels, colors, env names, scope strings, paths all fit on one line). ERB templates use `.dump` (Ruby) for Go output, `.inspect` for Ruby output, and `.to_json` for TS — these handle escapes correctly for single-line strings. **If a future capability adds multi-line content** (e.g., a long description block), switch the relevant template to `.to_json` for safety; multi-line YAML scalars otherwise need explicit escape handling that ERB doesn't do for free.
+
+### Decisions deferred to follow-up plans
+
+These came up during planning but explicitly land outside this plan's scope. They have no current best guess — they need a fresh design conversation when prioritized:
+
+- **`model_provider` column on `sessions`** — needed only when a metric depends on per-session provider attribution. Out of scope here.
+- **Server-side ingestion abstraction (`ServerProvider`)** — covers Cursor Admin API + Copilot Business endpoints. Parallel abstraction to `Provider`; see ADR-018 forward-look section.
+- **Promotion of `extras` keys to typed columns** — happens per-metric when a metric is built. Out of scope here.
 
 ## Risks
 
