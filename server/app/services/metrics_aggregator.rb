@@ -33,7 +33,7 @@ class MetricsAggregator
     "iteration-depth"      => "turn_count",
     "token-cost-per-pr"    => "input_tokens + output_tokens",
     "cache-hit-rate"       => "cache_read_input_tokens::float / NULLIF(input_tokens + cache_creation_input_tokens + cache_read_input_tokens, 0)",
-    "sidechain-rate"       => "sidechain_messages::float / NULLIF(message_count + assistant_message_count, 0)",
+    "sidechain-rate"       => "CASE WHEN sidechain_messages IS NOT NULL THEN sidechain_messages::float / NULLIF(message_count + assistant_message_count, 0) END",
     "re-read-rate"         => "total_file_reads::float / NULLIF(files_read_count, 0)",
     "autonomy-score"       => "assistant_message_count::float / NULLIF(message_count, 0)",
     "peak-context-pct"     => "peak_context_pct",

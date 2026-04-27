@@ -91,13 +91,9 @@ type copilotBashArg struct {
 // ParseCopilotSession parses a Copilot CLI session-state/<uuid> directory.
 func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
 	workspace, _ := ParseCopilotWorkspace(filepath.Join(sessionDir, "workspace.yaml"))
-	sessionID := workspace.ID
-	if sessionID == "" {
-		sessionID = CopilotSessionIDFromPath(sessionDir)
-	}
 
 	session := &ParsedSession{
-		ID:        sessionID,
+		ID:        CopilotSessionIDFromPath(sessionDir),
 		Project:   workspace.GitRoot,
 		Branch:    workspace.Branch,
 		AgentType: "copilot_cli",
@@ -150,9 +146,6 @@ func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
 		case "session.start":
 			var data copilotSessionStartData
 			if json.Unmarshal(event.Data, &data) == nil {
-				if data.SessionID != "" {
-					session.ID = data.SessionID
-				}
 				if data.Context.Branch != "" {
 					session.Branch = data.Context.Branch
 				}

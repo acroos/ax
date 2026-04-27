@@ -12,6 +12,7 @@ import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { AgentType, PRWithMetrics, MetricDetailResponse } from "@/lib/db";
+import { parseAgentType } from "@/lib/utils";
 import { getMetricDetailAsync, listPRsWithMetricsAsync, listReposAsync } from "@/lib/db";
 import { RepoFilter } from "@/components/repo-filter";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
@@ -156,10 +157,6 @@ export default async function MetricDetailPage({
       )}
     </div>
   );
-}
-
-function parseAgentType(value?: string): AgentType | undefined {
-  return value === "claude_code" || value === "copilot_cli" ? value : undefined;
 }
 
 // ---------------------------------------------------------------------------

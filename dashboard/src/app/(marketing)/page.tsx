@@ -24,7 +24,7 @@ const SPARKLINES = {
   ]),
   postOpen: sp([2, 1, 1, 2, 1, 0, 2, 1, 1, 3, 1, 1]),
   tokenCost: sp([
-    1.52, 1.18, 1.35, 0.94, 1.62, 1.22, 1.08, 1.45, 1.3, 1.15, 1.38, 1.28,
+    52341, 41872, 48103, 39654, 55821, 44290, 43017, 50438, 47156, 42883, 49312, 47832,
   ]),
   cacheHit: sp([
     0.68, 0.71, 0.74, 0.7, 0.73, 0.69, 0.75, 0.72, 0.71, 0.76, 0.73, 0.72,
@@ -126,7 +126,7 @@ export default async function LandingPage() {
         cards={[
           {
             label: "Avg Token Total",
-            value: "$1.28",
+            value: "47.8K",
             sparkline: SPARKLINES.tokenCost,
           },
           {

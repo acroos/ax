@@ -65,21 +65,21 @@ type ParsedSession struct {
 
 // ToSessionData converts a ParsedSession to the API push payload format.
 func (s *ParsedSession) ToSessionData() api.SessionData {
-	// Compute peak context window percentage using model-specific limits.
-	var peakContextPct *float64
-	if s.PeakContextTokens > 0 {
-		maxCtx := pricing.LookupMaxContext(s.PrimaryModel)
-		value := float64(s.PeakContextTokens) / float64(maxCtx)
-		peakContextPct = &value
-	}
-
 	agentType := s.AgentType
 	if agentType == "" {
 		agentType = "claude_code"
 	}
 
+	// Compute peak context window percentage using model-specific limits.
+	var peakContextPct *float64
+	if agentType == "claude_code" && s.PeakContextTokens > 0 {
+		maxCtx := pricing.LookupMaxContext(s.PrimaryModel)
+		value := float64(s.PeakContextTokens) / float64(maxCtx)
+		peakContextPct = &value
+	}
+
 	var sidechainMessages *int
-	if agentType != "copilot_cli" {
+	if agentType == "claude_code" {
 		value := s.SidechainMessages
 		sidechainMessages = &value
 	}

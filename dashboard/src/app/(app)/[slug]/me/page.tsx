@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { getMyMetricsAsync, listTeamsAsync } from "@/lib/db";
 import type { AgentType, AggregateMetrics, Team } from "@/lib/db";
+import { parseAgentType } from "@/lib/utils";
 import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
 import { Skeleton, SkeletonMetricCategory } from "@/components/skeleton";
@@ -82,11 +83,6 @@ function teamsToScopeTeams(teams: Team[]): ScopeTeam[] {
     memberCount: t.member_count,
   }));
 }
-
-function parseAgentType(value?: string): AgentType | undefined {
-  return value === "claude_code" || value === "copilot_cli" ? value : undefined;
-}
-
 async function MySubtitle({
   metricsPromise,
   teamsPromise,

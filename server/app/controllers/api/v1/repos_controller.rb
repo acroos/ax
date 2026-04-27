@@ -61,6 +61,11 @@ module Api
           .includes(:pr_metrics)
           .order(:created_at_source)
 
+        pr_ids = prs.map(&:id)
+        token_by_pr = apply_agent_type_filter(
+          CodingSession.joins(:session_prs).where(session_prs: { pr_id: pr_ids })
+        ).group("session_prs.pr_id").sum("sessions.input_tokens + sessions.output_tokens") # brakeman:disable SQLInjection
+
         render json: prs.map { |pr|
           m = pr.pr_metrics
           {
@@ -69,9 +74,7 @@ module Api
             created_at: pr.created_at_source,
             post_open_commits: m&.post_open_commits,
             ci_success_rate: m&.ci_success_rate.nil? ? nil : (m.ci_success_rate * 100),
-            total_tokens: apply_agent_type_filter(CodingSession.joins(:session_prs)
-              .where(session_prs: { pr_id: pr.id }))
-              .sum("sessions.input_tokens + sessions.output_tokens")
+            total_tokens: token_by_pr[pr.id]
           }
         }
       end

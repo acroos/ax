@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { getAggregateMetricsAsync, listReposAsync, listTeamsAsync } from "@/lib/db";
 import type { AgentType, AggregateMetrics, Team } from "@/lib/db";
+import { parseAgentType } from "@/lib/utils";
 import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { RepoFilter } from "@/components/repo-filter";
 import { ScopeSelector, type ScopeTeam } from "@/components/scope-selector";
@@ -100,11 +101,6 @@ function teamsToScopeTeams(teams: Team[]): ScopeTeam[] {
     memberCount: t.member_count,
   }));
 }
-
-function parseAgentType(value?: string): AgentType | undefined {
-  return value === "claude_code" || value === "copilot_cli" ? value : undefined;
-}
-
 // Subtitle depends on both promises. If the metrics fetch fails we still
 // render the repo filter (no PR count) rather than crashing the whole header.
 async function OverviewSubtitle({
