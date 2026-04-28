@@ -7,7 +7,7 @@ import (
 	_ "github.com/austinroos/ax/internal/agentinit"
 )
 
-func TestRegisteredProvidersIncludesClaudeAndCopilot(t *testing.T) {
+func TestRegisteredProvidersIncludesAllAgents(t *testing.T) {
 	providers := agents.RegisteredProviders()
 	ids := make(map[agents.AgentID]bool)
 	for _, p := range providers {
@@ -18,6 +18,9 @@ func TestRegisteredProvidersIncludesClaudeAndCopilot(t *testing.T) {
 	}
 	if !ids[agents.CopilotCli] {
 		t.Error("expected copilot_cli provider to be registered")
+	}
+	if !ids[agents.CursorCli] {
+		t.Error("expected cursor_cli provider to be registered")
 	}
 }
 
@@ -45,5 +48,15 @@ func TestFindProviderCopilot(t *testing.T) {
 	}
 	if p.ID() != agents.CopilotCli {
 		t.Errorf("ID() = %q, want %q", p.ID(), agents.CopilotCli)
+	}
+}
+
+func TestFindProviderCursor(t *testing.T) {
+	p := agents.FindProvider(agents.CursorCli)
+	if p == nil {
+		t.Fatal("expected non-nil provider for cursor_cli")
+	}
+	if p.ID() != agents.CursorCli {
+		t.Errorf("ID() = %q, want %q", p.ID(), agents.CursorCli)
 	}
 }
