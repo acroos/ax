@@ -23,12 +23,11 @@ The implementation plan (`plans/multi-agent-abstractions.md`) used Cursor as a f
 
 ## Decision
 
-**Single codegen-driven agent registry.** `config/agents.yaml` is the sole source of truth for all agent metadata and capability declarations. A Ruby codegen script (`scripts/codegen-agents/generate.rb`) emits four `*.gen.*` outputs that each language layer consumes:
+**Single codegen-driven agent registry.** `config/agents.yaml` is the sole source of truth for all agent metadata and capability declarations. A Ruby codegen script (`scripts/codegen-agents/generate.rb`) emits three `*.gen.*` outputs that each language layer consumes:
 
 - `cli/internal/agents/registry.gen.go` — Go constants and `Registry()` map
 - `server/app/models/agent_registry.rb` — Ruby `AgentRegistry` module with helper methods
 - `dashboard/src/lib/agents.gen.ts` — TypeScript types, labels, colors, and capability functions
-- `server/db/agent_types.txt` — Plain-text allowlist for Rails validation
 
 Adding a new agent is a single edit to `agents.yaml` followed by `just codegen-agents`. CI enforces freshness via `just codegen-agents-check` on every PR.
 
