@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { AgentType } from "@/lib/db";
+import { isAgentType, type AgentType } from "@/lib/agents.gen";
 
 /**
  * Compose Tailwind class names safely. clsx handles conditional/nested
@@ -14,5 +14,5 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 export function parseAgentType(value?: string): AgentType | undefined {
-  return value === "claude_code" || value === "copilot_cli" ? value : undefined;
+  return value && isAgentType(value) ? value : undefined;
 }

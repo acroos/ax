@@ -85,7 +85,7 @@ module Api
         VALID_RANGES.fetch(params[:range], 30)
       end
 
-      VALID_AGENT_TYPES = [ "claude_code", "copilot_cli" ].freeze
+      VALID_AGENT_TYPES = AgentRegistry::VALID_IDS
 
       def parsed_agent_type
         type = params[:agent_type].presence
