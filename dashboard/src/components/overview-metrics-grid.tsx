@@ -42,8 +42,13 @@ export function OverviewMetricsGrid({
                 const priorVal = prior(def.slug);
                 const formatter = (n: number | null) =>
                   n === null ? "\u2014" : formatMetricValue(n, def);
+                // PR-derived metrics apply across all agents (no per-agent
+                // capability), so they're never "unsupported" by an agent
+                // filter. Only session-derived metrics depend on the agent
+                // capability matrix.
                 const isUnsupported =
                   currentAgent !== undefined &&
+                  def.source === "session" &&
                   !agentSupportsMetric(currentAgent, def.slug);
 
                 return (
