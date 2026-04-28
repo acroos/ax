@@ -1,6 +1,7 @@
 package cursor
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,6 +80,17 @@ func (p *Provider) Parse(loc agents.SessionLocator) (*parsers.ParsedSession, err
 		return nil, err
 	}
 	sess.AgentType = string(id)
+
+	// Enrich with AI tracking data (commit attribution + conversation summary).
+	// This is best-effort: if the DB is absent or the fetch fails, we continue
+	// without extras rather than failing the whole parse.
+	extras, extrasErr := fetchExtras(p.HomeDir(), loc.SessionID, sess.StartedAt, sess.EndedAt)
+	if extrasErr != nil {
+		log.Printf("cursor: extras enrichment failed for session %s: %v", loc.SessionID, extrasErr)
+	} else if len(extras) > 0 {
+		sess.Extras = extras
+	}
+
 	return sess, nil
 }
 
