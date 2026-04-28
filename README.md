@@ -70,7 +70,12 @@ ax init --api-key <your-key>
 That's it! `ax init` does two things:
 
 - Validates your API key and saves config to `~/.ax/config.json`
-- Installs a Claude Code `SessionEnd` hook to auto-push session data
+- Installs `sessionEnd` hooks for every supported agent it detects on your machine, so session data pushes automatically:
+  - **Claude Code** → `~/.claude/settings.json` (user-level)
+  - **Cursor CLI** → `~/.cursor/hooks.json` (user-level by default; pass `--scope repo` for a per-repo hook you can commit)
+  - **Copilot CLI** → `.github/hooks/session-end.json` (repo-level only — Copilot doesn't support user-level hooks)
+
+> **Using Copilot CLI?** Run `ax init` from inside each repo where you use Copilot, then commit the generated `.github/hooks/session-end.json` so your teammates get automatic collection too. (`ax init` skips this step when run outside a git repo.)
 
 ### 4. Push your first data
 
