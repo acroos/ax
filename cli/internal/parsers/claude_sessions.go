@@ -85,6 +85,11 @@ func (s *ParsedSession) ToSessionData() api.SessionData {
 		sidechainMessages = &value
 	}
 
+	inputTokens := s.InputTokens
+	outputTokens := s.OutputTokens
+	cacheCreationInputTokens := s.CacheCreationInputTokens
+	cacheReadInputTokens := s.CacheReadInputTokens
+
 	return api.SessionData{
 		ID:                       s.ID,
 		AgentType:                agentType,
@@ -93,10 +98,10 @@ func (s *ParsedSession) ToSessionData() api.SessionData {
 		EndedAt:                  s.EndedAt,
 		MessageCount:             s.HumanMessages,
 		TurnCount:                s.TurnCount,
-		InputTokens:              s.InputTokens,
-		OutputTokens:             s.OutputTokens,
-		CacheCreationInputTokens: s.CacheCreationInputTokens,
-		CacheReadInputTokens:     s.CacheReadInputTokens,
+		InputTokens:              &inputTokens,
+		OutputTokens:             &outputTokens,
+		CacheCreationInputTokens: &cacheCreationInputTokens,
+		CacheReadInputTokens:     &cacheReadInputTokens,
 		PrimaryModel:             s.PrimaryModel,
 		FilesReadCount:           len(s.FilesRead),
 		FilesModifiedCount:       len(s.FilesModified),

@@ -288,9 +288,10 @@ You can override with --api-key.`,
 
 			// Parse sessions and build payload
 			payload := &api.PushPayload{
-				RepoPath: path,
-				Owner:    owner,
-				Repo:     repo,
+				PayloadVersion: 1,
+				RepoPath:       path,
+				Owner:          owner,
+				Repo:           repo,
 			}
 
 			var parsed int

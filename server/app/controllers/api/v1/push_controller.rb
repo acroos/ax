@@ -11,6 +11,12 @@ module Api
           return render json: { ok: false, error: "Payload too large" }, status: :content_too_large
         end
 
+        version = (params[:payload_version] || 1).to_i
+        unless version == 1
+          Rails.logger.warn("Push received unknown payload_version=#{version} from user_id=#{current_user.id}")
+          return render json: { ok: false, error: "Unsupported payload_version: #{version}" }, status: :bad_request
+        end
+
         result = PushService.new(push_params, user: current_user).execute
         render json: { ok: true, entities: result }
       rescue PushService::Error => e
@@ -21,7 +27,7 @@ module Api
 
       def push_params
         params.permit(
-          :repo_path, :remote_url, :owner, :repo,
+          :payload_version, :repo_path, :remote_url, :owner, :repo,
           prs: [
             :number, :title, :branch, :state, :created_at,
             :merged_at, :closed_at, :url, :additions, :deletions, :changed_files
@@ -33,7 +39,8 @@ module Api
             :files_read_count, :files_modified_count,
             :assistant_message_count, :sidechain_messages, :total_file_reads,
             :peak_context_pct, :total_tool_calls, :agent_tool_calls,
-            :skill_tool_calls, :mcp_tool_calls
+            :skill_tool_calls, :mcp_tool_calls,
+            extras: {}
           ],
           commits: [
             :sha, :pr_number, :session_id, :message, :author, :committed_at,
