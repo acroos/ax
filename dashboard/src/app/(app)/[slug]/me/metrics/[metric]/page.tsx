@@ -12,7 +12,7 @@ import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { AgentType, PRWithMetrics, MetricDetailResponse } from "@/lib/db";
+import type { PRWithMetrics, MetricDetailResponse } from "@/lib/db";
 import { parseAgentType } from "@/lib/utils";
 import { getMyMetricDetailAsync, listMyPRsAsync } from "@/lib/db";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
