@@ -4,10 +4,12 @@ import Link from "next/link";
 import pathUtil from "path";
 
 import { Markdown } from "@/components/markdown";
+import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { RangeToggle, type Range } from "@/components/range-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getMockTeamPRs, getMockTeamSessions, getMockTeamDetail } from "@/lib/mock/data";
+import { metricHasMultipleAgents, agentsSupportingMetric, AGENT_LABELS, isAgentType, type AgentType } from "@/lib/agents.gen";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
 import { getMetricDef } from "@/lib/metric-defs";
 import {
@@ -29,10 +31,11 @@ export default async function DemoTeamMetricDetailPage({
   searchParams,
 }: {
   params: Promise<{ team: string; metric: string }>;
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; agent_type?: string }>;
 }) {
   const { team: teamSlug, metric } = await params;
-  const { range: rangeParam } = await searchParams;
+  const { range: rangeParam, agent_type: agentTypeParam } = await searchParams;
+  const agentType: AgentType | undefined = agentTypeParam && isAgentType(agentTypeParam) ? agentTypeParam : undefined;
   const range: Range = VALID_RANGES.includes(rangeParam as Range)
     ? (rangeParam as Range)
     : "30d";
@@ -72,8 +75,13 @@ export default async function DemoTeamMetricDetailPage({
   }
 
   const isSession = def.source === "session";
+  const supporting = agentsSupportingMetric(metric);
+  const teamSessions = getMockTeamSessions(teamSlug);
+  const filteredSessions = agentType
+    ? teamSessions.filter((s) => s.agent_type === agentType)
+    : teamSessions;
   const allValues = isSession
-    ? extractSessionValues(getMockTeamSessions(teamSlug), def)
+    ? extractSessionValues(filteredSessions, def)
     : extractPRValues(getMockTeamPRs(teamSlug), def);
   const values = isSession
     ? filterSessionsByRange(allValues as SessionValue[], range)
@@ -101,6 +109,14 @@ export default async function DemoTeamMetricDetailPage({
               {def.category}
             </Badge>
           </div>
+          {metricHasMultipleAgents(metric) && (
+              <AgentTypeFilter current={agentType} agents={supporting} />
+            )}
+            {supporting.length === 1 && (
+              <span className="text-muted-foreground text-sm">
+                Only available for {AGENT_LABELS[supporting[0]]}
+              </span>
+            )}
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">

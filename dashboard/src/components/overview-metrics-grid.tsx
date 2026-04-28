@@ -7,15 +7,19 @@ import {
 import { SectionDivider } from "@/components/section-divider";
 import { MetricCard, fmtDelta } from "@/components/metric-card";
 import type { Range } from "@/components/range-toggle";
+import { agentSupportsMetric, AGENT_LABELS, type AgentType } from "@/lib/agents.gen";
 
 export function OverviewMetricsGrid({
   metrics,
   range,
   metricHref,
+  currentAgent,
 }: {
   metrics: Record<string, MetricAggregate>;
   range: Range;
   metricHref: (slug: string) => string;
+  /** When set, metrics unsupported by this agent render N/A instead of —. */
+  currentAgent?: AgentType;
 }) {
   const m = (slug: string) => metrics[slug]?.current ?? null;
   const prior = (slug: string) => metrics[slug]?.prior ?? null;
@@ -38,6 +42,9 @@ export function OverviewMetricsGrid({
                 const priorVal = prior(def.slug);
                 const formatter = (n: number | null) =>
                   n === null ? "\u2014" : formatMetricValue(n, def);
+                const isUnsupported =
+                  currentAgent !== undefined &&
+                  !agentSupportsMetric(currentAgent, def.slug);
 
                 return (
                   <MetricCard
@@ -48,6 +55,8 @@ export function OverviewMetricsGrid({
                     sparkline={spark(def.slug)}
                     href={metricHref(def.slug)}
                     tooltip={def.tooltip}
+                    unsupported={isUnsupported}
+                    unsupportedLabel={currentAgent ? AGENT_LABELS[currentAgent] : undefined}
                   />
                 );
               })}

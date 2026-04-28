@@ -219,6 +219,7 @@ async function OverviewMetricsBody({
       metrics={data.metrics}
       range={range}
       metricHref={(metricSlug) => `/${slug}/metrics/${metricSlug}?${qs}`}
+      currentAgent={agentType}
     />
   );
 }
