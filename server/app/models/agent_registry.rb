@@ -64,6 +64,37 @@ module AgentRegistry
         "subagent-delegation" => true,
         "token-cost-per-pr" => true
       }
+    },
+    "cursor_cli" => {
+      label: "Cursor CLI",
+      color: "#5a7a5a",
+      home_dir_env: "CURSOR_HOME",
+      home_dir_default: "~/.cursor",
+      hook_scopes: [ "user", "repo" ],
+      fields: {
+        input_tokens: false,
+        output_tokens: false,
+        cache_creation_input_tokens: false,
+        cache_read_input_tokens: false,
+        sidechain_messages: false,
+        peak_context_pct: false,
+        total_file_reads: true,
+        total_tool_calls: true,
+        agent_tool_calls: false,
+        skill_tool_calls: false,
+        mcp_tool_calls: false
+      },
+      metrics: {
+        "iteration-depth" => true,
+        "cache-hit-rate" => false,
+        "sidechain-rate" => false,
+        "peak-context-pct" => false,
+        "re-read-rate" => true,
+        "autonomy-score" => true,
+        "skill-tool-usage" => false,
+        "subagent-delegation" => false,
+        "token-cost-per-pr" => false
+      }
     }
   }.freeze
 
