@@ -16,7 +16,6 @@ Edit config/agents.yaml
   → cli/internal/agents/registry.gen.go   (Go constants + Registry() map)
   → server/app/models/agent_registry.rb   (Ruby AgentRegistry module)
   → dashboard/src/lib/agents.gen.ts       (TypeScript types + capability helpers)
-  → server/db/agent_types.txt             (allowlist for Rails validation)
 ```
 
 Each agent entry declares a capability matrix — which session fields it supplies and which metrics it supports. This matrix is the single source of truth that governs behavior across all three layers:

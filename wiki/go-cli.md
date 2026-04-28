@@ -164,7 +164,7 @@ Pure function metric calculators, kept as a Go library. These are being ported t
 ## Adding a new agent
 
 1. Add the agent's entry to `config/agents.yaml` (use existing entries as templates). Declare every `field_keys` and `metric_slugs` key — no implicit defaults.
-2. Run `just codegen-agents` and commit the regenerated `*.gen.*` files (`registry.gen.go`, `agent_registry.rb`, `agents.gen.ts`, `agent_types.txt`).
+2. Run `just codegen-agents` and commit the regenerated `*.gen.*` files (`registry.gen.go`, `agent_registry.rb`, `agents.gen.ts`).
 3. Implement `cli/internal/agents/<id>/{provider.go, discovery.go, parser.go, tools.go}` — the `agents.Provider` interface.
 4. Implement `cli/internal/hooks/<id>/installer.go` (skip if the agent has no hook system) — the `hooks.Installer` interface.
 5. Register both in `cli/internal/agents/providers.go` (`RegisteredProviders()`) and `cli/internal/hooks/installers.go` (`RegisteredInstallers()`).

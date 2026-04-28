@@ -56,8 +56,7 @@ All three components share a single agent registry driven by `config/agents.yaml
 ```
 config/agents.yaml ──(codegen)──┬── cli/internal/agents/registry.gen.go
                                  ├── server/app/models/agent_registry.rb
-                                 ├── dashboard/src/lib/agents.gen.ts
-                                 └── server/db/agent_types.txt
+                                 └── dashboard/src/lib/agents.gen.ts
 
 CLI push:                              Server ingest:                  Dashboard render:
   for p in RegisteredProviders():        AgentRegistry.supports_field?    AGENT_LABELS[id]
