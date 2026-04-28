@@ -11,7 +11,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function AgentTypeFilter({ current }: { current?: AgentType }) {
+export function AgentTypeFilter({
+  current,
+  agents = ALL_AGENTS,
+}: {
+  current?: AgentType;
+  agents?: readonly AgentType[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -40,7 +46,7 @@ export function AgentTypeFilter({ current }: { current?: AgentType }) {
       <DropdownMenuContent align="start">
         <DropdownMenuRadioGroup value={value} onValueChange={handleChange}>
           <DropdownMenuRadioItem value="all">All Agents</DropdownMenuRadioItem>
-          {ALL_AGENTS.map((id) => (
+          {agents.map((id) => (
             <DropdownMenuRadioItem key={id} value={id}>
               {AGENT_LABELS[id]}
             </DropdownMenuRadioItem>

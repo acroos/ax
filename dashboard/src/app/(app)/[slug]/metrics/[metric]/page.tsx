@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { Markdown } from "@/components/markdown";
 import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { RangeToggle, type Range } from "@/components/range-toggle";
+import { metricHasMultipleAgents, agentsSupportingMetric, AGENT_LABELS } from "@/lib/agents.gen";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +72,7 @@ export default async function MetricDetailPage({
   if (agentType) backParams.set("agent_type", agentType);
   const backHref = `/${slug}${backParams.toString() ? `?${backParams.toString()}` : ""}`;
   const isSession = def.source === "session";
+  const supporting = agentsSupportingMetric(metric);
 
   // Boolean metrics still need raw PR data for BooleanPanel
   const dataPromise = def.valueType === "boolean"
@@ -108,7 +110,14 @@ export default async function MetricDetailPage({
             </Badge>
           </div>
           <div className="flex items-center gap-3">
-            {isSession && <AgentTypeFilter current={agentType} />}
+            {metricHasMultipleAgents(metric) && (
+              <AgentTypeFilter current={agentType} agents={supporting} />
+            )}
+            {supporting.length === 1 && (
+              <span className="text-muted-foreground text-sm">
+                Only available for {AGENT_LABELS[supporting[0]]}
+              </span>
+            )}
             <RangeToggle current={range} />
           </div>
         </div>

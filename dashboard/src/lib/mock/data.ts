@@ -20,7 +20,15 @@ import type {
   TeamDetail,
   TeamMember,
 } from "@/lib/db";
-import { ALL_AGENTS } from "@/lib/agents.gen";
+import { ALL_AGENTS, AGENT_CAPABILITIES, type AgentType } from "@/lib/agents.gen";
+
+// ---------------------------------------------------------------------------
+// Capability-aware null helper
+// ---------------------------------------------------------------------------
+
+function maybeNull<T>(agentId: AgentType, field: string, value: T): T | null {
+  return AGENT_CAPABILITIES[agentId].fields[field] ? value : null;
+}
 
 // ---------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) — deterministic across hot reloads
@@ -527,10 +535,15 @@ function generateSession(idx: number, _repoId: number, author: string): SessionW
   const sidechainMessages = randInt(0, Math.floor(messageCount * 0.3));
   const filesRead = randInt(2, 20);
   const totalReads = randInt(filesRead, filesRead * 4);
+  const agentId = ALL_AGENTS[idx % ALL_AGENTS.length];
+
+  const rawSidechainRate = messageCount + assistantMessages > 0
+    ? Math.round((sidechainMessages / (messageCount + assistantMessages)) * 100) / 100
+    : null;
 
   return {
     id: `session-mock-${idx}`,
-    agent_type: ALL_AGENTS[idx % ALL_AGENTS.length],
+    agent_type: agentId,
     started_at: startDate,
     ended_at: endDate,
     branch: BRANCHES[idx % BRANCHES.length],
@@ -538,21 +551,19 @@ function generateSession(idx: number, _repoId: number, author: string): SessionW
     primary_model: SESSION_MODELS[idx % SESSION_MODELS.length],
     metrics: {
       iteration_depth: randInt(1, 14),
-      total_tokens: inputTokens + outputTokens,
+      total_tokens: maybeNull(agentId, "input_tokens", inputTokens + outputTokens),
       cache_hit_rate: totalInput > 0
-        ? Math.round((cacheRead / totalInput) * 100) / 100
+        ? Math.round((maybeNull(agentId, "cache_read_input_tokens", cacheRead) ?? 0) / totalInput * 100) / 100
         : null,
-      sidechain_rate: messageCount + assistantMessages > 0
-        ? Math.round((sidechainMessages / (messageCount + assistantMessages)) * 100) / 100
-        : null,
+      sidechain_rate: maybeNull(agentId, "sidechain_messages", rawSidechainRate),
       re_read_rate: filesRead > 0
         ? Math.round((totalReads / filesRead) * 100) / 100
         : null,
       autonomy_score: messageCount > 0
         ? Math.round((assistantMessages / messageCount) * 10) / 10
         : null,
-      peak_context_pct: Math.round(randFloat(0.1, 0.95) * 100) / 100,
-      skill_tool_usage: Math.round(randFloat(0.0, 0.3) * 100) / 100,
+      peak_context_pct: maybeNull(agentId, "peak_context_pct", Math.round(randFloat(0.1, 0.95) * 100) / 100),
+      skill_tool_usage: maybeNull(agentId, "skill_tool_calls", Math.round(randFloat(0.0, 0.3) * 100) / 100),
       subagent_delegation: Math.round(randFloat(0.0, 0.5) * 100) / 100,
     },
   };

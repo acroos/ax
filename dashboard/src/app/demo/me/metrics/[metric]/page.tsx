@@ -4,10 +4,12 @@ import Link from "next/link";
 import pathUtil from "path";
 
 import { Markdown } from "@/components/markdown";
+import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { RangeToggle, type Range } from "@/components/range-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getMockMyPRs, getMockMySessions } from "@/lib/mock/data";
+import { metricHasMultipleAgents, agentsSupportingMetric, AGENT_LABELS, isAgentType, type AgentType } from "@/lib/agents.gen";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
 import { getMetricDef } from "@/lib/metric-defs";
 import {
@@ -33,10 +35,11 @@ export default async function DemoMyMetricDetailPage({
   searchParams,
 }: {
   params: Promise<{ metric: string }>;
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; agent_type?: string }>;
 }) {
   const { metric } = await params;
-  const { range: rangeParam } = await searchParams;
+  const { range: rangeParam, agent_type: agentTypeParam } = await searchParams;
+  const agentType: AgentType | undefined = agentTypeParam && isAgentType(agentTypeParam) ? agentTypeParam : undefined;
   const range: Range = VALID_RANGES.includes(rangeParam as Range)
     ? (rangeParam as Range)
     : "30d";
@@ -67,8 +70,13 @@ export default async function DemoMyMetricDetailPage({
   }
 
   const isSession = def.source === "session";
+  const supporting = agentsSupportingMetric(metric);
+  const mySessions = getMockMySessions();
+  const filteredSessions = agentType
+    ? mySessions.filter((s) => s.agent_type === agentType)
+    : mySessions;
   const allValues = isSession
-    ? extractSessionValues(getMockMySessions(), def)
+    ? extractSessionValues(filteredSessions, def)
     : extractPRValues(getMockMyPRs(), def);
   const values = isSession
     ? filterSessionsByRange(allValues as SessionValue[], range)
@@ -96,6 +104,14 @@ export default async function DemoMyMetricDetailPage({
               {def.category}
             </Badge>
           </div>
+          {metricHasMultipleAgents(metric) && (
+              <AgentTypeFilter current={agentType} agents={supporting} />
+            )}
+            {supporting.length === 1 && (
+              <span className="text-muted-foreground text-sm">
+                Only available for {AGENT_LABELS[supporting[0]]}
+              </span>
+            )}
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">
