@@ -104,16 +104,28 @@ func DiscoverRepos(claudeDir string, gitRemoteFn GitRemoteFn) (*DiscoverySummary
 			continue
 		}
 		for _, r := range repos {
-			parts := strings.SplitN(r.OwnerRepo, "/", 2)
-			if len(parts) != 2 {
+			owner, repo := r.Owner, r.Repo
+			if r.OwnerRepo != "" {
+				parts := strings.SplitN(r.OwnerRepo, "/", 2)
+				if len(parts) != 2 {
+					continue
+				}
+				owner, repo = parts[0], parts[1]
+			} else if r.LocalPath != "" {
+				o, rp, err := gitRemoteFn(r.LocalPath)
+				if err != nil {
+					continue
+				}
+				owner, repo = o, rp
+			} else {
 				continue
 			}
-			key := repoKey{owner: parts[0], repo: parts[1]}
+			key := repoKey{owner: owner, repo: repo}
 			if _, ok := repoGroups[key]; !ok {
 				repoGroups[key] = &DiscoveredRepo{
-					Owner:        parts[0],
-					Repo:         parts[1],
-					OwnerRepo:    r.OwnerRepo,
+					Owner:        owner,
+					Repo:         repo,
+					OwnerRepo:    owner + "/" + repo,
 					ProjectPaths: []string{r.LocalPath},
 				}
 			}
