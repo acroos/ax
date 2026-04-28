@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/austinroos/ax/internal/agents"
 )
 
 type copilotEvent struct {
@@ -96,7 +98,7 @@ func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
 		ID:        CopilotSessionIDFromPath(sessionDir),
 		Project:   workspace.GitRoot,
 		Branch:    workspace.Branch,
-		AgentType: "copilot_cli",
+		AgentType: string(agents.CopilotCli),
 		ToolCalls: make(map[string]int),
 	}
 	if session.Project == "" {

@@ -69,6 +69,11 @@ npm install --prefix <worktree-path>/dashboard
 
 Run the checks below before pushing. CI runs them per sub-project based on changed paths — run only the sections relevant to your changes.
 
+**Codegen (always):**
+```bash
+just codegen-agents-check
+```
+
 **Go CLI:**
 ```bash
 just cli-vet

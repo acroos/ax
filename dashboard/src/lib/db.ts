@@ -1,5 +1,6 @@
 // --- API client ---
 // The dashboard always fetches from the Rails API (managed mode).
+import type { AgentType } from "@/lib/agents.gen";
 import { cookies } from "next/headers";
 import { isMock, mockFetchAPI } from "./mock";
 
@@ -179,7 +180,7 @@ export interface PaginatedSessions {
   };
 }
 
-export type AgentType = "claude_code" | "copilot_cli";
+export { type AgentType } from "@/lib/agents.gen";
 
 export interface PRWithMetrics extends PR {
   metrics: PRMetrics | null;

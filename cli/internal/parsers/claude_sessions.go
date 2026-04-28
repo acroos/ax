@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/austinroos/ax/internal/agents"
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/pricing"
 )
@@ -67,19 +68,19 @@ type ParsedSession struct {
 func (s *ParsedSession) ToSessionData() api.SessionData {
 	agentType := s.AgentType
 	if agentType == "" {
-		agentType = "claude_code"
+		agentType = string(agents.ClaudeCode)
 	}
 
 	// Compute peak context window percentage using model-specific limits.
 	var peakContextPct *float64
-	if agentType == "claude_code" && s.PeakContextTokens > 0 {
+	if agentType == string(agents.ClaudeCode) && s.PeakContextTokens > 0 {
 		maxCtx := pricing.LookupMaxContext(s.PrimaryModel)
 		value := float64(s.PeakContextTokens) / float64(maxCtx)
 		peakContextPct = &value
 	}
 
 	var sidechainMessages *int
-	if agentType == "claude_code" {
+	if agentType == string(agents.ClaudeCode) {
 		value := s.SidechainMessages
 		sidechainMessages = &value
 	}
@@ -349,7 +350,7 @@ func ParseSession(path string) (*ParsedSession, error) {
 func parseSessionFiles(sessionID string, files []string) (*ParsedSession, error) {
 	session := &ParsedSession{
 		ID:        sessionID,
-		AgentType: "claude_code",
+		AgentType: string(agents.ClaudeCode),
 		ToolCalls: make(map[string]int),
 	}
 
