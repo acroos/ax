@@ -87,14 +87,25 @@ module Api
 
       VALID_AGENT_TYPES = AgentRegistry::VALID_IDS
 
+      # Returns a known agent_type or nil. Used by MetricsAggregator and
+      # MetricDetailComputer to look up capability metadata, which is keyed
+      # on the registry — unknown values must fall through to the nil branch.
       def parsed_agent_type
         type = params[:agent_type].presence
         VALID_AGENT_TYPES.include?(type) ? type : nil
       end
 
+      # Filters a CodingSession scope by the raw agent_type param. We
+      # deliberately do NOT route through parsed_agent_type here: when a new
+      # agent ships, the dashboard often picks it up before the server has
+      # been redeployed. If the server's VALID_AGENT_TYPES doesn't yet know
+      # the value, dropping the filter silently returns *all* sessions
+      # (mislabeled as the selected agent in the UI). Filtering on the raw
+      # value instead returns zero matches in that case, which is the
+      # correct, visible failure mode.
       def apply_agent_type_filter(scope)
-        agent_type = parsed_agent_type
-        agent_type ? scope.where(sessions: { agent_type: agent_type }) : scope
+        agent_type = params[:agent_type].presence
+        agent_type ? scope.where(agent_type: agent_type) : scope
       end
 
       def history_cutoff
