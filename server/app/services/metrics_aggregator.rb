@@ -18,44 +18,48 @@ class MetricsAggregator
   # Requires joining session data via session_prs.
   TASK_CYCLE_TIME_SLUG = "task-cycle-time"
   TASK_CYCLE_TIME_EXPR = "EXTRACT(EPOCH FROM (COALESCE(prs.merged_at, prs.closed_at) - first_sessions.min_started)) / 3600.0".freeze
-  TASK_CYCLE_TIME_JOINS = {
-    nil => "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id",
-    "claude_code" => "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id WHERE sessions.agent_type = 'claude_code' GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id",
-    "copilot_cli" => "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id WHERE sessions.agent_type = 'copilot_cli' GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id"
-  }.freeze # brakeman:disable SQLInjection — frozen constants
 
   # PR throughput — special aggregate (merged PRs / contributors / weeks).
   PR_THROUGHPUT_SLUG = "pr-throughput"
 
   # Session-derived metrics — computed directly from the sessions table.
-  # Each maps dashboard slug → a SQL expression computed per-session row.
+  # Each maps dashboard slug → { sql: SQL expression, requires: fields agent must support }.
+  # When agent_type is set, metrics whose :requires fields are not all supported by that
+  # agent are filtered out and returned as { current: nil, prior: nil, sparkline: [] }.
   SESSION_METRIC_EXPRESSIONS = {
-    "iteration-depth"      => "turn_count",
-    "token-cost-per-pr"    => "input_tokens + output_tokens",
-    "cache-hit-rate"       => "cache_read_input_tokens::float / NULLIF(input_tokens + cache_creation_input_tokens + cache_read_input_tokens, 0)",
-    "sidechain-rate"       => "CASE WHEN sidechain_messages IS NOT NULL THEN sidechain_messages::float / NULLIF(message_count + assistant_message_count, 0) END",
-    "re-read-rate"         => "total_file_reads::float / NULLIF(files_read_count, 0)",
-    "autonomy-score"       => "assistant_message_count::float / NULLIF(message_count, 0)",
-    "peak-context-pct"     => "peak_context_pct",
-    "subagent-delegation"  => "agent_tool_calls::float / NULLIF(total_tool_calls, 0)",
-    "skill-tool-usage"     => "(skill_tool_calls + mcp_tool_calls)::float / NULLIF(total_tool_calls, 0)"
+    "iteration-depth"      => { sql: "turn_count", requires: [] },
+    "token-cost-per-pr"    => { sql: "input_tokens + output_tokens", requires: %i[input_tokens output_tokens] },
+    "cache-hit-rate"       => { sql: "cache_read_input_tokens::float / NULLIF(input_tokens + cache_creation_input_tokens + cache_read_input_tokens, 0)", requires: %i[input_tokens cache_read_input_tokens cache_creation_input_tokens] },
+    "sidechain-rate"       => { sql: "CASE WHEN sidechain_messages IS NOT NULL THEN sidechain_messages::float / NULLIF(message_count + assistant_message_count, 0) END", requires: %i[sidechain_messages] },
+    "re-read-rate"         => { sql: "total_file_reads::float / NULLIF(files_read_count, 0)", requires: %i[total_file_reads] },
+    "autonomy-score"       => { sql: "assistant_message_count::float / NULLIF(message_count, 0)", requires: [] },
+    "peak-context-pct"     => { sql: "peak_context_pct", requires: %i[peak_context_pct] },
+    "subagent-delegation"  => { sql: "agent_tool_calls::float / NULLIF(total_tool_calls, 0)", requires: %i[agent_tool_calls] },
+    "skill-tool-usage"     => { sql: "(skill_tool_calls + mcp_tool_calls)::float / NULLIF(total_tool_calls, 0)", requires: %i[skill_tool_calls mcp_tool_calls] }
   }.freeze
 
-  # Pre-computed Arel SQL fragments for session metrics.
-  # Built once at class load from the frozen SESSION_METRIC_EXPRESSIONS constant.
-  # This avoids runtime string interpolation inside Arel.sql(), which Brakeman
-  # would otherwise flag as potential SQL injection.
-  SESSION_AVG_PICKS = SESSION_METRIC_EXPRESSIONS.values.map { |expr|
-    Arel.sql("AVG(#{expr})") # brakeman:disable SQLInjection — expr is from frozen constant
-  }.freeze
-
-  SESSION_SPARKLINE_SELECTS = SESSION_METRIC_EXPRESSIONS.map { |slug, expr|
-    Arel.sql("AVG(#{expr}) AS avg_#{slug.tr('-', '_')}") # brakeman:disable SQLInjection
-  }.freeze
-
-  SESSION_SPARKLINE_ALIASES = SESSION_METRIC_EXPRESSIONS.keys.map { |slug|
-    "avg_#{slug.tr('-', '_')}"
-  }.freeze
+  # Pre-computed Arel SQL fragments for all agent-type/nil combinations.
+  # Keyed by agent_type (nil = unfiltered). Built at class load from frozen constants;
+  # no user input is ever interpolated.
+  # rubocop:disable Metrics/BlockLength
+  SESSION_METRIC_BY_AGENT = begin
+    all_agent_keys = [ nil ] + AgentRegistry::VALID_IDS
+    all_agent_keys.each_with_object({}) do |agent_type, h|
+      filtered = SESSION_METRIC_EXPRESSIONS.select do |_slug, meta|
+        agent_type.nil? || meta[:requires].all? { |f| AgentRegistry.supports_field?(agent_type, f) }
+      end
+      avg_picks = filtered.map { |_slug, meta| Arel.sql("AVG(#{meta[:sql]})") } # brakeman:disable SQLInjection — sql from SESSION_METRIC_EXPRESSIONS frozen constant
+      sparkline_selects = filtered.map { |slug, meta| Arel.sql("AVG(#{meta[:sql]}) AS avg_#{slug.tr('-', '_')}") } # brakeman:disable SQLInjection
+      sparkline_aliases = filtered.keys.map { |slug| "avg_#{slug.tr('-', '_')}" }
+      h[agent_type] = {
+        metrics: filtered,
+        avg_picks: avg_picks,
+        sparkline_selects: sparkline_selects,
+        sparkline_aliases: sparkline_aliases
+      }
+    end
+  end.freeze
+  # rubocop:enable Metrics/BlockLength
 
   # Pre-computed Arel SQL fragments for computed PR expressions.
   COMPUTED_PR_AVG_PICKS = COMPUTED_PR_EXPRESSIONS.values.map { |expr|
@@ -174,6 +178,8 @@ class MetricsAggregator
       sparkline: throughput_spark
     }
 
+    # All session metric slugs are always present in the response.
+    # Slugs unsupported by the current agent_type are returned as nil/[].
     SESSION_METRIC_EXPRESSIONS.each_key do |slug|
       metrics[slug] = {
         current: sess_current_aggs[slug],
@@ -190,7 +196,51 @@ class MetricsAggregator
     }
   end
 
+  # Builds the LEFT JOIN fragment for task cycle time, optionally filtering
+  # by agent_type. Validates agent_type against the registry before interpolating.
+  # The SQL strings are constructed as single-line strings to match the original
+  # hardcoded constant format byte-for-byte.
+  TASK_CYCLE_TIME_JOIN_BASE = "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id".freeze
+  TASK_CYCLE_TIME_JOIN_FILTERED_PREFIX = "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id WHERE sessions.agent_type = ".freeze
+  TASK_CYCLE_TIME_JOIN_FILTERED_SUFFIX = " GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id".freeze
+
+  def self.task_cycle_time_join_for(agent_type)
+    return TASK_CYCLE_TIME_JOIN_BASE if agent_type.nil?
+
+    # Validate before interpolating — unknown agent_type falls back to no filter.
+    unless AgentRegistry::VALID_IDS.include?(agent_type)
+      return TASK_CYCLE_TIME_JOIN_BASE
+    end
+
+    quoted = ActiveRecord::Base.connection.quote(agent_type)
+    # agent_type validated against AgentRegistry::VALID_IDS above; quoted via connection.quote
+    # brakeman:disable_next_line SQLInjection
+    "#{TASK_CYCLE_TIME_JOIN_FILTERED_PREFIX}#{quoted}#{TASK_CYCLE_TIME_JOIN_FILTERED_SUFFIX}"
+  end
+
   private
+
+  # Returns the pre-computed metadata for the current agent_type from SESSION_METRIC_BY_AGENT.
+  # Falls back to the nil (unfiltered) entry for any unrecognized agent_type.
+  def session_metrics_cache
+    SESSION_METRIC_BY_AGENT.fetch(@agent_type, SESSION_METRIC_BY_AGENT[nil])
+  end
+
+  def session_metrics_for_query
+    session_metrics_cache[:metrics]
+  end
+
+  def session_avg_picks
+    session_metrics_cache[:avg_picks]
+  end
+
+  def session_sparkline_selects
+    session_metrics_cache[:sparkline_selects]
+  end
+
+  def session_sparkline_aliases
+    session_metrics_cache[:sparkline_aliases]
+  end
 
   # ----- PR metric column helpers -----
 
@@ -255,7 +305,7 @@ class MetricsAggregator
 
   def aggregate_task_cycle_time(scope)
     joined = scope
-      .joins(self.class.task_cycle_time_join_for(@agent_type)) # brakeman:disable SQLInjection — frozen constant
+      .joins(self.class.task_cycle_time_join_for(@agent_type)) # brakeman:disable SQLInjection — validated in task_cycle_time_join_for
       .where("first_sessions.min_started IS NOT NULL")
     return nil if joined.none?
 
@@ -266,7 +316,7 @@ class MetricsAggregator
     dates = (from.to_date..to.to_date).to_a
 
     joined = scope
-      .joins(self.class.task_cycle_time_join_for(@agent_type)) # brakeman:disable SQLInjection — frozen constant
+      .joins(self.class.task_cycle_time_join_for(@agent_type)) # brakeman:disable SQLInjection — validated in task_cycle_time_join_for
       .where("first_sessions.min_started IS NOT NULL")
 
     rows = joined
@@ -314,32 +364,42 @@ class MetricsAggregator
   # ----- Session-derived metric helpers -----
 
   def aggregate_session(scope)
-    return SESSION_METRIC_EXPRESSIONS.keys.index_with { nil } if scope.none?
+    active_metrics = session_metrics_for_query
+    # Build base nil hash for ALL slugs (ensures stable keys regardless of filtering)
+    all_nil = SESSION_METRIC_EXPRESSIONS.keys.index_with { nil }
+    return all_nil if scope.none? || active_metrics.empty?
 
-    values = scope.pick(*SESSION_AVG_PICKS)
+    picks = session_avg_picks
+    values = scope.pick(*picks)
     values = [ values ] unless values.is_a?(Array)
 
-    SESSION_METRIC_EXPRESSIONS.keys.zip(values).to_h { |slug, val| [ slug, val&.to_f ] }
+    supported = active_metrics.keys.zip(values).to_h { |slug, val| [ slug, val&.to_f ] }
+    all_nil.merge(supported)
   end
 
   def sparkline_session(scope, from, to)
     dates = (from.to_date..to.to_date).to_a
+    # Build base empty sparkline for ALL slugs
+    all_empty = SESSION_METRIC_EXPRESSIONS.keys.index_with { [] }
 
+    active_metrics = session_metrics_for_query
+    return all_empty if active_metrics.empty?
+
+    selects = session_sparkline_selects
     rows = scope
-      .select(Arel.sql("#{SESSION_BUCKET_SQL} AS bucket"), *SESSION_SPARKLINE_SELECTS)
+      .select(Arel.sql("#{SESSION_BUCKET_SQL} AS bucket"), *selects)
       .group(Arel.sql(SESSION_BUCKET_SQL))
       .order(Arel.sql("bucket"))
     rows_by_date = rows.index_by { |r| r.bucket.to_date }
 
-    SESSION_METRIC_EXPRESSIONS.keys.zip(SESSION_SPARKLINE_ALIASES).each_with_object({}) do |(slug, col_alias), result|
+    aliases = session_sparkline_aliases
+    supported = active_metrics.keys.zip(aliases).each_with_object({}) do |(slug, col_alias), result|
       result[slug] = dates.map do |date|
         row = rows_by_date[date]
         { t: date.iso8601, v: row ? row.send(col_alias)&.to_f : nil }
       end
     end
-  end
 
-  def self.task_cycle_time_join_for(agent_type)
-    TASK_CYCLE_TIME_JOINS.fetch(agent_type, TASK_CYCLE_TIME_JOINS[nil])
+    all_empty.merge(supported)
   end
 end

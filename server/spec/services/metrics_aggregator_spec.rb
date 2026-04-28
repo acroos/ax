@@ -278,4 +278,103 @@ RSpec.describe MetricsAggregator do
       }.to raise_error(ArgumentError)
     end
   end
+
+  describe "agent_type capability filtering" do
+    it "returns nil for unsupported metrics when agent_type=copilot_cli" do
+      # copilot_cli does not support sidechain_messages or peak_context_pct
+      create(:coding_session, repo: repo,
+        agent_type: "copilot_cli",
+        ended_at: 3.days.ago,
+        turn_count: 5,
+        input_tokens: 1000, output_tokens: 500,
+        cache_creation_input_tokens: 100, cache_read_input_tokens: 400,
+        message_count: 10, assistant_message_count: 8,
+        sidechain_messages: nil,
+        peak_context_pct: nil,
+        total_file_reads: 20, files_read_count: 10,
+        total_tool_calls: 50, agent_tool_calls: 5,
+        skill_tool_calls: 0, mcp_tool_calls: 10)
+
+      pr_scope, session_scope = build_scopes
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30, agent_type: "copilot_cli").call
+
+      expect(result[:metrics]["sidechain-rate"][:current]).to be_nil
+      expect(result[:metrics]["sidechain-rate"][:prior]).to be_nil
+      expect(result[:metrics]["sidechain-rate"][:sparkline]).to eq([])
+
+      expect(result[:metrics]["peak-context-pct"][:current]).to be_nil
+      expect(result[:metrics]["peak-context-pct"][:prior]).to be_nil
+      expect(result[:metrics]["peak-context-pct"][:sparkline]).to eq([])
+    end
+
+    it "computes supported metrics normally when agent_type=copilot_cli" do
+      create(:coding_session, repo: repo,
+        agent_type: "copilot_cli",
+        ended_at: 3.days.ago,
+        turn_count: 8,
+        input_tokens: 1000, output_tokens: 500,
+        cache_creation_input_tokens: 200, cache_read_input_tokens: 800,
+        message_count: 10, assistant_message_count: 8,
+        sidechain_messages: nil,
+        peak_context_pct: nil,
+        total_file_reads: 20, files_read_count: 5,
+        total_tool_calls: 0, agent_tool_calls: 0,
+        skill_tool_calls: 0, mcp_tool_calls: 0)
+
+      pr_scope, session_scope = build_scopes
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30, agent_type: "copilot_cli").call
+
+      # iteration-depth: no required fields → always computed
+      expect(result[:metrics]["iteration-depth"][:current]).to be_within(0.01).of(8.0)
+      # cache-hit-rate: requires input_tokens, cache_read_input_tokens, cache_creation_input_tokens — all supported
+      # 800 / (1000 + 200 + 800) = 0.4
+      expect(result[:metrics]["cache-hit-rate"][:current]).to be_within(0.01).of(0.4)
+    end
+
+    it "returns all 9 metric slugs with nil agent_type (no filtering)" do
+      create(:coding_session, repo: repo,
+        ended_at: 3.days.ago,
+        turn_count: 5)
+
+      pr_scope, session_scope = build_scopes
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30).call
+
+      expected_slugs = MetricsAggregator::SESSION_METRIC_EXPRESSIONS.keys
+      expect(result[:metrics].keys).to include(*expected_slugs)
+      expect(expected_slugs.size).to eq(9)
+    end
+
+    it "always includes all session metric slugs in the response, even when filtered" do
+      pr_scope, session_scope = build_scopes
+      result = described_class.new(pr_scope, session_scope: session_scope, window_days: 30, agent_type: "copilot_cli").call
+
+      MetricsAggregator::SESSION_METRIC_EXPRESSIONS.each_key do |slug|
+        expect(result[:metrics]).to have_key(slug),
+          "expected #{slug} to be present in metrics hash"
+      end
+    end
+  end
+
+  describe ".task_cycle_time_join_for" do
+    # Byte-for-byte regression against the previously-hardcoded TASK_CYCLE_TIME_JOINS values.
+    EXPECTED_JOIN_NIL = "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id"
+    EXPECTED_JOIN_CLAUDE_CODE = "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id WHERE sessions.agent_type = 'claude_code' GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id"
+    EXPECTED_JOIN_COPILOT_CLI = "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id WHERE sessions.agent_type = 'copilot_cli' GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id"
+
+    it "produces the correct SQL for nil agent_type" do
+      expect(described_class.task_cycle_time_join_for(nil)).to eq(EXPECTED_JOIN_NIL)
+    end
+
+    it "produces the correct SQL for claude_code agent_type" do
+      expect(described_class.task_cycle_time_join_for("claude_code")).to eq(EXPECTED_JOIN_CLAUDE_CODE)
+    end
+
+    it "produces the correct SQL for copilot_cli agent_type" do
+      expect(described_class.task_cycle_time_join_for("copilot_cli")).to eq(EXPECTED_JOIN_COPILOT_CLI)
+    end
+
+    it "falls back to the nil (no-filter) join for an unknown agent_type" do
+      expect(described_class.task_cycle_time_join_for("unknown_agent")).to eq(EXPECTED_JOIN_NIL)
+    end
+  end
 end
