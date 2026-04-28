@@ -73,7 +73,14 @@ Adding a new agent is a single edit to `agents.yaml` followed by `just codegen-a
 - PR #232 — Copilot CLI support (the integration that exposed the coupling)
 - PR #239 — Research doc
 - PR #240 — Implementation plan
-- Phases 1–8 implemented as commits on `phase-9-docs`'s ancestor branch
+- PR #241 — Phase 1: agent registry + codegen pipeline
+- PR #242 — Phase 2: wire-format versioning + capability declarations
+- PR #243 — Phase 3: provider interface refactor (Go)
+- PR #244 — Phase 4: server capability-aware aggregator + `/api/v1/agents`
+- PR #245 — Phase 5: dashboard capability-aware filter + N/A rendering
+- PR #246 — Phase 6: hook installer interface refactor
+- PR #247 — Phase 7: Cursor CLI provider
+- PR #248 — Phase 8: Cursor extras (commit attribution + summary)
 - ADR-005 — Session ingestion strategy (now generalized via `agents.Provider`)
 - ADR-009 — Token cost metrics (tokens are now agent-capability-gated)
 - ADR-014 — Remove local mode (this plan is fully managed-only)
