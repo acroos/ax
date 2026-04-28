@@ -28,3 +28,5 @@ Flow:
 - Depends on Claude Code's hook system remaining stable and capable
 - No always-running process to manage or debug
 - Team rollout is as simple as each developer running `ax init`
+
+> **Update (ADR-018):** The hook-based ingestion pattern has been generalized via the `agents.Provider` and `hooks.Installer` interfaces. Claude Code, Copilot CLI, and Cursor CLI each implement these interfaces; adding a new agent no longer requires hand-editing the `ax init` orchestration loop. See [ADR-018](018-multi-agent-abstractions.md).

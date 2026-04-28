@@ -29,12 +29,12 @@ AX is a managed service with three components:
 
 | Component | What it does |
 |-----------|-------------|
-| 🔧 **Go CLI** | Parses Claude Code session data from your machine and pushes it to the server. Installs hooks so this happens automatically. |
+| 🔧 **Go CLI** | Parses session data from Claude Code, Copilot CLI, and Cursor CLI and pushes it to the server. Installs hooks so this happens automatically. |
 | 🚂 **Rails API** | Ingests session data and GitHub webhooks, computes all metrics server-side, manages orgs and auth. |
 | 📈 **Next.js Dashboard** | Web UI at `https://www.axmetrics.dev` for viewing metrics, comparing developers, and managing your team. |
 
 Data flows in two ways:
-1. **Claude Code sessions** → CLI uploads parsed local session data to the API
+1. **Agent sessions** (Claude Code, Copilot CLI, Cursor CLI) → CLI uploads parsed local session data to the API
 2. **GitHub PR events** → GitHub webhooks send PR, review, and CI data to the API
 
 Metrics are computed server-side when PRs reach a terminal state (merged or closed).
@@ -86,9 +86,9 @@ See the [Setup Guide](docs/setup.md) for the full walkthrough, including GitHub 
 
 ---
 
-## Claude Code Integration
+## Supported Agents
 
-AX is purpose-built for [Claude Code](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview) workflows. It correlates Claude Code session data — messages, token usage, self-corrections — with your GitHub PRs to give you the full picture of each agent-assisted PR.
+AX supports three AI coding agents out of the box: **Claude Code**, **Copilot CLI**, and **Cursor CLI**. Each agent is registered in `config/agents.yaml` with a static capability matrix that governs which fields and metrics it supplies. The CLI auto-detects which agents are installed and pushes sessions from all of them.
 
 ---
 
