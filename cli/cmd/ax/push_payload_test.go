@@ -29,13 +29,15 @@ import (
 //
 // claudeDir must contain a projects/<encoded-path>/<session>.jsonl layout.
 // copilotDir must contain a session-state/<uuid>/events.jsonl + workspace.yaml layout.
+// cursorDir must contain a projects/<encoded-path>/agent-transcripts/<uuid>/<uuid>.jsonl layout.
 // projectPath is the local repo path used to compute the encoded project dir name.
 // ownerRepo is the "owner/repo" string Copilot sessions must declare in workspace.yaml.
-func buildSessionsFromFixtures(t *testing.T, claudeDir, copilotDir, projectPath, ownerRepo string) []api.SessionData {
+func buildSessionsFromFixtures(t *testing.T, claudeDir, copilotDir, cursorDir, projectPath, ownerRepo string) []api.SessionData {
 	t.Helper()
 
 	t.Setenv("AX_CLAUDE_HOME", claudeDir)
 	t.Setenv("COPILOT_HOME", copilotDir)
+	t.Setenv("CURSOR_HOME", cursorDir)
 
 	target := agents.DiscoveryTarget{
 		OwnerRepo: ownerRepo,
@@ -127,7 +129,7 @@ func TestPushPayloadGoldenClaude(t *testing.T) {
 	claudeDir, projectPath := setupClaudeFixture(t)
 	ownerRepo := "testorg/myrepo"
 
-	sessions := buildSessionsFromFixtures(t, claudeDir, t.TempDir(), projectPath, ownerRepo)
+	sessions := buildSessionsFromFixtures(t, claudeDir, t.TempDir(), t.TempDir(), projectPath, ownerRepo)
 	if len(sessions) != 1 {
 		t.Fatalf("expected 1 Claude session, got %d", len(sessions))
 	}
@@ -160,7 +162,7 @@ func TestPushPayloadGoldenCopilot(t *testing.T) {
 	ownerRepo := "testorg/myrepo"
 	copilotDir := setupCopilotFixture(t, ownerRepo)
 
-	sessions := buildSessionsFromFixtures(t, t.TempDir(), copilotDir, "/test/myrepo", ownerRepo)
+	sessions := buildSessionsFromFixtures(t, t.TempDir(), copilotDir, t.TempDir(), "/test/myrepo", ownerRepo)
 	if len(sessions) != 1 {
 		t.Fatalf("expected 1 Copilot session, got %d", len(sessions))
 	}
@@ -186,5 +188,63 @@ func TestPushPayloadGoldenCopilot(t *testing.T) {
 
 	if string(got) != string(want) {
 		t.Errorf("Copilot payload mismatch.\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+// setupCursorFixture creates a temp ~/.cursor with a project dir containing the
+// fixture_cursor_transcript.jsonl fixture under agent-transcripts/<uuid>/<uuid>.jsonl.
+func setupCursorFixture(t *testing.T) (cursorDir, projectPath string) {
+	t.Helper()
+	cursorDir = t.TempDir()
+	projectPath = "/test/myrepo"
+	// Cursor encodes path by stripping leading "/" and replacing "/" with "-".
+	encodedPath := "test-myrepo"
+	agentUUID := "ccddee11-aaaa-bbbb-cccc-001122334455"
+
+	transcriptDir := filepath.Join(cursorDir, "projects", encodedPath, "agent-transcripts", agentUUID)
+	if err := os.MkdirAll(transcriptDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	fixtureData, err := os.ReadFile(filepath.Join("testdata", "fixture_cursor_transcript.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(transcriptDir, agentUUID+".jsonl"), fixtureData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return cursorDir, projectPath
+}
+
+func TestPushPayloadGoldenCursor(t *testing.T) {
+	cursorDir, projectPath := setupCursorFixture(t)
+	ownerRepo := "testorg/myrepo"
+
+	sessions := buildSessionsFromFixtures(t, t.TempDir(), t.TempDir(), cursorDir, projectPath, ownerRepo)
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 Cursor session, got %d", len(sessions))
+	}
+
+	got, err := json.MarshalIndent(sessions, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	snapshotPath := filepath.Join("testdata", "expected_payload_cursor.json")
+	if _, err := os.Stat(snapshotPath); os.IsNotExist(err) {
+		if err := os.WriteFile(snapshotPath, got, 0o644); err != nil {
+			t.Fatalf("write snapshot: %v", err)
+		}
+		t.Logf("wrote initial snapshot to %s", snapshotPath)
+		return
+	}
+
+	want, err := os.ReadFile(snapshotPath)
+	if err != nil {
+		t.Fatalf("read snapshot: %v", err)
+	}
+
+	if string(got) != string(want) {
+		t.Errorf("Cursor payload mismatch.\ngot:\n%s\nwant:\n%s", got, want)
 	}
 }

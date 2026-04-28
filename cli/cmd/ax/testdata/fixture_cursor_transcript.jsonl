@@ -1,0 +1,2 @@
+{"role":"user","message":{"content":[{"type":"text","text":"<timestamp>2026-01-15T10:00:00Z</timestamp>\n<user_query>Read the config file and apply a small fix to main.go</user_query>"}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"I'll read the config and apply the fix."},{"type":"tool_use","name":"ReadFile","input":{"path":"/test/myrepo/config/settings.go"}},{"type":"tool_use","name":"ApplyPatch","input":{"patch":"*** Begin Patch\n*** Update File: /test/myrepo/main.go\n@@ -1,1 +1,1 @@\n-// placeholder\n+// fixed\n*** End Patch"}}]}}
