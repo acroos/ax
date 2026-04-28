@@ -81,6 +81,7 @@ func gitRepoExists(path string) bool {
 func newInitCmd() *cobra.Command {
 	var uninstall bool
 	var apiKey string
+	var scope string
 
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -88,11 +89,18 @@ func newInitCmd() *cobra.Command {
 		Long: `Set up AX for automatic metrics collection.
 
 Connects to the AX managed service and installs hooks that automatically
-push Claude Code and Copilot CLI session data after coding sessions.
+push Claude Code, Copilot CLI, and Cursor CLI session data after coding sessions.
 
-Use --uninstall to remove all AX hooks.`,
+Use --scope to control which hook scopes are installed:
+  user  (default) — install user-level hooks (e.g. ~/.cursor/hooks.json)
+  repo            — install repo-level hooks (e.g. .cursor/hooks.json)
+  both            — install both user and repo hooks
+
+Use --uninstall to remove all AX hooks (removes all scopes, ignores --scope).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if uninstall {
+				// --uninstall removes hooks from EVERY scope an installer supports.
+				// Users should not have to remember which scope they installed.
 				home, _ := os.UserHomeDir()
 				repoPath, _ := os.Getwd()
 				uninstallCtx := hooks.InstallContext{
@@ -100,12 +108,12 @@ Use --uninstall to remove all AX hooks.`,
 					RepoPath: repoPath,
 				}
 				for _, inst := range hooks.RegisteredInstallers() {
-					for _, scope := range []hooks.Scope{hooks.UserScope, hooks.RepoScope} {
-						if !inst.Scopes().Has(scope) {
+					for _, s := range []hooks.Scope{hooks.UserScope, hooks.RepoScope} {
+						if !inst.Scopes().Has(s) {
 							continue
 						}
 						scopedCtx := uninstallCtx
-						scopedCtx.Scope = scope
+						scopedCtx.Scope = s
 						_ = inst.Uninstall(scopedCtx)
 					}
 				}
@@ -117,17 +125,38 @@ Use --uninstall to remove all AX hooks.`,
 				return fmt.Errorf("--api-key is required\n\n  Example: ax init --api-key <key>")
 			}
 
-			return initManagedMode(apiKey)
+			scopeFilter, err := parseScopeFlag(scope)
+			if err != nil {
+				return err
+			}
+
+			return initManagedMode(apiKey, scopeFilter)
 		},
 	}
 
 	cmd.Flags().BoolVar(&uninstall, "uninstall", false, "Remove all AX hooks")
 	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key for the AX server")
+	cmd.Flags().StringVar(&scope, "scope", "user", "Hook scope to install: user (default), repo, or both")
 
 	return cmd
 }
 
-func initManagedMode(apiKey string) error {
+// parseScopeFlag converts the --scope string value into a hooks.Scope bitmask.
+// "user" → UserScope, "repo" → RepoScope, "both" → UserScope|RepoScope.
+func parseScopeFlag(s string) (hooks.Scope, error) {
+	switch s {
+	case "user", "":
+		return hooks.UserScope, nil
+	case "repo":
+		return hooks.RepoScope, nil
+	case "both":
+		return hooks.UserScope | hooks.RepoScope, nil
+	default:
+		return 0, fmt.Errorf("invalid --scope %q: must be user, repo, or both", s)
+	}
+}
+
+func initManagedMode(apiKey string, scopeFilter hooks.Scope) error {
 	serverURL := config.DefaultServerURL
 
 	ui.SectionHeader(ui.Bold.Render("AX Setup"))
@@ -196,6 +225,10 @@ func initManagedMode(apiKey string) error {
 		}
 		for _, scope := range []hooks.Scope{hooks.UserScope, hooks.RepoScope} {
 			if !inst.Scopes().Has(scope) {
+				continue
+			}
+			// Honour the --scope flag: skip scopes not requested by the user.
+			if !scopeFilter.Has(scope) {
 				continue
 			}
 			if scope == hooks.RepoScope && !gitRepoExists(repoPath) {

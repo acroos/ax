@@ -7,6 +7,8 @@ package agentinit
 import (
 	_ "github.com/austinroos/ax/internal/agents/claude"
 	_ "github.com/austinroos/ax/internal/agents/copilot"
+	_ "github.com/austinroos/ax/internal/agents/cursor"
 	_ "github.com/austinroos/ax/internal/hooks/claude"
 	_ "github.com/austinroos/ax/internal/hooks/copilot"
+	_ "github.com/austinroos/ax/internal/hooks/cursor"
 )
