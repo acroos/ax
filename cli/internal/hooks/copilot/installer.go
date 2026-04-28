@@ -10,6 +10,7 @@ import (
 
 	"github.com/austinroos/ax/internal/agents"
 	"github.com/austinroos/ax/internal/hooks"
+	"github.com/austinroos/ax/internal/hooks/pushcommand"
 )
 
 func init() {
@@ -46,7 +47,6 @@ func hookPath(repoPath string) string {
 }
 
 // Install writes the AX repo-local Copilot CLI sessionEnd hook.
-// Copilot hooks use a simple "ax push --repo ." command (no worktree handling needed).
 func (i *Installer) Install(ctx hooks.InstallContext) (hooks.Installed, error) {
 	if !isGitRepo(ctx.RepoPath) {
 		return hooks.Installed{}, nil
@@ -54,11 +54,16 @@ func (i *Installer) Install(ctx hooks.InstallContext) (hooks.Installed, error) {
 
 	path := hookPath(ctx.RepoPath)
 
+	cmd := pushcommand.Build(pushcommand.Spec{
+		AxBinary:       ctx.AxBinary,
+		WorktreeMarker: "",
+	})
+
 	hookFile := copilotHookFile{
 		Version: 1,
 		Hooks: map[string][]copilotHookEntry{
 			"sessionEnd": {
-				{Type: "command", Bash: "ax push --repo .", TimeoutSec: 30},
+				{Type: "command", Bash: cmd, TimeoutSec: 60},
 			},
 		},
 	}

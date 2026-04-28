@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/austinroos/ax/internal/hooks"
@@ -121,11 +122,35 @@ func TestInstall_CommandIsPushRepoForm(t *testing.T) {
 	}
 
 	entry := entries[0]
-	if entry.Bash != "ax push --repo ." {
-		t.Errorf("expected simple 'ax push --repo .' command, got %q", entry.Bash)
+	if !strings.Contains(entry.Bash, "ax push --repo") {
+		t.Errorf("expected bash to contain 'ax push --repo', got %q", entry.Bash)
+	}
+	if !strings.Contains(entry.Bash, "mkdir -p") {
+		t.Errorf("expected bash to contain pushcommand logging (mkdir -p), got %q", entry.Bash)
 	}
 	if entry.Type != "command" {
 		t.Errorf("expected type 'command', got %q", entry.Type)
+	}
+	if entry.TimeoutSec != 60 {
+		t.Errorf("expected timeoutSec 60, got %d", entry.TimeoutSec)
+	}
+}
+
+func TestIsInstalled_LegacySimpleForm(t *testing.T) {
+	dir := t.TempDir()
+	initGitRepo(t, dir)
+	ctx := makeCtx(t, dir)
+	inst := copilot.New()
+
+	hookFilePath := filepath.Join(dir, ".github", "hooks", "session-end.json")
+	os.MkdirAll(filepath.Dir(hookFilePath), 0o755) //nolint:errcheck
+
+	// Write a hook with the old simple-form bash command (pre-fix).
+	legacy := `{"version":1,"hooks":{"sessionEnd":[{"type":"command","bash":"ax push --repo .","timeoutSec":30}]}}`
+	os.WriteFile(hookFilePath, []byte(legacy), 0o644) //nolint:errcheck
+
+	if !inst.IsInstalled(ctx) {
+		t.Error("Expected IsInstalled to return true for legacy simple-form hook (back-compat)")
 	}
 }
 
