@@ -61,15 +61,14 @@ export function MetricCard({
   href?: string;
   delta?: string;
   sparkline?: SparklinePoint[];
-  /** When true and value is "—", renders "N/A" with a tooltip instead of the em-dash. */
+  /** When true, renders "N/A" regardless of value with an optional tooltip. */
   unsupported?: boolean;
   /** Human-readable agent name for the N/A tooltip (e.g. "Copilot CLI"). */
   unsupportedLabel?: string;
 }) {
   const descriptionId = useId();
 
-  const isNA = unsupported && value === "\u2014";
-  const displayValue = isNA ? "N/A" : value;
+  const displayValue = unsupported ? "N/A" : value;
 
   const cardContent = (
     <CardContent className="relative p-0">
@@ -78,7 +77,7 @@ export function MetricCard({
       </div>
       <div
         className="mb-1 font-serif text-[28px] font-medium leading-none tracking-tight text-foreground [font-variant-numeric:lining-nums_tabular-nums]"
-        title={isNA && unsupportedLabel ? `Not available for ${unsupportedLabel} sessions` : undefined}
+        title={unsupported && unsupportedLabel ? `Not available for ${unsupportedLabel} sessions` : undefined}
       >
         {displayValue}
       </div>
