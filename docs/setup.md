@@ -23,10 +23,12 @@ Before you begin, make sure you have:
 - ✅ **A GitHub account** — Sign-in is GitHub OAuth. There is no email/password
   flow.
 
-- ✅ **Claude Code or Copilot CLI** — The `ax` CLI reads Claude Code sessions
-  from `~/.claude/projects/` and Copilot CLI sessions from `~/.copilot/session-state/`.
-  If neither agent has local session history yet, session metrics will be empty
-  but GitHub-sourced metrics still work fine.
+- ✅ **Claude Code, Copilot CLI, or Cursor CLI** — The `ax` CLI reads session data from whichever agents are installed:
+  - Claude Code: `~/.claude/projects/`
+  - Copilot CLI: `~/.copilot/session-state/`
+  - Cursor CLI: `~/.cursor/workspaces/`
+
+  If none of the supported agents have local session history yet, session metrics will be empty but GitHub-sourced metrics still work fine.
 
 ---
 
@@ -87,15 +89,66 @@ That's the only flag you need! `ax init` will:
 5. 🪝 If Copilot CLI state exists, install an AX-owned repo-local
    `.github/hooks/session-end.json` hook that runs `ax push` after Copilot CLI
    sessions for that repo.
+6. 🪝 If Cursor state exists, install a Cursor `SessionEnd` hook into
+   `~/.cursor/hooks.json` that runs `ax push` after each Cursor session ends.
 
 Flag reference:
 
 | Flag | Purpose |
 |---|---|
 | `--api-key <key>` | **(Required)** Your API key from the Settings page. |
+| `--scope user` | (Default) Install hooks at user scope (`~/.cursor/hooks.json`). |
+| `--scope repo` | Install hooks at repo scope (`<cwd>/.cursor/hooks.json`) — committed to version control, shared with teammates. |
 | `--uninstall` | Remove all AX hooks (does not touch `config.json`). |
 
 To undo everything, run `ax init --uninstall`.
+
+---
+
+## Cursor CLI
+
+AX supports [Cursor](https://cursor.sh) as a first-class agent alongside Claude Code and Copilot CLI.
+
+### Hook installation
+
+```bash
+ax init --api-key <your-key>               # user scope (default, recommended)
+ax init --api-key <your-key> --scope repo  # repo scope (opt-in, commits a hook file)
+```
+
+After running `ax init`, the file `~/.cursor/hooks.json` will look like:
+
+```json
+{
+  "hooks": [
+    {
+      "event": "SessionEnd",
+      "command": "bash -c '...' "
+    }
+  ]
+}
+```
+
+The `command` is a bash one-liner that reads the hook's JSON input, resolves the repo path, and runs `ax push --repo <path>`. Log output goes to `~/.ax/push.log`.
+
+### Known issue: `sessionEnd` reliability
+
+Cursor's `sessionEnd` hook is reportedly unreliable in CLI mode (as of January 2026). If sessions don't appear in the dashboard after a Cursor CLI session ends, run the push manually:
+
+```bash
+ax push --repo .
+```
+
+This is safe to run at any time — the server upserts sessions by ID, so re-pushing is idempotent.
+
+### Cursor extras
+
+When `~/.cursor/ai-tracking/ai-code-tracking.db` is present, AX reads it read-only and attaches best-effort extras to each session:
+
+- `extras.commit_attribution` — list of commits linked to the session
+- `extras.conversation_summary` — Cursor-generated summary of the session
+
+These are stored in the `extras` JSONB column on session rows. They are not currently used for metric computation, but are visible in raw session data and available for future metric development.
 
 ---
 

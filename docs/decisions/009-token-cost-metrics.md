@@ -29,3 +29,5 @@ Implementation details:
 - Token totals are not equivalent to billing cost, especially across models, but they are stable across supported agents.
 - Model-specific pricing maintenance is no longer required for the dashboard metric.
 - Historical sessions default to `claude_code` so existing Claude Code data remains filterable.
+
+> **Update (ADR-018):** Token fields are now agent-capability-gated. Agents that do not supply token data (e.g., Cursor CLI) push `NULL` for token columns; the aggregator skips token-dependent metrics for those agents rather than computing misleading zeros. See [ADR-018](018-multi-agent-abstractions.md).
