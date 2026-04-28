@@ -360,6 +360,7 @@ RSpec.describe MetricsAggregator do
     EXPECTED_JOIN_NIL = "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id"
     EXPECTED_JOIN_CLAUDE_CODE = "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id WHERE sessions.agent_type = 'claude_code' GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id"
     EXPECTED_JOIN_COPILOT_CLI = "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id WHERE sessions.agent_type = 'copilot_cli' GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id"
+    EXPECTED_JOIN_CURSOR_CLI = "LEFT JOIN (SELECT session_prs.pr_id, MIN(sessions.started_at) AS min_started FROM session_prs JOIN sessions ON sessions.id = session_prs.session_id WHERE sessions.agent_type = 'cursor_cli' GROUP BY session_prs.pr_id) first_sessions ON first_sessions.pr_id = prs.id"
 
     it "produces the correct SQL for nil agent_type" do
       expect(described_class.task_cycle_time_join_for(nil)).to eq(EXPECTED_JOIN_NIL)
@@ -373,8 +374,12 @@ RSpec.describe MetricsAggregator do
       expect(described_class.task_cycle_time_join_for("copilot_cli")).to eq(EXPECTED_JOIN_COPILOT_CLI)
     end
 
-    it "falls back to the nil (no-filter) join for an unknown agent_type" do
-      expect(described_class.task_cycle_time_join_for("unknown_agent")).to eq(EXPECTED_JOIN_NIL)
+    it "produces the correct SQL for cursor_cli agent_type" do
+      expect(described_class.task_cycle_time_join_for("cursor_cli")).to eq(EXPECTED_JOIN_CURSOR_CLI)
+    end
+
+    it "falls back to unfiltered base SQL when agent_type is not in AgentRegistry::VALID_IDS" do
+      expect(described_class.task_cycle_time_join_for("unknown_agent")).to eq(described_class.task_cycle_time_join_for(nil))
     end
   end
 end
