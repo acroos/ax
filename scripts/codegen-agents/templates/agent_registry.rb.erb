@@ -3,24 +3,24 @@
 
 module AgentRegistry
   AGENTS = {
-<% agents.each do |id, meta| -%>
+<% agents.each_with_index do |(id, meta), agent_i| -%>
     "<%= id %>" => {
       label: <%= meta["label"].inspect %>,
       color: <%= meta["color"].inspect %>,
       home_dir_env: <%= meta["home_dir_env"].inspect %>,
       home_dir_default: <%= meta["home_dir_default"].inspect %>,
-      hook_scopes: <%= meta["hook_scopes"].inspect %>,
+      hook_scopes: [ <%= meta["hook_scopes"].map(&:inspect).join(", ") %> ],
       fields: {
-<% raw["field_keys"].each do |k| -%>
-        <%= k %>: <%= meta["fields"][k] %>,
+<% raw["field_keys"].each_with_index do |k, i| -%>
+        <%= k %>: <%= meta["fields"][k] %><%= "," unless i == raw["field_keys"].size - 1 %>
 <% end -%>
       },
       metrics: {
-<% raw["metric_slugs"].each do |s| -%>
-        "<%= s %>" => <%= meta["metrics"][s] %>,
+<% raw["metric_slugs"].each_with_index do |s, i| -%>
+        "<%= s %>" => <%= meta["metrics"][s] %><%= "," unless i == raw["metric_slugs"].size - 1 %>
 <% end -%>
       }
-    },
+    }<%= "," unless agent_i == agents.size - 1 %>
 <% end -%>
   }.freeze
 
