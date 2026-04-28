@@ -5,6 +5,20 @@
 default:
     @just --list
 
+# --- Codegen ---
+
+# Run codegen for the agent registry
+codegen-agents:
+    ruby scripts/codegen-agents/generate.rb
+
+# Verify codegen output is up-to-date (CI gate)
+codegen-agents-check:
+    ruby scripts/codegen-agents/generate.rb --check
+
+# Test the codegen script itself
+codegen-agents-test:
+    cd scripts/codegen-agents && bundle exec rspec
+
 # --- CLI (Go) ---
 
 # Build the CLI
