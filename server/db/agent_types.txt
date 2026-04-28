@@ -1,0 +1,2 @@
+claude_code
+copilot_cli
