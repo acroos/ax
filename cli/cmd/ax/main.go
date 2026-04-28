@@ -70,6 +70,14 @@ func parseGitRemote(remoteURL string) (owner, repo string, err error) {
 	return bulk.ParseGitRemote(remoteURL)
 }
 
+// gitRepoExists reports whether path contains a .git directory.
+func gitRepoExists(path string) bool {
+	if _, err := os.Stat(filepath.Join(path, ".git")); err == nil {
+		return true
+	}
+	return false
+}
+
 func newInitCmd() *cobra.Command {
 	var uninstall bool
 	var apiKey string
@@ -84,12 +92,22 @@ push Claude Code and Copilot CLI session data after coding sessions.
 
 Use --uninstall to remove all AX hooks.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			settingsPath := hooks.DefaultSettingsPath()
-
 			if uninstall {
-				_ = hooks.Uninstall(settingsPath)
-				if cwd, err := os.Getwd(); err == nil {
-					_ = hooks.UninstallCopilot(cwd)
+				home, _ := os.UserHomeDir()
+				repoPath, _ := os.Getwd()
+				uninstallCtx := hooks.InstallContext{
+					HomeDir:  home,
+					RepoPath: repoPath,
+				}
+				for _, inst := range hooks.RegisteredInstallers() {
+					for _, scope := range []hooks.Scope{hooks.UserScope, hooks.RepoScope} {
+						if !inst.Scopes().Has(scope) {
+							continue
+						}
+						scopedCtx := uninstallCtx
+						scopedCtx.Scope = scope
+						_ = inst.Uninstall(scopedCtx)
+					}
 				}
 				ui.StepDone("All AX hooks removed")
 				return nil
@@ -99,7 +117,7 @@ Use --uninstall to remove all AX hooks.`,
 				return fmt.Errorf("--api-key is required\n\n  Example: ax init --api-key <key>")
 			}
 
-			return initManagedMode(apiKey, settingsPath)
+			return initManagedMode(apiKey)
 		},
 	}
 
@@ -109,7 +127,7 @@ Use --uninstall to remove all AX hooks.`,
 	return cmd
 }
 
-func initManagedMode(apiKey, settingsPath string) error {
+func initManagedMode(apiKey string) error {
 	serverURL := config.DefaultServerURL
 
 	ui.SectionHeader(ui.Bold.Render("AX Setup"))
@@ -163,22 +181,42 @@ func initManagedMode(apiKey, settingsPath string) error {
 		axBinary = "ax"
 	}
 
-	if hooks.IsInstalled(settingsPath) {
-		ui.Step("Updating AX hooks...")
+	home, _ := os.UserHomeDir()
+	repoPath, _ := os.Getwd()
+
+	installCtx := hooks.InstallContext{
+		AxBinary: axBinary,
+		HomeDir:  home,
+		RepoPath: repoPath,
 	}
 
-	if err := hooks.Install(settingsPath, axBinary); err != nil {
-		return fmt.Errorf("failed to install hooks: %w", err)
-	}
-	fmt.Printf("           %s Claude Code SessionEnd hook installed\n", ui.SuccessIcon())
+	for _, inst := range hooks.RegisteredInstallers() {
+		if !inst.HomeExists() {
+			continue
+		}
+		for _, scope := range []hooks.Scope{hooks.UserScope, hooks.RepoScope} {
+			if !inst.Scopes().Has(scope) {
+				continue
+			}
+			if scope == hooks.RepoScope && !gitRepoExists(repoPath) {
+				continue
+			}
 
-	if hooks.CopilotHomeExists() {
-		if repoPath, err := os.Getwd(); err == nil {
-			if installed, err := hooks.InstallCopilot(repoPath); err != nil {
-				return fmt.Errorf("failed to install Copilot CLI hook: %w", err)
-			} else if installed {
-				fmt.Printf("           %s Created %s\n", ui.SuccessIcon(), ui.Code.Render(".github/hooks/session-end.json"))
-				fmt.Printf("           Commit this file so your team gets automatic Copilot CLI session collection.\n")
+			scopedCtx := installCtx
+			scopedCtx.Scope = scope
+
+			result, err := inst.Install(scopedCtx)
+			if err != nil {
+				return fmt.Errorf("%s: install failed: %w", inst.AgentID(), err)
+			}
+			if result.Path == "" {
+				continue
+			}
+
+			meta := agents.Registry()[inst.AgentID()]
+			fmt.Printf("           %s %s hook installed\n", ui.SuccessIcon(), meta.Label)
+			if result.Message != "" {
+				fmt.Printf("           %s\n", result.Message)
 			}
 		}
 	}
