@@ -8,7 +8,7 @@ module AgentRegistry
       color: "#c4621a",
       home_dir_env: "AX_CLAUDE_HOME",
       home_dir_default: "~/.claude",
-      hook_scopes: ["user"],
+      hook_scopes: [ "user" ],
       fields: {
         input_tokens: true,
         output_tokens: true,
@@ -20,7 +20,7 @@ module AgentRegistry
         total_tool_calls: true,
         agent_tool_calls: true,
         skill_tool_calls: true,
-        mcp_tool_calls: true,
+        mcp_tool_calls: true
       },
       metrics: {
         "iteration-depth" => true,
@@ -31,7 +31,7 @@ module AgentRegistry
         "autonomy-score" => true,
         "skill-tool-usage" => true,
         "subagent-delegation" => true,
-        "token-cost-per-pr" => true,
+        "token-cost-per-pr" => true
       }
     },
     "copilot_cli" => {
@@ -39,7 +39,7 @@ module AgentRegistry
       color: "#5a8fd8",
       home_dir_env: "COPILOT_HOME",
       home_dir_default: "~/.copilot",
-      hook_scopes: ["repo"],
+      hook_scopes: [ "repo" ],
       fields: {
         input_tokens: true,
         output_tokens: true,
@@ -51,7 +51,7 @@ module AgentRegistry
         total_tool_calls: true,
         agent_tool_calls: true,
         skill_tool_calls: false,
-        mcp_tool_calls: true,
+        mcp_tool_calls: true
       },
       metrics: {
         "iteration-depth" => true,
@@ -62,9 +62,9 @@ module AgentRegistry
         "autonomy-score" => true,
         "skill-tool-usage" => false,
         "subagent-delegation" => true,
-        "token-cost-per-pr" => true,
+        "token-cost-per-pr" => true
       }
-    },
+    }
   }.freeze
 
   VALID_IDS = AGENTS.keys.freeze
