@@ -16,8 +16,7 @@ TEMPLATES = File.join(__dir__, "templates")
 OUTPUTS = {
   "registry.go.erb"        => "cli/internal/agents/registry.gen.go",
   "agent_registry.rb.erb"  => "server/app/models/agent_registry.rb",
-  "agents.ts.erb"          => "dashboard/src/lib/agents.gen.ts",
-  "agent_types.txt.erb"    => "server/db/agent_types.txt"
+  "agents.ts.erb"          => "dashboard/src/lib/agents.gen.ts"
 }
 
 def render(template_name, binding_obj)

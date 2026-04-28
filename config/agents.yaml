@@ -1,8 +1,7 @@
 # config/agents.yaml — single source of truth for agent registry + capability matrix.
-# Codegen target: cli/internal/agents/registry.gen.go,
-#                 server/app/models/agent_registry.rb,
-#                 dashboard/src/lib/agents.gen.ts,
-#                 server/db/agent_types.txt.
+# Codegen targets: cli/internal/agents/registry.gen.go,
+#                  server/app/models/agent_registry.rb,
+#                  dashboard/src/lib/agents.gen.ts.
 # After editing, run: just codegen-agents
 # CI verifies via: just codegen-agents-check
 
