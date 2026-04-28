@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/austinroos/ax/internal/agents"
 	"github.com/austinroos/ax/internal/parsers"
@@ -135,7 +134,7 @@ func parseSessionFile(filePath string, session *parsers.ParsedSession,
 		}
 
 		// Track timestamps
-		ts := parseTimestamp(msg.Timestamp)
+		ts := parsers.ParseTimestamp(msg.Timestamp)
 		if ts > 0 {
 			if session.StartedAt == 0 || ts < session.StartedAt {
 				session.StartedAt = ts
@@ -333,19 +332,4 @@ func extractCommitSHAs(text string, seen map[string]bool) {
 			}
 		}
 	}
-}
-
-// parseTimestamp converts an ISO 8601 timestamp string to unix milliseconds.
-func parseTimestamp(ts string) int64 {
-	if ts == "" {
-		return 0
-	}
-	t, err := time.Parse(time.RFC3339Nano, ts)
-	if err != nil {
-		t, err = time.Parse(time.RFC3339, ts)
-		if err != nil {
-			return 0
-		}
-	}
-	return t.UnixMilli()
 }

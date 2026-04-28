@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/austinroos/ax/internal/agents"
 	"github.com/austinroos/ax/internal/parsers"
@@ -107,10 +106,10 @@ func parseSession(sessionDir string) (*parsers.ParsedSession, error) {
 		session.Project = workspace.Cwd
 	}
 	if session.StartedAt == 0 {
-		session.StartedAt = parseTimestamp(workspace.CreatedAt)
+		session.StartedAt = parsers.ParseTimestamp(workspace.CreatedAt)
 	}
 	if session.EndedAt == 0 {
-		session.EndedAt = parseTimestamp(workspace.UpdatedAt)
+		session.EndedAt = parsers.ParseTimestamp(workspace.UpdatedAt)
 	}
 
 	eventsPath := filepath.Join(sessionDir, "events.jsonl")
@@ -136,7 +135,7 @@ func parseSession(sessionDir string) (*parsers.ParsedSession, error) {
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 			continue
 		}
-		ts := parseTimestamp(event.Timestamp)
+		ts := parsers.ParseTimestamp(event.Timestamp)
 		if ts > 0 {
 			if session.StartedAt == 0 || ts < session.StartedAt {
 				session.StartedAt = ts
@@ -158,7 +157,7 @@ func parseSession(sessionDir string) (*parsers.ParsedSession, error) {
 				} else if data.Context.Cwd != "" {
 					session.Project = data.Context.Cwd
 				}
-				if start := parseTimestamp(data.StartTime); start > 0 {
+				if start := parsers.ParseTimestamp(data.StartTime); start > 0 {
 					session.StartedAt = start
 				}
 			}
@@ -374,19 +373,4 @@ func extractCommitSHAs(text string, seen map[string]bool) {
 			}
 		}
 	}
-}
-
-// parseTimestamp converts an ISO 8601 timestamp string to unix milliseconds.
-func parseTimestamp(ts string) int64 {
-	if ts == "" {
-		return 0
-	}
-	t, err := time.Parse(time.RFC3339Nano, ts)
-	if err != nil {
-		t, err = time.Parse(time.RFC3339, ts)
-		if err != nil {
-			return 0
-		}
-	}
-	return t.UnixMilli()
 }

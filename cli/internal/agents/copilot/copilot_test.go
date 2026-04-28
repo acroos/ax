@@ -112,7 +112,7 @@ branch: "feature/copilot"
 	if session.TotalToolCalls != 4 || session.TotalFileReads != 1 || len(session.FilesModified) != 1 {
 		t.Errorf("tool/file counts = tools %d reads %d modified %d, want 4/1/1", session.TotalToolCalls, session.TotalFileReads, len(session.FilesModified))
 	}
-	sd := session.ToSessionData(parsers.DefaultCaps(session.AgentType))
+	sd := session.ToSessionData(parsers.CapsFromFields(agents.Registry()[agents.AgentID(session.AgentType)].Capabilities.Fields))
 	if sd.SidechainMessages != nil {
 		t.Fatalf("SidechainMessages = %d, want nil for Copilot CLI", *sd.SidechainMessages)
 	}

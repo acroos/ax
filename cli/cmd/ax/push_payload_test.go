@@ -15,14 +15,17 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
+	_ "github.com/austinroos/ax/internal/agentinit"
+	"github.com/austinroos/ax/internal/agents"
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/parsers"
 )
 
-// buildSessionsFromFixtures runs the discovery + parse pipeline for both Claude and
-// Copilot, returning the resulting []api.SessionData in the order: Claude then Copilot.
+// buildSessionsFromFixtures runs the discovery + parse pipeline for all registered
+// providers, returning the resulting []api.SessionData sorted by agent_type then id.
 //
 // claudeDir must contain a projects/<encoded-path>/<session>.jsonl layout.
 // copilotDir must contain a session-state/<uuid>/events.jsonl + workspace.yaml layout.
@@ -31,33 +34,39 @@ import (
 func buildSessionsFromFixtures(t *testing.T, claudeDir, copilotDir, projectPath, ownerRepo string) []api.SessionData {
 	t.Helper()
 
+	t.Setenv("AX_CLAUDE_HOME", claudeDir)
+	t.Setenv("COPILOT_HOME", copilotDir)
+
+	target := agents.DiscoveryTarget{
+		OwnerRepo: ownerRepo,
+		LocalPath: projectPath,
+	}
+
 	var sessions []api.SessionData
-
-	// Claude sessions
-	claudeFiles, err := parsers.FindSessionFiles(claudeDir, projectPath)
-	if err != nil {
-		t.Fatalf("FindSessionFiles: %v", err)
-	}
-	for _, f := range claudeFiles {
-		sess, err := parsers.ParseSession(f)
-		if err != nil {
-			t.Fatalf("ParseSession(%s): %v", f, err)
+	for _, p := range agents.RegisteredProviders() {
+		if !p.HomeExists() {
+			continue
 		}
-		sessions = append(sessions, sess.ToSessionData(parsers.DefaultCaps(sess.AgentType)))
+		locs, err := p.DiscoverSessions(target)
+		if err != nil {
+			t.Fatalf("%s discover: %v", p.ID(), err)
+		}
+		for _, loc := range locs {
+			sess, err := p.Parse(loc)
+			if err != nil {
+				t.Fatalf("%s parse %s: %v", p.ID(), loc.SessionID, err)
+			}
+			caps := parsers.CapsFromFields(p.Capabilities().Fields)
+			sessions = append(sessions, sess.ToSessionData(caps))
+		}
 	}
 
-	// Copilot sessions
-	copilotFiles, err := parsers.FindCopilotSessionsForRepo(copilotDir, ownerRepo)
-	if err != nil {
-		t.Fatalf("FindCopilotSessionsForRepo: %v", err)
-	}
-	for _, f := range copilotFiles {
-		sess, err := parsers.ParseSession(f)
-		if err != nil {
-			t.Fatalf("ParseSession(%s): %v", f, err)
+	sort.Slice(sessions, func(i, j int) bool {
+		if sessions[i].AgentType != sessions[j].AgentType {
+			return sessions[i].AgentType < sessions[j].AgentType
 		}
-		sessions = append(sessions, sess.ToSessionData(parsers.DefaultCaps(sess.AgentType)))
-	}
+		return sessions[i].ID < sessions[j].ID
+	})
 
 	return sessions
 }
@@ -130,7 +139,6 @@ func TestPushPayloadGoldenClaude(t *testing.T) {
 
 	snapshotPath := filepath.Join("testdata", "expected_payload_claude.json")
 	if _, err := os.Stat(snapshotPath); os.IsNotExist(err) {
-		// First run: write the snapshot.
 		if err := os.WriteFile(snapshotPath, got, 0o644); err != nil {
 			t.Fatalf("write snapshot: %v", err)
 		}

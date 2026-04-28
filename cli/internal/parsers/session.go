@@ -9,9 +9,106 @@ package parsers
 // agents.Registry()[id].Capabilities.
 
 import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/pricing"
 )
+
+// HistoryEntry represents a single line in ~/.claude/history.jsonl.
+type HistoryEntry struct {
+	Display   string `json:"display"`
+	Timestamp int64  `json:"timestamp"`
+	Project   string `json:"project"`
+	SessionID string `json:"sessionId"`
+}
+
+// ParsedSession contains aggregated data from a coding-agent session.
+type ParsedSession struct {
+	ID        string
+	Project   string // filesystem path to the project
+	Branch    string // git branch (last seen)
+	StartedAt int64  // earliest timestamp (unix ms)
+	EndedAt   int64  // latest timestamp (unix ms)
+
+	// Message counts
+	HumanMessages     int // non-meta, non-command user messages
+	AssistantMessages int
+	TurnCount         int // human→assistant turn pairs
+
+	// Token usage (summed across all assistant messages)
+	InputTokens              int
+	OutputTokens             int
+	CacheCreationInputTokens int
+	CacheReadInputTokens     int
+	PrimaryModel             string // model used in majority of messages
+	AgentType                string // claude_code or copilot_cli
+
+	// Tool usage
+	ToolCalls     map[string]int // tool name → call count
+	FilesRead     []string       // unique files from Read/Glob tool calls
+	FilesModified []string       // unique files from Edit/Write tool calls
+
+	// Extracted signals
+	PRURLs     []string // PR URLs found in gh pr create output
+	CommitSHAs []string // commit SHAs from git commit output
+
+	// New metrics
+	SidechainMessages int // messages on sidechain branches
+	TotalFileReads    int // total Read tool calls (including re-reads)
+
+	// Context and tool categorization metrics
+	PeakContextTokens int // max (input + cache_creation + cache_read) across any single message
+	TotalToolCalls    int // sum of all tool call counts
+	AgentToolCalls    int // ToolCalls["Agent"]
+	SkillToolCalls    int // ToolCalls["Skill"]
+	McpToolCalls      int // sum of ToolCalls entries with "mcp__" prefix
+}
+
+// LoadHistory reads ~/.claude/history.jsonl and returns entries grouped by session.
+func LoadHistory(claudeDir string) (map[string][]HistoryEntry, error) {
+	historyPath := filepath.Join(claudeDir, "history.jsonl")
+	f, err := os.Open(historyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open history.jsonl: %w", err)
+	}
+	defer f.Close()
+
+	sessions := make(map[string][]HistoryEntry)
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer
+	for scanner.Scan() {
+		var entry HistoryEntry
+		if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
+			continue
+		}
+		if entry.SessionID != "" {
+			sessions[entry.SessionID] = append(sessions[entry.SessionID], entry)
+		}
+	}
+	return sessions, scanner.Err()
+}
+
+// ParseTimestamp converts an ISO 8601 timestamp string to unix milliseconds.
+// Exported so agent sub-packages can reuse it without re-declaring locally.
+func ParseTimestamp(ts string) int64 {
+	if ts == "" {
+		return 0
+	}
+	t, err := time.Parse(time.RFC3339Nano, ts)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, ts)
+		if err != nil {
+			return 0
+		}
+	}
+	return t.UnixMilli()
+}
 
 // Caps carries the capability flags needed by ToSessionData.
 // Mirrors the shape of agents.Capabilities.Fields; callers populate it
@@ -104,36 +201,5 @@ func CapsFromFields(fields map[string]bool) Caps {
 		OutputTokens:      fields["output_tokens"],
 		CacheCreation:     fields["cache_creation_input_tokens"],
 		CacheRead:         fields["cache_read_input_tokens"],
-	}
-}
-
-// DefaultCaps returns capability flags based on the session's AgentType string,
-// matching the declarations in agents.yaml without requiring an agents import.
-// Callers can use this when they don't have access to agents.Registry().
-func DefaultCaps(agentType string) Caps {
-	return defaultCaps(agentType)
-}
-
-// defaultCaps is the unexported implementation.
-func defaultCaps(agentType string) Caps {
-	switch agentType {
-	case "copilot_cli":
-		return Caps{
-			SidechainMessages: false,
-			PeakContextPct:    false,
-			InputTokens:       true,
-			OutputTokens:      true,
-			CacheCreation:     true,
-			CacheRead:         true,
-		}
-	default: // claude_code and any unknown agent
-		return Caps{
-			SidechainMessages: true,
-			PeakContextPct:    true,
-			InputTokens:       true,
-			OutputTokens:      true,
-			CacheCreation:     true,
-			CacheRead:         true,
-		}
 	}
 }
