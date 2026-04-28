@@ -1,3 +1,0 @@
-claude_code
-copilot_cli
-cursor_cli
