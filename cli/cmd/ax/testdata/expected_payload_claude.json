@@ -1,0 +1,26 @@
+[
+  {
+    "id": "aabbccdd-1111-2222-3333-aabbccddee00",
+    "agent_type": "claude_code",
+    "branch": "main",
+    "started_at": 1768467600000,
+    "ended_at": 1768467665000,
+    "message_count": 2,
+    "turn_count": 2,
+    "input_tokens": 800,
+    "output_tokens": 150,
+    "cache_creation_input_tokens": 20,
+    "cache_read_input_tokens": 80,
+    "primary_model": "claude-sonnet-4-5-20250514",
+    "files_read_count": 1,
+    "files_modified_count": 0,
+    "assistant_message_count": 2,
+    "sidechain_messages": 0,
+    "total_file_reads": 1,
+    "peak_context_pct": 0.00285,
+    "total_tool_calls": 1,
+    "agent_tool_calls": 0,
+    "skill_tool_calls": 0,
+    "mcp_tool_calls": 0
+  }
+]

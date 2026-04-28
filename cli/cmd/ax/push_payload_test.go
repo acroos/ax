@@ -1,0 +1,182 @@
+package main
+
+// push_payload_test.go — golden-fixture integration test for push payload output.
+//
+// This test asserts that the discovery + parse pipeline produces stable output for
+// both Claude and Copilot sessions. It skips the HTTP call and snapshots only the
+// resulting []api.SessionData (the payload's Sessions slice). Any regression in
+// parser output causes this test to fail, proving behavior preservation across the
+// Phase 3 provider refactor.
+//
+// The test uses t.Setenv("AX_CLAUDE_HOME", ...) and t.Setenv("COPILOT_HOME", ...)
+// to redirect discovery to temp directories containing fixture files.
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/austinroos/ax/internal/api"
+	"github.com/austinroos/ax/internal/parsers"
+)
+
+// buildSessionsFromFixtures runs the discovery + parse pipeline for both Claude and
+// Copilot, returning the resulting []api.SessionData in the order: Claude then Copilot.
+//
+// claudeDir must contain a projects/<encoded-path>/<session>.jsonl layout.
+// copilotDir must contain a session-state/<uuid>/events.jsonl + workspace.yaml layout.
+// projectPath is the local repo path used to compute the encoded project dir name.
+// ownerRepo is the "owner/repo" string Copilot sessions must declare in workspace.yaml.
+func buildSessionsFromFixtures(t *testing.T, claudeDir, copilotDir, projectPath, ownerRepo string) []api.SessionData {
+	t.Helper()
+
+	var sessions []api.SessionData
+
+	// Claude sessions
+	claudeFiles, err := parsers.FindSessionFiles(claudeDir, projectPath)
+	if err != nil {
+		t.Fatalf("FindSessionFiles: %v", err)
+	}
+	for _, f := range claudeFiles {
+		sess, err := parsers.ParseSession(f)
+		if err != nil {
+			t.Fatalf("ParseSession(%s): %v", f, err)
+		}
+		sessions = append(sessions, sess.ToSessionData())
+	}
+
+	// Copilot sessions
+	copilotFiles, err := parsers.FindCopilotSessionsForRepo(copilotDir, ownerRepo)
+	if err != nil {
+		t.Fatalf("FindCopilotSessionsForRepo: %v", err)
+	}
+	for _, f := range copilotFiles {
+		sess, err := parsers.ParseSession(f)
+		if err != nil {
+			t.Fatalf("ParseSession(%s): %v", f, err)
+		}
+		sessions = append(sessions, sess.ToSessionData())
+	}
+
+	return sessions
+}
+
+// setupClaudeFixture creates a temp ~/.claude with a project dir containing the
+// normal_session.jsonl fixture.
+func setupClaudeFixture(t *testing.T) (claudeDir, projectPath string) {
+	t.Helper()
+	claudeDir = t.TempDir()
+	projectPath = "/test/myrepo"
+	encodedPath := "-test-myrepo"
+
+	projDir := filepath.Join(claudeDir, "projects", encodedPath)
+	if err := os.MkdirAll(projDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	fixtureData, err := os.ReadFile(filepath.Join("testdata", "fixture_claude_session.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projDir, "aabbccdd-1111-2222-3333-aabbccddee00.jsonl"), fixtureData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return claudeDir, projectPath
+}
+
+// setupCopilotFixture creates a temp ~/.copilot with a session-state/<uuid>/ dir
+// containing events.jsonl and workspace.yaml.
+func setupCopilotFixture(t *testing.T, ownerRepo string) string {
+	t.Helper()
+	copilotDir := t.TempDir()
+	sessionUUID := "bbccddee-aaaa-bbbb-cccc-001122334455"
+	sessionDir := filepath.Join(copilotDir, "session-state", sessionUUID)
+	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	workspaceData, err := os.ReadFile(filepath.Join("testdata", "fixture_copilot_workspace.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sessionDir, "workspace.yaml"), workspaceData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	eventsData, err := os.ReadFile(filepath.Join("testdata", "fixture_copilot_events.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sessionDir, "events.jsonl"), eventsData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return copilotDir
+}
+
+func TestPushPayloadGoldenClaude(t *testing.T) {
+	claudeDir, projectPath := setupClaudeFixture(t)
+	ownerRepo := "testorg/myrepo"
+
+	sessions := buildSessionsFromFixtures(t, claudeDir, t.TempDir(), projectPath, ownerRepo)
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 Claude session, got %d", len(sessions))
+	}
+
+	got, err := json.MarshalIndent(sessions, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	snapshotPath := filepath.Join("testdata", "expected_payload_claude.json")
+	if _, err := os.Stat(snapshotPath); os.IsNotExist(err) {
+		// First run: write the snapshot.
+		if err := os.WriteFile(snapshotPath, got, 0o644); err != nil {
+			t.Fatalf("write snapshot: %v", err)
+		}
+		t.Logf("wrote initial snapshot to %s", snapshotPath)
+		return
+	}
+
+	want, err := os.ReadFile(snapshotPath)
+	if err != nil {
+		t.Fatalf("read snapshot: %v", err)
+	}
+
+	if string(got) != string(want) {
+		t.Errorf("Claude payload mismatch.\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestPushPayloadGoldenCopilot(t *testing.T) {
+	ownerRepo := "testorg/myrepo"
+	copilotDir := setupCopilotFixture(t, ownerRepo)
+
+	sessions := buildSessionsFromFixtures(t, t.TempDir(), copilotDir, "/test/myrepo", ownerRepo)
+	if len(sessions) != 1 {
+		t.Fatalf("expected 1 Copilot session, got %d", len(sessions))
+	}
+
+	got, err := json.MarshalIndent(sessions, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	snapshotPath := filepath.Join("testdata", "expected_payload_copilot.json")
+	if _, err := os.Stat(snapshotPath); os.IsNotExist(err) {
+		if err := os.WriteFile(snapshotPath, got, 0o644); err != nil {
+			t.Fatalf("write snapshot: %v", err)
+		}
+		t.Logf("wrote initial snapshot to %s", snapshotPath)
+		return
+	}
+
+	want, err := os.ReadFile(snapshotPath)
+	if err != nil {
+		t.Fatalf("read snapshot: %v", err)
+	}
+
+	if string(got) != string(want) {
+		t.Errorf("Copilot payload mismatch.\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}

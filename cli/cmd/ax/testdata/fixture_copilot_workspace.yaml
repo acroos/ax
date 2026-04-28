@@ -1,0 +1,7 @@
+id: "bbccddee-aaaa-bbbb-cccc-001122334455"
+cwd: "/test/myrepo"
+git_root: "/test/myrepo"
+repository: "testorg/myrepo"
+branch: "main"
+created_at: "2026-01-15T10:00:00Z"
+updated_at: "2026-01-15T10:30:00Z"
