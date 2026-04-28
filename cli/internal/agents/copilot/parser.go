@@ -1,4 +1,4 @@
-package parsers
+package copilot
 
 import (
 	"bufio"
@@ -7,6 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/austinroos/ax/internal/agents"
+	"github.com/austinroos/ax/internal/parsers"
 )
 
 type copilotEvent struct {
@@ -88,15 +92,15 @@ type copilotBashArg struct {
 	Command string `json:"command"`
 }
 
-// ParseCopilotSession parses a Copilot CLI session-state/<uuid> directory.
-func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
-	workspace, _ := ParseCopilotWorkspace(filepath.Join(sessionDir, "workspace.yaml"))
+// parseSession parses a Copilot CLI session-state/<uuid> directory.
+func parseSession(sessionDir string) (*parsers.ParsedSession, error) {
+	workspace, _ := parseWorkspace(filepath.Join(sessionDir, "workspace.yaml"))
 
-	session := &ParsedSession{
-		ID:        CopilotSessionIDFromPath(sessionDir),
+	session := &parsers.ParsedSession{
+		ID:        sessionIDFromPath(sessionDir),
 		Project:   workspace.GitRoot,
 		Branch:    workspace.Branch,
-		AgentType: "copilot_cli",
+		AgentType: string(agents.CopilotCli),
 		ToolCalls: make(map[string]int),
 	}
 	if session.Project == "" {
@@ -280,7 +284,7 @@ func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
 	return session, nil
 }
 
-func recordCopilotTool(name, toolCallID string, args json.RawMessage, session *ParsedSession, bashToolIDs map[string]string, filesReadSet, filesModifiedSet map[string]bool) {
+func recordCopilotTool(name, toolCallID string, args json.RawMessage, session *parsers.ParsedSession, bashToolIDs map[string]string, filesReadSet, filesModifiedSet map[string]bool) {
 	switch name {
 	case "bash", "shell", "run_command":
 		var arg copilotBashArg
@@ -338,4 +342,51 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// extractPRURLs finds GitHub PR URLs in text.
+func extractPRURLs(text string, seen map[string]bool) {
+	for _, word := range strings.Fields(text) {
+		if strings.Contains(word, "github.com/") && strings.Contains(word, "/pull/") {
+			url := word
+			if idx := strings.Index(url, "https://"); idx >= 0 {
+				url = url[idx:]
+			}
+			seen[url] = true
+		}
+	}
+}
+
+// extractCommitSHAs finds git commit SHAs in git commit output.
+func extractCommitSHAs(text string, seen map[string]bool) {
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "[") {
+			if idx := strings.Index(line, "]"); idx > 0 {
+				inner := line[1:idx]
+				parts := strings.Fields(inner)
+				if len(parts) >= 2 {
+					sha := parts[len(parts)-1]
+					if len(sha) >= 7 {
+						seen[sha] = true
+					}
+				}
+			}
+		}
+	}
+}
+
+// parseTimestamp converts an ISO 8601 timestamp string to unix milliseconds.
+func parseTimestamp(ts string) int64 {
+	if ts == "" {
+		return 0
+	}
+	t, err := time.Parse(time.RFC3339Nano, ts)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, ts)
+		if err != nil {
+			return 0
+		}
+	}
+	return t.UnixMilli()
 }

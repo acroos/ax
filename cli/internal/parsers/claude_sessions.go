@@ -8,10 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/austinroos/ax/internal/agents"
-	"github.com/austinroos/ax/internal/api"
-	"github.com/austinroos/ax/internal/pricing"
 )
 
 // HistoryEntry represents a single line in ~/.claude/history.jsonl.
@@ -62,58 +58,6 @@ type ParsedSession struct {
 	AgentToolCalls    int // ToolCalls["Agent"]
 	SkillToolCalls    int // ToolCalls["Skill"]
 	McpToolCalls      int // sum of ToolCalls entries with "mcp__" prefix
-}
-
-// ToSessionData converts a ParsedSession to the API push payload format.
-func (s *ParsedSession) ToSessionData() api.SessionData {
-	agentType := s.AgentType
-	if agentType == "" {
-		agentType = string(agents.ClaudeCode)
-	}
-
-	// Compute peak context window percentage using model-specific limits.
-	var peakContextPct *float64
-	if agentType == string(agents.ClaudeCode) && s.PeakContextTokens > 0 {
-		maxCtx := pricing.LookupMaxContext(s.PrimaryModel)
-		value := float64(s.PeakContextTokens) / float64(maxCtx)
-		peakContextPct = &value
-	}
-
-	var sidechainMessages *int
-	if agentType == string(agents.ClaudeCode) {
-		value := s.SidechainMessages
-		sidechainMessages = &value
-	}
-
-	inputTokens := s.InputTokens
-	outputTokens := s.OutputTokens
-	cacheCreationInputTokens := s.CacheCreationInputTokens
-	cacheReadInputTokens := s.CacheReadInputTokens
-
-	return api.SessionData{
-		ID:                       s.ID,
-		AgentType:                agentType,
-		Branch:                   s.Branch,
-		StartedAt:                s.StartedAt,
-		EndedAt:                  s.EndedAt,
-		MessageCount:             s.HumanMessages,
-		TurnCount:                s.TurnCount,
-		InputTokens:              &inputTokens,
-		OutputTokens:             &outputTokens,
-		CacheCreationInputTokens: &cacheCreationInputTokens,
-		CacheReadInputTokens:     &cacheReadInputTokens,
-		PrimaryModel:             s.PrimaryModel,
-		FilesReadCount:           len(s.FilesRead),
-		FilesModifiedCount:       len(s.FilesModified),
-		AssistantMessageCount:    s.AssistantMessages,
-		SidechainMessages:        sidechainMessages,
-		TotalFileReads:           s.TotalFileReads,
-		PeakContextPct:           peakContextPct,
-		TotalToolCalls:           s.TotalToolCalls,
-		AgentToolCalls:           s.AgentToolCalls,
-		SkillToolCalls:           s.SkillToolCalls,
-		McpToolCalls:             s.McpToolCalls,
-	}
 }
 
 // sessionMessage represents a single line in a session JSONL file.
@@ -355,7 +299,7 @@ func ParseSession(path string) (*ParsedSession, error) {
 func parseSessionFiles(sessionID string, files []string) (*ParsedSession, error) {
 	session := &ParsedSession{
 		ID:        sessionID,
-		AgentType: string(agents.ClaudeCode),
+		AgentType: "claude_code",
 		ToolCalls: make(map[string]int),
 	}
 

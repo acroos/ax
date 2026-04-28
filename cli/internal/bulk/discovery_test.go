@@ -107,6 +107,10 @@ func TestDiscoverRepos(t *testing.T) {
 	tmpDir := t.TempDir()
 	claudeDir := filepath.Join(tmpDir, ".claude")
 
+	// Isolate providers from real home dirs.
+	t.Setenv("AX_CLAUDE_HOME", claudeDir)
+	t.Setenv("COPILOT_HOME", t.TempDir())
+
 	// Create history.jsonl with known entries.
 	historyDir := claudeDir
 	if err := os.MkdirAll(historyDir, 0o755); err != nil {
@@ -182,16 +186,16 @@ func TestDiscoverRepos(t *testing.T) {
 	if repoA.OwnerRepo != "owner/repo-a" {
 		t.Errorf("repos[0].OwnerRepo = %q, want %q", repoA.OwnerRepo, "owner/repo-a")
 	}
-	if len(repoA.SessionFiles) != 2 {
-		t.Errorf("repos[0] has %d sessions, want 2", len(repoA.SessionFiles))
+	if len(repoA.SessionLocators) != 2 {
+		t.Errorf("repos[0] has %d sessions, want 2", len(repoA.SessionLocators))
 	}
 
 	repoB := summary.Repos[1]
 	if repoB.OwnerRepo != "owner/repo-b" {
 		t.Errorf("repos[1].OwnerRepo = %q, want %q", repoB.OwnerRepo, "owner/repo-b")
 	}
-	if len(repoB.SessionFiles) != 1 {
-		t.Errorf("repos[1] has %d sessions, want 1", len(repoB.SessionFiles))
+	if len(repoB.SessionLocators) != 1 {
+		t.Errorf("repos[1] has %d sessions, want 1", len(repoB.SessionLocators))
 	}
 
 	if summary.TotalSessions != 3 {
@@ -210,6 +214,10 @@ func TestDiscoverRepos(t *testing.T) {
 func TestDiscoverRepos_WorktreeDedup(t *testing.T) {
 	tmpDir := t.TempDir()
 	claudeDir := filepath.Join(tmpDir, ".claude")
+
+	// Isolate providers from real home dirs.
+	t.Setenv("AX_CLAUDE_HOME", claudeDir)
+	t.Setenv("COPILOT_HOME", t.TempDir())
 
 	project := filepath.Join(tmpDir, "my-repo")
 	worktree := filepath.Join(tmpDir, "my-repo", ".claude", "worktrees", "feature")
@@ -268,13 +276,16 @@ func TestDiscoverRepos_WorktreeDedup(t *testing.T) {
 	}
 
 	// Should have sessions from both the main project and the worktree.
-	if len(repo.SessionFiles) < 2 {
-		t.Errorf("expected at least 2 session files, got %d", len(repo.SessionFiles))
+	if len(repo.SessionLocators) < 2 {
+		t.Errorf("expected at least 2 session files, got %d", len(repo.SessionLocators))
 	}
 }
 
 func TestDiscoverRepos_EmptyHistory(t *testing.T) {
 	tmpDir := t.TempDir()
+	// Isolate providers from real home dirs.
+	t.Setenv("AX_CLAUDE_HOME", tmpDir)
+	t.Setenv("COPILOT_HOME", t.TempDir())
 	// No history.jsonl at all.
 	summary, err := DiscoverRepos(tmpDir, func(string) (string, string, error) {
 		return "", "", fmt.Errorf("should not be called")

@@ -43,7 +43,7 @@ func buildSessionsFromFixtures(t *testing.T, claudeDir, copilotDir, projectPath,
 		if err != nil {
 			t.Fatalf("ParseSession(%s): %v", f, err)
 		}
-		sessions = append(sessions, sess.ToSessionData())
+		sessions = append(sessions, sess.ToSessionData(parsers.DefaultCaps(sess.AgentType)))
 	}
 
 	// Copilot sessions
@@ -56,7 +56,7 @@ func buildSessionsFromFixtures(t *testing.T, claudeDir, copilotDir, projectPath,
 		if err != nil {
 			t.Fatalf("ParseSession(%s): %v", f, err)
 		}
-		sessions = append(sessions, sess.ToSessionData())
+		sessions = append(sessions, sess.ToSessionData(parsers.DefaultCaps(sess.AgentType)))
 	}
 
 	return sessions
