@@ -250,5 +250,74 @@ RSpec.describe PushService do
       # Should still be 1 because metrics were finalized
       expect(pr.pr_metrics.reload.post_open_commits).to eq(1)
     end
+
+    describe "payload_version" do
+      it "records payload_version=1 when provided" do
+        params = push_params.merge(payload_version: 1)
+        PushService.new(params, user: user).execute
+
+        session = CodingSession.find("session-001")
+        expect(session.payload_version).to eq(1)
+      end
+
+      it "defaults payload_version to 1 when missing" do
+        PushService.new(push_params, user: user).execute
+
+        session = CodingSession.find("session-001")
+        expect(session.payload_version).to eq(1)
+      end
+    end
+
+    describe "extras" do
+      it "persists extras as JSONB" do
+        params = push_params.deep_dup
+        params[:sessions][0][:extras] = { "custom_key" => "custom_value", "count" => 42 }
+        PushService.new(params, user: user).execute
+
+        session = CodingSession.find("session-001")
+        expect(session.extras).to eq({ "custom_key" => "custom_value", "count" => 42 })
+      end
+
+      it "defaults extras to empty hash when not provided" do
+        PushService.new(push_params, user: user).execute
+
+        session = CodingSession.find("session-001")
+        expect(session.extras).to eq({})
+      end
+    end
+
+    describe "capability-based field filtering via field_value" do
+      it "returns nil for input_tokens when agent does not support the field" do
+        allow(AgentRegistry).to receive(:supports_field?).and_call_original
+        allow(AgentRegistry).to receive(:supports_field?).with("cursor_cli", :input_tokens).and_return(false)
+        allow(AgentRegistry).to receive(:supports_field?).with("cursor_cli", :output_tokens).and_return(false)
+        allow(AgentRegistry).to receive(:supports_field?).with("cursor_cli", :cache_creation_input_tokens).and_return(false)
+        allow(AgentRegistry).to receive(:supports_field?).with("cursor_cli", :cache_read_input_tokens).and_return(false)
+        allow(AgentRegistry).to receive(:supports_field?).with("cursor_cli", :sidechain_messages).and_return(false)
+        allow(AgentRegistry).to receive(:supports_field?).with("cursor_cli", :peak_context_pct).and_return(false)
+
+        params = push_params.deep_dup
+        params[:sessions][0][:agent_type] = "cursor_cli"
+        params[:sessions][0][:input_tokens] = 9999
+        params[:sessions][0][:output_tokens] = 9999
+        PushService.new(params, user: user).execute
+
+        session = CodingSession.find("session-001")
+        expect(session.input_tokens).to be_nil
+        expect(session.output_tokens).to be_nil
+        expect(session.cache_creation_input_tokens).to be_nil
+        expect(session.cache_read_input_tokens).to be_nil
+        expect(session.sidechain_messages).to be_nil
+        expect(session.peak_context_pct).to be_nil
+      end
+
+      it "passes through token values for agents that support them" do
+        PushService.new(push_params, user: user).execute
+
+        session = CodingSession.find("session-001")
+        expect(session.input_tokens).to eq(5000)
+        expect(session.output_tokens).to eq(3000)
+      end
+    end
   end
 end

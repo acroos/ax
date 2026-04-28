@@ -20,6 +20,7 @@ import type {
   TeamDetail,
   TeamMember,
 } from "@/lib/db";
+import { ALL_AGENTS } from "@/lib/agents.gen";
 
 // ---------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) — deterministic across hot reloads
@@ -529,7 +530,7 @@ function generateSession(idx: number, _repoId: number, author: string): SessionW
 
   return {
     id: `session-mock-${idx}`,
-    agent_type: idx % 3 === 0 ? "copilot_cli" : "claude_code",
+    agent_type: ALL_AGENTS[idx % ALL_AGENTS.length],
     started_at: startDate,
     ended_at: endDate,
     branch: BRANCHES[idx % BRANCHES.length],

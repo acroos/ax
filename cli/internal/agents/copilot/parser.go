@@ -1,4 +1,4 @@
-package parsers
+package copilot
 
 import (
 	"bufio"
@@ -7,6 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/austinroos/ax/internal/agents"
+	"github.com/austinroos/ax/internal/parsers"
 )
 
 type copilotEvent struct {
@@ -88,25 +91,25 @@ type copilotBashArg struct {
 	Command string `json:"command"`
 }
 
-// ParseCopilotSession parses a Copilot CLI session-state/<uuid> directory.
-func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
-	workspace, _ := ParseCopilotWorkspace(filepath.Join(sessionDir, "workspace.yaml"))
+// parseSession parses a Copilot CLI session-state/<uuid> directory.
+func parseSession(sessionDir string) (*parsers.ParsedSession, error) {
+	workspace, _ := parseWorkspace(filepath.Join(sessionDir, "workspace.yaml"))
 
-	session := &ParsedSession{
-		ID:        CopilotSessionIDFromPath(sessionDir),
+	session := &parsers.ParsedSession{
+		ID:        sessionIDFromPath(sessionDir),
 		Project:   workspace.GitRoot,
 		Branch:    workspace.Branch,
-		AgentType: "copilot_cli",
+		AgentType: string(agents.CopilotCli),
 		ToolCalls: make(map[string]int),
 	}
 	if session.Project == "" {
 		session.Project = workspace.Cwd
 	}
 	if session.StartedAt == 0 {
-		session.StartedAt = parseTimestamp(workspace.CreatedAt)
+		session.StartedAt = parsers.ParseTimestamp(workspace.CreatedAt)
 	}
 	if session.EndedAt == 0 {
-		session.EndedAt = parseTimestamp(workspace.UpdatedAt)
+		session.EndedAt = parsers.ParseTimestamp(workspace.UpdatedAt)
 	}
 
 	eventsPath := filepath.Join(sessionDir, "events.jsonl")
@@ -132,7 +135,7 @@ func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
 			continue
 		}
-		ts := parseTimestamp(event.Timestamp)
+		ts := parsers.ParseTimestamp(event.Timestamp)
 		if ts > 0 {
 			if session.StartedAt == 0 || ts < session.StartedAt {
 				session.StartedAt = ts
@@ -154,7 +157,7 @@ func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
 				} else if data.Context.Cwd != "" {
 					session.Project = data.Context.Cwd
 				}
-				if start := parseTimestamp(data.StartTime); start > 0 {
+				if start := parsers.ParseTimestamp(data.StartTime); start > 0 {
 					session.StartedAt = start
 				}
 			}
@@ -280,7 +283,7 @@ func ParseCopilotSession(sessionDir string) (*ParsedSession, error) {
 	return session, nil
 }
 
-func recordCopilotTool(name, toolCallID string, args json.RawMessage, session *ParsedSession, bashToolIDs map[string]string, filesReadSet, filesModifiedSet map[string]bool) {
+func recordCopilotTool(name, toolCallID string, args json.RawMessage, session *parsers.ParsedSession, bashToolIDs map[string]string, filesReadSet, filesModifiedSet map[string]bool) {
 	switch name {
 	case "bash", "shell", "run_command":
 		var arg copilotBashArg
@@ -338,4 +341,36 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// extractPRURLs finds GitHub PR URLs in text.
+func extractPRURLs(text string, seen map[string]bool) {
+	for _, word := range strings.Fields(text) {
+		if strings.Contains(word, "github.com/") && strings.Contains(word, "/pull/") {
+			url := word
+			if idx := strings.Index(url, "https://"); idx >= 0 {
+				url = url[idx:]
+			}
+			seen[url] = true
+		}
+	}
+}
+
+// extractCommitSHAs finds git commit SHAs in git commit output.
+func extractCommitSHAs(text string, seen map[string]bool) {
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "[") {
+			if idx := strings.Index(line, "]"); idx > 0 {
+				inner := line[1:idx]
+				parts := strings.Fields(inner)
+				if len(parts) >= 2 {
+					sha := parts[len(parts)-1]
+					if len(sha) >= 7 {
+						seen[sha] = true
+					}
+				}
+			}
+		}
+	}
 }

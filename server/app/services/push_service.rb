@@ -154,14 +154,8 @@ class PushService
     primary_model files_read_count files_modified_count
     assistant_message_count sidechain_messages total_file_reads pushed_by
     peak_context_pct total_tool_calls agent_tool_calls skill_tool_calls mcp_tool_calls
+    extras payload_version
   ].freeze
-
-  def sidechain_messages_for(session_data)
-    return session_data[:sidechain_messages] if session_data.key?(:sidechain_messages)
-    return nil if session_data[:agent_type] == "copilot_cli"
-
-    0
-  end
 
   def upsert_sessions(repo)
     session_data_list = Array(@params[:sessions])
@@ -192,22 +186,24 @@ class PushService
         ended_at: epoch_ms_to_time(s[:ended_at]),
         message_count: s[:message_count] || 0,
         turn_count: s[:turn_count] || 0,
-        input_tokens: s[:input_tokens] || 0,
-        output_tokens: s[:output_tokens] || 0,
-        cache_creation_input_tokens: s[:cache_creation_input_tokens] || 0,
-        cache_read_input_tokens: s[:cache_read_input_tokens] || 0,
+        input_tokens: field_value(s, :input_tokens),
+        output_tokens: field_value(s, :output_tokens),
+        cache_creation_input_tokens: field_value(s, :cache_creation_input_tokens),
+        cache_read_input_tokens: field_value(s, :cache_read_input_tokens),
         primary_model: s[:primary_model],
         files_read_count: s[:files_read_count] || 0,
         files_modified_count: s[:files_modified_count] || 0,
         assistant_message_count: s[:assistant_message_count] || 0,
-        sidechain_messages: sidechain_messages_for(s),
+        sidechain_messages: field_value(s, :sidechain_messages),
         total_file_reads: s[:total_file_reads] || 0,
         pushed_by: @user.github_username,
-        peak_context_pct: s[:peak_context_pct],
+        peak_context_pct: field_value(s, :peak_context_pct),
         total_tool_calls: s[:total_tool_calls] || 0,
         agent_tool_calls: s[:agent_tool_calls] || 0,
         skill_tool_calls: s[:skill_tool_calls] || 0,
         mcp_tool_calls: s[:mcp_tool_calls] || 0,
+        extras: s[:extras] || {},
+        payload_version: @params[:payload_version]&.to_i || 1,
         created_at: now,
         updated_at: now
       }
@@ -215,6 +211,15 @@ class PushService
 
     CodingSession.upsert_all(rows, unique_by: :id, update_only: SESSION_UPDATE_COLUMNS)
     valid_sessions.size
+  end
+
+  # Returns the field value for session_data if the agent supports the field,
+  # nil otherwise. Falls back to "claude_code" when agent_type is absent.
+  def field_value(session_data, field)
+    agent_type = session_data[:agent_type].presence || "claude_code"
+    return nil unless AgentRegistry.supports_field?(agent_type, field)
+
+    session_data[field]
   end
 
   COMMIT_UPDATE_COLUMNS = %i[

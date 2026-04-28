@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/austinroos/ax/internal/agents"
+	_ "github.com/austinroos/ax/internal/agentinit"
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/bulk"
 	"github.com/austinroos/ax/internal/config"
@@ -248,25 +250,29 @@ You can override with --api-key.`,
 				return fmt.Errorf("could not identify repo: %w\n\n  Make sure you're in a git repo with a remote origin", err)
 			}
 
-			// Parse Claude Code and Copilot CLI sessions for this repo
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return fmt.Errorf("could not find home directory: %w", err)
-			}
-			claudeDir := filepath.Join(home, ".claude")
-
-			sessionFiles, err := parsers.FindSessionFiles(claudeDir, path)
-			if err != nil {
-				return fmt.Errorf("failed to find session files: %w", err)
-			}
 			ownerRepo := owner + "/" + repo
-			copilotSessions, err := parsers.FindCopilotSessionsForRepo(parsers.DefaultCopilotDir(), ownerRepo)
-			if err != nil {
-				return fmt.Errorf("failed to find Copilot session files: %w", err)
-			}
-			sessionFiles = mergeSessionPaths(sessionFiles, copilotSessions)
 
-			if len(sessionFiles) == 0 {
+			// Discover sessions for this repo via registered providers
+			target := agents.DiscoveryTarget{
+				LocalPath:   path,
+				OwnerRepo:   ownerRepo,
+				GitRemoteFn: agents.GitRemoteFn(gitRemoteOwnerRepo),
+			}
+
+			var allLocs []agents.SessionLocator
+			for _, p := range agents.RegisteredProviders() {
+				if !p.HomeExists() {
+					continue
+				}
+				locs, err := p.DiscoverSessions(target)
+				if err != nil {
+					return fmt.Errorf("%s: discovery failed: %w", p.ID(), err)
+				}
+				allLocs = append(allLocs, locs...)
+			}
+			allLocs = dedupLocators(allLocs)
+
+			if len(allLocs) == 0 {
 				ui.CompleteBanner("No session data found for this repo")
 				return nil
 			}
@@ -278,31 +284,37 @@ You can override with --api-key.`,
 				if err != nil {
 					repoState = &state.RepoState{}
 				}
-				sessionFiles = state.FilterNewSessionFiles(sessionFiles, repoState.PushedSet())
+				allLocs = filterNewLocators(allLocs, repoState.PushedSet())
 			}
 
-			if len(sessionFiles) == 0 {
+			if len(allLocs) == 0 {
 				ui.CompleteBanner("No new sessions to push")
 				return nil
 			}
 
 			// Parse sessions and build payload
 			payload := &api.PushPayload{
-				RepoPath: path,
-				Owner:    owner,
-				Repo:     repo,
+				PayloadVersion: 1,
+				RepoPath:       path,
+				Owner:          owner,
+				Repo:           repo,
 			}
 
 			var parsed int
 			var pushedIDs []string
-			for _, sf := range sessionFiles {
-				session, err := parsers.ParseSession(sf)
+			for _, loc := range allLocs {
+				p := agents.FindProvider(loc.AgentID)
+				if p == nil {
+					continue
+				}
+				sess, err := p.Parse(loc)
 				if err != nil {
 					continue
 				}
 				parsed++
-				pushedIDs = append(pushedIDs, session.ID)
-				payload.Sessions = append(payload.Sessions, session.ToSessionData())
+				pushedIDs = append(pushedIDs, sess.ID)
+				caps := parsers.CapsFromFields(p.Capabilities().Fields)
+				payload.Sessions = append(payload.Sessions, sess.ToSessionData(caps))
 			}
 
 			// Send to server
@@ -337,20 +349,30 @@ You can override with --api-key.`,
 	return cmd
 }
 
-func mergeSessionPaths(paths ...[]string) []string {
+func dedupLocators(locs []agents.SessionLocator) []agents.SessionLocator {
 	seen := make(map[string]bool)
-	var merged []string
-	for _, group := range paths {
-		for _, path := range group {
-			id := state.SessionIDFromPath(path)
-			if seen[id] {
-				continue
-			}
-			seen[id] = true
-			merged = append(merged, path)
+	var out []agents.SessionLocator
+	for _, loc := range locs {
+		if seen[loc.SessionID] {
+			continue
+		}
+		seen[loc.SessionID] = true
+		out = append(out, loc)
+	}
+	return out
+}
+
+func filterNewLocators(locs []agents.SessionLocator, pushed map[string]bool) []agents.SessionLocator {
+	if len(pushed) == 0 {
+		return locs
+	}
+	var out []agents.SessionLocator
+	for _, loc := range locs {
+		if !pushed[loc.SessionID] {
+			out = append(out, loc)
 		}
 	}
-	return merged
+	return out
 }
 
 func runBulkPush(apiKeyOverride string, force bool) error {
@@ -410,7 +432,7 @@ func runBulkPush(apiKeyOverride string, force bool) error {
 	for i, r := range summary.Repos {
 		label := fmt.Sprintf("%-35s %s",
 			r.OwnerRepo,
-			ui.Faint.Render(fmt.Sprintf("%d sessions", len(r.SessionFiles))))
+			ui.Faint.Render(fmt.Sprintf("%d sessions", len(r.SessionLocators))))
 		options[i] = huh.NewOption(label, i).Selected(true)
 	}
 

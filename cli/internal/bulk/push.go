@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/austinroos/ax/internal/agents"
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/parsers"
 	"github.com/austinroos/ax/internal/push"
@@ -103,7 +104,7 @@ func newProgressState(repos []DiscoveredRepo, w io.Writer) *progressState {
 	for i, r := range repos {
 		ps.repos[i] = repoProgress{
 			ownerRepo:     r.OwnerRepo,
-			sessionsTotal: len(r.SessionFiles),
+			sessionsTotal: len(r.SessionLocators),
 		}
 	}
 	return ps
@@ -312,19 +313,31 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 	if err != nil {
 		repoState = &state.RepoState{}
 	}
-	sessionFiles := repo.SessionFiles
+	locs := repo.SessionLocators
 	if !force {
-		sessionFiles = state.FilterNewSessionFiles(repo.SessionFiles, repoState.PushedSet())
+		pushed := repoState.PushedSet()
+		var filtered []agents.SessionLocator
+		for _, loc := range locs {
+			if !pushed[loc.SessionID] {
+				filtered = append(filtered, loc)
+			}
+		}
+		locs = filtered
 	}
 
 	// Parse new sessions.
 	var sessions []api.SessionData
-	for _, sf := range sessionFiles {
-		session, err := parsers.ParseSession(sf)
+	for _, loc := range locs {
+		p := agents.FindProvider(loc.AgentID)
+		if p == nil {
+			continue
+		}
+		sess, err := p.Parse(loc)
 		if err != nil {
 			continue
 		}
-		sessions = append(sessions, session.ToSessionData())
+		caps := parsers.CapsFromFields(p.Capabilities().Fields)
+		sessions = append(sessions, sess.ToSessionData(caps))
 	}
 
 	result.TotalSessions = len(sessions)
@@ -341,10 +354,11 @@ func pushRepo(client *push.Client, repo DiscoveredRepo, idx int, progress *progr
 
 	for ci, chunk := range chunks {
 		payload := &api.PushPayload{
-			RepoPath: repo.ProjectPaths[0],
-			Owner:    repo.Owner,
-			Repo:     repo.Repo,
-			Sessions: chunk,
+			PayloadVersion: 1,
+			RepoPath:       repo.ProjectPaths[0],
+			Owner:          repo.Owner,
+			Repo:           repo.Repo,
+			Sessions:       chunk,
 		}
 
 		_, err := repoClient.Push(payload)
