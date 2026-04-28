@@ -1,10 +1,64 @@
-package parsers
+package copilot
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/austinroos/ax/internal/agents"
+	"github.com/austinroos/ax/internal/parsers"
 )
+
+func TestProviderID(t *testing.T) {
+	p := New()
+	if p.ID() != agents.CopilotCli {
+		t.Errorf("ID() = %q, want %q", p.ID(), agents.CopilotCli)
+	}
+}
+
+func TestProviderDiscoverSessionsWithoutOwnerRepoReturnsNil(t *testing.T) {
+	p := New()
+	locs, err := p.DiscoverSessions(agents.DiscoveryTarget{LocalPath: "/tmp/repo"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if locs != nil {
+		t.Errorf("expected nil locators when OwnerRepo is empty, got %v", locs)
+	}
+}
+
+func TestProviderParseSetsAgentType(t *testing.T) {
+	dir := t.TempDir()
+	workspace := `id: "test-session-1"
+cwd: "/tmp/repo"
+git_root: "/tmp/repo"
+repository: "owner/repo"
+branch: "main"
+`
+	if err := os.WriteFile(filepath.Join(dir, "workspace.yaml"), []byte(workspace), 0o644); err != nil {
+		t.Fatalf("write workspace.yaml: %v", err)
+	}
+	events := `{"type":"session.shutdown","timestamp":"2026-04-01T10:01:00Z","data":{"modelMetrics":[]}}
+`
+	if err := os.WriteFile(filepath.Join(dir, "events.jsonl"), []byte(events), 0o644); err != nil {
+		t.Fatalf("write events.jsonl: %v", err)
+	}
+
+	p := New()
+	loc := agents.SessionLocator{
+		AgentID:   agents.CopilotCli,
+		SessionID: "test-session-1",
+		Path:      dir,
+		OwnerRepo: "owner/repo",
+	}
+	sess, err := p.Parse(loc)
+	if err != nil {
+		t.Fatalf("Parse failed: %v", err)
+	}
+	if sess.AgentType != "copilot_cli" {
+		t.Errorf("AgentType = %q, want copilot_cli", sess.AgentType)
+	}
+}
 
 func TestParseCopilotSession(t *testing.T) {
 	dir := t.TempDir()
@@ -35,9 +89,9 @@ branch: "feature/copilot"
 		t.Fatalf("write events.jsonl: %v", err)
 	}
 
-	session, err := ParseCopilotSession(dir)
+	session, err := parseSession(dir)
 	if err != nil {
-		t.Fatalf("ParseCopilotSession returned error: %v", err)
+		t.Fatalf("parseSession returned error: %v", err)
 	}
 
 	if session.AgentType != "copilot_cli" {
@@ -58,7 +112,7 @@ branch: "feature/copilot"
 	if session.TotalToolCalls != 4 || session.TotalFileReads != 1 || len(session.FilesModified) != 1 {
 		t.Errorf("tool/file counts = tools %d reads %d modified %d, want 4/1/1", session.TotalToolCalls, session.TotalFileReads, len(session.FilesModified))
 	}
-	sd := session.ToSessionData()
+	sd := session.ToSessionData(parsers.CapsFromFields(agents.Registry()[agents.AgentID(session.AgentType)].Capabilities.Fields))
 	if sd.SidechainMessages != nil {
 		t.Fatalf("SidechainMessages = %d, want nil for Copilot CLI", *sd.SidechainMessages)
 	}
@@ -71,5 +125,51 @@ branch: "feature/copilot"
 	}
 	if len(session.CommitSHAs) != 1 || session.CommitSHAs[0] != "abcdef1234567890abcdef1234567890abcdef12" {
 		t.Fatalf("CommitSHAs = %#v, want parsed SHA", session.CommitSHAs)
+	}
+}
+
+func TestDiscoverAllRepos(t *testing.T) {
+	copilotDir := t.TempDir()
+
+	for _, sessionID := range []string{"sess-aaa", "sess-bbb"} {
+		dir := filepath.Join(copilotDir, "session-state", sessionID)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		workspace := `repository: "owner/repo"
+git_root: "/tmp/repo"
+`
+		if err := os.WriteFile(filepath.Join(dir, "workspace.yaml"), []byte(workspace), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "events.jsonl"), []byte("{}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Second repo
+	dir2 := filepath.Join(copilotDir, "session-state", "sess-ccc")
+	if err := os.MkdirAll(dir2, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	workspace2 := `repository: "other/repo"
+git_root: "/tmp/other"
+`
+	if err := os.WriteFile(filepath.Join(dir2, "workspace.yaml"), []byte(workspace2), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir2, "events.jsonl"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("COPILOT_HOME", copilotDir)
+	p := New()
+	repos, err := p.DiscoverAllRepos()
+	if err != nil {
+		t.Fatalf("DiscoverAllRepos: %v", err)
+	}
+
+	if len(repos) != 2 {
+		t.Fatalf("expected 2 repos, got %d: %v", len(repos), repos)
 	}
 }

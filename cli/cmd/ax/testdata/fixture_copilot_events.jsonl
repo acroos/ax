@@ -1,0 +1,7 @@
+{"type":"session.start","timestamp":"2026-01-15T10:00:00Z","data":{"sessionId":"bbccddee-aaaa-bbbb-cccc-001122334455","context":{"cwd":"/test/myrepo","gitRoot":"/test/myrepo","branch":"main","repository":"testorg/myrepo"}}}
+{"type":"session.model_change","timestamp":"2026-01-15T10:00:01Z","data":{"newModel":"gpt-4o"}}
+{"type":"user.message","timestamp":"2026-01-15T10:00:02Z","data":{"message":"help me"}}
+{"type":"assistant.turn_start","timestamp":"2026-01-15T10:00:03Z","data":{}}
+{"type":"assistant.message","timestamp":"2026-01-15T10:00:04Z","data":{"messageId":"cop-msg-001","outputTokens":80,"toolRequests":[{"id":"tool-r1","toolName":"read_file"}]}}
+{"type":"tool.execution_start","timestamp":"2026-01-15T10:00:05Z","data":{"toolName":"read_file","arguments":{"path":"/test/myrepo/README.md"},"toolRequestId":"tool-r1"}}
+{"type":"session.shutdown","timestamp":"2026-01-15T10:30:00Z","data":{"currentModel":"gpt-4o","modelMetrics":[{"model":"gpt-4o","requests":{"count":1},"usage":{"inputTokens":400,"outputTokens":80,"cacheReadTokens":60,"cacheWriteTokens":10,"reasoningTokens":0}}]}}
