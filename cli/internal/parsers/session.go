@@ -68,6 +68,11 @@ type ParsedSession struct {
 	AgentToolCalls    int // ToolCalls["Agent"]
 	SkillToolCalls    int // ToolCalls["Skill"]
 	McpToolCalls      int // sum of ToolCalls entries with "mcp__" prefix
+
+	// Agent-specific enrichment. Populated by agent providers that have additional
+	// data sources (e.g. Cursor's ai-tracking DB). Passed through as the extras
+	// JSONB column on the server. Claude and Copilot leave this nil.
+	Extras map[string]any
 }
 
 // LoadHistory reads ~/.claude/history.jsonl and returns entries grouped by session.
@@ -165,7 +170,7 @@ func (s *ParsedSession) ToSessionData(caps Caps) api.SessionData {
 		cacheRead = &v
 	}
 
-	return api.SessionData{
+	out := api.SessionData{
 		ID:                       s.ID,
 		AgentType:                agentType,
 		Branch:                   s.Branch,
@@ -189,6 +194,10 @@ func (s *ParsedSession) ToSessionData(caps Caps) api.SessionData {
 		SkillToolCalls:           s.SkillToolCalls,
 		McpToolCalls:             s.McpToolCalls,
 	}
+	if len(s.Extras) > 0 {
+		out.Extras = s.Extras
+	}
+	return out
 }
 
 // CapsFromFields constructs a Caps from a raw fields map (agents.Capabilities.Fields).

@@ -38,8 +38,9 @@ type SessionData struct {
 	SidechainMessages        *int     `json:"sidechain_messages,omitempty"`
 	TotalFileReads           int      `json:"total_file_reads"`
 	PeakContextPct           *float64 `json:"peak_context_pct,omitempty"`
-	TotalToolCalls           int      `json:"total_tool_calls"`
-	AgentToolCalls           int      `json:"agent_tool_calls"`
-	SkillToolCalls           int      `json:"skill_tool_calls"`
-	McpToolCalls             int      `json:"mcp_tool_calls"`
+	TotalToolCalls           int            `json:"total_tool_calls"`
+	AgentToolCalls           int            `json:"agent_tool_calls"`
+	SkillToolCalls           int            `json:"skill_tool_calls"`
+	McpToolCalls             int            `json:"mcp_tool_calls"`
+	Extras                   map[string]any `json:"extras,omitempty"`
 }
