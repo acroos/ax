@@ -6,30 +6,60 @@ This page traces data from raw sources to displayed metrics. There are three dat
 - **GitHub Webhooks** — Real-time update channel. Keeps data fresh after initial backfill.
 - **CLI Push** — Session enrichment. Adds AI-specific metrics (cost, messages, turns) to PRs.
 
-## CLI Push (`ax push`)
+## Agent Registry
 
-The CLI parses Claude Code session data locally and pushes it to the server.
+`config/agents.yaml` is the single source of truth for which agents AX supports and what data each can supply. A codegen script propagates a change to all three language layers:
 
 ```
-Step 1: Parse Sessions
-  ~/.claude/projects/ → SessionParser →
-    token counts, costs, tool calls (categorized: Agent/Skill/MCP), branches,
-    peak context tokens, model-specific context limit → peak_context_pct
+Edit config/agents.yaml
+  → just codegen-agents
+  → cli/internal/agents/registry.gen.go   (Go constants + Registry() map)
+  → server/app/models/agent_registry.rb   (Ruby AgentRegistry module)
+  → dashboard/src/lib/agents.gen.ts       (TypeScript types + capability helpers)
+```
+
+Each agent entry declares a capability matrix — which session fields it supplies and which metrics it supports. This matrix is the single source of truth that governs behavior across all three layers:
+
+```
+CLI: ToSessionData() sends nil for unsupported fields (nullable token columns)
+Server: AgentRegistry.supports_field? → PushService column writes
+        AgentRegistry.supports_metric? → MetricsAggregator expression filter
+Dashboard: agentSupportsMetric(id, slug) → AgentTypeFilter visibility + "N/A" rendering
+```
+
+Never hand-edit `*.gen.*` files — see [Conventions — Codegen rule](conventions.md#codegen-rule).
+
+## CLI Push (`ax push`)
+
+The CLI discovers and parses session data from all installed agents, then pushes it to the server.
+
+```
+Step 1: Discover + Parse Sessions (per-agent, via agents.Provider interface)
+  for p in RegisteredProviders():
+    if !p.HomeExists(): skip
+    locs = p.DiscoverSessions(target)     # target = {LocalPath, OwnerRepo, GitRemoteFn}
+    for loc in locs:
+      sess = p.Parse(loc)                 # returns ParsedSession with agent_type set
+      payload.Sessions.append(sess)
+
+  Claude Code:  reads ~/.claude/projects/<encoded-path>/ → JSONL
+  Copilot CLI:  reads ~/.copilot/session-state/<uuid>/ → events.jsonl + workspace.yaml
+  Cursor CLI:   reads ~/.cursor/workspaces/<uuid>/ → applypatch.jsonl + repo.json
 
 Step 2: Identify Repo
   git remote get-url origin → owner/repo
 
 Step 3: Push to Server
-  Build PushPayload with sessions → POST /api/v1/push → Rails API
-  Payload includes: peak_context_pct, total_tool_calls, agent_tool_calls,
-  skill_tool_calls, mcp_tool_calls (in addition to existing fields)
+  Build PushPayload (payload_version: 1) with sessions → POST /api/v1/push → Rails API
+  Capability-gated fields: token columns are nil for agents that don't supply them
+  (Cursor CLI: input_tokens/output_tokens/cache_* = nil; iteration-depth still computable)
 
 Step 4: Post-Push (server-side)
   If repo has GitHub App → enqueue BackfillRepoJob (fetches PRs from GitHub API)
   Always → run SessionPrCorrelationService (match sessions to PRs by branch)
 ```
 
-This runs automatically via the SessionEnd hook installed by `ax init`, or manually via `ax push --repo .`.
+This runs automatically via the `SessionEnd` hook installed by `ax init`, or manually via `ax push --repo .`.
 
 ## GitHub App Backfill
 

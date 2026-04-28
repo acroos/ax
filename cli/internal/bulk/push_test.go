@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/austinroos/ax/internal/agents"
+	_ "github.com/austinroos/ax/internal/agentinit"
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/push"
 )
@@ -93,13 +95,13 @@ func TestBulkPush_AllSucceed(t *testing.T) {
 	repos := []DiscoveredRepo{
 		{
 			Owner: "owner", Repo: "repo-a", OwnerRepo: "owner/repo-a",
-			ProjectPaths: []string{"/fake/path"},
-			SessionFiles: sessFiles[:3],
+			ProjectPaths:    []string{"/fake/path"},
+			SessionLocators: makeLocators(sessFiles[:3]),
 		},
 		{
 			Owner: "owner", Repo: "repo-b", OwnerRepo: "owner/repo-b",
-			ProjectPaths: []string{"/fake/path2"},
-			SessionFiles: sessFiles[3:],
+			ProjectPaths:    []string{"/fake/path2"},
+			SessionLocators: makeLocators(sessFiles[3:]),
 		},
 	}
 
@@ -152,8 +154,8 @@ func TestBulkPush_RateLimitRetrySucceeds(t *testing.T) {
 	repos := []DiscoveredRepo{
 		{
 			Owner: "owner", Repo: "rl-repo", OwnerRepo: "owner/rl-repo",
-			ProjectPaths: []string{"/fake/path"},
-			SessionFiles: sessFiles,
+			ProjectPaths:    []string{"/fake/path"},
+			SessionLocators: makeLocators(sessFiles),
 		},
 	}
 
@@ -196,8 +198,8 @@ func TestBulkPush_ChunkedRequests(t *testing.T) {
 	repos := []DiscoveredRepo{
 		{
 			Owner: "owner", Repo: "big-repo", OwnerRepo: "owner/big-repo",
-			ProjectPaths: []string{"/fake/path"},
-			SessionFiles: sessFiles,
+			ProjectPaths:    []string{"/fake/path"},
+			SessionLocators: makeLocators(sessFiles),
 		},
 	}
 
@@ -241,13 +243,13 @@ func TestBulkPush_PartialFailure(t *testing.T) {
 	repos := []DiscoveredRepo{
 		{
 			Owner: "owner", Repo: "good-repo", OwnerRepo: "owner/good-repo",
-			ProjectPaths: []string{"/fake/good"},
-			SessionFiles: sessFiles[:2],
+			ProjectPaths:    []string{"/fake/good"},
+			SessionLocators: makeLocators(sessFiles[:2]),
 		},
 		{
 			Owner: "owner", Repo: "bad-repo", OwnerRepo: "owner/bad-repo",
-			ProjectPaths: []string{"/fake/bad"},
-			SessionFiles: sessFiles[2:],
+			ProjectPaths:    []string{"/fake/bad"},
+			SessionLocators: makeLocators(sessFiles[2:]),
 		},
 	}
 
@@ -328,6 +330,22 @@ func TestWriteErrorLog(t *testing.T) {
 	if strings.Contains(text, "good-repo") {
 		t.Error("log should not contain successful repo")
 	}
+}
+
+// makeLocators converts file paths to SessionLocators for use in tests.
+// The paths are expected to be Claude Code JSONL session files.
+func makeLocators(paths []string) []agents.SessionLocator {
+	locs := make([]agents.SessionLocator, len(paths))
+	for i, p := range paths {
+		base := filepath.Base(p)
+		sessionID := strings.TrimSuffix(base, ".jsonl")
+		locs[i] = agents.SessionLocator{
+			AgentID:   agents.ClaudeCode,
+			SessionID: sessionID,
+			Path:      p,
+		}
+	}
+	return locs
 }
 
 // createTempSessions creates minimal JSONL session files and returns their paths.

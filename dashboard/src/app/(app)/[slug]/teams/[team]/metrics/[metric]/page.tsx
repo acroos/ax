@@ -7,11 +7,12 @@ import { Suspense } from "react";
 import { Markdown } from "@/components/markdown";
 import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { RangeToggle, type Range } from "@/components/range-toggle";
+import { metricHasMultipleAgents, agentsSupportingMetric, AGENT_LABELS } from "@/lib/agents.gen";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { Skeleton, SkeletonChartPanel } from "@/components/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { AgentType, PRWithMetrics, MetricDetailResponse } from "@/lib/db";
+import type { PRWithMetrics, MetricDetailResponse } from "@/lib/db";
 import { parseAgentType } from "@/lib/utils";
 import { getTeamMetricDetailAsync, listTeamPRsAsync } from "@/lib/db";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
@@ -66,6 +67,7 @@ export default async function TeamMetricDetailPage({
 
   const backHref = `/${slug}/teams/${teamSlug}${agentType ? `?agent_type=${agentType}` : ""}`;
   const isSession = def.source === "session";
+  const supporting = agentsSupportingMetric(metric);
 
   const dataPromise = def.valueType === "boolean"
     ? listTeamPRsAsync(slug, teamSlug, { per_page: 100 })
@@ -99,7 +101,14 @@ export default async function TeamMetricDetailPage({
             </Badge>
           </div>
           <div className="flex items-center gap-3">
-            {isSession && <AgentTypeFilter current={agentType} />}
+            {metricHasMultipleAgents(metric) && (
+              <AgentTypeFilter current={agentType} agents={supporting} />
+            )}
+            {supporting.length === 1 && (
+              <span className="text-muted-foreground text-sm">
+                Only available for {AGENT_LABELS[supporting[0]]}
+              </span>
+            )}
             <RangeToggle current={range} />
           </div>
         </div>

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "ccddee11-aaaa-bbbb-cccc-001122334455",
+    "agent_type": "cursor_cli",
+    "started_at": 1768471200000,
+    "ended_at": 1768471200000,
+    "message_count": 1,
+    "turn_count": 1,
+    "files_read_count": 1,
+    "files_modified_count": 1,
+    "assistant_message_count": 1,
+    "total_file_reads": 1,
+    "total_tool_calls": 2,
+    "agent_tool_calls": 0,
+    "skill_tool_calls": 0,
+    "mcp_tool_calls": 0
+  }
+]

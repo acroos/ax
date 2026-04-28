@@ -4,19 +4,29 @@ package bulk
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
+	"github.com/austinroos/ax/internal/agents"
+	_ "github.com/austinroos/ax/internal/agentinit"
 	"github.com/austinroos/ax/internal/parsers"
 )
 
 // DiscoveredRepo represents a git repo discovered from Claude Code history.
 type DiscoveredRepo struct {
-	Owner        string
-	Repo         string
-	OwnerRepo    string   // "owner/repo" display string
-	ProjectPaths []string // all filesystem paths mapping to this repo
-	SessionFiles []string // deduplicated session .jsonl file paths
+	Owner          string
+	Repo           string
+	OwnerRepo      string             // "owner/repo" display string
+	ProjectPaths   []string           // all filesystem paths mapping to this repo
+	SessionLocators []agents.SessionLocator // deduplicated session locators
+}
+
+// SessionFiles returns the paths from all SessionLocators for backward compat with push.go.
+func (d *DiscoveredRepo) SessionFiles() []string {
+	paths := make([]string, 0, len(d.SessionLocators))
+	for _, loc := range d.SessionLocators {
+		paths = append(paths, loc.Path)
+	}
+	return paths
 }
 
 // DiscoverySummary holds the result of scanning history.jsonl.
@@ -47,7 +57,7 @@ func DiscoverRepos(claudeDir string, gitRemoteFn GitRemoteFn) (*DiscoverySummary
 	// Resolve each project path to its repo root, then to owner/repo.
 	// Multiple paths can map to the same owner/repo.
 	type repoKey struct{ owner, repo string }
-	repoGroups := make(map[repoKey][]string) // owner/repo -> project paths
+	repoGroups := make(map[repoKey]*DiscoveredRepo)
 	var skipped []SkippedPath
 
 	for _, path := range projectPaths {
@@ -65,102 +75,120 @@ func DiscoverRepos(claudeDir string, gitRemoteFn GitRemoteFn) (*DiscoverySummary
 		}
 
 		key := repoKey{owner, repo}
-		// Store the original path (not resolved) so FindSessionFiles looks
-		// in the correct encoded directory for subdirs and worktrees.
-		repoGroups[key] = append(repoGroups[key], path)
+		if _, ok := repoGroups[key]; !ok {
+			repoGroups[key] = &DiscoveredRepo{
+				Owner:        owner,
+				Repo:         repo,
+				OwnerRepo:    owner + "/" + repo,
+				ProjectPaths: []string{path},
+			}
+		} else {
+			repoGroups[key].ProjectPaths = append(repoGroups[key].ProjectPaths, path)
+		}
 		// Also include the resolved root if it differs, so worktree sessions
-		// are discovered by FindSessionFiles' glob pattern.
+		// are discovered by findSessionFiles' glob pattern.
 		if resolved != path {
-			repoGroups[key] = append(repoGroups[key], resolved)
+			repoGroups[key].ProjectPaths = append(repoGroups[key].ProjectPaths, resolved)
 		}
 	}
 
-	copilotDir := parsers.CopilotDirForClaudeDir(claudeDir)
-	copilotWorkspaces, err := parsers.DiscoverCopilotWorkspaces(copilotDir)
-	if err == nil {
-		for sessionDir, workspace := range copilotWorkspaces {
-			parts := strings.Split(workspace.Repository, "/")
-			if len(parts) != 2 {
+	// For providers that can self-enumerate repos (e.g. Copilot), fold in
+	// any repos not yet found via Claude history.
+	for _, p := range agents.RegisteredProviders() {
+		enum, ok := p.(agents.RepoEnumerator)
+		if !ok {
+			continue
+		}
+		repos, err := enum.DiscoverAllRepos()
+		if err != nil {
+			continue
+		}
+		for _, r := range repos {
+			owner, repo := r.Owner, r.Repo
+			if r.OwnerRepo != "" {
+				parts := strings.SplitN(r.OwnerRepo, "/", 2)
+				if len(parts) != 2 {
+					continue
+				}
+				owner, repo = parts[0], parts[1]
+			} else if r.LocalPath != "" {
+				o, rp, err := gitRemoteFn(r.LocalPath)
+				if err != nil {
+					continue
+				}
+				owner, repo = o, rp
+			} else {
 				continue
 			}
-			key := repoKey{owner: parts[0], repo: parts[1]}
-			projectPath := workspace.GitRoot
-			if projectPath == "" {
-				projectPath = workspace.Cwd
+			key := repoKey{owner: owner, repo: repo}
+			if _, ok := repoGroups[key]; !ok {
+				repoGroups[key] = &DiscoveredRepo{
+					Owner:        owner,
+					Repo:         repo,
+					OwnerRepo:    owner + "/" + repo,
+					ProjectPaths: []string{r.LocalPath},
+				}
 			}
-			if projectPath == "" {
-				projectPath = sessionDir
-			}
-			repoGroups[key] = append(repoGroups[key], projectPath)
 		}
 	}
 
-	// For each repo group, discover and deduplicate session files.
+	// For each repo group, discover and deduplicate session locators via providers.
 	var repos []DiscoveredRepo
 	totalSessions := 0
 
-	for key, paths := range repoGroups {
-		sessionSet := make(map[string]string) // session id -> full path
-
-		// Deduplicate the paths themselves first.
+	for _, dr := range repoGroups {
 		seen := make(map[string]bool)
-		for _, p := range paths {
-			if seen[p] {
+		var locs []agents.SessionLocator
+
+		// Deduplicate the project paths.
+		seenPaths := make(map[string]bool)
+		for _, path := range dr.ProjectPaths {
+			if seenPaths[path] {
 				continue
 			}
-			seen[p] = true
+			seenPaths[path] = true
 
-			files, err := parsers.FindSessionFiles(claudeDir, p)
-			if err != nil {
-				continue
+			target := agents.DiscoveryTarget{
+				OwnerRepo:   dr.OwnerRepo,
+				LocalPath:   path,
+				GitRemoteFn: agents.GitRemoteFn(gitRemoteFn),
 			}
-			for _, f := range files {
-				id := strings.TrimSuffix(filepath.Base(f), ".jsonl")
-				if _, exists := sessionSet[id]; !exists {
-					sessionSet[id] = f
-				}
-			}
-		}
-
-		if copilotWorkspaces != nil {
-			ownerRepo := key.owner + "/" + key.repo
-			for sessionDir, workspace := range copilotWorkspaces {
-				if workspace.Repository != ownerRepo {
+			for _, p := range agents.RegisteredProviders() {
+				if !p.HomeExists() {
 					continue
 				}
-				id := parsers.CopilotSessionIDFromPath(sessionDir)
-				if workspace.ID != "" {
-					id = workspace.ID
+				provLocs, err := p.DiscoverSessions(target)
+				if err != nil {
+					continue
 				}
-				if _, exists := sessionSet[id]; !exists {
-					sessionSet[id] = sessionDir
+				for _, loc := range provLocs {
+					if seen[loc.SessionID] {
+						continue
+					}
+					seen[loc.SessionID] = true
+					locs = append(locs, loc)
 				}
 			}
 		}
 
-		if len(sessionSet) == 0 {
+		if len(locs) == 0 {
 			continue
 		}
 
-		sessionFiles := make([]string, 0, len(sessionSet))
-		for _, f := range sessionSet {
-			sessionFiles = append(sessionFiles, f)
-		}
-
 		// Deduplicate project paths for display.
-		uniquePaths := make([]string, 0, len(seen))
-		for p := range seen {
+		uniquePaths := make([]string, 0, len(seenPaths))
+		for p := range seenPaths {
 			uniquePaths = append(uniquePaths, p)
 		}
 
 		repos = append(repos, DiscoveredRepo{
-			Owner:        key.owner,
-			Repo:         key.repo,
-			OwnerRepo:    key.owner + "/" + key.repo,
-			ProjectPaths: uniquePaths,
-			SessionFiles: sessionFiles,
+			Owner:           dr.Owner,
+			Repo:            dr.Repo,
+			OwnerRepo:       dr.OwnerRepo,
+			ProjectPaths:    uniquePaths,
+			SessionLocators: locs,
 		})
-		totalSessions += len(sessionFiles)
+		totalSessions += len(locs)
 	}
 
 	return &DiscoverySummary{

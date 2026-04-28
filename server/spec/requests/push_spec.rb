@@ -62,6 +62,40 @@ RSpec.describe "Push API", type: :request do
     expect(body["entities"]["prs"]).to eq(1)
   end
 
+  describe "payload_version routing" do
+    it "accepts payload_version=1 and returns 200" do
+      post "/api/v1/push",
+        params: push_payload.merge(payload_version: 1),
+        headers: { "Authorization" => "Bearer #{raw_key}" },
+        as: :json
+
+      expect(response).to have_http_status(:ok)
+      body = JSON.parse(response.body)
+      expect(body["ok"]).to be true
+    end
+
+    it "rejects payload_version=2 with 400 and error message" do
+      post "/api/v1/push",
+        params: push_payload.merge(payload_version: 2),
+        headers: { "Authorization" => "Bearer #{raw_key}" },
+        as: :json
+
+      expect(response).to have_http_status(:bad_request)
+      body = JSON.parse(response.body)
+      expect(body["ok"]).to be false
+      expect(body["error"]).to match(/Unsupported payload_version: 2/)
+    end
+
+    it "defaults to version 1 when payload_version is missing" do
+      post "/api/v1/push",
+        params: push_payload,
+        headers: { "Authorization" => "Bearer #{raw_key}" },
+        as: :json
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
   it "persists all session fields including tool call metrics" do
     payload = push_payload.merge(
       sessions: [
@@ -101,7 +135,8 @@ RSpec.describe "Push API", type: :request do
 
     session = CodingSession.find("sess-tool-test")
     expect(session.agent_type).to eq("copilot_cli")
-    expect(session.peak_context_pct).to be_within(0.01).of(0.72)
+    # copilot_cli does not support peak_context_pct — field_value returns nil
+    expect(session.peak_context_pct).to be_nil
     expect(session.total_tool_calls).to eq(60)
     expect(session.agent_tool_calls).to eq(12)
     expect(session.skill_tool_calls).to eq(5)

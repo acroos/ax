@@ -4,10 +4,12 @@ import Link from "next/link";
 import pathUtil from "path";
 
 import { Markdown } from "@/components/markdown";
+import { AgentTypeFilter } from "@/components/agent-type-filter";
 import { RangeToggle, type Range } from "@/components/range-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { MOCK_PRS, MOCK_REPOS, MOCK_SESSIONS } from "@/lib/mock/data";
+import { metricHasMultipleAgents, agentsSupportingMetric, AGENT_LABELS, isAgentType, type AgentType } from "@/lib/agents.gen";
 import { RepoFilter } from "@/components/repo-filter";
 import { MetricDetailBody, BooleanPanel } from "@/components/metric-detail-content";
 import { getMetricDef } from "@/lib/metric-defs";
@@ -35,14 +37,15 @@ export default async function DemoMetricDetailPage({
   searchParams,
 }: {
   params: Promise<{ metric: string }>;
-  searchParams: Promise<{ repo?: string; range?: string }>;
+  searchParams: Promise<{ repo?: string; range?: string; agent_type?: string }>;
 }) {
   const { metric } = await params;
-  const { repo, range: rangeParam } = await searchParams;
+  const { repo, range: rangeParam, agent_type: agentTypeParam } = await searchParams;
   const repoId = repo ? parseInt(repo, 10) : undefined;
   const range: Range = VALID_RANGES.includes(rangeParam as Range)
     ? (rangeParam as Range)
     : "30d";
+  const agentType: AgentType | undefined = agentTypeParam && isAgentType(agentTypeParam) ? agentTypeParam : undefined;
   const def = getMetricDef(metric);
 
   if (!def) {
@@ -70,8 +73,12 @@ export default async function DemoMetricDetailPage({
   }
 
   const isSession = def.source === "session";
+  const supporting = agentsSupportingMetric(metric);
+  const filteredSessions = agentType
+    ? MOCK_SESSIONS.filter((s) => s.agent_type === agentType)
+    : MOCK_SESSIONS;
   const allValues = isSession
-    ? extractSessionValues(MOCK_SESSIONS, def)
+    ? extractSessionValues(filteredSessions, def)
     : extractPRValues(
         repoId ? MOCK_PRS.filter((p) => p.repo_id === repoId) : MOCK_PRS,
         def,
@@ -103,6 +110,14 @@ export default async function DemoMetricDetailPage({
               {def.category}
             </Badge>
           </div>
+          {metricHasMultipleAgents(metric) && (
+              <AgentTypeFilter current={agentType} agents={supporting} />
+            )}
+            {supporting.length === 1 && (
+              <span className="text-muted-foreground text-sm">
+                Only available for {AGENT_LABELS[supporting[0]]}
+              </span>
+            )}
           <RangeToggle current={range} />
         </div>
         <p className="mt-1 text-[13px] text-muted-foreground">

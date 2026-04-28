@@ -85,6 +85,9 @@ Rails.application.routes.draw do
         end
       end
 
+      # Agent registry (session-authed, dashboard)
+      get "agents", to: "agents#index"
+
       # Single PR detail (session-authed, access checked against user's orgs)
       resources :prs, only: [ :show ], controller: "prs"
 

@@ -202,6 +202,7 @@ async function TeamMetricsBody({
       metrics={data.metrics}
       range={range}
       metricHref={(metricSlug) => `/${slug}/teams/${teamSlug}/metrics/${metricSlug}?${new URLSearchParams({ range, ...(agentType ? { agent_type: agentType } : {}) }).toString()}`}
+      currentAgent={agentType}
     />
   );
 }

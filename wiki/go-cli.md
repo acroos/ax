@@ -1,6 +1,6 @@
 # Go CLI
 
-The CLI is a thin client that parses Claude Code and Copilot CLI session data and pushes it to the AX managed service. It also handles initial setup (auth, hook installation).
+The CLI is a thin client that parses session data from all installed agents (Claude Code, Copilot CLI, Cursor CLI) and pushes it to the AX managed service. It also handles initial setup (auth, hook installation).
 
 All CLI code lives under `cli/`. Entry point: `cli/cmd/ax/main.go` (Cobra-based).
 
@@ -20,12 +20,26 @@ All CLI code lives under `cli/`. Entry point: `cli/cmd/ax/main.go` (Cobra-based)
 cli/
   cmd/ax/        CLI entry point (main.go)
   internal/
+    agentinit/   Blank imports of every agent + hook package — triggers init() registration
+    agents/      Agent registry + Provider interface
+      registry.gen.go       codegen output — DO NOT EDIT
+      provider.go           Provider interface + DiscoveryTarget/SessionLocator types
+      providers.go          Register() / RegisteredProviders() — registry plumbing (do not edit)
+      claude/               Claude Code provider (discovery, parser, tools)
+      copilot/              Copilot CLI provider (discovery, parser, workspace)
+      cursor/               Cursor CLI provider (discovery, parser, applypatch)
     api/         Push payload types (PushPayload, PushResponse, SessionData)
     bulk/        Repo discovery (from history.jsonl) and bulk push orchestration
     config/      Config management (~/.ax/config.json)
-    hooks/       Claude Code hook installation plus AX-owned Copilot CLI hook files
+    hooks/       Hook installer interface + per-agent installers
+      installer.go          Installer interface + Scope enum
+      installers.go         Register() / RegisteredInstallers() — registry plumbing (do not edit)
+      pushcommand/          Shared bash one-liner generator
+      claude/               Claude Code hook installer (~/.claude/settings.json)
+      copilot/              Copilot CLI hook installer (.github/hooks/session-end.json)
+      cursor/               Cursor CLI hook installer (~/.cursor/hooks.json)
     metrics/     Metric calculator library (pure functions, used by Rails port)
-    parsers/     Session data parsing + GitHub/git data types
+    parsers/     ParsedSession type + GitHub/git data types (shared across agents)
     pricing/     Model-specific context window lookup
     push/        HTTP client for AX server
     state/       Push state tracking (which sessions already sent)
@@ -33,9 +47,11 @@ cli/
   Justfile       Build commands (just build, just test, etc.)
 ```
 
-## Session Parsers
+## Session Parsers (Agent Providers)
 
-### Claude Code (`cli/internal/parsers/claude_sessions.go`)
+Session discovery and parsing are handled by the `agents.Provider` interface (`cli/internal/agents/provider.go`). Each agent has a dedicated package under `cli/internal/agents/<id>/` implementing `DiscoverSessions()` and `Parse()`. The `ParsedSession` type lives in `cli/internal/parsers/session.go` (shared across all providers).
+
+### Claude Code (`cli/internal/agents/claude/`)
 Reads Claude Code session data from `~/.claude/projects/<encoded-path>/`. Supports two storage formats:
 1. **Top-level JSONL files**: `<uuid>.jsonl` — the traditional format
 2. **Directory-based sessions**: `<uuid>/subagents/agent-*.jsonl` — used when no top-level `.jsonl` exists (e.g. subagent-only sessions)
@@ -51,7 +67,7 @@ Extracts per session:
 
 Returns `ParsedSession` structs with `agent_type = "claude_code"`. Also discovers sessions from Claude Code worktrees belonging to the same repo.
 
-### Copilot CLI (`cli/internal/parsers/copilot_sessions.go`)
+### Copilot CLI (`cli/internal/agents/copilot/`)
 Reads Copilot CLI session directories from `~/.copilot/session-state/<uuid>/`. The parser uses `workspace.yaml` for repo metadata and `events.jsonl` for the event stream. IDE-only workspaces without `events.jsonl` are skipped.
 
 Extracts per session:
@@ -62,15 +78,29 @@ Extracts per session:
 
 Returns `ParsedSession` structs with `agent_type = "copilot_cli"`.
 
+### Cursor CLI (`cli/internal/agents/cursor/`)
+Reads Cursor workspace state from `~/.cursor/workspaces/<uuid>/`. Uses `repo.json` and `.workspace-trusted` to resolve the workspace path, then `GitRemoteFn` to derive `owner/repo` from the local path. Parses `applypatch.jsonl` for per-event session data.
+
+Extracts per session:
+- Turn count (alternating user/assistant events), tool calls, files read/modified
+- Commit SHAs from tool results (for correlation)
+- `extras.commit_attribution` and `extras.conversation_summary` when present
+
+Token fields (`input_tokens`, `output_tokens`, `cache_*`) are `nil` — Cursor does not expose token counts locally. The capability matrix in `config/agents.yaml` declares `input_tokens: false` for `cursor_cli`, so the server and dashboard handle this correctly.
+
+Returns `ParsedSession` structs with `agent_type = "cursor_cli"`.
+
 ## Hooks System
 
-`cli/internal/hooks/hooks.go` manages Claude Code hooks in `~/.claude/settings.json`. `cli/internal/hooks/copilot_hooks.go` manages AX-owned Copilot CLI hook files at `.github/hooks/session-end.json`.
+Hook installation is handled by the `hooks.Installer` interface (`cli/internal/hooks/installer.go`). Each agent has a dedicated installer under `cli/internal/hooks/<id>/`. The `ax init` command iterates `hooks.RegisteredInstallers()` — no per-agent logic in the orchestration loop.
 
-- `Install()` — Adds a `SessionEnd` hook that runs `ax push --repo <cwd>` after every Claude Code session. Also removes stale AX hooks from other events (e.g. `Stop`).
-- `Uninstall()` / `IsInstalled()` — Remove or check hook presence across all AX-managed events (`SessionEnd`, `Stop`)
-- Handles worktree resolution — if the CWD is a worktree path (`<repo>/.claude/worktrees/<name>/`), resolves back to the main repo
-- Preserves existing settings — reads the full JSON, modifies only hook entries
-- Copilot hook install is conservative: AX writes only its own hook file and refuses to overwrite a non-AX hook.
+A shared `cli/internal/hooks/pushcommand/` package generates the parameterized bash one-liner used by all agent hook files.
+
+**Claude Code** (`cli/internal/hooks/claude/installer.go`) — writes to `~/.claude/settings.json` (user scope). Handles worktree resolution (CWD is a worktree path → resolves back to main repo). Preserves existing settings; only modifies hook entries.
+
+**Copilot CLI** (`cli/internal/hooks/copilot/installer.go`) — writes `.github/hooks/session-end.json` (repo scope). Conservative: AX writes only its own hook file and refuses to overwrite a non-AX hook.
+
+**Cursor CLI** (`cli/internal/hooks/cursor/installer.go`) — writes `~/.cursor/hooks.json` (user scope, default) or `<repo>/.cursor/hooks.json` (repo scope, opt-in via `--scope repo`). See [Setup — Cursor](../docs/setup.md#cursor-cli) for the resulting file shape.
 
 ## Bulk Push (`cli/internal/bulk/`)
 
@@ -132,18 +162,45 @@ Pure function metric calculators, kept as a Go library. These are being ported t
 - `prompt_efficiency.go` — MessagesPerPR, IterationDepth
 - `planning.go` — PlanCoverage, PlanDeviation, ScopeCreep
 
+## Adding a new agent
+
+1. Add the agent's entry to `config/agents.yaml` (use existing entries as templates). Declare every `field_keys` and `metric_slugs` key — no implicit defaults.
+2. Run `just codegen-agents` and commit the regenerated `*.gen.*` files (`registry.gen.go`, `agent_registry.rb`, `agents.gen.ts`).
+3. Implement `cli/internal/agents/<id>/{provider.go, discovery.go, parser.go, tools.go}` — the `agents.Provider` interface. Add a self-registration hook at the top of `provider.go`:
+   ```go
+   func init() { agents.Register(New()) }
+   ```
+4. Implement `cli/internal/hooks/<id>/installer.go` (skip if the agent has no hook system) — the `hooks.Installer` interface. Add the same self-registration pattern:
+   ```go
+   func init() { hooks.Register(NewInstaller()) }
+   ```
+5. Add blank imports for both new packages to `cli/internal/agentinit/init.go` so their `init()` functions run when the binary starts:
+   ```go
+   _ "github.com/austinroos/ax/internal/agents/<id>"
+   _ "github.com/austinroos/ax/internal/hooks/<id>"
+   ```
+   (`providers.go` and `installers.go` only define the `Register()` / `RegisteredX()` plumbing — you do not edit them directly.)
+6. Add tests in `cli/internal/agents/<id>/<id>_test.go` and (if applicable) `cli/internal/hooks/<id>/installer_test.go`. Extend `cli/internal/agents/agents_test.go` to assert the new provider is registered.
+7. Update `docs/setup.md` with the install instructions for the new agent.
+
 ## Key Files
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `cli/cmd/ax/main.go` | ~370 | CLI commands: init, push, push --all |
-| `cli/internal/bulk/discovery.go` | ~170 | Repo discovery from history.jsonl |
-| `cli/internal/bulk/push.go` | ~280 | Bulk push orchestration, progress, error logging |
-| `cli/internal/parsers/claude_sessions.go` | ~350 | Claude Code session JSONL parsing |
-| `cli/internal/parsers/copilot_sessions.go` | ~250 | Copilot CLI events.jsonl parsing |
-| `cli/internal/parsers/copilot_discovery.go` | ~180 | Copilot CLI workspace/session discovery |
-| `cli/internal/hooks/hooks.go` | ~200 | Claude Code hook management |
-| `cli/internal/push/client.go` | ~140 | HTTP client for server API |
-| `cli/internal/state/state.go` | ~110 | Push state tracking per repo |
-| `cli/internal/metrics/output_quality.go` | ~130 | Output quality metric calculators |
-| `cli/internal/metrics/planning.go` | ~140 | Plan analysis |
+| File | Purpose |
+|------|---------|
+| `cli/cmd/ax/main.go` | CLI commands: init, push, push --all |
+| `config/agents.yaml` | Agent registry + capability matrix (edit to add an agent) |
+| `cli/internal/agentinit/init.go` | Blank imports of every agent + hook package — add new agents here |
+| `cli/internal/agents/provider.go` | `Provider` interface definition |
+| `cli/internal/agents/providers.go` | `Register()` / `RegisteredProviders()` registry plumbing — do not edit |
+| `cli/internal/agents/registry.gen.go` | Generated Go constants — DO NOT EDIT |
+| `cli/internal/agents/claude/provider.go` | Claude Code provider impl (self-registers via `init()`) |
+| `cli/internal/agents/copilot/provider.go` | Copilot CLI provider impl (self-registers via `init()`) |
+| `cli/internal/agents/cursor/provider.go` | Cursor CLI provider impl (self-registers via `init()`) |
+| `cli/internal/hooks/installer.go` | `Installer` interface definition |
+| `cli/internal/hooks/installers.go` | `Register()` / `RegisteredInstallers()` registry plumbing — do not edit |
+| `cli/internal/hooks/pushcommand/script.go` | Shared bash one-liner generator |
+| `cli/internal/bulk/discovery.go` | Repo discovery from history.jsonl |
+| `cli/internal/bulk/push.go` | Bulk push orchestration, progress, error logging |
+| `cli/internal/parsers/session.go` | `ParsedSession` type (shared across all providers) |
+| `cli/internal/push/client.go` | HTTP client for server API |
+| `cli/internal/state/state.go` | Push state tracking per repo |

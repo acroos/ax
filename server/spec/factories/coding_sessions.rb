@@ -2,6 +2,7 @@ FactoryBot.define do
   factory :coding_session do
     sequence(:id) { |n| "session-#{n}" }
     repo
+    agent_type { "claude_code" }
     branch { "main" }
     message_count { 5 }
     turn_count { 3 }

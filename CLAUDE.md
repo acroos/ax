@@ -2,10 +2,10 @@
 
 ## What is this?
 
-AX is a managed service that measures developer experience for agentic coding workflows. It analyzes GitHub PR data and Claude Code session data to surface actionable metrics about how effectively engineers work with AI coding agents.
+AX is a managed service that measures developer experience for agentic coding workflows. It analyzes GitHub PR data and session data from AI coding agents (Claude Code, Copilot CLI, Cursor CLI) to surface actionable metrics about how effectively engineers work with AI coding agents.
 
 AX has three components:
-- **Go CLI** — Thin client that parses Claude Code session data and pushes it to the server. Installs hooks for automatic data collection.
+- **Go CLI** — Thin client that parses session data from Claude Code, Copilot CLI, and Cursor CLI, and pushes it to the server. Installs hooks for automatic data collection.
 - **Rails API** (`ax.up.railway.app`) — Backend service handling data ingestion, GitHub webhooks, metric computation, auth, and multi-tenant org management.
 - **Next.js Dashboard** (`axmetrics.dev`) — Web UI for viewing metrics and managing orgs.
 
@@ -68,6 +68,11 @@ npm install --prefix <worktree-path>/dashboard
 ## Pre-push checks
 
 Run the checks below before pushing. CI runs them per sub-project based on changed paths — run only the sections relevant to your changes.
+
+**Codegen (always):**
+```bash
+just codegen-agents-check
+```
 
 **Go CLI:**
 ```bash
@@ -135,9 +140,16 @@ All architectural decisions are documented in `docs/decisions/`. Reference these
 - [015 — Design System & shadcn/ui](docs/decisions/015-design-system-and-shadcn.md): Parchment & Clay theme + shadcn/ui as the primitive component library. Amends ADR-006. **Read before any dashboard styling work.**
 - [016 — Teams within Orgs](docs/decisions/016-teams-within-orgs.md): Teams as people-groups within orgs for metric scoping and access control. Pro-only. Relevant when working on team management, team-scoped metrics, or org access control.
 - [017 — Metric Restructuring](docs/decisions/017-metric-restructuring.md): New top 9 displayed metrics across Delivery / Session Effectiveness / Adoption Maturity. 6 new metrics, 3 kept, 6 hidden. Check this before adding or changing metrics.
+- [018 — Multi-Agent Abstractions](docs/decisions/018-multi-agent-abstractions.md): Plug-and-play agent provider system. `config/agents.yaml` + codegen drives Go consts, Ruby module, TS types, and SQL fixture. `agents.Provider` and `hooks.Installer` interfaces. Cursor as third agent. Read before adding a new agent or changing capability matrix.
 - [Open Questions](docs/decisions/open-questions.md): Pending decisions (CI images, PR author tracking, etc.)
 
 When making new decisions, follow the [template](docs/decisions/TEMPLATE.md) and add a reference here.
+
+## Agent Registry
+
+Adding a new agent is a single-file edit to `config/agents.yaml` + `just codegen-agents`. Never hand-edit `*.gen.*` files — CI's `codegen-check` job will fail on drift.
+
+See [`wiki/go-cli.md#adding-a-new-agent`](wiki/go-cli.md#adding-a-new-agent) for the full 7-step runbook.
 
 ## Documentation
 

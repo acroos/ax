@@ -3,11 +3,12 @@ package api
 
 // PushPayload is the data sent from a developer's CLI to the AX server.
 type PushPayload struct {
-	RepoPath  string        `json:"repo_path,omitempty"`
-	RemoteURL string        `json:"remote_url,omitempty"`
-	Owner     string        `json:"owner"`
-	Repo      string        `json:"repo"`
-	Sessions  []SessionData `json:"sessions"`
+	PayloadVersion int           `json:"payload_version"`
+	RepoPath       string        `json:"repo_path,omitempty"`
+	RemoteURL      string        `json:"remote_url,omitempty"`
+	Owner          string        `json:"owner"`
+	Repo           string        `json:"repo"`
+	Sessions       []SessionData `json:"sessions"`
 }
 
 // PushResponse is returned by the server after processing a push.
@@ -26,10 +27,10 @@ type SessionData struct {
 	EndedAt                  int64    `json:"ended_at,omitempty"`
 	MessageCount             int      `json:"message_count"`
 	TurnCount                int      `json:"turn_count"`
-	InputTokens              int      `json:"input_tokens"`
-	OutputTokens             int      `json:"output_tokens"`
-	CacheCreationInputTokens int      `json:"cache_creation_input_tokens"`
-	CacheReadInputTokens     int      `json:"cache_read_input_tokens"`
+	InputTokens              *int     `json:"input_tokens,omitempty"`
+	OutputTokens             *int     `json:"output_tokens,omitempty"`
+	CacheCreationInputTokens *int     `json:"cache_creation_input_tokens,omitempty"`
+	CacheReadInputTokens     *int     `json:"cache_read_input_tokens,omitempty"`
 	PrimaryModel             string   `json:"primary_model,omitempty"`
 	FilesReadCount           int      `json:"files_read_count"`
 	FilesModifiedCount       int      `json:"files_modified_count"`
@@ -37,8 +38,9 @@ type SessionData struct {
 	SidechainMessages        *int     `json:"sidechain_messages,omitempty"`
 	TotalFileReads           int      `json:"total_file_reads"`
 	PeakContextPct           *float64 `json:"peak_context_pct,omitempty"`
-	TotalToolCalls           int      `json:"total_tool_calls"`
-	AgentToolCalls           int      `json:"agent_tool_calls"`
-	SkillToolCalls           int      `json:"skill_tool_calls"`
-	McpToolCalls             int      `json:"mcp_tool_calls"`
+	TotalToolCalls           int            `json:"total_tool_calls"`
+	AgentToolCalls           int            `json:"agent_tool_calls"`
+	SkillToolCalls           int            `json:"skill_tool_calls"`
+	McpToolCalls             int            `json:"mcp_tool_calls"`
+	Extras                   map[string]any `json:"extras,omitempty"`
 }

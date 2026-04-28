@@ -1,0 +1,124 @@
+# config/agents.yaml — single source of truth for agent registry + capability matrix.
+# Codegen targets: cli/internal/agents/registry.gen.go,
+#                  server/app/models/agent_registry.rb,
+#                  dashboard/src/lib/agents.gen.ts.
+# After editing, run: just codegen-agents
+# CI verifies via: just codegen-agents-check
+
+schema_version: 1
+
+# All field names available to capability declarations. The codegen validates
+# that every agent's `fields:` map uses only keys from this list.
+field_keys:
+  - input_tokens
+  - output_tokens
+  - cache_creation_input_tokens
+  - cache_read_input_tokens
+  - sidechain_messages
+  - peak_context_pct
+  - total_file_reads
+  - total_tool_calls
+  - agent_tool_calls
+  - skill_tool_calls
+  - mcp_tool_calls
+
+# All metric slugs. Codegen validates `metrics:` keys against this list.
+# Mirrors MetricsAggregator slugs in server/app/services/metrics_aggregator.rb.
+metric_slugs:
+  - iteration-depth
+  - cache-hit-rate
+  - sidechain-rate
+  - peak-context-pct
+  - re-read-rate
+  - autonomy-score
+  - skill-tool-usage
+  - subagent-delegation
+  - token-cost-per-pr
+
+agents:
+  claude_code:
+    label: Claude Code
+    color: "#c4621a"
+    home_dir_env: AX_CLAUDE_HOME
+    home_dir_default: ~/.claude
+    hook_scopes: [user]
+    fields:
+      input_tokens: true
+      output_tokens: true
+      cache_creation_input_tokens: true
+      cache_read_input_tokens: true
+      sidechain_messages: true
+      peak_context_pct: true
+      total_file_reads: true
+      total_tool_calls: true
+      agent_tool_calls: true
+      skill_tool_calls: true
+      mcp_tool_calls: true
+    metrics:
+      iteration-depth: true
+      cache-hit-rate: true
+      sidechain-rate: true
+      peak-context-pct: true
+      re-read-rate: true
+      autonomy-score: true
+      skill-tool-usage: true
+      subagent-delegation: true
+      token-cost-per-pr: true
+
+  copilot_cli:
+    label: Copilot CLI
+    color: "#5a8fd8"
+    home_dir_env: COPILOT_HOME
+    home_dir_default: ~/.copilot
+    hook_scopes: [repo]
+    fields:
+      input_tokens: true
+      output_tokens: true
+      cache_creation_input_tokens: true
+      cache_read_input_tokens: true
+      sidechain_messages: false
+      peak_context_pct: false
+      total_file_reads: true
+      total_tool_calls: true
+      agent_tool_calls: true
+      skill_tool_calls: false
+      mcp_tool_calls: true
+    metrics:
+      iteration-depth: true
+      cache-hit-rate: true
+      sidechain-rate: false
+      peak-context-pct: false
+      re-read-rate: true
+      autonomy-score: true
+      skill-tool-usage: false
+      subagent-delegation: true
+      token-cost-per-pr: true
+
+  cursor_cli:
+    label: Cursor CLI
+    color: "#5a7a5a"
+    home_dir_env: CURSOR_HOME
+    home_dir_default: ~/.cursor
+    hook_scopes: [user, repo]
+    fields:
+      input_tokens: false
+      output_tokens: false
+      cache_creation_input_tokens: false
+      cache_read_input_tokens: false
+      sidechain_messages: false
+      peak_context_pct: false
+      total_file_reads: true
+      total_tool_calls: true
+      agent_tool_calls: false
+      skill_tool_calls: false
+      mcp_tool_calls: false
+    metrics:
+      iteration-depth: true
+      cache-hit-rate: false
+      sidechain-rate: false
+      peak-context-pct: false
+      re-read-rate: true
+      autonomy-score: true
+      skill-tool-usage: false
+      subagent-delegation: false
+      token-cost-per-pr: false

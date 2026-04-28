@@ -170,6 +170,7 @@ async function MyMetricsBody({
       metrics={data.metrics}
       range={range}
       metricHref={(metricSlug) => `/${slug}/me/metrics/${metricSlug}?${new URLSearchParams({ range, ...(agentType ? { agent_type: agentType } : {}) }).toString()}`}
+      currentAgent={agentType}
     />
   );
 }

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_25_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_27_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -210,7 +210,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_25_000001) do
 
   create_table "sessions", id: :string, force: :cascade do |t|
     t.integer "agent_tool_calls", default: 0, null: false
-    t.string "agent_type", default: "claude_code", null: false
+    t.string "agent_type", null: false
     t.integer "assistant_message_count", default: 0, null: false
     t.string "branch"
     t.integer "cache_creation_input_tokens", default: 0
@@ -218,12 +218,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_25_000001) do
     t.datetime "created_at", null: false
     t.string "cwd"
     t.datetime "ended_at"
+    t.jsonb "extras", default: {}, null: false
     t.integer "files_modified_count", default: 0
     t.integer "files_read_count", default: 0
     t.integer "input_tokens", default: 0
     t.integer "mcp_tool_calls", default: 0, null: false
     t.integer "message_count", default: 0
     t.integer "output_tokens", default: 0
+    t.integer "payload_version", default: 1, null: false
     t.float "peak_context_pct"
     t.string "primary_model"
     t.string "pushed_by"

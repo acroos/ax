@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/austinroos/ax/internal/agents"
+	_ "github.com/austinroos/ax/internal/agentinit"
 	"github.com/austinroos/ax/internal/api"
 	"github.com/austinroos/ax/internal/bulk"
 	"github.com/austinroos/ax/internal/config"
@@ -68,9 +70,18 @@ func parseGitRemote(remoteURL string) (owner, repo string, err error) {
 	return bulk.ParseGitRemote(remoteURL)
 }
 
+// gitRepoExists reports whether path contains a .git directory.
+func gitRepoExists(path string) bool {
+	if _, err := os.Stat(filepath.Join(path, ".git")); err == nil {
+		return true
+	}
+	return false
+}
+
 func newInitCmd() *cobra.Command {
 	var uninstall bool
 	var apiKey string
+	var scope string
 
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -78,16 +89,33 @@ func newInitCmd() *cobra.Command {
 		Long: `Set up AX for automatic metrics collection.
 
 Connects to the AX managed service and installs hooks that automatically
-push Claude Code and Copilot CLI session data after coding sessions.
+push Claude Code, Copilot CLI, and Cursor CLI session data after coding sessions.
 
-Use --uninstall to remove all AX hooks.`,
+Use --scope to control which hook scopes are installed:
+  user  (default) — install user-level hooks (e.g. ~/.cursor/hooks.json)
+  repo            — install repo-level hooks (e.g. .cursor/hooks.json)
+  both            — install both user and repo hooks
+
+Use --uninstall to remove all AX hooks (removes all scopes, ignores --scope).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			settingsPath := hooks.DefaultSettingsPath()
-
 			if uninstall {
-				_ = hooks.Uninstall(settingsPath)
-				if cwd, err := os.Getwd(); err == nil {
-					_ = hooks.UninstallCopilot(cwd)
+				// --uninstall removes hooks from EVERY scope an installer supports.
+				// Users should not have to remember which scope they installed.
+				home, _ := os.UserHomeDir()
+				repoPath, _ := os.Getwd()
+				uninstallCtx := hooks.InstallContext{
+					HomeDir:  home,
+					RepoPath: repoPath,
+				}
+				for _, inst := range hooks.RegisteredInstallers() {
+					for _, s := range []hooks.Scope{hooks.UserScope, hooks.RepoScope} {
+						if !inst.Scopes().Has(s) {
+							continue
+						}
+						scopedCtx := uninstallCtx
+						scopedCtx.Scope = s
+						_ = inst.Uninstall(scopedCtx)
+					}
 				}
 				ui.StepDone("All AX hooks removed")
 				return nil
@@ -97,17 +125,38 @@ Use --uninstall to remove all AX hooks.`,
 				return fmt.Errorf("--api-key is required\n\n  Example: ax init --api-key <key>")
 			}
 
-			return initManagedMode(apiKey, settingsPath)
+			scopeFilter, err := parseScopeFlag(scope)
+			if err != nil {
+				return err
+			}
+
+			return initManagedMode(apiKey, scopeFilter)
 		},
 	}
 
 	cmd.Flags().BoolVar(&uninstall, "uninstall", false, "Remove all AX hooks")
 	cmd.Flags().StringVar(&apiKey, "api-key", "", "API key for the AX server")
+	cmd.Flags().StringVar(&scope, "scope", "user", "Hook scope to install: user (default), repo, or both")
 
 	return cmd
 }
 
-func initManagedMode(apiKey, settingsPath string) error {
+// parseScopeFlag converts the --scope string value into a hooks.Scope bitmask.
+// "user" → UserScope, "repo" → RepoScope, "both" → UserScope|RepoScope.
+func parseScopeFlag(s string) (hooks.Scope, error) {
+	switch s {
+	case "user", "":
+		return hooks.UserScope, nil
+	case "repo":
+		return hooks.RepoScope, nil
+	case "both":
+		return hooks.UserScope | hooks.RepoScope, nil
+	default:
+		return 0, fmt.Errorf("invalid --scope %q: must be user, repo, or both", s)
+	}
+}
+
+func initManagedMode(apiKey string, scopeFilter hooks.Scope) error {
 	serverURL := config.DefaultServerURL
 
 	ui.SectionHeader(ui.Bold.Render("AX Setup"))
@@ -161,22 +210,46 @@ func initManagedMode(apiKey, settingsPath string) error {
 		axBinary = "ax"
 	}
 
-	if hooks.IsInstalled(settingsPath) {
-		ui.Step("Updating AX hooks...")
+	home, _ := os.UserHomeDir()
+	repoPath, _ := os.Getwd()
+
+	installCtx := hooks.InstallContext{
+		AxBinary: axBinary,
+		HomeDir:  home,
+		RepoPath: repoPath,
 	}
 
-	if err := hooks.Install(settingsPath, axBinary); err != nil {
-		return fmt.Errorf("failed to install hooks: %w", err)
-	}
-	fmt.Printf("           %s Claude Code SessionEnd hook installed\n", ui.SuccessIcon())
+	for _, inst := range hooks.RegisteredInstallers() {
+		if !inst.HomeExists() {
+			continue
+		}
+		for _, scope := range []hooks.Scope{hooks.UserScope, hooks.RepoScope} {
+			if !inst.Scopes().Has(scope) {
+				continue
+			}
+			// Honour the --scope flag: skip scopes not requested by the user.
+			if !scopeFilter.Has(scope) {
+				continue
+			}
+			if scope == hooks.RepoScope && !gitRepoExists(repoPath) {
+				continue
+			}
 
-	if hooks.CopilotHomeExists() {
-		if repoPath, err := os.Getwd(); err == nil {
-			if installed, err := hooks.InstallCopilot(repoPath); err != nil {
-				return fmt.Errorf("failed to install Copilot CLI hook: %w", err)
-			} else if installed {
-				fmt.Printf("           %s Created %s\n", ui.SuccessIcon(), ui.Code.Render(".github/hooks/session-end.json"))
-				fmt.Printf("           Commit this file so your team gets automatic Copilot CLI session collection.\n")
+			scopedCtx := installCtx
+			scopedCtx.Scope = scope
+
+			result, err := inst.Install(scopedCtx)
+			if err != nil {
+				return fmt.Errorf("%s: install failed: %w", inst.AgentID(), err)
+			}
+			if result.Path == "" {
+				continue
+			}
+
+			meta := agents.Registry()[inst.AgentID()]
+			fmt.Printf("           %s %s hook installed\n", ui.SuccessIcon(), meta.Label)
+			if result.Message != "" {
+				fmt.Printf("           %s\n", result.Message)
 			}
 		}
 	}
@@ -248,25 +321,29 @@ You can override with --api-key.`,
 				return fmt.Errorf("could not identify repo: %w\n\n  Make sure you're in a git repo with a remote origin", err)
 			}
 
-			// Parse Claude Code and Copilot CLI sessions for this repo
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return fmt.Errorf("could not find home directory: %w", err)
-			}
-			claudeDir := filepath.Join(home, ".claude")
-
-			sessionFiles, err := parsers.FindSessionFiles(claudeDir, path)
-			if err != nil {
-				return fmt.Errorf("failed to find session files: %w", err)
-			}
 			ownerRepo := owner + "/" + repo
-			copilotSessions, err := parsers.FindCopilotSessionsForRepo(parsers.DefaultCopilotDir(), ownerRepo)
-			if err != nil {
-				return fmt.Errorf("failed to find Copilot session files: %w", err)
-			}
-			sessionFiles = mergeSessionPaths(sessionFiles, copilotSessions)
 
-			if len(sessionFiles) == 0 {
+			// Discover sessions for this repo via registered providers
+			target := agents.DiscoveryTarget{
+				LocalPath:   path,
+				OwnerRepo:   ownerRepo,
+				GitRemoteFn: agents.GitRemoteFn(gitRemoteOwnerRepo),
+			}
+
+			var allLocs []agents.SessionLocator
+			for _, p := range agents.RegisteredProviders() {
+				if !p.HomeExists() {
+					continue
+				}
+				locs, err := p.DiscoverSessions(target)
+				if err != nil {
+					return fmt.Errorf("%s: discovery failed: %w", p.ID(), err)
+				}
+				allLocs = append(allLocs, locs...)
+			}
+			allLocs = dedupLocators(allLocs)
+
+			if len(allLocs) == 0 {
 				ui.CompleteBanner("No session data found for this repo")
 				return nil
 			}
@@ -278,31 +355,37 @@ You can override with --api-key.`,
 				if err != nil {
 					repoState = &state.RepoState{}
 				}
-				sessionFiles = state.FilterNewSessionFiles(sessionFiles, repoState.PushedSet())
+				allLocs = filterNewLocators(allLocs, repoState.PushedSet())
 			}
 
-			if len(sessionFiles) == 0 {
+			if len(allLocs) == 0 {
 				ui.CompleteBanner("No new sessions to push")
 				return nil
 			}
 
 			// Parse sessions and build payload
 			payload := &api.PushPayload{
-				RepoPath: path,
-				Owner:    owner,
-				Repo:     repo,
+				PayloadVersion: 1,
+				RepoPath:       path,
+				Owner:          owner,
+				Repo:           repo,
 			}
 
 			var parsed int
 			var pushedIDs []string
-			for _, sf := range sessionFiles {
-				session, err := parsers.ParseSession(sf)
+			for _, loc := range allLocs {
+				p := agents.FindProvider(loc.AgentID)
+				if p == nil {
+					continue
+				}
+				sess, err := p.Parse(loc)
 				if err != nil {
 					continue
 				}
 				parsed++
-				pushedIDs = append(pushedIDs, session.ID)
-				payload.Sessions = append(payload.Sessions, session.ToSessionData())
+				pushedIDs = append(pushedIDs, sess.ID)
+				caps := parsers.CapsFromFields(p.Capabilities().Fields)
+				payload.Sessions = append(payload.Sessions, sess.ToSessionData(caps))
 			}
 
 			// Send to server
@@ -337,20 +420,30 @@ You can override with --api-key.`,
 	return cmd
 }
 
-func mergeSessionPaths(paths ...[]string) []string {
+func dedupLocators(locs []agents.SessionLocator) []agents.SessionLocator {
 	seen := make(map[string]bool)
-	var merged []string
-	for _, group := range paths {
-		for _, path := range group {
-			id := state.SessionIDFromPath(path)
-			if seen[id] {
-				continue
-			}
-			seen[id] = true
-			merged = append(merged, path)
+	var out []agents.SessionLocator
+	for _, loc := range locs {
+		if seen[loc.SessionID] {
+			continue
+		}
+		seen[loc.SessionID] = true
+		out = append(out, loc)
+	}
+	return out
+}
+
+func filterNewLocators(locs []agents.SessionLocator, pushed map[string]bool) []agents.SessionLocator {
+	if len(pushed) == 0 {
+		return locs
+	}
+	var out []agents.SessionLocator
+	for _, loc := range locs {
+		if !pushed[loc.SessionID] {
+			out = append(out, loc)
 		}
 	}
-	return merged
+	return out
 }
 
 func runBulkPush(apiKeyOverride string, force bool) error {
@@ -410,7 +503,7 @@ func runBulkPush(apiKeyOverride string, force bool) error {
 	for i, r := range summary.Repos {
 		label := fmt.Sprintf("%-35s %s",
 			r.OwnerRepo,
-			ui.Faint.Render(fmt.Sprintf("%d sessions", len(r.SessionFiles))))
+			ui.Faint.Render(fmt.Sprintf("%d sessions", len(r.SessionLocators))))
 		options[i] = huh.NewOption(label, i).Selected(true)
 	}
 

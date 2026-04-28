@@ -107,6 +107,10 @@ func TestDiscoverRepos(t *testing.T) {
 	tmpDir := t.TempDir()
 	claudeDir := filepath.Join(tmpDir, ".claude")
 
+	// Isolate providers from real home dirs.
+	t.Setenv("AX_CLAUDE_HOME", claudeDir)
+	t.Setenv("COPILOT_HOME", t.TempDir())
+
 	// Create history.jsonl with known entries.
 	historyDir := claudeDir
 	if err := os.MkdirAll(historyDir, 0o755); err != nil {
@@ -182,16 +186,16 @@ func TestDiscoverRepos(t *testing.T) {
 	if repoA.OwnerRepo != "owner/repo-a" {
 		t.Errorf("repos[0].OwnerRepo = %q, want %q", repoA.OwnerRepo, "owner/repo-a")
 	}
-	if len(repoA.SessionFiles) != 2 {
-		t.Errorf("repos[0] has %d sessions, want 2", len(repoA.SessionFiles))
+	if len(repoA.SessionLocators) != 2 {
+		t.Errorf("repos[0] has %d sessions, want 2", len(repoA.SessionLocators))
 	}
 
 	repoB := summary.Repos[1]
 	if repoB.OwnerRepo != "owner/repo-b" {
 		t.Errorf("repos[1].OwnerRepo = %q, want %q", repoB.OwnerRepo, "owner/repo-b")
 	}
-	if len(repoB.SessionFiles) != 1 {
-		t.Errorf("repos[1] has %d sessions, want 1", len(repoB.SessionFiles))
+	if len(repoB.SessionLocators) != 1 {
+		t.Errorf("repos[1] has %d sessions, want 1", len(repoB.SessionLocators))
 	}
 
 	if summary.TotalSessions != 3 {
@@ -210,6 +214,10 @@ func TestDiscoverRepos(t *testing.T) {
 func TestDiscoverRepos_WorktreeDedup(t *testing.T) {
 	tmpDir := t.TempDir()
 	claudeDir := filepath.Join(tmpDir, ".claude")
+
+	// Isolate providers from real home dirs.
+	t.Setenv("AX_CLAUDE_HOME", claudeDir)
+	t.Setenv("COPILOT_HOME", t.TempDir())
 
 	project := filepath.Join(tmpDir, "my-repo")
 	worktree := filepath.Join(tmpDir, "my-repo", ".claude", "worktrees", "feature")
@@ -268,13 +276,16 @@ func TestDiscoverRepos_WorktreeDedup(t *testing.T) {
 	}
 
 	// Should have sessions from both the main project and the worktree.
-	if len(repo.SessionFiles) < 2 {
-		t.Errorf("expected at least 2 session files, got %d", len(repo.SessionFiles))
+	if len(repo.SessionLocators) < 2 {
+		t.Errorf("expected at least 2 session files, got %d", len(repo.SessionLocators))
 	}
 }
 
 func TestDiscoverRepos_EmptyHistory(t *testing.T) {
 	tmpDir := t.TempDir()
+	// Isolate providers from real home dirs.
+	t.Setenv("AX_CLAUDE_HOME", tmpDir)
+	t.Setenv("COPILOT_HOME", t.TempDir())
 	// No history.jsonl at all.
 	summary, err := DiscoverRepos(tmpDir, func(string) (string, string, error) {
 		return "", "", fmt.Errorf("should not be called")
@@ -284,6 +295,104 @@ func TestDiscoverRepos_EmptyHistory(t *testing.T) {
 	}
 	if len(summary.Repos) != 0 {
 		t.Errorf("expected 0 repos, got %d", len(summary.Repos))
+	}
+}
+
+func TestDiscoverRepos_CursorOnlyRepo(t *testing.T) {
+	tmpDir := t.TempDir()
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	cursorHome := t.TempDir()
+
+	// Isolate all providers from real home dirs.
+	t.Setenv("AX_CLAUDE_HOME", claudeDir)
+	t.Setenv("COPILOT_HOME", t.TempDir())
+	t.Setenv("CURSOR_HOME", cursorHome)
+
+	// The local path that Cursor reports for the project.
+	projectPath := filepath.Join(tmpDir, "cursor-only")
+	if err := os.MkdirAll(projectPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set up a Cursor project dir with .workspace-trusted pointing to projectPath.
+	encodedPath := strings.TrimPrefix(strings.ReplaceAll(projectPath, "/", "-"), "-")
+	projDir := filepath.Join(cursorHome, "projects", encodedPath)
+	if err := os.MkdirAll(projDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	wsContent := fmt.Sprintf(`{"workspacePath":%q,"trustedAt":"2026-04-01T10:00:00Z"}`, projectPath)
+	if err := os.WriteFile(filepath.Join(projDir, ".workspace-trusted"), []byte(wsContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a Cursor session transcript so DiscoverSessions returns a locator.
+	agentUUID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	transcriptDir := filepath.Join(projDir, "agent-transcripts", agentUUID)
+	if err := os.MkdirAll(transcriptDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	transcriptFile := filepath.Join(transcriptDir, agentUUID+".jsonl")
+	if err := os.WriteFile(transcriptFile, []byte(`{"role":"user","message":{"content":[]}}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// No Claude history — cursor-only repo must be discovered via RepoEnumerator.
+	gitRemoteFn := func(path string) (string, string, error) {
+		if path == projectPath {
+			return "acme", "cursor-only", nil
+		}
+		return "", "", fmt.Errorf("unexpected path: %s", path)
+	}
+
+	summary, err := DiscoverRepos(claudeDir, gitRemoteFn)
+	if err != nil {
+		t.Fatalf("DiscoverRepos() error: %v", err)
+	}
+
+	if len(summary.Repos) != 1 {
+		t.Fatalf("expected 1 repo, got %d: %v", len(summary.Repos), summary.Repos)
+	}
+	if summary.Repos[0].OwnerRepo != "acme/cursor-only" {
+		t.Errorf("OwnerRepo = %q, want %q", summary.Repos[0].OwnerRepo, "acme/cursor-only")
+	}
+}
+
+func TestDiscoverRepos_CursorOnlyRepo_GitRemoteError(t *testing.T) {
+	tmpDir := t.TempDir()
+	claudeDir := filepath.Join(tmpDir, ".claude")
+	cursorHome := t.TempDir()
+
+	// Isolate all providers from real home dirs.
+	t.Setenv("AX_CLAUDE_HOME", claudeDir)
+	t.Setenv("COPILOT_HOME", t.TempDir())
+	t.Setenv("CURSOR_HOME", cursorHome)
+
+	projectPath := filepath.Join(tmpDir, "cursor-only")
+	if err := os.MkdirAll(projectPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	encodedPath := strings.TrimPrefix(strings.ReplaceAll(projectPath, "/", "-"), "-")
+	projDir := filepath.Join(cursorHome, "projects", encodedPath)
+	if err := os.MkdirAll(projDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	wsContent := fmt.Sprintf(`{"workspacePath":%q,"trustedAt":"2026-04-01T10:00:00Z"}`, projectPath)
+	if err := os.WriteFile(filepath.Join(projDir, ".workspace-trusted"), []byte(wsContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// gitRemoteFn always errors — repo should be silently skipped.
+	gitRemoteFn := func(path string) (string, string, error) {
+		return "", "", fmt.Errorf("no remote for %s", path)
+	}
+
+	summary, err := DiscoverRepos(claudeDir, gitRemoteFn)
+	if err != nil {
+		t.Fatalf("DiscoverRepos() error: %v", err)
+	}
+	if len(summary.Repos) != 0 {
+		t.Errorf("expected 0 repos when gitRemoteFn errors, got %d", len(summary.Repos))
 	}
 }
 

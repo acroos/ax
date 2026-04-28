@@ -52,6 +52,8 @@ export function MetricCard({
   href,
   delta,
   sparkline,
+  unsupported,
+  unsupportedLabel,
 }: {
   label: string;
   value: string;
@@ -59,16 +61,25 @@ export function MetricCard({
   href?: string;
   delta?: string;
   sparkline?: SparklinePoint[];
+  /** When true, renders "N/A" regardless of value with an optional tooltip. */
+  unsupported?: boolean;
+  /** Human-readable agent name for the N/A tooltip (e.g. "Copilot CLI"). */
+  unsupportedLabel?: string;
 }) {
   const descriptionId = useId();
+
+  const displayValue = unsupported ? "N/A" : value;
 
   const cardContent = (
     <CardContent className="relative p-0">
       <div className="mb-3 text-[12px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
-      <div className="mb-1 font-serif text-[28px] font-medium leading-none tracking-tight text-foreground [font-variant-numeric:lining-nums_tabular-nums]">
-        {value}
+      <div
+        className="mb-1 font-serif text-[28px] font-medium leading-none tracking-tight text-foreground [font-variant-numeric:lining-nums_tabular-nums]"
+        title={unsupported && unsupportedLabel ? `Not available for ${unsupportedLabel} sessions` : undefined}
+      >
+        {displayValue}
       </div>
       {delta && (
         <div className="mt-1 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
