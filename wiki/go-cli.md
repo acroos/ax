@@ -20,10 +20,11 @@ All CLI code lives under `cli/`. Entry point: `cli/cmd/ax/main.go` (Cobra-based)
 cli/
   cmd/ax/        CLI entry point (main.go)
   internal/
+    agentinit/   Blank imports of every agent + hook package — triggers init() registration
     agents/      Agent registry + Provider interface
       registry.gen.go       codegen output — DO NOT EDIT
       provider.go           Provider interface + DiscoveryTarget/SessionLocator types
-      providers.go          RegisteredProviders() — assembles all Provider impls
+      providers.go          Register() / RegisteredProviders() — registry plumbing (do not edit)
       claude/               Claude Code provider (discovery, parser, tools)
       copilot/              Copilot CLI provider (discovery, parser, workspace)
       cursor/               Cursor CLI provider (discovery, parser, applypatch)
@@ -32,7 +33,7 @@ cli/
     config/      Config management (~/.ax/config.json)
     hooks/       Hook installer interface + per-agent installers
       installer.go          Installer interface + Scope enum
-      installers.go         RegisteredInstallers()
+      installers.go         Register() / RegisteredInstallers() — registry plumbing (do not edit)
       pushcommand/          Shared bash one-liner generator
       claude/               Claude Code hook installer (~/.claude/settings.json)
       copilot/              Copilot CLI hook installer (.github/hooks/session-end.json)
@@ -165,10 +166,21 @@ Pure function metric calculators, kept as a Go library. These are being ported t
 
 1. Add the agent's entry to `config/agents.yaml` (use existing entries as templates). Declare every `field_keys` and `metric_slugs` key — no implicit defaults.
 2. Run `just codegen-agents` and commit the regenerated `*.gen.*` files (`registry.gen.go`, `agent_registry.rb`, `agents.gen.ts`).
-3. Implement `cli/internal/agents/<id>/{provider.go, discovery.go, parser.go, tools.go}` — the `agents.Provider` interface.
-4. Implement `cli/internal/hooks/<id>/installer.go` (skip if the agent has no hook system) — the `hooks.Installer` interface.
-5. Register both in `cli/internal/agents/providers.go` (`RegisteredProviders()`) and `cli/internal/hooks/installers.go` (`RegisteredInstallers()`).
-6. Add tests in `cli/internal/agents/<id>/<id>_test.go` and (if applicable) `cli/internal/hooks/<id>/installer_test.go`.
+3. Implement `cli/internal/agents/<id>/{provider.go, discovery.go, parser.go, tools.go}` — the `agents.Provider` interface. Add a self-registration hook at the top of `provider.go`:
+   ```go
+   func init() { agents.Register(New()) }
+   ```
+4. Implement `cli/internal/hooks/<id>/installer.go` (skip if the agent has no hook system) — the `hooks.Installer` interface. Add the same self-registration pattern:
+   ```go
+   func init() { hooks.Register(NewInstaller()) }
+   ```
+5. Add blank imports for both new packages to `cli/internal/agentinit/init.go` so their `init()` functions run when the binary starts:
+   ```go
+   _ "github.com/austinroos/ax/internal/agents/<id>"
+   _ "github.com/austinroos/ax/internal/hooks/<id>"
+   ```
+   (`providers.go` and `installers.go` only define the `Register()` / `RegisteredX()` plumbing — you do not edit them directly.)
+6. Add tests in `cli/internal/agents/<id>/<id>_test.go` and (if applicable) `cli/internal/hooks/<id>/installer_test.go`. Extend `cli/internal/agents/agents_test.go` to assert the new provider is registered.
 7. Update `docs/setup.md` with the install instructions for the new agent.
 
 ## Key Files
@@ -177,14 +189,15 @@ Pure function metric calculators, kept as a Go library. These are being ported t
 |------|---------|
 | `cli/cmd/ax/main.go` | CLI commands: init, push, push --all |
 | `config/agents.yaml` | Agent registry + capability matrix (edit to add an agent) |
+| `cli/internal/agentinit/init.go` | Blank imports of every agent + hook package — add new agents here |
 | `cli/internal/agents/provider.go` | `Provider` interface definition |
-| `cli/internal/agents/providers.go` | `RegisteredProviders()` — add new agents here |
+| `cli/internal/agents/providers.go` | `Register()` / `RegisteredProviders()` registry plumbing — do not edit |
 | `cli/internal/agents/registry.gen.go` | Generated Go constants — DO NOT EDIT |
-| `cli/internal/agents/claude/provider.go` | Claude Code provider impl |
-| `cli/internal/agents/copilot/provider.go` | Copilot CLI provider impl |
-| `cli/internal/agents/cursor/provider.go` | Cursor CLI provider impl |
+| `cli/internal/agents/claude/provider.go` | Claude Code provider impl (self-registers via `init()`) |
+| `cli/internal/agents/copilot/provider.go` | Copilot CLI provider impl (self-registers via `init()`) |
+| `cli/internal/agents/cursor/provider.go` | Cursor CLI provider impl (self-registers via `init()`) |
 | `cli/internal/hooks/installer.go` | `Installer` interface definition |
-| `cli/internal/hooks/installers.go` | `RegisteredInstallers()` — add new agents here |
+| `cli/internal/hooks/installers.go` | `Register()` / `RegisteredInstallers()` registry plumbing — do not edit |
 | `cli/internal/hooks/pushcommand/script.go` | Shared bash one-liner generator |
 | `cli/internal/bulk/discovery.go` | Repo discovery from history.jsonl |
 | `cli/internal/bulk/push.go` | Bulk push orchestration, progress, error logging |
