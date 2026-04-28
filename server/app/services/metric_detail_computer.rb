@@ -24,16 +24,17 @@ class MetricDetailComputer
 
   # Pre-computed Arel SQL fragments for session metrics (built at class load
   # from frozen constants, so Brakeman recognises them as safe).
-  SESSION_PLUCK_EXPRS = MetricsAggregator::SESSION_METRIC_EXPRESSIONS.transform_values { |expr|
-    Arel.sql("(#{expr})") # brakeman:disable SQLInjection — expr from frozen constant
+  # SESSION_METRIC_EXPRESSIONS values are now { sql:, requires: } hashes — extract :sql.
+  SESSION_PLUCK_EXPRS = MetricsAggregator::SESSION_METRIC_EXPRESSIONS.transform_values { |meta|
+    Arel.sql("(#{meta[:sql]})") # brakeman:disable SQLInjection — sql from frozen constant
   }.freeze
 
-  SESSION_NOT_NULL_CONDITIONS = MetricsAggregator::SESSION_METRIC_EXPRESSIONS.transform_values { |expr|
-    "(#{expr}) IS NOT NULL" # brakeman:disable SQLInjection — expr from frozen constant
+  SESSION_NOT_NULL_CONDITIONS = MetricsAggregator::SESSION_METRIC_EXPRESSIONS.transform_values { |meta|
+    "(#{meta[:sql]}) IS NOT NULL" # brakeman:disable SQLInjection — sql from frozen constant
   }.freeze
 
-  SESSION_METRIC_VALUE_SELECTS = MetricsAggregator::SESSION_METRIC_EXPRESSIONS.transform_values { |expr|
-    Arel.sql("(#{expr}) AS metric_value") # brakeman:disable SQLInjection — expr from frozen constant
+  SESSION_METRIC_VALUE_SELECTS = MetricsAggregator::SESSION_METRIC_EXPRESSIONS.transform_values { |meta|
+    Arel.sql("(#{meta[:sql]}) AS metric_value") # brakeman:disable SQLInjection — sql from frozen constant
   }.freeze
 
   SESSION_DATE_SQL = MetricsAggregator::SESSION_DATE_SQL.freeze
@@ -43,12 +44,12 @@ class MetricDetailComputer
   ).freeze
 
   # Pre-computed trend SQL fragments for session metrics.
-  SESSION_TREND_SELECTS = MetricsAggregator::SESSION_METRIC_EXPRESSIONS.transform_values { |expr|
+  SESSION_TREND_SELECTS = MetricsAggregator::SESSION_METRIC_EXPRESSIONS.transform_values { |meta|
     {
       bucket: Arel.sql("DATE(#{MetricsAggregator::SESSION_DATE_SQL}) AS bucket"), # brakeman:disable SQLInjection
-      avg: Arel.sql("AVG(#{expr}) AS avg_val"),   # brakeman:disable SQLInjection
-      min: Arel.sql("MIN(#{expr}) AS min_val"),   # brakeman:disable SQLInjection
-      max: Arel.sql("MAX(#{expr}) AS max_val"),   # brakeman:disable SQLInjection
+      avg: Arel.sql("AVG(#{meta[:sql]}) AS avg_val"),   # brakeman:disable SQLInjection
+      min: Arel.sql("MIN(#{meta[:sql]}) AS min_val"),   # brakeman:disable SQLInjection
+      max: Arel.sql("MAX(#{meta[:sql]}) AS max_val"),   # brakeman:disable SQLInjection
       cnt: Arel.sql("COUNT(*) AS cnt"),
       group: Arel.sql("DATE(#{MetricsAggregator::SESSION_DATE_SQL})") # brakeman:disable SQLInjection
     }
