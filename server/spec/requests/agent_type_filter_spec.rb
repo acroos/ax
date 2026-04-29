@@ -117,6 +117,82 @@ RSpec.describe "agent_type filter", type: :request do
     end
   end
 
+  describe "GET /metrics overview (org-level, no repo filter)" do
+    it "totalSessions reflects the agent_type filter" do
+      get "/api/v1/orgs/testorg/metrics",
+        params: { agent_type: "cursor_cli", range: "30d" },
+        headers: headers
+
+      body = JSON.parse(response.body)
+      expect(body["totalSessions"]).to eq(1)
+    end
+
+    it "totalSessions counts all sessions when no agent_type filter" do
+      get "/api/v1/orgs/testorg/metrics",
+        params: { range: "30d" },
+        headers: headers
+
+      body = JSON.parse(response.body)
+      expect(body["totalSessions"]).to eq(6)
+    end
+
+    it "session-derived metric values reflect the agent_type filter" do
+      get "/api/v1/orgs/testorg/metrics",
+        params: { agent_type: "cursor_cli", range: "30d" },
+        headers: headers
+
+      body = JSON.parse(response.body)
+      # iteration-depth = AVG(turn_count). Cursor session has turn_count=7,
+      # claude sessions have turn_count 3..7. Filtered avg should be 7.
+      expect(body.dig("metrics", "iteration-depth", "current")).to eq(7.0)
+    end
+
+    # Mirrors a multi-repo production org: many sessions across repos with
+    # cursor sessions concentrated in one repo. Confirms the org-level
+    # overview correctly narrows to cursor sessions when no repo filter
+    # is set, rather than falling through to all sessions.
+    it "narrows totalSessions across multi-repo orgs without a repo filter" do
+      multi_org = create(:organization, slug: "multi")
+      create(:org_membership, organization: multi_org, user: user, role: "member")
+      repo_a = create(:repo, organization: multi_org)
+      repo_b = create(:repo, organization: multi_org)
+      repo_c = create(:repo, organization: multi_org)
+
+      30.times do |i|
+        create(:coding_session,
+          id: "multi-claude-a-#{i}",
+          repo: repo_a,
+          agent_type: "claude_code",
+          ended_at: i.hours.ago,
+          turn_count: 3)
+      end
+      20.times do |i|
+        create(:coding_session,
+          id: "multi-claude-b-#{i}",
+          repo: repo_b,
+          agent_type: "claude_code",
+          ended_at: i.hours.ago,
+          turn_count: 4)
+      end
+      3.times do |i|
+        create(:coding_session,
+          id: "multi-cursor-c-#{i}",
+          repo: repo_c,
+          agent_type: "cursor_cli",
+          ended_at: i.hours.ago,
+          turn_count: 9)
+      end
+
+      get "/api/v1/orgs/multi/metrics",
+        params: { agent_type: "cursor_cli", range: "30d" },
+        headers: headers
+
+      body = JSON.parse(response.body)
+      expect(body["totalSessions"]).to eq(3)
+      expect(body.dig("metrics", "iteration-depth", "current")).to eq(9.0)
+    end
+  end
+
   describe "GET /me/sessions" do
     it "returns only sessions matching the agent_type" do
       get "/api/v1/orgs/testorg/me/sessions",

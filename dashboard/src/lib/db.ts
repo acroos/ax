@@ -71,6 +71,15 @@ export function orgApiPath(orgSlug: string, path: string): string {
   return `/api/v1/orgs/${orgSlug}${path}`;
 }
 
+// Filter-driven metric responses are not cached. The Next.js Data Cache
+// persists across deploys (see https://vercel.com/docs/data-cache), so
+// without this opt-out a buggy server response can be cached under a URL
+// like `/api/v1/orgs/X/metrics?agent_type=cursor_cli` and continue to be
+// served after the server bug is fixed. The aggregation queries are cheap
+// and the cache hit window (60s default) is too small to justify keeping
+// stale-but-wrong data after the fix is in.
+const METRICS_FETCH_OPTS = { revalidate: false } as const;
+
 // --- Billing ---
 
 export interface BillingInfo {
@@ -371,6 +380,7 @@ export async function getTeamMetricsAsync(
   const rangeParam = buildQuery({ range, agent_type: agentType });
   return fetchAPI<AggregateMetrics>(
     orgApiPath(orgSlug, `/teams/${teamSlug}/metrics`) + rangeParam,
+    METRICS_FETCH_OPTS,
   );
 }
 
@@ -409,10 +419,12 @@ export async function getMetricDetailAsync(
   if (repoId) {
     return fetchAPI<MetricDetailResponse>(
       orgApiPath(orgSlug, `/repos/${repoId}/metrics/${metricSlug}`) + qs,
+      METRICS_FETCH_OPTS,
     );
   }
   return fetchAPI<MetricDetailResponse>(
     orgApiPath(orgSlug, `/metrics/${metricSlug}`) + qs,
+    METRICS_FETCH_OPTS,
   );
 }
 
@@ -425,6 +437,7 @@ export async function getMyMetricDetailAsync(
   const rangeParam = buildQuery({ range, agent_type: agentType });
   return fetchAPI<MetricDetailResponse>(
     orgApiPath(orgSlug, `/me/metrics/${metricSlug}`) + rangeParam,
+    METRICS_FETCH_OPTS,
   );
 }
 
@@ -438,6 +451,7 @@ export async function getTeamMetricDetailAsync(
   const rangeParam = buildQuery({ range, agent_type: agentType });
   return fetchAPI<MetricDetailResponse>(
     orgApiPath(orgSlug, `/teams/${teamSlug}/metrics/${metricSlug}`) + rangeParam,
+    METRICS_FETCH_OPTS,
   );
 }
 
@@ -449,6 +463,7 @@ export async function getMyMetricsAsync(
   const rangeParam = buildQuery({ range, agent_type: agentType });
   return fetchAPI<AggregateMetrics>(
     orgApiPath(orgSlug, "/me/metrics") + rangeParam,
+    METRICS_FETCH_OPTS,
   );
 }
 
@@ -573,10 +588,10 @@ export async function getAggregateMetricsAsync(
     const apiPath = orgSlug
       ? orgApiPath(orgSlug, `/repos/${repoId}/metrics`) + rangeParam
       : `/api/v1/repos/${repoId}/metrics` + rangeParam;
-    return fetchAPI<AggregateMetrics>(apiPath);
+    return fetchAPI<AggregateMetrics>(apiPath, METRICS_FETCH_OPTS);
   }
   if (orgSlug) {
-    return fetchAPI<AggregateMetrics>(orgApiPath(orgSlug, "/metrics") + rangeParam);
+    return fetchAPI<AggregateMetrics>(orgApiPath(orgSlug, "/metrics") + rangeParam, METRICS_FETCH_OPTS);
   }
   const result = await listPRsWithMetricsAsync(repoId, orgSlug);
   return computeAggregatesFromPRs(result.data);
