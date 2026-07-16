@@ -67,7 +67,7 @@ jobs:
         working-directory: cli
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: cli/go.mod
       - run: go vet ./...
@@ -81,7 +81,7 @@ jobs:
         working-directory: cli
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: cli/go.mod
       - run: go test ./...
@@ -95,7 +95,7 @@ jobs:
         working-directory: cli
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: cli/go.mod
       - run: go build ./...
